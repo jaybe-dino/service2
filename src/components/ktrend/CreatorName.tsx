@@ -2,11 +2,13 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Eye, Lock } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Eye, Lock, LogIn } from "lucide-react";
 import BrandAvatar from "./BrandAvatar";
 import { usePlan } from "./PlanContext";
 
-// 계정 이름 게이팅: Basic은 하루 20개까지 공개. 공개 전에는 마스킹 + href 미노출 + 우클릭 차단.
+// 계정 이름 게이팅: 비구매자는 열람권(하루 5건, 콘텐츠 열람과 공통)에서 차감.
+// 비로그인은 무조건 로그인 유도. 공개 전에는 마스킹 + href 미노출 + 우클릭 차단.
 function openExternal(url: string) {
   window.open(url, "_blank", "noopener,noreferrer");
 }
@@ -20,7 +22,8 @@ export default function CreatorName({
   avatarSize?: number;
   className?: string;
 }) {
-  const { isNameRevealed, revealName, nameRemaining } = usePlan();
+  const { user, isNameRevealed, revealName, nameRemaining } = usePlan();
+  const router = useRouter();
   const [, force] = useState(0);
   const [blocked, setBlocked] = useState(false);
   const revealed = isNameRevealed(handle);
@@ -42,6 +45,15 @@ export default function CreatorName({
     );
   }
 
+  const handleReveal = () => {
+    if (!user) {
+      router.push("/login"); // 비로그인: 무조건 로그인
+      return;
+    }
+    if (revealName(handle)) force((n) => n + 1);
+    else setBlocked(true);
+  };
+
   return (
     <span className={`flex items-center gap-1.5 ${className}`} onContextMenu={noCtx}>
       {/* 마스킹 시 핸들을 DOM에 노출하지 않음 (중립 아바타) */}
@@ -59,14 +71,11 @@ export default function CreatorName({
         </Link>
       ) : (
         <button
-          onClick={() => {
-            if (revealName(handle)) force((n) => n + 1);
-            else setBlocked(true);
-          }}
+          onClick={handleReveal}
           className="ml-auto flex items-center gap-0.5 rounded border border-[var(--accent)] px-1.5 py-0.5 text-[8px] font-bold text-[var(--accent)] hover:bg-[var(--accent-light)]"
-          title={`오늘 남은 이름 공개 ${nameRemaining}회`}
+          title={user ? `오늘 남은 열람권 ${nameRemaining}건` : "로그인 후 이용"}
         >
-          <Eye size={9} /> 이름 보기
+          {user ? <Eye size={9} /> : <LogIn size={9} />} 이름 보기
         </button>
       )}
     </span>

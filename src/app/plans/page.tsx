@@ -8,8 +8,7 @@ import { ADDONS, PLANS } from "@/data/ktrend/meta";
 
 const COMPARE = [
   { feature: "콘텐츠 성과 지표", basic: "전체 공개", pro: "전체 공개", ent: "전체 공개 + 실매출" },
-  { feature: "계정 이름 공개", basic: "하루 20개", pro: "무제한", ent: "무제한" },
-  { feature: "콘텐츠 링크 열람권", basic: "하루 5건", pro: "무제한", ent: "무제한" },
+  { feature: "열람권 (링크 열람·이름 공개)", basic: "하루 5건", pro: "무제한", ent: "무제한" },
   { feature: "인플루언서 컨택 라인", basic: "잠금", pro: "해금", ent: "해금 + 단가" },
   { feature: "신규 브랜드 자가 학습", basic: "미지원", pro: "월 3회 (12h)", ent: "무제한 (12h)" },
   { feature: "바이럴 알림 · 리포트", basic: "미지원", pro: "주 2회 · 제공", ent: "실시간 · 무제한 PDF" },

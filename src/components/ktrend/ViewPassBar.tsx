@@ -37,6 +37,7 @@ export default function ViewPassBar() {
       <span className="font-semibold">오늘 열람권</span>
       <span className="font-black text-[var(--accent)]">{clickRemaining}</span>
       <span className="text-[var(--muted)]">/ {CLICK_LIMIT} 남음</span>
+      <span className="text-[10px] text-[var(--muted)]">(콘텐츠 열람 · 이름 보기 공통)</span>
       {/* 진행 게이지 */}
       <span className="ml-1 hidden h-1.5 w-28 overflow-hidden rounded bg-slate-100 sm:inline-block">
         <span

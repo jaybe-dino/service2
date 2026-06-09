@@ -27,7 +27,7 @@ const PLAN_COLOR: Record<PlanId, string> = {
 
 export default function SiteHeader() {
   const pathname = usePathname();
-  const { user, plan, logout, isPro, nameRemaining, clickRemaining } = usePlan();
+  const { user, plan, logout, isPro, passRemaining } = usePlan();
 
   return (
     <header className="sticky top-0 z-40 border-b border-[var(--border)] bg-white/90 backdrop-blur">
@@ -64,7 +64,7 @@ export default function SiteHeader() {
         <div className="ml-auto flex items-center gap-2">
           {user && !isPro && (
             <span className="hidden rounded-md bg-amber-50 px-2 py-1 text-[9px] font-semibold text-amber-700 sm:inline">
-              열람권 {clickRemaining} · 이름 {nameRemaining}
+              오늘 열람권 {passRemaining}건 남음
             </span>
           )}
           {user ? (

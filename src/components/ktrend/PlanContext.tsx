@@ -11,14 +11,13 @@ import {
 import type { PlanId } from "@/data/ktrend/meta";
 import { DEMO_ACCOUNTS, findAccount, type Account } from "@/data/ktrend/accounts";
 
-// Basic 일일 한도
-export const NAME_LIMIT = 20; // 계정 이름 공개
-export const CLICK_LIMIT = 5; // 콘텐츠 링크 클릭 전환(열람권) — 비구매자 하루 한도
+// 비구매자 하루 열람권 한도 — 콘텐츠 링크 열람과 계정 이름 공개가 공통으로 차감
+export const PASS_LIMIT = 5;
+export const CLICK_LIMIT = PASS_LIMIT; // 하위 호환 별칭
 
 interface Quota {
   day: string;
-  names: string[]; // 공개한 핸들
-  videos: string[]; // 클릭 전환한 영상 id
+  passes: string[]; // 소비 토큰: `video:<id>` 또는 `name:<handle>`
 }
 
 interface PlanState {
@@ -29,13 +28,15 @@ interface PlanState {
   loginAs: (accountId: string) => void;
   logout: () => void;
   ready: boolean;
-  // 계정 이름 게이팅
+  // 계정 이름 게이팅 (열람권 공통 차감)
   isNameRevealed: (handle: string) => boolean;
-  revealName: (handle: string) => boolean; // 성공 여부
-  nameRemaining: number; // Infinity = 무제한
-  // 콘텐츠 링크 클릭 전환 게이팅
+  revealName: (handle: string) => boolean;
+  // 콘텐츠 링크 클릭 전환 게이팅 (열람권 공통 차감)
   isVideoOpened: (id: string) => boolean;
-  openVideo: (id: string) => boolean; // 허용 여부(허용 시 기록)
+  openVideo: (id: string) => boolean;
+  // 남은 열람권 (Infinity = 무제한). nameRemaining/clickRemaining은 동일 값(공통 풀)
+  passRemaining: number;
+  nameRemaining: number;
   clickRemaining: number;
 }
 
@@ -49,21 +50,37 @@ function loadQuota(): Quota {
   try {
     const raw = localStorage.getItem(QUOTA_KEY);
     if (raw) {
-      const q = JSON.parse(raw) as Quota;
-      if (q.day === today()) return q;
+      const q = JSON.parse(raw) as Partial<Quota> & { names?: string[]; videos?: string[] };
+      if (q.day === today()) {
+        if (Array.isArray(q.passes)) return { day: q.day, passes: q.passes };
+        // 구버전(names/videos 분리) 마이그레이션
+        const passes = [
+          ...(q.videos ?? []).map((v) => `video:${v}`),
+          ...(q.names ?? []).map((n) => `name:${n}`),
+        ];
+        return { day: q.day, passes };
+      }
     }
   } catch {
     /* ignore */
   }
-  return { day: today(), names: [], videos: [] };
+  return { day: today(), passes: [] };
 }
 
 export function PlanProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<Account | null>(null);
   const [ready, setReady] = useState(false);
-  // 쿼터는 ref로 동기 관리(렌더 배칭에 따른 stale-closure 방지) + state로 UI 갱신
-  const quotaRef = useRef<Quota>({ day: today(), names: [], videos: [] });
+  // 열람권은 ref로 동기 관리(렌더 배칭 stale-closure 방지) + state로 UI 갱신
+  const quotaRef = useRef<Quota>({ day: today(), passes: [] });
   const [quota, setQuotaState] = useState<Quota>(quotaRef.current);
+
+  const persistQuota = (q: Quota) => {
+    try {
+      localStorage.setItem(QUOTA_KEY, JSON.stringify(q));
+    } catch {
+      /* ignore */
+    }
+  };
 
   const commitQuota = (q: Quota) => {
     quotaRef.current = q;
@@ -96,14 +113,6 @@ export function PlanProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const persistQuota = (q: Quota) => {
-    try {
-      localStorage.setItem(QUOTA_KEY, JSON.stringify(q));
-    } catch {
-      /* ignore */
-    }
-  };
-
   const login = (email: string, password: string) => {
     const acc = findAccount(email, password);
     if (!acc) return false;
@@ -126,37 +135,29 @@ export function PlanProvider({ children }: { children: ReactNode }) {
   const plan: PlanId = user?.plan ?? "basic";
   const isPro = plan === "pro" || plan === "enterprise";
 
-  // 읽기 전용: 커밋(setState) 없이 ref에서 최신값을 동기 조회 (날짜 지났으면 빈 쿼터로 간주)
+  // 읽기 전용: 커밋 없이 ref에서 최신값 동기 조회 (날짜 지나면 빈 풀로 간주)
   const currentQuota = (): Quota => {
     const q = quotaRef.current;
-    return q.day === today() ? q : { day: today(), names: [], videos: [] };
+    return q.day === today() ? q : { day: today(), passes: [] };
   };
 
-  const isNameRevealed = (handle: string) => isPro || currentQuota().names.includes(handle);
-
-  const revealName = (handle: string) => {
+  const consume = (key: string): boolean => {
     if (isPro) return true;
     const q = currentQuota();
-    if (q.names.includes(handle)) return true;
-    if (q.names.length >= NAME_LIMIT) return false;
-    commitQuota({ ...q, names: [...q.names, handle] });
+    if (q.passes.includes(key)) return true; // 이미 사용한 항목은 무료
+    if (q.passes.length >= PASS_LIMIT) return false;
+    commitQuota({ ...q, passes: [...q.passes, key] });
     return true;
   };
 
-  const isVideoOpened = (id: string) => isPro || currentQuota().videos.includes(id);
+  const isNameRevealed = (handle: string) => isPro || currentQuota().passes.includes(`name:${handle}`);
+  const revealName = (handle: string) => consume(`name:${handle}`);
 
-  const openVideo = (id: string) => {
-    if (isPro) return true;
-    const q = currentQuota();
-    if (q.videos.includes(id)) return true;
-    if (q.videos.length >= CLICK_LIMIT) return false;
-    commitQuota({ ...q, videos: [...q.videos, id] });
-    return true;
-  };
+  const isVideoOpened = (id: string) => isPro || currentQuota().passes.includes(`video:${id}`);
+  const openVideo = (id: string) => consume(`video:${id}`);
 
-  const liveQuota = quota.day === today() ? quota : { day: today(), names: [], videos: [] };
-  const nameRemaining = isPro ? Infinity : Math.max(0, NAME_LIMIT - liveQuota.names.length);
-  const clickRemaining = isPro ? Infinity : Math.max(0, CLICK_LIMIT - liveQuota.videos.length);
+  const liveQuota = quota.day === today() ? quota : { day: today(), passes: [] };
+  const passRemaining = isPro ? Infinity : Math.max(0, PASS_LIMIT - liveQuota.passes.length);
 
   return (
     <PlanContext.Provider
@@ -170,10 +171,11 @@ export function PlanProvider({ children }: { children: ReactNode }) {
         ready,
         isNameRevealed,
         revealName,
-        nameRemaining,
         isVideoOpened,
         openVideo,
-        clickRemaining,
+        passRemaining,
+        nameRemaining: passRemaining,
+        clickRemaining: passRemaining,
       }}
     >
       {children}

@@ -90,17 +90,17 @@ export default function LoginPage() {
                 <ul className="mt-3 flex-1 space-y-1 text-[11px]">
                   {isEnt ? (
                     <>
-                      <li className="flex gap-1.5"><Check size={13} className="mt-0.5 text-[var(--accent)]" /> 콘텐츠 링크 열람권 무제한</li>
-                      <li className="flex gap-1.5"><Check size={13} className="mt-0.5 text-[var(--accent)]" /> 계정 이름 무제한 공개</li>
+                      <li className="flex gap-1.5"><Check size={13} className="mt-0.5 text-[var(--accent)]" /> 열람권 무제한 (링크·이름)</li>
                       <li className="flex gap-1.5"><Check size={13} className="mt-0.5 text-[var(--accent)]" /> 인플루언서 컨택 라인 해금</li>
-                      <li className="flex gap-1.5"><Check size={13} className="mt-0.5 text-[var(--accent)]" /> PDF 리포트 다운로드</li>
+                      <li className="flex gap-1.5"><Check size={13} className="mt-0.5 text-[var(--accent)]" /> 신규 브랜드 추가 · PDF 리포트</li>
+                      <li className="flex gap-1.5"><Check size={13} className="mt-0.5 text-[var(--accent)]" /> 실시간 바이럴 알림</li>
                     </>
                   ) : (
                     <>
                       <li className="flex gap-1.5 text-[var(--muted)]">· 콘텐츠 성과 지표 전체 열람</li>
-                      <li className="flex gap-1.5 text-[var(--muted)]">· 콘텐츠 링크 열람권 하루 5건</li>
-                      <li className="flex gap-1.5 text-[var(--muted)]">· 계정 이름 하루 20개</li>
+                      <li className="flex gap-1.5 text-[var(--muted)]">· 열람권 하루 5건 (링크 열람·이름 공개 공통)</li>
                       <li className="flex gap-1.5 text-[var(--muted)]">· 컨택 라인 잠금</li>
+                      <li className="flex gap-1.5 text-[var(--muted)]">· 신규 브랜드 추가 불가</li>
                     </>
                   )}
                 </ul>
