@@ -1,5 +1,7 @@
-name: Deploy to GitHub Pages
+name: CI Build
 
+# 동적 서버 앱으로 전환됨 — 배포는 Vercel이 담당(레포 연결 시 자동 배포).
+# 이 워크플로는 빌드가 깨지지 않는지 검증만 한다.
 on:
   push:
     branches:
@@ -7,54 +9,18 @@ on:
       - claude/epic-edison-m35tv3
   workflow_dispatch:
 
-permissions:
-  contents: read
-  pages: write
-  id-token: write
-
-# 동시에 하나의 배포만 진행
-concurrency:
-  group: pages
-  cancel-in-progress: true
-
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: npm
-
       - name: Install dependencies
         run: npm ci
-
-      - name: Build static site
+      - name: Build
         run: npm run build
-        env:
-          NEXT_PUBLIC_BASE_PATH: "/service2"
-
-      - name: Setup Pages
-        uses: actions/configure-pages@v5
-        with:
-          enablement: true
-
-      - name: Upload artifact
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: out
-
-  deploy:
-    needs: build
-    runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
