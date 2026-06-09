@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Sparkles } from "lucide-react";
+import { LogIn, LogOut, Sparkles } from "lucide-react";
 import { usePlan } from "./PlanContext";
 import type { PlanId } from "@/data/ktrend/meta";
 
@@ -14,21 +14,20 @@ const NAV = [
   { href: "/plans", label: "요금제" },
 ];
 
-const PLAN_CYCLE: PlanId[] = ["basic", "pro", "enterprise"];
 const PLAN_LABEL: Record<PlanId, string> = {
-  basic: "Basic (무료)",
+  basic: "Basic",
   pro: "Pro",
   enterprise: "Enterprise",
+};
+const PLAN_COLOR: Record<PlanId, string> = {
+  basic: "#64748b",
+  pro: "#1A56DB",
+  enterprise: "#7C3AED",
 };
 
 export default function SiteHeader() {
   const pathname = usePathname();
-  const { plan, setPlan, isPro } = usePlan();
-
-  const cyclePlan = () => {
-    const i = PLAN_CYCLE.indexOf(plan);
-    setPlan(PLAN_CYCLE[(i + 1) % PLAN_CYCLE.length]);
-  };
+  const { user, plan, logout } = usePlan();
 
   return (
     <header className="sticky top-0 z-40 border-b border-[var(--border)] bg-white/90 backdrop-blur">
@@ -63,15 +62,31 @@ export default function SiteHeader() {
         </nav>
 
         <div className="ml-auto flex items-center gap-2">
-          <button
-            onClick={cyclePlan}
-            title="데모: 플랜을 전환하면 유료 지표 잠금이 해제됩니다"
-            className={`kt-btn px-3 py-1.5 text-[11px] ${
-              isPro ? "kt-btn-primary" : "kt-btn-outline"
-            }`}
-          >
-            현재 플랜: {PLAN_LABEL[plan]}
-          </button>
+          {user ? (
+            <>
+              <span
+                className="rounded-full px-2 py-0.5 text-[9px] font-bold text-white"
+                style={{ background: PLAN_COLOR[plan] }}
+              >
+                {PLAN_LABEL[plan]}
+              </span>
+              <div className="hidden text-right leading-tight sm:block">
+                <div className="text-[11px] font-bold">{user.name}</div>
+                <div className="text-[9px] text-[var(--muted)]">{user.company}</div>
+              </div>
+              <button
+                onClick={logout}
+                title="로그아웃"
+                className="kt-btn kt-btn-outline px-2.5 py-1.5 text-[11px]"
+              >
+                <LogOut size={13} /> 로그아웃
+              </button>
+            </>
+          ) : (
+            <Link href="/login" className="kt-btn kt-btn-primary px-3 py-1.5 text-[11px]">
+              <LogIn size={13} /> 로그인
+            </Link>
+          )}
         </div>
       </div>
     </header>

@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { Check, Star } from "lucide-react";
 import PageShell from "@/components/ktrend/PageShell";
 import { usePlan } from "@/components/ktrend/PlanContext";
@@ -16,7 +17,7 @@ const COMPARE = [
 ];
 
 export default function PlansPage() {
-  const { plan, setPlan } = usePlan();
+  const { plan } = usePlan();
 
   return (
     <PageShell>
@@ -57,14 +58,23 @@ export default function PlansPage() {
                   </li>
                 ))}
               </ul>
-              <button
-                onClick={() => setPlan(p.id)}
-                className={`kt-btn mt-6 w-full py-2.5 text-[12px] ${
-                  p.popular ? "kt-btn-primary" : "kt-btn-outline"
-                }`}
-              >
-                {current ? "✓ 현재 플랜" : p.cta}
-              </button>
+              {current ? (
+                <button
+                  disabled
+                  className="kt-btn mt-6 w-full cursor-default py-2.5 text-[12px] kt-btn-outline border-[var(--accent)] text-[var(--accent)]"
+                >
+                  ✓ 현재 플랜
+                </button>
+              ) : (
+                <Link
+                  href="/login"
+                  className={`kt-btn mt-6 w-full py-2.5 text-[12px] ${
+                    p.popular ? "kt-btn-primary" : "kt-btn-outline"
+                  }`}
+                >
+                  {p.cta}
+                </Link>
+              )}
             </div>
           );
         })}
