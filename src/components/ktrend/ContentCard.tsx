@@ -1,11 +1,78 @@
 "use client";
 
+import { useEffect, useRef, useState } from "react";
 import { Heart, MessageCircle, Play, Eye, Lock, TrendingUp, Share2 } from "lucide-react";
 import BrandAvatar from "./BrandAvatar";
 import { usePlan } from "./PlanContext";
 import { BRAND_MAP } from "@/data/ktrend/brands";
 import { CATEGORY_MAP, TIERS } from "@/data/ktrend/meta";
 import { fmtCompact, fmtUSD, type Content } from "@/data/ktrend/content";
+
+// --- TikTok oEmbed 썸네일: 뷰포트 진입 시 지연 로드 + 캐시 (실패 시 그라데이션 폴백) ---
+const thumbCache = new Map<string, string | null>();
+const thumbInflight = new Map<string, Promise<string | null>>();
+
+function fetchThumb(url: string): Promise<string | null> {
+  if (thumbCache.has(url)) return Promise.resolve(thumbCache.get(url) ?? null);
+  if (thumbInflight.has(url)) return thumbInflight.get(url)!;
+  try {
+    const cached = sessionStorage.getItem(`tt:${url}`);
+    if (cached !== null) {
+      const v = cached || null;
+      thumbCache.set(url, v);
+      return Promise.resolve(v);
+    }
+  } catch {
+    /* sessionStorage 미지원 무시 */
+  }
+  const p = fetch(`https://www.tiktok.com/oembed?url=${encodeURIComponent(url)}`)
+    .then((r) => (r.ok ? r.json() : null))
+    .then((j: { thumbnail_url?: string } | null) => {
+      const t = j?.thumbnail_url ?? null;
+      thumbCache.set(url, t);
+      try {
+        sessionStorage.setItem(`tt:${url}`, t ?? "");
+      } catch {
+        /* 무시 */
+      }
+      return t;
+    })
+    .catch(() => {
+      thumbCache.set(url, null);
+      return null;
+    })
+    .finally(() => thumbInflight.delete(url));
+  thumbInflight.set(url, p);
+  return p;
+}
+
+function useThumbnail(url: string, ref: React.RefObject<HTMLElement | null>): string | null {
+  const [thumb, setThumb] = useState<string | null>(() => thumbCache.get(url) ?? null);
+  useEffect(() => {
+    const cached = thumbCache.get(url);
+    if (cached) {
+      setThumb(cached);
+      return;
+    }
+    const el = ref.current;
+    if (!el || typeof IntersectionObserver === "undefined") {
+      fetchThumb(url).then(setThumb);
+      return;
+    }
+    const io = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((e) => e.isIntersecting)) {
+          io.disconnect();
+          fetchThumb(url).then(setThumb);
+        }
+      },
+      { rootMargin: "300px" },
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, [url, ref]);
+  return thumb;
+}
 
 function Metric({ label, value, locked }: { label: string; value: string; locked: boolean }) {
   return (
@@ -24,10 +91,15 @@ export default function ContentCard({ content }: { content: Content }) {
   const tier = TIERS[content.tier];
   const cat = CATEGORY_MAP[content.category];
 
+  const linkRef = useRef<HTMLAnchorElement | null>(null);
+  const thumb = useThumbnail(content.tiktokUrl, linkRef);
+  const [loaded, setLoaded] = useState(false);
+
   return (
     <article className="kt-card group flex flex-col overflow-hidden">
       {/* 9:16 틱톡 임베드 썸네일 (실제 영상으로 이동) */}
       <a
+        ref={linkRef}
         href={content.tiktokUrl}
         target="_blank"
         rel="noreferrer noopener"
@@ -36,6 +108,17 @@ export default function ContentCard({ content }: { content: Content }) {
           background: `linear-gradient(160deg, hsl(${content.hue} 65% 52%), hsl(${(content.hue + 50) % 360} 60% 38%))`,
         }}
       >
+        {thumb && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={thumb}
+            alt=""
+            loading="lazy"
+            referrerPolicy="no-referrer"
+            onLoad={() => setLoaded(true)}
+            className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-300 ${loaded ? "opacity-100" : "opacity-0"}`}
+          />
+        )}
         <div className="absolute left-2 top-2 flex flex-wrap items-center gap-1">
           <span className="kt-badge-tiktok">TikTok</span>
           {content.isShop && (
