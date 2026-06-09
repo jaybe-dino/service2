@@ -1,0 +1,126 @@
+@import "tailwindcss";
+
+/* K-Trend Analytics — Light Clean 디자인 시스템 (v6.0) */
+:root {
+  --bg: #ffffff;
+  --fg: #2d3748;
+  --accent: #1a56db;
+  --accent-light: #eff6ff;
+  --border: #e2e8f0;
+  --muted: #64748b;
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-fg: var(--fg);
+  --color-accent: var(--accent);
+  --color-accent-light: var(--accent-light);
+  --color-border-soft: var(--border);
+  --color-muted: var(--muted);
+  --font-sans: "Inter", "Malgun Gothic", system-ui, -apple-system, sans-serif;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font-sans);
+  font-size: 12px;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Light Clean 카드 */
+.kt-card {
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  transition: box-shadow 160ms ease-out, border-color 160ms ease-out, transform 160ms ease-out;
+}
+.kt-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  border-color: var(--accent);
+}
+
+/* 버튼 */
+.kt-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border-radius: 8px;
+  font-weight: 600;
+  transition: all 160ms ease-out;
+  cursor: pointer;
+}
+.kt-btn-primary {
+  background: var(--accent);
+  color: #fff;
+}
+.kt-btn-primary:hover {
+  background: #1646b8;
+}
+.kt-btn-primary:active {
+  transform: scale(0.97);
+}
+.kt-btn-outline {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--fg);
+}
+.kt-btn-outline:hover {
+  background: var(--accent-light);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+/* 배지 */
+.kt-badge-brand {
+  display: inline-flex;
+  align-items: center;
+  background: var(--accent-light);
+  color: var(--accent);
+  font-size: 9px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 6px;
+}
+.kt-badge-tiktok {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  background: #000;
+  color: #fff;
+  font-size: 8px;
+  font-weight: 700;
+  padding: 2px 5px;
+  border-radius: 4px;
+}
+
+/* Pro 잠금 블러 */
+.kt-locked {
+  filter: blur(5px);
+  user-select: none;
+  pointer-events: none;
+}
+
+/* 가로 스크롤 칩 (스크롤바 숨김) */
+.kt-noscrollbar::-webkit-scrollbar {
+  display: none;
+}
+.kt-noscrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* 가는 스크롤바 */
+.kt-thin-scroll::-webkit-scrollbar {
+  width: 6px;
+}
+.kt-thin-scroll::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 3px;
+}
