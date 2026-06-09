@@ -4,6 +4,7 @@ import {
   createContext,
   useContext,
   useEffect,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
@@ -60,7 +61,15 @@ function loadQuota(): Quota {
 export function PlanProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<Account | null>(null);
   const [ready, setReady] = useState(false);
-  const [quota, setQuota] = useState<Quota>({ day: today(), names: [], videos: [] });
+  // 쿼터는 ref로 동기 관리(렌더 배칭에 따른 stale-closure 방지) + state로 UI 갱신
+  const quotaRef = useRef<Quota>({ day: today(), names: [], videos: [] });
+  const [quota, setQuotaState] = useState<Quota>(quotaRef.current);
+
+  const commitQuota = (q: Quota) => {
+    quotaRef.current = q;
+    setQuotaState(q);
+    persistQuota(q);
+  };
 
   useEffect(() => {
     try {
@@ -72,7 +81,9 @@ export function PlanProvider({ children }: { children: ReactNode }) {
     } catch {
       /* ignore */
     }
-    setQuota(loadQuota());
+    const q = loadQuota();
+    quotaRef.current = q;
+    setQuotaState(q);
     setReady(true);
   }, []);
 
@@ -115,37 +126,37 @@ export function PlanProvider({ children }: { children: ReactNode }) {
   const plan: PlanId = user?.plan ?? "basic";
   const isPro = plan === "pro" || plan === "enterprise";
 
-  // 날짜 경계 보정
-  const freshQuota = (): Quota => (quota.day === today() ? quota : { day: today(), names: [], videos: [] });
+  // 읽기 전용: 커밋(setState) 없이 ref에서 최신값을 동기 조회 (날짜 지났으면 빈 쿼터로 간주)
+  const currentQuota = (): Quota => {
+    const q = quotaRef.current;
+    return q.day === today() ? q : { day: today(), names: [], videos: [] };
+  };
 
-  const isNameRevealed = (handle: string) => isPro || freshQuota().names.includes(handle);
+  const isNameRevealed = (handle: string) => isPro || currentQuota().names.includes(handle);
 
   const revealName = (handle: string) => {
     if (isPro) return true;
-    const q = freshQuota();
+    const q = currentQuota();
     if (q.names.includes(handle)) return true;
     if (q.names.length >= NAME_LIMIT) return false;
-    const next = { ...q, names: [...q.names, handle] };
-    setQuota(next);
-    persistQuota(next);
+    commitQuota({ ...q, names: [...q.names, handle] });
     return true;
   };
 
-  const isVideoOpened = (id: string) => isPro || freshQuota().videos.includes(id);
+  const isVideoOpened = (id: string) => isPro || currentQuota().videos.includes(id);
 
   const openVideo = (id: string) => {
     if (isPro) return true;
-    const q = freshQuota();
+    const q = currentQuota();
     if (q.videos.includes(id)) return true;
     if (q.videos.length >= CLICK_LIMIT) return false;
-    const next = { ...q, videos: [...q.videos, id] };
-    setQuota(next);
-    persistQuota(next);
+    commitQuota({ ...q, videos: [...q.videos, id] });
     return true;
   };
 
-  const nameRemaining = isPro ? Infinity : Math.max(0, NAME_LIMIT - quota.names.length);
-  const clickRemaining = isPro ? Infinity : Math.max(0, CLICK_LIMIT - quota.videos.length);
+  const liveQuota = quota.day === today() ? quota : { day: today(), names: [], videos: [] };
+  const nameRemaining = isPro ? Infinity : Math.max(0, NAME_LIMIT - liveQuota.names.length);
+  const clickRemaining = isPro ? Infinity : Math.max(0, CLICK_LIMIT - liveQuota.videos.length);
 
   return (
     <PlanContext.Provider
