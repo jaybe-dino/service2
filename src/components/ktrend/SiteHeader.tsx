@@ -88,9 +88,14 @@ export default function SiteHeader() {
               </button>
             </>
           ) : (
-            <Link href="/login" className="kt-btn kt-btn-primary px-3 py-1.5 text-[11px]">
-              <LogIn size={13} /> 로그인
-            </Link>
+            <>
+              <Link href="/login" className="kt-btn kt-btn-outline px-3 py-1.5 text-[11px]">
+                <LogIn size={13} /> 로그인
+              </Link>
+              <Link href="/signup" className="kt-btn kt-btn-primary px-3 py-1.5 text-[11px]">
+                회원가입
+              </Link>
+            </>
           )}
         </div>
       </div>
