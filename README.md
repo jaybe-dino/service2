@@ -1,51 +1,56 @@
 # K-Trend Analytics (v6.0)
 
-글로벌 틱톡(TikTok) K-뷰티 콘텐츠 조회·분석 전문 B2B SaaS의 프론트엔드 MVP.
+글로벌 틱톡(TikTok) K-뷰티 콘텐츠 조회·분석 전문 B2B SaaS.
+실제 98개 K-뷰티 브랜드의 틱톡 영상 11,703건을 **브랜드 · 콘텐츠 · 인플루언서별**로 분석합니다.
 
-미국을 중심으로 태국·베트남·필리핀·말레이시아·싱가포르 6개국 틱톡 샵에서 바이럴되는
-110+ K-뷰티 브랜드의 콘텐츠를 **브랜드 · 콘텐츠 · 인플루언서별**로 탐색·분석합니다.
-
-## 핵심 컨셉
-
-- **콘텐츠(영상) 중심 리스팅**: 모든 데이터를 틱톡 영상 단위로 조회
-- **TikTok 중심**: 틱톡 샵 어필리에이트 성과(수수료율·추정 ROAS·기여 매출) 매핑
-- **미국 중심 6개국**: US / TH / VN / PH / MY / SG
-- **코스메틱(뷰티) 카테고리**: 스킨케어·선케어·메이크업·마스크팩·트러블케어·립케어
-- **유료 서비스 고도화**: Basic(블러) / Pro / Enterprise + Add-on
+> **동적 서버 앱** (Next.js App Router + API Routes + Postgres). 배포: **Vercel**.
 
 ## 주요 화면
 
-| 경로 | 화면 | 설명 |
-| --- | --- | --- |
-| `/` | 랜딩 | 가치 제안, 6개국, 대표 브랜드 |
-| `/explorer` | 콘텐츠 탐색기 | A-Z 브랜드 퀵탭 + 브랜드/카테고리/국가/스타일/인플루언서 필터 + 4열 그리드 |
-| `/influencers` | 인플루언서 DB | 검증 크리에이터 성과·컨택(Pro 해금) |
-| `/reports` | 성장 리포트 | 조회수·매출 추이, SOV 도넛, 인플루언서 기여도 |
-| `/viral` | 바이럴 감지 | 실시간 시그널, 감지 조건, 급상승 Top 12 |
-| `/plans` | 요금제 | 플랜 비교 + Add-on |
+| 경로 | 설명 |
+| --- | --- |
+| `/` | 랜딩 |
+| `/explorer` | 콘텐츠 탐색기 (브랜드/카테고리/티어/Shop·#ad 필터, 열람권) |
+| `/influencers` | 인플루언서 DB |
+| `/reports` | 브랜드 성장 리포트 |
+| `/viral` | 실시간 바이럴 감지 |
+| `/plans` | 요금제 |
+| `/login` · `/signup` | 로그인 / 회원가입(브랜드 정보 필수) |
 
-> 헤더 우측의 **현재 플랜** 버튼으로 Basic ↔ Pro ↔ Enterprise를 전환하면
-> 유료 지표 블러 잠금이 해제되는 데모를 확인할 수 있습니다.
+## 유료화 모델
+- 콘텐츠 성과 지표는 **전체 공개**.
+- **열람권(하루 5건)** — 콘텐츠 링크 열람 + 계정 이름 공개 공통 차감. 비로그인은 로그인 유도.
+- **회원가입 후 동료 3명 초대(같은 브랜드 이메일 도메인) → Pro 7일** 자동 개방.
+- Pro/Enterprise: 무제한.
 
-## 데이터 출처
+## 서버 / API
+- 인증: bcrypt 비밀번호 + jose JWT httpOnly 세션 쿠키.
+- DB: `@vercel/postgres` (Vercel Postgres / Neon / Supabase). 스키마 자동 생성.
+- API 라우트: `/api/auth/{signup,login,logout,me}`, `/api/invite`, `/api/bookmarks`, `/api/admin/members`, `/api/inquiry`.
+- DB 미설정 시: 클라이언트 **데모 모드**(localStorage)로 폴백되어 UI는 그대로 동작.
 
-본 빌드는 정적 배포(MVP UI) 단계로, 실제 크롤링 대신 전 브랜드/국가/카테고리/인플루언서
-조합을 망라하는 **결정론적 샘플 데이터셋**(`src/data/ktrend/`)을 사용합니다.
-실서비스 로드맵: **V1** 틱톡 샵 오픈 DB 스크래핑 + AI 예측 → **V2** 틱톡원(TikTok One) 다이렉트 API + 브랜드 OAuth2.
+## Vercel 배포 (3단계)
+1. **Import**: Vercel에서 이 GitHub 레포를 Import (프레임워크 자동 인식: Next.js).
+2. **Postgres 연결**: Vercel 프로젝트 → Storage → Create **Postgres** (또는 Neon/Supabase). `POSTGRES_URL`이 자동 주입됩니다.
+3. **환경변수**: `.env.example` 참고하여 설정
+   - `SESSION_SECRET` (긴 무작위 문자열, 필수)
+   - `ADMIN_EMAILS` (관리자 이메일, 쉼표 구분)
+   - (선택) `RESEND_API_KEY`/`EMAIL_FROM` 이메일 발송, `STRIPE_*` 결제
 
-## 개발
+배포 후 첫 요청 시 테이블이 자동 생성됩니다.
 
+## 로컬 개발
 ```bash
 npm install
-npm run dev      # http://localhost:3000
-npm run build    # 정적 빌드 (out/)
+cp .env.example .env.local   # POSTGRES_URL, SESSION_SECRET 입력
+npm run dev                  # http://localhost:3000
+npm run build && npm start   # 프로덕션
 ```
+POSTGRES_URL 없이도 `npm run dev`로 데모 모드 UI 확인 가능.
 
-## 배포
-
-`main` 또는 `claude/epic-edison-m35tv3` 브랜치 push 시 GitHub Actions가 정적 빌드 후
-GitHub Pages로 배포합니다 (`.github/workflows/deploy.yml`). 공개 URL: `https://<user>.github.io/service2/`
+## 데이터 출처
+- 브랜드/영상/인플루언서: `brands_1to100_MASTER.xlsx` 실데이터 (`src/data/ktrend/`, `public/data/videos.json`).
+- 수수료율·ROAS·매출은 조회·참여·Shop 기반 **추정치(AI 예측, "추정" 라벨)**.
 
 ## 기술 스택
-
-Next.js 15 (App Router, `output: export`) · React 19 · TypeScript · Tailwind CSS v4 · lucide-react
+Next.js 15 (App Router, 동적) · React 19 · TypeScript · Tailwind v4 · @vercel/postgres · bcryptjs · jose · lucide-react
