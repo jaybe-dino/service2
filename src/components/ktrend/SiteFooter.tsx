@@ -11,8 +11,8 @@ export default function SiteFooter() {
               K-Trend<span className="text-[var(--accent)]"> Analytics</span>
             </div>
             <p className="mt-2 max-w-md text-[12px] leading-relaxed text-[var(--muted)]">
-              {SERVICE.tagline}. 미국·태국·베트남·필리핀·말레이시아·싱가포르 6개국 틱톡 샵에서
-              바이럴되는 K-뷰티 콘텐츠를 브랜드·콘텐츠·인플루언서별로 분석합니다.
+              {SERVICE.tagline}. 98개 K-뷰티 브랜드의 실제 틱톡 영상 11,703건을
+              브랜드·콘텐츠·인플루언서별로 분석합니다.
             </p>
             <p className="mt-3 text-[11px] font-semibold text-[var(--accent)]">
               {SERVICE.updateNote}

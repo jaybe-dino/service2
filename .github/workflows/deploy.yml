@@ -36,7 +36,7 @@ jobs:
       - name: Build static site
         run: npm run build
         env:
-          GITHUB_PAGES: "true"
+          NEXT_PUBLIC_BASE_PATH: "/service2"
 
       - name: Setup Pages
         uses: actions/configure-pages@v5

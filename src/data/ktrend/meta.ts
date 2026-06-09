@@ -1,58 +1,26 @@
-// K-Trend Analytics 공통 메타데이터 (v6.0)
-// 핵심 축: 브랜드 · 콘텐츠 · 인플루언서 / 미국 중심 6개국 / 코스메틱(뷰티) 카테고리
+// K-Trend Analytics 공통 메타데이터 (v6.0 — 실데이터 기반)
+// 출처: brands_1to100_MASTER.xlsx (실제 틱톡 영상 11,703건 / 98개 K-뷰티 브랜드)
+// 핵심 축: 브랜드 · 콘텐츠 · 인플루언서
 
-export type CountryCode = "US" | "TH" | "VN" | "PH" | "MY" | "SG";
-
-export interface Country {
-  code: CountryCode;
-  flag: string;
-  nameKo: string;
-  nameEn: string;
-  activity: "매우 높음" | "높음" | "보통";
-  focus: string;
-  primary?: boolean;
-}
-
-// 미국 중심, 동남아 5개국. (정렬: 미국 최우선)
-export const COUNTRIES: Country[] = [
-  { code: "US", flag: "🇺🇸", nameKo: "미국", nameEn: "United States", activity: "매우 높음", focus: "세럼 · 에센스 · 선케어 · 장벽 크림", primary: true },
-  { code: "TH", flag: "🇹🇭", nameKo: "태국", nameEn: "Thailand", activity: "높음", focus: "수분 세럼 · 진정 마스크팩 · 톤업 크림" },
-  { code: "VN", flag: "🇻🇳", nameKo: "베트남", nameEn: "Vietnam", activity: "매우 높음", focus: "여드름 패치 · 모공 토너 · 선크림" },
-  { code: "PH", flag: "🇵🇭", nameKo: "필리핀", nameEn: "Philippines", activity: "높음", focus: "쿠션 파운데이션 · 매트 립 · 수분 에센스" },
-  { code: "MY", flag: "🇲🇾", nameKo: "말레이시아", nameEn: "Malaysia", activity: "보통", focus: "무자극 선크림 · 비건 마스크팩 · 립밤" },
-  { code: "SG", flag: "🇸🇬", nameKo: "싱가포르", nameEn: "Singapore", activity: "보통", focus: "슬리핑 마스크 · 안티에이징 · 아이크림" },
-];
-
-export const COUNTRY_MAP: Record<CountryCode, Country> = Object.fromEntries(
-  COUNTRIES.map((c) => [c.code, c]),
-) as Record<CountryCode, Country>;
+// 정적 배포 basePath (런타임 fetch 경로용). next.config와 동일 출처.
+export const BASE_PATH = process.env.NEXT_PUBLIC_BASE_PATH || "";
 
 // ---------------------------------------------------------------------------
-// 코스메틱(뷰티) 중심 카테고리 — 1차 출시 범위. 대분류 + 세부 분류.
+// 카테고리 — 실데이터의 브랜드 분류 기준 (코스메틱 중심)
 // ---------------------------------------------------------------------------
-export type CategoryId =
-  | "skincare"
-  | "suncare"
-  | "makeup"
-  | "mask"
-  | "trouble"
-  | "lipcare";
+export type CategoryId = "skincare" | "makeup" | "haircare";
 
 export interface Category {
   id: CategoryId;
   nameKo: string;
   nameEn: string;
-  icon: string; // emoji
-  sub: string[];
+  icon: string;
 }
 
 export const CATEGORIES: Category[] = [
-  { id: "skincare", nameKo: "스킨케어", nameEn: "Skincare", icon: "💧", sub: ["세럼", "에센스", "토너", "장벽 크림", "클렌징", "아이크림"] },
-  { id: "suncare", nameKo: "선케어", nameEn: "Suncare", icon: "☀️", sub: ["선세럼", "선크림", "톤업 선", "선스틱"] },
-  { id: "makeup", nameKo: "메이크업", nameEn: "Makeup", icon: "💄", sub: ["쿠션", "파운데이션", "립", "아이", "베이스"] },
-  { id: "mask", nameKo: "마스크팩", nameEn: "Mask", icon: "🧖", sub: ["시트 마스크", "진정 마스크", "슬리핑 팩", "비건 마스크"] },
-  { id: "trouble", nameKo: "트러블 케어", nameEn: "Trouble Care", icon: "🩹", sub: ["여드름 패치", "모공 토너", "진정 앰플"] },
-  { id: "lipcare", nameKo: "립케어", nameEn: "Lip Care", icon: "👄", sub: ["립밤", "립 글로우", "립 마스크"] },
+  { id: "skincare", nameKo: "스킨케어", nameEn: "Skincare", icon: "💧" },
+  { id: "makeup", nameKo: "메이크업", nameEn: "Makeup", icon: "💄" },
+  { id: "haircare", nameKo: "헤어케어", nameEn: "Haircare", icon: "💇" },
 ];
 
 export const CATEGORY_MAP: Record<CategoryId, Category> = Object.fromEntries(
@@ -60,33 +28,21 @@ export const CATEGORY_MAP: Record<CategoryId, Category> = Object.fromEntries(
 ) as Record<CategoryId, Category>;
 
 // ---------------------------------------------------------------------------
-// 콘텐츠(영상) 스타일 — 콘텐츠별 필터 축
-// ---------------------------------------------------------------------------
-export type ContentStyle = "skit" | "grwm" | "asmr" | "review" | "haul" | "tutorial";
-
-export const CONTENT_STYLES: { id: ContentStyle; nameKo: string; nameEn: string }[] = [
-  { id: "review", nameKo: "리뷰", nameEn: "Review" },
-  { id: "grwm", nameKo: "GRWM", nameEn: "Get Ready With Me" },
-  { id: "asmr", nameKo: "ASMR", nameEn: "ASMR" },
-  { id: "skit", nameKo: "스킷", nameEn: "Skit" },
-  { id: "haul", nameKo: "하울", nameEn: "Haul" },
-  { id: "tutorial", nameKo: "튜토리얼", nameEn: "Tutorial" },
-];
-
-export const CONTENT_STYLE_MAP = Object.fromEntries(
-  CONTENT_STYLES.map((s) => [s.id, s]),
-) as Record<ContentStyle, { id: ContentStyle; nameKo: string; nameEn: string }>;
-
-// ---------------------------------------------------------------------------
-// 인플루언서 규모(티어)
+// 인플루언서 규모(티어) — 평균 조회수 기반으로 산출 (팔로워 데이터 부재)
 // ---------------------------------------------------------------------------
 export type InfluencerTier = "mega" | "macro" | "micro";
 
 export const TIERS: Record<InfluencerTier, { label: string; nameKo: string; range: string; color: string }> = {
-  mega: { label: "Mega", nameKo: "메가", range: "1M+ 팔로워", color: "#7C3AED" },
-  macro: { label: "Macro", nameKo: "매크로", range: "100K–1M 팔로워", color: "#1A56DB" },
-  micro: { label: "Micro", nameKo: "마이크로", range: "10K–100K 팔로워", color: "#0E9F6E" },
+  mega: { label: "Mega", nameKo: "메가", range: "평균 1M+ 조회", color: "#7C3AED" },
+  macro: { label: "Macro", nameKo: "매크로", range: "평균 100K–1M 조회", color: "#1A56DB" },
+  micro: { label: "Micro", nameKo: "마이크로", range: "평균 100K 미만", color: "#0E9F6E" },
 };
+
+export function tierOf(avgViews: number): InfluencerTier {
+  if (avgViews >= 1_000_000) return "mega";
+  if (avgViews >= 100_000) return "macro";
+  return "micro";
+}
 
 // ---------------------------------------------------------------------------
 // 디자인 토큰 (Light Clean)
@@ -139,7 +95,7 @@ export const PLANS: Plan[] = [
     popular: true,
     cta: "Pro 시작하기",
     features: [
-      "110개 브랜드 필터 무제한",
+      "98개 브랜드 필터 무제한",
       "콘텐츠 탐색 무제한 · 틱톡 임베드 재생",
       "추정 매출 / ROAS 전체 오픈",
       "모바일 뷰어 제공",
