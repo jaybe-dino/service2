@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { Heart, MessageCircle, Play, Eye, Lock, TrendingUp, Share2 } from "lucide-react";
-import BrandAvatar from "./BrandAvatar";
+import CreatorName from "./CreatorName";
 import { usePlan } from "./PlanContext";
 import { BRAND_MAP } from "@/data/ktrend/brands";
 import { CATEGORY_MAP, TIERS } from "@/data/ktrend/meta";
@@ -23,7 +24,7 @@ function fetchThumb(url: string): Promise<string | null> {
       return Promise.resolve(v);
     }
   } catch {
-    /* sessionStorage 미지원 무시 */
+    /* 무시 */
   }
   const p = fetch(`https://www.tiktok.com/oembed?url=${encodeURIComponent(url)}`)
     .then((r) => (r.ok ? r.json() : null))
@@ -74,36 +75,46 @@ function useThumbnail(url: string, ref: React.RefObject<HTMLElement | null>): st
   return thumb;
 }
 
-function Metric({ label, value, locked }: { label: string; value: string; locked: boolean }) {
+function Metric({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-md bg-[var(--accent-light)]/60 px-2 py-1.5">
       <div className="text-[9px] font-medium text-[var(--muted)]">{label}</div>
-      <div className={`text-[13px] font-bold text-[var(--fg)] ${locked ? "kt-locked" : ""}`}>
-        {value}
-      </div>
+      <div className="text-[13px] font-bold text-[var(--fg)]">{value}</div>
     </div>
   );
 }
 
 export default function ContentCard({ content }: { content: Content }) {
-  const { isPro } = usePlan();
+  const { openVideo, isVideoOpened } = usePlan();
   const brand = BRAND_MAP[content.brandId];
   const tier = TIERS[content.tier];
   const cat = CATEGORY_MAP[content.category];
 
-  const linkRef = useRef<HTMLAnchorElement | null>(null);
-  const thumb = useThumbnail(content.tiktokUrl, linkRef);
+  const mediaRef = useRef<HTMLDivElement | null>(null);
+  const thumb = useThumbnail(content.tiktokUrl, mediaRef);
   const [loaded, setLoaded] = useState(false);
+  const [blocked, setBlocked] = useState(false);
+
+  const handleOpen = () => {
+    if (openVideo(content.id)) {
+      window.open(content.tiktokUrl, "_blank", "noopener,noreferrer");
+    } else {
+      setBlocked(true);
+    }
+  };
+
+  const opened = isVideoOpened(content.id);
 
   return (
-    <article className="kt-card group flex flex-col overflow-hidden">
-      {/* 9:16 틱톡 임베드 썸네일 (실제 영상으로 이동) */}
-      <a
-        ref={linkRef}
-        href={content.tiktokUrl}
-        target="_blank"
-        rel="noreferrer noopener"
-        className="relative block aspect-[9/16] overflow-hidden"
+    <article className="kt-card group flex flex-col overflow-hidden" onContextMenu={(e) => e.preventDefault()}>
+      {/* 9:16 미디어 — href 미노출, 클릭 시 쿼터 확인 후 새 탭 열기 */}
+      <div
+        ref={mediaRef}
+        onClick={handleOpen}
+        role="button"
+        tabIndex={0}
+        onKeyDown={(e) => e.key === "Enter" && handleOpen()}
+        className="relative block aspect-[9/16] cursor-pointer select-none overflow-hidden"
         style={{
           background: `linear-gradient(160deg, hsl(${content.hue} 65% 52%), hsl(${(content.hue + 50) % 360} 60% 38%))`,
         }}
@@ -114,11 +125,13 @@ export default function ContentCard({ content }: { content: Content }) {
             src={thumb}
             alt=""
             loading="lazy"
+            draggable={false}
             referrerPolicy="no-referrer"
             onLoad={() => setLoaded(true)}
-            className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-300 ${loaded ? "opacity-100" : "opacity-0"}`}
+            className={`pointer-events-none absolute inset-0 h-full w-full object-cover transition-opacity duration-300 ${loaded ? "opacity-100" : "opacity-0"}`}
           />
         )}
+
         <div className="absolute left-2 top-2 flex flex-wrap items-center gap-1">
           <span className="kt-badge-tiktok">TikTok</span>
           {content.isShop && (
@@ -134,11 +147,24 @@ export default function ContentCard({ content }: { content: Content }) {
           </span>
         )}
 
-        <div className="absolute inset-0 flex items-center justify-center opacity-0 transition-opacity duration-150 group-hover:opacity-100">
-          <span className="flex h-12 w-12 items-center justify-center rounded-full bg-white/90 text-black shadow-lg">
-            <Play size={20} className="ml-0.5" fill="currentColor" />
-          </span>
-        </div>
+        {/* 호버 재생 / 차단 안내 */}
+        {blocked ? (
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-black/65 p-3 text-center">
+            <Lock size={20} className="text-white" />
+            <p className="text-[10px] font-semibold leading-snug text-white">
+              오늘 무료 콘텐츠 열람(20건)을 모두 사용했어요
+            </p>
+            <Link href="/plans" className="kt-btn kt-btn-primary px-3 py-1.5 text-[10px]">
+              Pro로 무제한 열람
+            </Link>
+          </div>
+        ) : (
+          <div className="absolute inset-0 flex items-center justify-center opacity-0 transition-opacity duration-150 group-hover:opacity-100">
+            <span className="flex h-12 w-12 items-center justify-center rounded-full bg-white/90 text-black shadow-lg">
+              <Play size={20} className="ml-0.5" fill="currentColor" />
+            </span>
+          </div>
+        )}
 
         <div className="absolute inset-x-0 bottom-0 flex items-center gap-2.5 bg-gradient-to-t from-black/70 to-transparent px-2 pb-1.5 pt-6 text-[10px] font-semibold text-white">
           <span className="flex items-center gap-0.5"><Eye size={11} /> {fmtCompact(content.views)}</span>
@@ -146,9 +172,9 @@ export default function ContentCard({ content }: { content: Content }) {
           <span className="flex items-center gap-0.5"><MessageCircle size={11} /> {fmtCompact(content.comments)}</span>
           <span className="flex items-center gap-0.5"><Share2 size={11} /> {fmtCompact(content.shares)}</span>
         </div>
-      </a>
+      </div>
 
-      {/* 카드 바디 */}
+      {/* 카드 바디 — 성과 지표는 전체 공개 */}
       <div className="flex flex-1 flex-col gap-2 p-2.5">
         <div className="flex items-center gap-1.5">
           <span className="kt-badge-brand">{brand?.name ?? "Brand"}</span>
@@ -158,40 +184,25 @@ export default function ContentCard({ content }: { content: Content }) {
           <span className="ml-auto text-[9px] text-[var(--muted)]">{content.date}</span>
         </div>
 
-        {/* 크리에이터 */}
+        {/* 크리에이터 (계정 이름 게이팅) */}
         <div className="flex items-center gap-1.5">
-          <BrandAvatar name={content.influencerId} size={22} />
-          <a
-            href={`https://www.tiktok.com/@${content.influencerId}`}
-            target="_blank"
-            rel="noreferrer noopener"
-            className="truncate text-[11px] font-semibold hover:text-[var(--accent)]"
-          >
-            @{content.influencerId}
-          </a>
-          <span
-            className="ml-auto rounded px-1.5 py-0.5 text-[8px] font-bold text-white"
-            style={{ background: tier.color }}
-          >
+          <CreatorName handle={content.influencerId} className="min-w-0 flex-1" />
+          <span className="rounded px-1.5 py-0.5 text-[8px] font-bold text-white" style={{ background: tier.color }}>
             {tier.label}
           </span>
         </div>
 
-        {/* 2x2 수익화 지표 그리드 */}
-        <div className="relative mt-0.5 grid grid-cols-2 gap-1.5">
-          <Metric label="수수료율 (추정)" value={`${content.commissionRate}%`} locked={!isPro} />
-          <Metric label="추정 ROAS" value={`${content.estRoasX}x`} locked={!isPro} />
-          <Metric label="추정 매출" value={fmtUSD(content.estRevenueUSD)} locked={!isPro} />
-          <Metric label="참여율" value={`${content.engagementRate}%`} locked={false} />
-
-          {!isPro && (
-            <div className="absolute inset-0 flex items-center justify-center rounded-md bg-white/30">
-              <span className="flex items-center gap-1 rounded-full bg-[var(--fg)]/85 px-2.5 py-1 text-[9px] font-bold text-white">
-                <Lock size={10} /> Pro 가입 후 확인
-              </span>
-            </div>
-          )}
+        {/* 2x2 성과 지표 (전체 공개) */}
+        <div className="mt-0.5 grid grid-cols-2 gap-1.5">
+          <Metric label="수수료율 (추정)" value={`${content.commissionRate}%`} />
+          <Metric label="추정 ROAS" value={`${content.estRoasX}x`} />
+          <Metric label="추정 매출" value={fmtUSD(content.estRevenueUSD)} />
+          <Metric label="참여율" value={`${content.engagementRate}%`} />
         </div>
+
+        {opened && (
+          <p className="text-[8px] font-medium text-emerald-600">✓ 오늘 열람한 콘텐츠</p>
+        )}
       </div>
     </article>
   );

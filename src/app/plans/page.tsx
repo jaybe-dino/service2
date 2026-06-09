@@ -7,12 +7,12 @@ import { usePlan } from "@/components/ktrend/PlanContext";
 import { ADDONS, PLANS } from "@/data/ktrend/meta";
 
 const COMPARE = [
-  { feature: "110개 브랜드 필터", basic: "상위 5개", pro: "전체 무제한", ent: "전체 + 커스텀 추가" },
-  { feature: "콘텐츠 탐색", basic: "주 20개", pro: "무제한", ent: "무제한" },
-  { feature: "추정 매출 / ROAS", basic: "블러 처리", pro: "전체 해금", ent: "해금 + 실매출 동기화" },
+  { feature: "콘텐츠 성과 지표", basic: "전체 공개", pro: "전체 공개", ent: "전체 공개 + 실매출" },
+  { feature: "계정 이름 공개", basic: "하루 20개", pro: "무제한", ent: "무제한" },
+  { feature: "콘텐츠 링크 열람", basic: "하루 20건", pro: "무제한", ent: "무제한" },
+  { feature: "인플루언서 컨택 라인", basic: "잠금", pro: "해금", ent: "해금 + 단가" },
   { feature: "신규 브랜드 자가 학습", basic: "미지원", pro: "월 3회 (12h)", ent: "무제한 (12h)" },
-  { feature: "바이럴 알림", basic: "미지원", pro: "주 2회", ent: "실시간 슬랙/이메일" },
-  { feature: "성장 리포트", basic: "조회 불가", pro: "제공", ent: "맞춤형 무제한 PDF" },
+  { feature: "바이럴 알림 · 리포트", basic: "미지원", pro: "주 2회 · 제공", ent: "실시간 · 무제한 PDF" },
   { feature: "틱톡 샵 API(OAuth2)", basic: "—", pro: "—", ent: "실시간 연동" },
 ];
 

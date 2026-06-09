@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Download, Loader2, TrendingUp } from "lucide-react";
 import PageShell from "@/components/ktrend/PageShell";
-import BrandAvatar from "@/components/ktrend/BrandAvatar";
+import CreatorName from "@/components/ktrend/CreatorName";
 import { usePlan } from "@/components/ktrend/PlanContext";
 import { BRANDS, BRAND_MAP } from "@/data/ktrend/brands";
 import { loadContent, fmtCompact, fmtUSD, type Content } from "@/data/ktrend/content";
@@ -168,10 +168,7 @@ export default function ReportsPage() {
               {stats.topInf.map(([handle, d]) => (
                 <tr key={handle} className="border-b border-[var(--border)] last:border-0">
                   <td className="py-2">
-                    <a href={`https://www.tiktok.com/@${handle}`} target="_blank" rel="noreferrer noopener" className="flex items-center gap-2 hover:text-[var(--accent)]">
-                      <BrandAvatar name={handle} size={22} />
-                      <span className="font-semibold">@{handle}</span>
-                    </a>
+                    <CreatorName handle={handle} />
                   </td>
                   <td className="py-2 text-right">{d.count}</td>
                   <td className="py-2 text-right">{fmtCompact(d.views)}</td>

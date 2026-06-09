@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { Lock, Mail, Phone, Search } from "lucide-react";
 import PageShell from "@/components/ktrend/PageShell";
-import BrandAvatar from "@/components/ktrend/BrandAvatar";
+import CreatorName from "@/components/ktrend/CreatorName";
 import { usePlan } from "@/components/ktrend/PlanContext";
 import { INFLUENCERS, contactFor } from "@/data/ktrend/influencers";
 import { TIERS, type InfluencerTier } from "@/data/ktrend/meta";
@@ -77,15 +77,7 @@ export default function InfluencersPage() {
                 <tr key={inf.handle} className="border-b border-[var(--border)] last:border-0 hover:bg-slate-50">
                   <td className="p-3 text-[var(--muted)]">{i + 1}</td>
                   <td className="p-3">
-                    <a
-                      href={`https://www.tiktok.com/@${inf.handle}`}
-                      target="_blank"
-                      rel="noreferrer noopener"
-                      className="flex items-center gap-2 hover:text-[var(--accent)]"
-                    >
-                      <BrandAvatar name={inf.handle} size={26} />
-                      <span className="font-bold">@{inf.handle}</span>
-                    </a>
+                    <CreatorName handle={inf.handle} avatarSize={26} />
                   </td>
                   <td className="p-3">
                     <span className="rounded px-1.5 py-0.5 text-[9px] font-bold text-white" style={{ background: TIERS[inf.tier].color }}>
