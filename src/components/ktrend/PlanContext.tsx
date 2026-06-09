@@ -9,32 +9,47 @@ import {
   type ReactNode,
 } from "react";
 import type { PlanId } from "@/data/ktrend/meta";
-import { DEMO_ACCOUNTS, findAccount, type Account } from "@/data/ktrend/accounts";
+import {
+  ADMIN_EMAILS,
+  findAccount,
+  findById,
+  loadMembers,
+  saveMembers,
+  type Account,
+} from "@/data/ktrend/accounts";
 
-// 비구매자 하루 열람권 한도 — 콘텐츠 링크 열람과 계정 이름 공개가 공통으로 차감
 export const PASS_LIMIT = 5;
-export const CLICK_LIMIT = PASS_LIMIT; // 하위 호환 별칭
+export const CLICK_LIMIT = PASS_LIMIT;
 
 interface Quota {
   day: string;
-  passes: string[]; // 소비 토큰: `video:<id>` 또는 `name:<handle>`
+  passes: string[];
+}
+
+export interface SignupInput {
+  name: string;
+  email: string;
+  password: string;
+  brand: string;
+  role: string;
 }
 
 interface PlanState {
   user: Account | null;
   plan: PlanId;
   isPro: boolean;
+  isAdmin: boolean;
   login: (email: string, password: string) => boolean;
   loginAs: (accountId: string) => void;
   logout: () => void;
+  signup: (data: SignupInput) => { ok: boolean; error?: string };
+  startTrial: (days: number) => void;
+  trialMsLeft: number;
   ready: boolean;
-  // 계정 이름 게이팅 (열람권 공통 차감)
   isNameRevealed: (handle: string) => boolean;
   revealName: (handle: string) => boolean;
-  // 콘텐츠 링크 클릭 전환 게이팅 (열람권 공통 차감)
   isVideoOpened: (id: string) => boolean;
   openVideo: (id: string) => boolean;
-  // 남은 열람권 (Infinity = 무제한). nameRemaining/clickRemaining은 동일 값(공통 풀)
   passRemaining: number;
   nameRemaining: number;
   clickRemaining: number;
@@ -43,6 +58,7 @@ interface PlanState {
 const PlanContext = createContext<PlanState | null>(null);
 const STORAGE_KEY = "ktrend.auth.accountId";
 const QUOTA_KEY = "ktrend.quota";
+const TRIAL_KEY = "ktrend.proUntil";
 
 const today = () => new Date().toISOString().slice(0, 10);
 
@@ -53,7 +69,6 @@ function loadQuota(): Quota {
       const q = JSON.parse(raw) as Partial<Quota> & { names?: string[]; videos?: string[] };
       if (q.day === today()) {
         if (Array.isArray(q.passes)) return { day: q.day, passes: q.passes };
-        // 구버전(names/videos 분리) 마이그레이션
         const passes = [
           ...(q.videos ?? []).map((v) => `video:${v}`),
           ...(q.names ?? []).map((n) => `name:${n}`),
@@ -69,8 +84,8 @@ function loadQuota(): Quota {
 
 export function PlanProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<Account | null>(null);
+  const [proUntil, setProUntil] = useState<number>(0);
   const [ready, setReady] = useState(false);
-  // 열람권은 ref로 동기 관리(렌더 배칭 stale-closure 방지) + state로 UI 갱신
   const quotaRef = useRef<Quota>({ day: today(), passes: [] });
   const [quota, setQuotaState] = useState<Quota>(quotaRef.current);
 
@@ -81,7 +96,6 @@ export function PlanProvider({ children }: { children: ReactNode }) {
       /* ignore */
     }
   };
-
   const commitQuota = (q: Quota) => {
     quotaRef.current = q;
     setQuotaState(q);
@@ -92,9 +106,11 @@ export function PlanProvider({ children }: { children: ReactNode }) {
     try {
       const id = localStorage.getItem(STORAGE_KEY);
       if (id) {
-        const acc = DEMO_ACCOUNTS.find((a) => a.id === id);
+        const acc = findById(id);
         if (acc) setUser(acc);
       }
+      const pu = Number(localStorage.getItem(TRIAL_KEY) || 0);
+      if (pu) setProUntil(pu);
     } catch {
       /* ignore */
     }
@@ -122,7 +138,7 @@ export function PlanProvider({ children }: { children: ReactNode }) {
   };
 
   const loginAs = (accountId: string) => {
-    const acc = DEMO_ACCOUNTS.find((a) => a.id === accountId) ?? null;
+    const acc = findById(accountId);
     setUser(acc);
     persistUser(acc);
   };
@@ -132,19 +148,56 @@ export function PlanProvider({ children }: { children: ReactNode }) {
     persistUser(null);
   };
 
-  const plan: PlanId = user?.plan ?? "basic";
-  const isPro = plan === "pro" || plan === "enterprise";
+  const signup = (data: SignupInput): { ok: boolean; error?: string } => {
+    const email = data.email.trim().toLowerCase();
+    if (!email || !data.name.trim() || !data.brand.trim() || !data.password) {
+      return { ok: false, error: "필수 항목을 모두 입력해 주세요." };
+    }
+    const members = loadMembers();
+    if (members.some((m) => m.email.toLowerCase() === email)) {
+      return { ok: false, error: "이미 가입된 이메일입니다." };
+    }
+    const acc: Account = {
+      id: `m:${email}`,
+      email,
+      password: data.password,
+      name: data.name.trim(),
+      company: data.brand.trim(),
+      brand: data.brand.trim(),
+      role: data.role.trim(),
+      plan: "basic",
+      isMember: true,
+    };
+    saveMembers([...members, acc]);
+    setUser(acc);
+    persistUser(acc);
+    return { ok: true };
+  };
 
-  // 읽기 전용: 커밋 없이 ref에서 최신값 동기 조회 (날짜 지나면 빈 풀로 간주)
+  const startTrial = (days: number) => {
+    const until = Date.now() + days * 86_400_000;
+    setProUntil(until);
+    try {
+      localStorage.setItem(TRIAL_KEY, String(until));
+    } catch {
+      /* ignore */
+    }
+  };
+
+  const plan: PlanId = user?.plan ?? "basic";
+  const trialActive = proUntil > Date.now();
+  const isPro = plan === "pro" || plan === "enterprise" || trialActive;
+  const isAdmin = !!user && ADMIN_EMAILS.includes(user.email.toLowerCase());
+  const trialMsLeft = trialActive ? proUntil - Date.now() : 0;
+
   const currentQuota = (): Quota => {
     const q = quotaRef.current;
     return q.day === today() ? q : { day: today(), passes: [] };
   };
-
   const consume = (key: string): boolean => {
     if (isPro) return true;
     const q = currentQuota();
-    if (q.passes.includes(key)) return true; // 이미 사용한 항목은 무료
+    if (q.passes.includes(key)) return true;
     if (q.passes.length >= PASS_LIMIT) return false;
     commitQuota({ ...q, passes: [...q.passes, key] });
     return true;
@@ -152,7 +205,6 @@ export function PlanProvider({ children }: { children: ReactNode }) {
 
   const isNameRevealed = (handle: string) => isPro || currentQuota().passes.includes(`name:${handle}`);
   const revealName = (handle: string) => consume(`name:${handle}`);
-
   const isVideoOpened = (id: string) => isPro || currentQuota().passes.includes(`video:${id}`);
   const openVideo = (id: string) => consume(`video:${id}`);
 
@@ -165,9 +217,13 @@ export function PlanProvider({ children }: { children: ReactNode }) {
         user,
         plan,
         isPro,
+        isAdmin,
         login,
         loginAs,
         logout,
+        signup,
+        startTrial,
+        trialMsLeft,
         ready,
         isNameRevealed,
         revealName,
