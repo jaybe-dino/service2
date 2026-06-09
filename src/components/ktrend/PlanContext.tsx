@@ -17,6 +17,14 @@ import {
   saveMembers,
   type Account,
 } from "@/data/ktrend/accounts";
+import {
+  apiInvite,
+  apiLogin,
+  apiLogout,
+  apiMe,
+  apiSignup,
+  type ApiUser,
+} from "@/lib/client-api";
 
 export const PASS_LIMIT = 5;
 export const CLICK_LIMIT = PASS_LIMIT;
@@ -39,13 +47,15 @@ interface PlanState {
   plan: PlanId;
   isPro: boolean;
   isAdmin: boolean;
-  login: (email: string, password: string) => boolean;
+  serverMode: boolean; // DB(Postgres) 연결 여부
+  ready: boolean;
+  login: (email: string, password: string) => Promise<boolean>;
   loginAs: (accountId: string) => void;
-  logout: () => void;
-  signup: (data: SignupInput) => { ok: boolean; error?: string };
+  logout: () => Promise<void>;
+  signup: (data: SignupInput) => Promise<{ ok: boolean; error?: string }>;
+  invite: (emails: string[]) => Promise<{ granted: boolean; invited: number; required: number; domainRejected: number; error?: string }>;
   startTrial: (days: number) => void;
   trialMsLeft: number;
-  ready: boolean;
   isNameRevealed: (handle: string) => boolean;
   revealName: (handle: string) => boolean;
   isVideoOpened: (id: string) => boolean;
@@ -61,6 +71,21 @@ const QUOTA_KEY = "ktrend.quota";
 const TRIAL_KEY = "ktrend.proUntil";
 
 const today = () => new Date().toISOString().slice(0, 10);
+
+function mapApiUser(u: ApiUser): Account {
+  return {
+    id: u.id,
+    email: u.email,
+    password: "",
+    name: u.name,
+    company: u.brand ?? "",
+    brand: u.brand ?? undefined,
+    role: u.role ?? undefined,
+    plan: u.plan as PlanId,
+    isMember: true,
+    proUntil: u.proUntil,
+  };
+}
 
 function loadQuota(): Quota {
   try {
@@ -85,16 +110,13 @@ function loadQuota(): Quota {
 export function PlanProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<Account | null>(null);
   const [proUntil, setProUntil] = useState<number>(0);
+  const [serverMode, setServerMode] = useState(false);
   const [ready, setReady] = useState(false);
   const quotaRef = useRef<Quota>({ day: today(), passes: [] });
   const [quota, setQuotaState] = useState<Quota>(quotaRef.current);
 
   const persistQuota = (q: Quota) => {
-    try {
-      localStorage.setItem(QUOTA_KEY, JSON.stringify(q));
-    } catch {
-      /* ignore */
-    }
+    try { localStorage.setItem(QUOTA_KEY, JSON.stringify(q)); } catch { /* ignore */ }
   };
   const commitQuota = (q: Quota) => {
     quotaRef.current = q;
@@ -103,52 +125,77 @@ export function PlanProvider({ children }: { children: ReactNode }) {
   };
 
   useEffect(() => {
+    let demoRestored = false;
     try {
       const id = localStorage.getItem(STORAGE_KEY);
       if (id) {
         const acc = findById(id);
-        if (acc) setUser(acc);
+        if (acc) { setUser(acc); demoRestored = true; }
       }
       const pu = Number(localStorage.getItem(TRIAL_KEY) || 0);
       if (pu) setProUntil(pu);
-    } catch {
-      /* ignore */
-    }
+    } catch { /* ignore */ }
     const q = loadQuota();
     quotaRef.current = q;
     setQuotaState(q);
-    setReady(true);
+
+    // 서버(DB) 연결 여부 확인 + 세션 복원
+    apiMe().then(({ configured, user: su }) => {
+      setServerMode(configured);
+      if (configured && su && !demoRestored) {
+        setUser(mapApiUser(su));
+        setProUntil(su.proUntil);
+      }
+      setReady(true);
+    });
   }, []);
 
   const persistUser = (acc: Account | null) => {
     try {
       if (acc) localStorage.setItem(STORAGE_KEY, acc.id);
       else localStorage.removeItem(STORAGE_KEY);
-    } catch {
-      /* ignore */
+    } catch { /* ignore */ }
+  };
+
+  const applyUser = (acc: Account | null, pu?: number) => {
+    setUser(acc);
+    persistUser(acc);
+    if (pu !== undefined) {
+      setProUntil(pu);
+      try { localStorage.setItem(TRIAL_KEY, String(pu)); } catch { /* ignore */ }
     }
   };
 
-  const login = (email: string, password: string) => {
-    const acc = findAccount(email, password);
-    if (!acc) return false;
-    setUser(acc);
-    persistUser(acc);
-    return true;
+  const login = async (email: string, password: string): Promise<boolean> => {
+    // 데모 계정은 어느 모드에서나 즉시 허용 (QA)
+    const demo = findAccount(email, password);
+    if (demo) { applyUser(demo); return true; }
+    if (serverMode) {
+      const { ok, data } = await apiLogin({ email, password });
+      if (ok && data.user) { applyUser(mapApiUser(data.user), data.user.proUntil); return true; }
+      return false;
+    }
+    return false;
   };
 
   const loginAs = (accountId: string) => {
     const acc = findById(accountId);
-    setUser(acc);
-    persistUser(acc);
+    applyUser(acc ?? null);
   };
 
-  const logout = () => {
+  const logout = async () => {
     setUser(null);
     persistUser(null);
+    if (serverMode) { try { await apiLogout(); } catch { /* ignore */ } }
   };
 
-  const signup = (data: SignupInput): { ok: boolean; error?: string } => {
+  const signup = async (data: SignupInput): Promise<{ ok: boolean; error?: string }> => {
+    if (serverMode) {
+      const { ok, data: res } = await apiSignup(data);
+      if (ok && res.user) { applyUser(mapApiUser(res.user), res.user.proUntil); return { ok: true }; }
+      return { ok: false, error: res.error ?? "가입에 실패했습니다." };
+    }
+    // 데모 모드(로컬)
     const email = data.email.trim().toLowerCase();
     if (!email || !data.name.trim() || !data.brand.trim() || !data.password) {
       return { ok: false, error: "필수 항목을 모두 입력해 주세요." };
@@ -158,37 +205,46 @@ export function PlanProvider({ children }: { children: ReactNode }) {
       return { ok: false, error: "이미 가입된 이메일입니다." };
     }
     const acc: Account = {
-      id: `m:${email}`,
-      email,
-      password: data.password,
-      name: data.name.trim(),
-      company: data.brand.trim(),
-      brand: data.brand.trim(),
-      role: data.role.trim(),
-      plan: "basic",
-      isMember: true,
+      id: `m:${email}`, email, password: data.password, name: data.name.trim(),
+      company: data.brand.trim(), brand: data.brand.trim(), role: data.role.trim(),
+      plan: "basic", isMember: true,
     };
     saveMembers([...members, acc]);
-    setUser(acc);
-    persistUser(acc);
+    applyUser(acc);
     return { ok: true };
+  };
+
+  const invite = async (emails: string[]) => {
+    if (serverMode) {
+      const { ok, data } = await apiInvite(emails);
+      if (ok) {
+        if (data.user) applyUser(mapApiUser(data.user), data.user.proUntil);
+        return { granted: data.granted, invited: data.invited, required: data.required, domainRejected: data.domainRejected };
+      }
+      return { granted: false, invited: 0, required: 3, domainRejected: 0, error: "초대 처리 실패" };
+    }
+    // 데모: 같은 도메인 3명 이상이면 Pro 7일
+    const myDomain = user?.email.split("@")[1]?.toLowerCase() ?? "";
+    const valid = Array.from(new Set(emails.map((e) => e.trim().toLowerCase()).filter((e) => /.+@.+\..+/.test(e) && e !== user?.email)));
+    const same = valid.filter((e) => e.split("@")[1] === myDomain);
+    const domainRejected = valid.length - same.length;
+    let granted = false;
+    if (same.length >= 3) { startTrial(7); granted = true; }
+    return { granted, invited: same.length, required: 3, domainRejected };
   };
 
   const startTrial = (days: number) => {
     const until = Date.now() + days * 86_400_000;
     setProUntil(until);
-    try {
-      localStorage.setItem(TRIAL_KEY, String(until));
-    } catch {
-      /* ignore */
-    }
+    try { localStorage.setItem(TRIAL_KEY, String(until)); } catch { /* ignore */ }
   };
 
   const plan: PlanId = user?.plan ?? "basic";
-  const trialActive = proUntil > Date.now();
+  const effectiveProUntil = serverMode ? (user?.proUntil ?? 0) : proUntil;
+  const trialActive = effectiveProUntil > Date.now();
   const isPro = plan === "pro" || plan === "enterprise" || trialActive;
   const isAdmin = !!user && ADMIN_EMAILS.includes(user.email.toLowerCase());
-  const trialMsLeft = trialActive ? proUntil - Date.now() : 0;
+  const trialMsLeft = trialActive ? effectiveProUntil - Date.now() : 0;
 
   const currentQuota = (): Quota => {
     const q = quotaRef.current;
@@ -214,24 +270,10 @@ export function PlanProvider({ children }: { children: ReactNode }) {
   return (
     <PlanContext.Provider
       value={{
-        user,
-        plan,
-        isPro,
-        isAdmin,
-        login,
-        loginAs,
-        logout,
-        signup,
-        startTrial,
-        trialMsLeft,
-        ready,
-        isNameRevealed,
-        revealName,
-        isVideoOpened,
-        openVideo,
-        passRemaining,
-        nameRemaining: passRemaining,
-        clickRemaining: passRemaining,
+        user, plan, isPro, isAdmin, serverMode, ready,
+        login, loginAs, logout, signup, invite, startTrial, trialMsLeft,
+        isNameRevealed, revealName, isVideoOpened, openVideo,
+        passRemaining, nameRemaining: passRemaining, clickRemaining: passRemaining,
       }}
     >
       {children}

@@ -15,9 +15,10 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
 
-  const submit = (e: React.FormEvent) => {
+  const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (login(email, password)) {
+    setError("");
+    if (await login(email, password)) {
       router.push("/explorer");
     } else {
       setError("이메일 또는 비밀번호가 올바르지 않습니다.");

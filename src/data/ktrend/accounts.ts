@@ -11,6 +11,7 @@ export interface Account {
   brand?: string;
   role?: string;
   isMember?: boolean;
+  proUntil?: number; // 체험/유료 만료 타임스탬프(ms)
 }
 
 export const DEMO_ACCOUNTS: Account[] = [
