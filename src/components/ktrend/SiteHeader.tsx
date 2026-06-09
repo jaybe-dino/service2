@@ -64,7 +64,7 @@ export default function SiteHeader() {
         <div className="ml-auto flex items-center gap-2">
           {user && !isPro && (
             <span className="hidden rounded-md bg-amber-50 px-2 py-1 text-[9px] font-semibold text-amber-700 sm:inline">
-              오늘 남은 · 이름 {nameRemaining} · 열람 {clickRemaining}
+              열람권 {clickRemaining} · 이름 {nameRemaining}
             </span>
           )}
           {user ? (

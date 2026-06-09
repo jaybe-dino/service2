@@ -2,9 +2,10 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { Heart, MessageCircle, Play, Eye, Lock, TrendingUp, Share2 } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Heart, MessageCircle, Play, Eye, Lock, LogIn, TrendingUp, Share2 } from "lucide-react";
 import CreatorName from "./CreatorName";
-import { usePlan } from "./PlanContext";
+import { usePlan, CLICK_LIMIT } from "./PlanContext";
 import { BRAND_MAP } from "@/data/ktrend/brands";
 import { CATEGORY_MAP, TIERS } from "@/data/ktrend/meta";
 import { fmtCompact, fmtUSD, type Content } from "@/data/ktrend/content";
@@ -85,7 +86,8 @@ function Metric({ label, value }: { label: string; value: string }) {
 }
 
 export default function ContentCard({ content }: { content: Content }) {
-  const { openVideo, isVideoOpened } = usePlan();
+  const { user, openVideo, isVideoOpened } = usePlan();
+  const router = useRouter();
   const brand = BRAND_MAP[content.brandId];
   const tier = TIERS[content.tier];
   const cat = CATEGORY_MAP[content.category];
@@ -96,6 +98,11 @@ export default function ContentCard({ content }: { content: Content }) {
   const [blocked, setBlocked] = useState(false);
 
   const handleOpen = () => {
+    if (!user) {
+      // 비로그인: 무조건 로그인 유도
+      router.push("/login");
+      return;
+    }
     if (openVideo(content.id)) {
       window.open(content.tiktokUrl, "_blank", "noopener,noreferrer");
     } else {
@@ -147,16 +154,23 @@ export default function ContentCard({ content }: { content: Content }) {
           </span>
         )}
 
-        {/* 호버 재생 / 차단 안내 */}
+        {/* 차단 안내 / 로그인 유도 / 호버 재생 */}
         {blocked ? (
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-black/65 p-3 text-center">
             <Lock size={20} className="text-white" />
             <p className="text-[10px] font-semibold leading-snug text-white">
-              오늘 무료 콘텐츠 열람(20건)을 모두 사용했어요
+              오늘 무료 열람권({CLICK_LIMIT}건)을 모두 사용했어요
             </p>
             <Link href="/plans" className="kt-btn kt-btn-primary px-3 py-1.5 text-[10px]">
               Pro로 무제한 열람
             </Link>
+          </div>
+        ) : !user ? (
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-1.5 opacity-0 transition-opacity duration-150 group-hover:opacity-100">
+            <span className="flex h-11 w-11 items-center justify-center rounded-full bg-white/90 text-[var(--accent)] shadow-lg">
+              <LogIn size={18} />
+            </span>
+            <span className="rounded bg-black/55 px-2 py-0.5 text-[9px] font-semibold text-white">로그인하고 열람</span>
           </div>
         ) : (
           <div className="absolute inset-0 flex items-center justify-center opacity-0 transition-opacity duration-150 group-hover:opacity-100">

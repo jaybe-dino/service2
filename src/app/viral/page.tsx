@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { AlertTriangle, Bell, CalendarClock, Loader2, Zap } from "lucide-react";
 import PageShell from "@/components/ktrend/PageShell";
 import ContentCard from "@/components/ktrend/ContentCard";
+import ViewPassBar from "@/components/ktrend/ViewPassBar";
 import { BRAND_MAP } from "@/data/ktrend/brands";
 import { CATEGORY_MAP } from "@/data/ktrend/meta";
 import { loadContent, fmtCompact, sortContent, type Content } from "@/data/ktrend/content";
@@ -44,6 +45,8 @@ export default function ViralPage() {
           틱톡 내 급증 트래픽과 신규 바이럴 영상을 감지하여 즉시 대응 전략을 제안합니다.
         </p>
       </div>
+
+      <ViewPassBar />
 
       <div className="mb-4 flex items-center gap-3 rounded-lg border border-[var(--accent)]/30 bg-[var(--accent-light)] px-4 py-3">
         <CalendarClock className="text-[var(--accent)]" size={18} />

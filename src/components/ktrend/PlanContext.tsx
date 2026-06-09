@@ -13,7 +13,7 @@ import { DEMO_ACCOUNTS, findAccount, type Account } from "@/data/ktrend/accounts
 
 // Basic 일일 한도
 export const NAME_LIMIT = 20; // 계정 이름 공개
-export const CLICK_LIMIT = 20; // 콘텐츠 링크 클릭 전환
+export const CLICK_LIMIT = 5; // 콘텐츠 링크 클릭 전환(열람권) — 비구매자 하루 한도
 
 interface Quota {
   day: string;
