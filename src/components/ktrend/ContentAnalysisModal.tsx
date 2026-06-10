@@ -1,13 +1,30 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { X, Lock, Sparkles, Target, Megaphone, Users, TrendingUp } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { X, Lock, Sparkles, Target, Megaphone, Users, TrendingUp, Play, Loader2 } from "lucide-react";
 import { usePlan } from "./PlanContext";
 import { BRAND_MAP } from "@/data/ktrend/brands";
 import { CATEGORY_MAP } from "@/data/ktrend/meta";
 import { loadContent, fmtCompact, type Content } from "@/data/ktrend/content";
 import { analyzeContent, similarContent } from "@/data/ktrend/analysis";
+
+// 유사 콘텐츠 썸네일 캐시 (oEmbed)
+const thumbCache = new Map<string, string | null>();
+async function getThumb(url: string): Promise<string | null> {
+  if (thumbCache.has(url)) return thumbCache.get(url) ?? null;
+  try {
+    const r = await fetch(`https://www.tiktok.com/oembed?url=${encodeURIComponent(url)}`);
+    const j = r.ok ? await r.json() : null;
+    const t = (j?.thumbnail_url as string) ?? null;
+    thumbCache.set(url, t);
+    return t;
+  } catch {
+    thumbCache.set(url, null);
+    return null;
+  }
+}
 
 export default function ContentAnalysisModal({
   content,
@@ -20,7 +37,7 @@ export default function ContentAnalysisModal({
   const brand = BRAND_MAP[content.brandId];
   const cat = CATEGORY_MAP[content.category];
   const a = analyzeContent(content);
-  const [similar, setSimilar] = useState<Content[]>([]);
+  const [similar, setSimilar] = useState<Content[] | null>(null);
 
   useEffect(() => {
     loadContent().then((all) => setSimilar(similarContent(all, content)));
@@ -81,34 +98,84 @@ export default function ContentAnalysisModal({
           )}
         </div>
 
-        {/* 유사 콘텐츠 (유료) */}
+        {/* 유사 고성과 콘텐츠 */}
         <div className="mt-4 border-t border-[var(--border)] pt-3">
-          <h4 className="mb-2 text-[12px] font-bold">유사 고성과 콘텐츠</h4>
-          {isPro ? (
+          <h4 className="mb-2 text-[12px] font-bold">유사 고성과 콘텐츠 <span className="text-[10px] font-normal text-[var(--muted)]">(같은 브랜드·카테고리)</span></h4>
+          {similar === null ? (
+            <div className="flex items-center justify-center gap-2 py-6 text-[var(--muted)]"><Loader2 className="animate-spin" size={14} /> 불러오는 중…</div>
+          ) : similar.length === 0 ? (
+            <p className="rounded-md bg-slate-50 px-3 py-2 text-[11px] text-[var(--muted)]">관련 콘텐츠가 없습니다.</p>
+          ) : (
             <div className="grid grid-cols-3 gap-2">
               {similar.map((s) => (
-                <a
-                  key={s.id}
-                  href={s.tiktokUrl}
-                  target="_blank"
-                  rel="noreferrer noopener"
-                  className="block overflow-hidden rounded-md border border-[var(--border)]"
-                >
-                  <div
-                    className="flex aspect-[9/16] items-end p-1.5 text-[8px] font-bold text-white"
-                    style={{ background: `linear-gradient(160deg, hsl(${s.hue} 60% 50%), hsl(${(s.hue + 40) % 360} 55% 38%))` }}
-                  >
-                    {fmtCompact(s.views)} · {s.engagementRate}%
-                  </div>
-                </a>
+                <SimilarTile key={s.id} item={s} />
               ))}
             </div>
-          ) : (
-            <p className="rounded-md bg-slate-50 px-3 py-2 text-[11px] text-[var(--muted)]">
-              유사 콘텐츠 추천은 Pro/Add-on에서 제공됩니다.
-            </p>
           )}
         </div>
+      </div>
+    </div>
+  );
+}
+
+function SimilarTile({ item }: { item: Content }) {
+  const { user, openVideo } = usePlan();
+  const router = useRouter();
+  const brand = BRAND_MAP[item.brandId];
+  const [thumb, setThumb] = useState<string | null>(thumbCache.get(item.tiktokUrl) ?? null);
+  const [loaded, setLoaded] = useState(false);
+  const [blocked, setBlocked] = useState(false);
+  const ref = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    let on = true;
+    getThumb(item.tiktokUrl).then((t) => { if (on) setThumb(t); });
+    return () => { on = false; };
+  }, [item.tiktokUrl]);
+
+  const open = () => {
+    if (!user) { router.push("/login"); return; }
+    if (openVideo(item.id)) window.open(item.tiktokUrl, "_blank", "noopener,noreferrer");
+    else setBlocked(true);
+  };
+
+  return (
+    <div
+      ref={ref}
+      onClick={open}
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e) => e.key === "Enter" && open()}
+      onContextMenu={(e) => e.preventDefault()}
+      title={`${brand?.name ?? ""} · 참여율 ${item.engagementRate}%`}
+      className="group relative block aspect-[9/16] cursor-pointer overflow-hidden rounded-md border border-[var(--border)]"
+      style={{ background: `linear-gradient(160deg, hsl(${item.hue} 60% 50%), hsl(${(item.hue + 40) % 360} 55% 38%))` }}
+    >
+      {thumb && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={thumb}
+          alt=""
+          loading="lazy"
+          draggable={false}
+          referrerPolicy="no-referrer"
+          onLoad={() => setLoaded(true)}
+          className={`pointer-events-none absolute inset-0 h-full w-full object-cover transition-opacity ${loaded ? "opacity-100" : "opacity-0"}`}
+        />
+      )}
+      {blocked ? (
+        <div className="absolute inset-0 flex flex-col items-center justify-center gap-1 bg-black/65 p-1 text-center">
+          <Lock size={13} className="text-white" />
+          <span className="text-[7px] font-bold text-white">열람권 소진</span>
+        </div>
+      ) : (
+        <div className="absolute inset-0 flex items-center justify-center opacity-0 transition-opacity group-hover:opacity-100">
+          <span className="flex h-7 w-7 items-center justify-center rounded-full bg-white/90 text-black"><Play size={13} className="ml-0.5" fill="currentColor" /></span>
+        </div>
+      )}
+      <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/75 to-transparent px-1 pb-1 pt-3 text-[7px] font-bold leading-tight text-white">
+        <div className="truncate">{brand?.name}</div>
+        <div>{fmtCompact(item.views)} · {item.engagementRate}%</div>
       </div>
     </div>
   );
