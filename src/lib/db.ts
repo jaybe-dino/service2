@@ -49,6 +49,24 @@ export function ensureSchema(): Promise<void> {
         payload jsonb,
         created_at timestamptz NOT NULL DEFAULT now()
       )`;
+      // 결제(NICEpay) — 주문/원장
+      await sql`CREATE TABLE IF NOT EXISTS orders (
+        order_id text PRIMARY KEY,
+        user_id text NOT NULL,
+        plan text NOT NULL,
+        amount integer NOT NULL,
+        goods_name text,
+        status text NOT NULL DEFAULT 'created',
+        created_at timestamptz NOT NULL DEFAULT now()
+      )`;
+      // payment_id(tid) UNIQUE = 멱등성. raw 7년 보관(audit).
+      await sql`CREATE TABLE IF NOT EXISTS payments (
+        payment_id text PRIMARY KEY,
+        order_id text,
+        amount integer,
+        raw jsonb,
+        created_at timestamptz NOT NULL DEFAULT now()
+      )`;
     })();
   }
   return schemaReady;

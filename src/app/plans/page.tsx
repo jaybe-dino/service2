@@ -105,7 +105,7 @@ export default function PlansPage() {
                 </button>
               ) : (
                 <Link
-                  href="/login"
+                  href={p.id === "pro" ? "/checkout" : p.id === "basic" ? "/signup" : "/login"}
                   className={`kt-btn mt-6 w-full py-2.5 text-[12px] ${
                     p.popular ? "kt-btn-primary" : "kt-btn-outline"
                   }`}
