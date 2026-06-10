@@ -75,6 +75,10 @@ export default function SignupPage() {
             <Field label="직무" value={form.role} onChange={(v) => set("role", v)} placeholder="예: 글로벌 마케팅 매니저" />
             <Field label="프로모션 코드 (선택 · 입력 시 3일 무료 Pro 체험)" value={form.code} onChange={(v) => set("code", v.toUpperCase())} placeholder="예: GLOVEK3" />
             {err && <p className="text-[11px] font-semibold text-rose-600">{err}</p>}
+            <p className="text-[10px] leading-relaxed text-[var(--muted)]">
+              가입 시 <Link href="/terms" className="font-semibold text-[var(--accent)] hover:underline">이용약관</Link> 및{" "}
+              <Link href="/privacy" className="font-semibold text-[var(--accent)] hover:underline">개인정보처리방침</Link>에 동의하는 것으로 간주됩니다.
+            </p>
             <button disabled={busy} className="kt-btn kt-btn-primary w-full py-2.5 text-[12px] disabled:opacity-50">
               <UserPlus size={14} /> 가입하고 계속
             </button>

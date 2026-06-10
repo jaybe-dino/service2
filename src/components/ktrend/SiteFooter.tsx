@@ -29,12 +29,13 @@ export default function SiteFooter() {
           </div>
           <div>
             <div className="mb-2 text-[11px] font-bold uppercase tracking-wide text-[var(--muted)]">
-              회사
+              회사 · 정책
             </div>
             <ul className="space-y-1.5 text-[12px]">
               <li><Link href="/plans" className="hover:text-[var(--accent)]">요금제</Link></li>
               <li><Link href="/signup" className="hover:text-[var(--accent)]">회원가입</Link></li>
-              <li><Link href="/admin" className="hover:text-[var(--accent)]">회원관리(관리자)</Link></li>
+              <li><Link href="/terms" className="hover:text-[var(--accent)]">이용약관</Link></li>
+              <li><Link href="/privacy" className="hover:text-[var(--accent)]">개인정보처리방침</Link></li>
             </ul>
           </div>
         </div>
@@ -43,8 +44,21 @@ export default function SiteFooter() {
           <div className="mb-2 text-[11px] font-bold uppercase tracking-wide text-[var(--muted)]">문의</div>
           <FooterCTAs />
         </div>
-        <div className="mt-8 border-t border-[var(--border)] pt-4 text-[10px] text-[var(--muted)]">
-          © 2026 Glovek. 본 화면의 지표는 데모용 샘플 데이터입니다.
+
+        {/* 사업자 정보 (디노스튜디오) */}
+        <div className="mt-8 border-t border-[var(--border)] pt-4 text-[10px] leading-relaxed text-[var(--muted)]">
+          <p className="font-semibold text-[var(--fg)]">디노스튜디오 (DINOSTUDIO)</p>
+          <p className="mt-1">
+            대표 허정발 · 서울특별시 서초구 서초대로48길 101, 그룹메가타워 2F ·
+            이메일 <a href="mailto:chief@dinostudio.kr" className="hover:text-[var(--accent)]">chief@dinostudio.kr</a> ·
+            <a href="https://dinostudio.kr" target="_blank" rel="noreferrer noopener" className="ml-1 hover:text-[var(--accent)]">dinostudio.kr</a>
+          </p>
+          <p className="mt-2">
+            <Link href="/terms" className="hover:text-[var(--accent)]">이용약관</Link>
+            <span className="mx-1.5">·</span>
+            <Link href="/privacy" className="font-semibold hover:text-[var(--accent)]">개인정보처리방침</Link>
+          </p>
+          <p className="mt-2">© 2026 DINOSTUDIO. Glovek. All rights reserved.</p>
         </div>
       </div>
     </footer>

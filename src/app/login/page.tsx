@@ -146,6 +146,9 @@ export default function LoginPage() {
           <button type="submit" className="kt-btn kt-btn-primary mt-4 w-full py-2.5 text-[12px]">
             <LogIn size={14} /> 로그인
           </button>
+          <p className="mt-3 text-center text-[11px] text-[var(--muted)]">
+            비밀번호를 잊으셨나요? <a href="/forgot" className="font-semibold text-[var(--accent)] hover:underline">비밀번호 찾기</a>
+          </p>
         </form>
       </div>
     </PageShell>

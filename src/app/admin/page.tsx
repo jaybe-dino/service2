@@ -22,7 +22,7 @@ interface Run { id: number; kind: string; target: string | null; status: string;
 interface Track { brand_name: string; tracked: boolean; interval_hours: number; hashtags: string | null; last_collected_at: string | null; }
 
 const KIND_LABEL: Record<string, string> = {
-  marketing: "마케팅 1:1", tiktokshop: "틱톡샵 온보딩", proposal: "인플루언서 제안", sales: "도입 문의",
+  marketing: "마케팅 1:1", tiktokshop: "틱톡샵 온보딩", proposal: "인플루언서 제안", sales: "도입 문의", password_reset: "비밀번호 재설정",
 };
 
 const won = (n: number) => "₩" + Number(n || 0).toLocaleString();
@@ -120,6 +120,18 @@ export default function AdminPage() {
     setToast(r.ok ? `${grantEmail}에 Pro ${grantDays}일 부여` : (d.error ?? "실패"));
     setTimeout(() => setToast(""), 2500);
     if (r.ok) { setGrantEmail(""); loadData(); }
+  };
+
+  const resetPw = async (email: string) => {
+    if (!confirm(`${email}\n비밀번호를 임시값으로 초기화하시겠습니까?`)) return;
+    const r = await fetch("/api/admin/reset-password", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email }),
+    });
+    const d = await r.json().catch(() => ({}));
+    if (r.ok) { alert(`임시 비밀번호: ${d.tempPassword}\n\n회원에게 전달 후 로그인 시 변경하도록 안내하세요.`); }
+    else setToast(d.error ?? "초기화 실패");
+    setTimeout(() => setToast(""), 2500);
   };
 
   const addBrand = async (e: React.FormEvent) => {
@@ -301,7 +313,7 @@ export default function AdminPage() {
             </div>
           </div>
 
-          <Table head={["이메일", "이름", "브랜드", "플랜", "결제액", "최근결제", "Pro 상태", "가입일"]}>
+          <Table head={["이메일", "이름", "브랜드", "플랜", "결제액", "최근결제", "Pro 상태", "가입일", "비번"]}>
             {members.map((m) => (
               <tr key={m.id} className="border-b border-[var(--border)] last:border-0">
                 <td className="p-2 font-semibold">{m.email}</td>
@@ -312,9 +324,10 @@ export default function AdminPage() {
                 <td className="p-2 text-[var(--muted)]">{dt(m.last_paid)}</td>
                 <td className="p-2">{proState(m.pro_until)}</td>
                 <td className="p-2 text-[var(--muted)]">{dt(m.created_at)}</td>
+                <td className="p-2"><button onClick={() => resetPw(m.email)} className="text-[10px] font-semibold text-[var(--accent)] hover:underline">초기화</button></td>
               </tr>
             ))}
-            {!members.length && <EmptyRow cols={8} text="가입 회원 없음" />}
+            {!members.length && <EmptyRow cols={9} text="가입 회원 없음" />}
           </Table>
         </>
       )}
