@@ -89,6 +89,10 @@ export async function runCollection(opts: { maxPending?: number; maxRefresh?: nu
       await syncDerived(req.brand_name); // 콘텐츠→브랜드통계·인플루언서 동시 갱신
       collected += c;
       await sql`UPDATE brand_requests SET status='active', collected=${c}, updated_at=now() WHERE id=${req.id}`;
+      // 이후 정기 추적 대상으로 등록
+      await sql`INSERT INTO brand_tracking (brand_name, hashtags, last_collected_at, updated_at)
+                VALUES (${req.brand_name}, ${req.hashtags}, now(), now())
+                ON CONFLICT (brand_name) DO UPDATE SET last_collected_at=now(), hashtags=COALESCE(EXCLUDED.hashtags, brand_tracking.hashtags), updated_at=now()`;
       await sql`INSERT INTO collection_runs (kind, target, status, collected) VALUES ('new_brand', ${req.brand_name}, 'ok', ${c})`;
     } catch (e) {
       await sql`UPDATE brand_requests SET status='pending', note=${String(e).slice(0, 200)}, updated_at=now() WHERE id=${req.id}`;
@@ -96,25 +100,46 @@ export async function runCollection(opts: { maxPending?: number; maxRefresh?: nu
     }
   }
 
-  // 2) 기존 브랜드 증분 갱신 (커서로 라운드로빈)
+  // 2) 기존 브랜드 증분 갱신 — 브랜드별 주기(due) 기준
   const since = new Date(Date.now() - 14 * 86_400_000).toISOString().slice(0, 10);
-  let idx = await cursor();
   let refreshed = 0;
-  for (let k = 0; k < maxRefresh && BRANDS.length; k++) {
-    const brand = BRANDS[idx % BRANDS.length];
-    idx += 1;
+
+  // 추적 대상 중 주기가 도래(due)한 브랜드 우선 선택
+  const due = await sql<{ brand_name: string; hashtags: string | null }>`
+    SELECT brand_name, hashtags FROM brand_tracking
+    WHERE tracked = true
+      AND (last_collected_at IS NULL OR last_collected_at < now() - make_interval(hours => interval_hours))
+    ORDER BY last_collected_at ASC NULLS FIRST
+    LIMIT ${maxRefresh}`;
+
+  const targets: { name: string; hashtags: string | null }[] = due.rows.map((r) => ({ name: r.brand_name, hashtags: r.hashtags }));
+
+  // 추적 테이블이 비어있으면 기존 브랜드를 라운드로빈으로 시드
+  if (targets.length === 0 && BRANDS.length) {
+    let idx = await cursor();
+    for (let k = 0; k < maxRefresh; k++) {
+      targets.push({ name: BRANDS[idx % BRANDS.length].name, hashtags: null });
+      idx += 1;
+    }
+    await setCursor(idx);
+  }
+
+  for (const t of targets) {
     try {
-      const vids = await collectBrand({ brandName: brand.name, sinceDate: since, limit: 40 });
-      const c = await upsertVideos(brand.name, vids, rules);
-      if (c > 0) await syncDerived(brand.name); // 콘텐츠→브랜드통계·인플루언서 동시 갱신
+      const vids = await collectBrand({ brandName: t.name, hashtags: t.hashtags, sinceDate: since, limit: 40 });
+      const c = await upsertVideos(t.name, vids, rules);
+      if (c > 0) await syncDerived(t.name);
       collected += c;
       refreshed += 1;
-      if (c > 0) await sql`INSERT INTO collection_runs (kind, target, status, collected) VALUES ('refresh', ${brand.name}, 'ok', ${c})`;
+      // 추적 row 보장 + 마지막 수집 시각 갱신
+      await sql`INSERT INTO brand_tracking (brand_name, last_collected_at, updated_at)
+                VALUES (${t.name}, now(), now())
+                ON CONFLICT (brand_name) DO UPDATE SET last_collected_at=now(), updated_at=now()`;
+      if (c > 0) await sql`INSERT INTO collection_runs (kind, target, status, collected) VALUES ('refresh', ${t.name}, 'ok', ${c})`;
     } catch (e) {
-      await sql`INSERT INTO collection_runs (kind, target, status, error) VALUES ('refresh', ${brand.name}, 'error', ${String(e).slice(0, 200)})`;
+      await sql`INSERT INTO collection_runs (kind, target, status, error) VALUES ('refresh', ${t.name}, 'error', ${String(e).slice(0, 200)})`;
     }
   }
-  await setCursor(idx);
 
   return { configured, pendingProcessed: pending.rows.length, brandsRefreshed: refreshed, collected };
 }

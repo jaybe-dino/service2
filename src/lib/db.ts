@@ -102,6 +102,15 @@ export function ensureSchema(): Promise<void> {
         url text,
         collected_at timestamptz NOT NULL DEFAULT now()
       )`;
+      // 브랜드별 수집 주기/추적 관리
+      await sql`CREATE TABLE IF NOT EXISTS brand_tracking (
+        brand_name text PRIMARY KEY,
+        tracked boolean NOT NULL DEFAULT true,
+        interval_hours int NOT NULL DEFAULT 24,
+        hashtags text,
+        last_collected_at timestamptz,
+        updated_at timestamptz NOT NULL DEFAULT now()
+      )`;
       // 수집 영상에서 집계된 인플루언서(크리에이터)
       await sql`CREATE TABLE IF NOT EXISTS creators (
         handle text PRIMARY KEY,

@@ -19,6 +19,7 @@ interface Totals { users: number; payments: number; revenue: number; active_pro:
 interface Inquiry { id: number; kind: string; user_email: string | null; payload: Record<string, unknown> | null; created_at: string; }
 interface BrandReq { id: number; brand_name: string; handle: string | null; source: string; status: string; collected: number; created_at: string; }
 interface Run { id: number; kind: string; target: string | null; status: string; collected: number; created_at: string; }
+interface Track { brand_name: string; tracked: boolean; interval_hours: number; hashtags: string | null; last_collected_at: string | null; }
 
 const KIND_LABEL: Record<string, string> = {
   marketing: "마케팅 1:1", tiktokshop: "틱톡샵 온보딩", proposal: "인플루언서 제안", sales: "도입 문의",
@@ -47,6 +48,7 @@ export default function AdminPage() {
   const [creatorsCount, setCreatorsCount] = useState(0);
   const [newBrand, setNewBrand] = useState("");
   const [collecting, setCollecting] = useState(false);
+  const [tracking, setTracking] = useState<Track[]>([]);
   const [totals, setTotals] = useState<Totals | null>(null);
   const [rules, setRules] = useState<CrawlRules>(DEFAULT_CRAWL_RULES);
   const [loadingData, setLoadingData] = useState(false);
@@ -121,6 +123,23 @@ export default function AdminPage() {
     setToast("브랜드 수집 요청 추가됨");
     setTimeout(() => setToast(""), 2000);
     loadData();
+  };
+
+  const loadTracking = async () => {
+    const r = await fetch("/api/admin/tracking", { cache: "no-store" }).then((x) => x.json()).catch(() => ({ rows: [] }));
+    setTracking(r.rows ?? []);
+  };
+  useEffect(() => { if (authed) loadTracking(); }, [authed]);
+
+  const updateTrack = async (brand_name: string, patch: Partial<Track>) => {
+    await fetch("/api/admin/tracking", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ brand_name, ...patch }) });
+    loadTracking();
+  };
+  const seedTracking = async () => {
+    await fetch("/api/admin/tracking", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "seed" }) });
+    setToast("기존 브랜드 추적 등록됨");
+    setTimeout(() => setToast(""), 2000);
+    loadTracking();
   };
 
   const runCollect = async () => {
@@ -303,6 +322,39 @@ export default function AdminPage() {
             {!runs.length && <EmptyRow cols={5} text="수집 로그 없음" />}
           </Table>
           <p className="mt-3 text-[10px] text-[var(--muted)]">※ 스크래핑 키(SCRAPER_API_KEY) 설정 시 실제 수집됩니다. 정기 수집은 매일 자동(Vercel Cron)으로 실행됩니다.</p>
+
+          {/* 브랜드별 수집 주기 관리 */}
+          <div className="mt-6 mb-2 flex items-center gap-2">
+            <h2 className="text-[13px] font-bold">추적 브랜드 관리 ({tracking.length})</h2>
+            {tracking.length === 0 && (
+              <button onClick={seedTracking} className="kt-btn kt-btn-outline px-3 py-1 text-[10px]">기존 브랜드 추적 등록</button>
+            )}
+          </div>
+          <Table head={["브랜드", "추적", "수집 주기(시간)", "마지막 수집"]}>
+            {tracking.map((t) => (
+              <tr key={t.brand_name} className="border-b border-[var(--border)] last:border-0">
+                <td className="p-2 font-semibold">{t.brand_name}</td>
+                <td className="p-2">
+                  <button
+                    onClick={() => updateTrack(t.brand_name, { tracked: !t.tracked, interval_hours: t.interval_hours })}
+                    className={`rounded px-2 py-0.5 text-[9px] font-bold ${t.tracked ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-slate-500"}`}
+                  >
+                    {t.tracked ? "추적 중" : "중지"}
+                  </button>
+                </td>
+                <td className="p-2">
+                  <input
+                    type="number"
+                    defaultValue={t.interval_hours}
+                    onBlur={(e) => { const v = Number(e.target.value); if (v && v !== t.interval_hours) updateTrack(t.brand_name, { tracked: t.tracked, interval_hours: v }); }}
+                    className="w-20 rounded border border-[var(--border)] px-1.5 py-0.5 text-[10px]"
+                  />
+                </td>
+                <td className="p-2 text-[var(--muted)]">{dt(t.last_collected_at)}</td>
+              </tr>
+            ))}
+            {!tracking.length && <EmptyRow cols={4} text="추적 브랜드 없음 (위 버튼으로 등록)" />}
+          </Table>
         </>
       )}
 
