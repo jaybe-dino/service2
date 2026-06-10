@@ -67,6 +67,12 @@ export function ensureSchema(): Promise<void> {
         raw jsonb,
         created_at timestamptz NOT NULL DEFAULT now()
       )`;
+      // 어드민 설정(크롤링 규칙 등) key-value
+      await sql`CREATE TABLE IF NOT EXISTS admin_settings (
+        key text PRIMARY KEY,
+        value jsonb,
+        updated_at timestamptz NOT NULL DEFAULT now()
+      )`;
       // 데모/관리자 계정 시드 (bcrypt("ktrend2026")) — 서버 세션 로그인 가능하도록
       const DEMO_HASH = "$2b$10$mLc7sBm3zK4a83l6/Tg9NOoDGLLYsfp4SXRfZcls4.LTw6Tsy/8Oy";
       await sql`INSERT INTO users (id, email, password_hash, name, brand, role, plan) VALUES
