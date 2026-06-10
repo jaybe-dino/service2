@@ -201,7 +201,7 @@ export default function ReportsPage() {
           onChange={(e) => setBrandId(e.target.value)}
           className="rounded-md border border-[var(--border)] px-3 py-2 text-[12px] font-semibold outline-none focus:border-[var(--accent)]"
         >
-          {BRANDS.map((b) => (<option key={b.id} value={b.id}>#{b.rank} {b.name}</option>))}
+          {[...BRANDS].sort((a, b) => a.name.localeCompare(b.name)).map((b) => (<option key={b.id} value={b.id}>{b.name}</option>))}
         </select>
         <a href={`/brand/${brandId}`} className="kt-btn kt-btn-outline px-3 py-2 text-[12px]">브랜드 상세 →</a>
         <div className="ml-auto inline-flex rounded-md border border-[var(--border)] p-0.5 text-[11px] font-semibold">

@@ -1,7 +1,7 @@
 // 틱톡 콘텐츠(영상) 데이터 — 실제 11,703건 (public/data/videos.json 런타임 로드)
 // 출처: brands_1to100_MASTER.xlsx. 조회/좋아요/댓글/공유/광고/Shop/날짜/실제 URL은 실데이터.
 // 수익화 지표(수수료율·추정 ROAS·추정 매출)는 V1 AI 예측 모델 추정치(라벨: 추정).
-import { BRANDS, ensureBrandByName, type Brand } from "./brands";
+import { BRANDS, BRAND_MAP, ensureBrandByName, type Brand } from "./brands";
 import { INFLUENCER_MAP } from "./influencers";
 import { BASE_PATH, CATEGORY_MAP, tierOf, type CategoryId, type InfluencerTier, type SubCategoryId } from "./meta";
 import { isOfficialHandle } from "./official";
@@ -197,7 +197,34 @@ export function loadContent(): Promise<Content[]> {
     }
 
     // 브랜드 공식/샵 계정 콘텐츠는 전 영역에서 제외 (정적+DB 공통)
-    return merged.filter((c) => !isOfficialHandle(c.influencerId));
+    const visible = merged.filter((c) => !isOfficialHandle(c.influencerId));
+
+    // 수집으로 새로 등록된 브랜드(db-*)의 통계를 실제 콘텐츠 기준으로 갱신
+    // (목록·필터에 표기되는 영상 수/인플루언서 수/조회수가 0으로 남지 않도록)
+    const byBrand = new Map<string, Content[]>();
+    for (const c of visible) {
+      if (!c.brandId.startsWith("db-")) continue;
+      const arr = byBrand.get(c.brandId);
+      if (arr) arr.push(c);
+      else byBrand.set(c.brandId, [c]);
+    }
+    for (const [brandId, items] of byBrand) {
+      const b = BRAND_MAP[brandId];
+      if (!b) continue;
+      const handles = new Set(items.map((c) => c.influencerId));
+      const totalViews = items.reduce((s, c) => s + c.views, 0);
+      const shopCount = items.filter((c) => c.isShop).length;
+      b.videos = items.length;
+      b.influencers = handles.size;
+      b.totalViews = totalViews;
+      b.avgViews = Math.round(totalViews / items.length);
+      b.maxViews = items.reduce((m, c) => Math.max(m, c.views), 0);
+      b.adCount = items.filter((c) => c.isAd).length;
+      b.shopCount = shopCount;
+      b.shopRatio = Math.round((shopCount / items.length) * 1000) / 10;
+    }
+
+    return visible;
   })();
   return cache;
 }
