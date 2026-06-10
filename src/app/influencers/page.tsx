@@ -1,23 +1,23 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Lock, Mail, Phone, Search } from "lucide-react";
+import { Search, Send } from "lucide-react";
 import Link from "next/link";
 import PageShell from "@/components/ktrend/PageShell";
 import CreatorName from "@/components/ktrend/CreatorName";
 import BookmarkButton from "@/components/ktrend/BookmarkButton";
-import { usePlan } from "@/components/ktrend/PlanContext";
-import { INFLUENCERS, contactFor } from "@/data/ktrend/influencers";
+import InquiryModal from "@/components/ktrend/InquiryModal";
+import { INFLUENCERS } from "@/data/ktrend/influencers";
 import { TIERS, type InfluencerTier } from "@/data/ktrend/meta";
-import { fmtCompact, fmtUSD } from "@/data/ktrend/content";
+import { fmtCompact } from "@/data/ktrend/content";
 
 const TIER_KEYS = Object.keys(TIERS) as InfluencerTier[];
 const PAGE = 50;
 
 export default function InfluencersPage() {
-  const { isPro } = usePlan();
   const [tier, setTier] = useState<InfluencerTier | "ALL">("ALL");
   const [q, setQ] = useState("");
+  const [propose, setPropose] = useState<string | null>(null);
   const [visible, setVisible] = useState(PAGE);
 
   const rows = useMemo(() => {
@@ -36,7 +36,7 @@ export default function InfluencersPage() {
       <div className="mb-4">
         <h1 className="text-[20px] font-black tracking-tight">인플루언서 DB</h1>
         <p className="mt-1 text-[12px] text-[var(--muted)]">
-          실제 매출을 발생시킨 검증된 틱톡 어필리에이트 크리에이터 상위 {INFLUENCERS.length}명. 컨택 라인은 Add-on/Pro에서 해금됩니다.
+          실제 매출을 발생시킨 검증된 틱톡 어필리에이트 크리에이터 상위 {INFLUENCERS.length}명. 협업을 원하면 제안하기로 문의하세요.
         </p>
       </div>
 
@@ -69,12 +69,11 @@ export default function InfluencersPage() {
               <th className="p-3 text-right">평균 조회수</th>
               <th className="p-3 text-right">누적 조회수</th>
               <th className="p-3">협업 브랜드</th>
-              <th className="p-3">컨택</th>
+              <th className="p-3">제안</th>
             </tr>
           </thead>
           <tbody>
             {rows.slice(0, visible).map((inf, i) => {
-              const c = contactFor(inf.handle);
               return (
                 <tr key={inf.handle} className="border-b border-[var(--border)] last:border-0 hover:bg-slate-50">
                   <td className="p-3 text-[var(--muted)]">{i + 1}</td>
@@ -102,17 +101,12 @@ export default function InfluencersPage() {
                     </div>
                   </td>
                   <td className="p-3">
-                    {isPro ? (
-                      <div className="space-y-0.5 text-[10px]">
-                        <div className="flex items-center gap-1"><Mail size={10} /> {c.email}</div>
-                        <div className="flex items-center gap-1"><Phone size={10} /> {c.whatsapp}</div>
-                        <div className="font-semibold text-[var(--accent)]">평균 {fmtUSD(c.avgRateUSD)}</div>
-                      </div>
-                    ) : (
-                      <button className="flex items-center gap-1 rounded-md bg-[var(--fg)]/85 px-2 py-1 text-[9px] font-bold text-white">
-                        <Lock size={10} /> 컨택 해금 ($19)
-                      </button>
-                    )}
+                    <button
+                      onClick={() => setPropose(inf.handle)}
+                      className="kt-btn kt-btn-primary px-2.5 py-1 text-[10px]"
+                    >
+                      <Send size={11} /> 제안하기
+                    </button>
                   </td>
                 </tr>
               );
@@ -127,6 +121,10 @@ export default function InfluencersPage() {
             더 보기 ({(rows.length - visible).toLocaleString()}명 남음)
           </button>
         </div>
+      )}
+
+      {propose && (
+        <InquiryModal kind="proposal" context={`@${propose}`} onClose={() => setPropose(null)} />
       )}
     </PageShell>
   );

@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { ShieldCheck, Users, CreditCard, UserSquare2, Tag, SlidersHorizontal, Loader2, LogOut, Gift } from "lucide-react";
 import PageShell from "@/components/ktrend/PageShell";
-import { INFLUENCERS } from "@/data/ktrend/influencers";
+import { INFLUENCERS, contactFor } from "@/data/ktrend/influencers";
 import { BRANDS } from "@/data/ktrend/brands";
 import { TIERS } from "@/data/ktrend/meta";
 import { DEFAULT_CRAWL_RULES, type CrawlRules } from "@/lib/crawl-rules";
@@ -199,19 +199,28 @@ export default function AdminPage() {
       )}
 
       {tab === "influencers" && (
-        <Table head={["#", "핸들", "티어", "영상", "평균조회", "누적조회", "협업 브랜드"]}>
-          {INFLUENCERS.slice(0, 200).map((inf, i) => (
-            <tr key={inf.handle} className="border-b border-[var(--border)] last:border-0">
-              <td className="p-2 text-[var(--muted)]">{i + 1}</td>
-              <td className="p-2 font-semibold">@{inf.handle}</td>
-              <td className="p-2"><span className="rounded px-1.5 py-0.5 text-[9px] font-bold text-white" style={{ background: TIERS[inf.tier].color }}>{TIERS[inf.tier].label}</span></td>
-              <td className="p-2 text-right">{inf.videos}</td>
-              <td className="p-2 text-right">{inf.avgViews.toLocaleString()}</td>
-              <td className="p-2 text-right">{inf.totalViews.toLocaleString()}</td>
-              <td className="p-2 text-[10px] text-[var(--muted)]">{inf.brands.slice(0, 3).join(", ")}</td>
-            </tr>
-          ))}
-        </Table>
+        <>
+          <p className="mb-2 text-[10px] text-[var(--muted)]">※ 컨택 정보는 내부 DB 전용입니다 (사용자 화면 미노출).</p>
+          <Table head={["#", "핸들", "티어", "영상", "평균조회", "누적조회", "이메일", "연락처", "평균단가", "협업 브랜드"]}>
+            {INFLUENCERS.slice(0, 200).map((inf, i) => {
+              const c = contactFor(inf.handle);
+              return (
+                <tr key={inf.handle} className="border-b border-[var(--border)] last:border-0">
+                  <td className="p-2 text-[var(--muted)]">{i + 1}</td>
+                  <td className="p-2 font-semibold">@{inf.handle}</td>
+                  <td className="p-2"><span className="rounded px-1.5 py-0.5 text-[9px] font-bold text-white" style={{ background: TIERS[inf.tier].color }}>{TIERS[inf.tier].label}</span></td>
+                  <td className="p-2 text-right">{inf.videos}</td>
+                  <td className="p-2 text-right">{inf.avgViews.toLocaleString()}</td>
+                  <td className="p-2 text-right">{inf.totalViews.toLocaleString()}</td>
+                  <td className="p-2 text-[10px]">{c.email}</td>
+                  <td className="p-2 text-[10px]">{c.whatsapp}</td>
+                  <td className="p-2 text-[10px] font-semibold text-[var(--accent)]">{won(c.avgRateUSD * 1300)}</td>
+                  <td className="p-2 text-[10px] text-[var(--muted)]">{inf.brands.slice(0, 3).join(", ")}</td>
+                </tr>
+              );
+            })}
+          </Table>
+        </>
       )}
 
       {tab === "brands" && (
