@@ -71,9 +71,16 @@ const seedBrands: Brand[] = (raw as Omit<Brand, "subCategory">[])
 // 확장 마스터의 신규 브랜드(서비스 미수록분)를 디렉터리에 합류.
 // 콘텐츠 통계는 0에서 시작 → 수집 1차학습 후 loadContent가 실수치로 갱신.
 type MasterRow = { name: string; category: CategoryId; subCategory: SubCategoryId; isNew: boolean };
-const seedNames = new Set(seedBrands.map((b) => b.name.toLowerCase()));
+const normKey = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, "");
+const seedNorm = new Set(seedBrands.map((b) => normKey(b.name)));
+const extraSeen = new Set<string>();
 const extraBrands: Brand[] = (collectMaster as MasterRow[])
-  .filter((m) => m.isNew && !seedNames.has(m.name.toLowerCase()))
+  .filter((m) => {
+    const k = normKey(m.name);
+    if (!m.isNew || !k || seedNorm.has(k) || extraSeen.has(k)) return false; // 기존·내부 중복 제거
+    extraSeen.add(k);
+    return true;
+  })
   .map((m, i) => ({
     id: `m-${slugId(m.name)}`,
     name: m.name,

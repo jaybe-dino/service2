@@ -17,6 +17,13 @@ export async function POST() {
   if (!isConfigured()) return NextResponse.json({ error: "DB 미설정" }, { status: 503 });
   await ensureSchema();
 
+  // 이전 파싱 버그로 잘못 적재된 항목 정리(한글/괄호 포함 이름 = 오파싱) — 중복 큐/추적 제거
+  const cleanReq = await sql`DELETE FROM brand_requests
+    WHERE source='master' AND (brand_name ~ '[가-힣]' OR brand_name LIKE '%(%')`;
+  await sql`DELETE FROM brand_tracking WHERE brand_name ~ '[가-힣]' OR brand_name LIKE '%(%'`;
+  await sql`DELETE FROM brand_stats WHERE brand_name ~ '[가-힣]' OR brand_name LIKE '%(%'`;
+  await sql`DELETE FROM videos WHERE brand_name ~ '[가-힣]' OR brand_name LIKE '%(%'`;
+
   const rows = collectMaster as MasterRow[];
   let tracked = 0;
   let queued = 0;
@@ -44,5 +51,5 @@ export async function POST() {
     }
   }
 
-  return NextResponse.json({ ok: true, total: rows.length, tracked, queued });
+  return NextResponse.json({ ok: true, total: rows.length, tracked, queued, cleaned: cleanReq.rowCount ?? 0 });
 }
