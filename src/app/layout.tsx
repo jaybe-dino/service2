@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import { PlanProvider } from "@/components/ktrend/PlanContext";
 import { BookmarkProvider } from "@/components/ktrend/BookmarkContext";
+import TopBanner from "@/components/ktrend/TopBanner";
 
 export const metadata: Metadata = {
   title: "Glovek — 글로벌 틱톡 K-뷰티 콘텐츠 분석",
@@ -16,7 +17,10 @@ export default function RootLayout({
     <html lang="ko">
       <body>
         <PlanProvider>
-          <BookmarkProvider>{children}</BookmarkProvider>
+          <BookmarkProvider>
+            <TopBanner />
+            {children}
+          </BookmarkProvider>
         </PlanProvider>
       </body>
     </html>
