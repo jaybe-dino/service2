@@ -2,14 +2,14 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { ArrowRight, BarChart3, Bell, Contact, TrendingUp, Shuffle } from "lucide-react";
+import { ArrowRight, BarChart3, Bell, Contact, TrendingUp } from "lucide-react";
 import PageShell from "@/components/ktrend/PageShell";
 import ContentCard from "@/components/ktrend/ContentCard";
 import HeroBackground from "@/components/ktrend/HeroBackground";
 import { usePlan } from "@/components/ktrend/PlanContext";
 import { CATEGORIES, SERVICE } from "@/data/ktrend/meta";
 import { BRANDS } from "@/data/ktrend/brands";
-import { loadContent, loadContentStaged, randomSample, fmtCompact, type Content } from "@/data/ktrend/content";
+import { loadContentStaged, randomSample, fmtCompact, type Content } from "@/data/ktrend/content";
 
 const VALUE = [
   { icon: TrendingUp, title: "콘텐츠별 성과 조회", desc: "모든 리스팅을 틱톡 영상(콘텐츠) 단위로 보고 조회수·참여율·ROAS·기여 매출을 즉시 비교." },
@@ -30,8 +30,6 @@ export default function Home() {
       setRandom(randomSample(all, 8));
     });
   }, []);
-
-  const reshuffle = () => loadContent().then((all) => setRandom(randomSample(all, 8)));
 
   const totalViews = BRANDS.reduce((s, b) => s + b.totalViews, 0);
   const featured = BRANDS.slice(0, 6);
@@ -76,11 +74,8 @@ export default function Home() {
 
       {/* 지금 뜨는 콘텐츠 (랜덤) */}
       <section className="mx-auto max-w-[1480px] px-4 py-12">
-        <div className="mb-4 flex items-center justify-between">
+        <div className="mb-4">
           <h2 className="text-[20px] font-black">지금 뜨는 콘텐츠</h2>
-          <button onClick={reshuffle} className="kt-btn kt-btn-outline px-3 py-1.5 text-[11px]">
-            <Shuffle size={13} /> 다시 섞기
-          </button>
         </div>
         {random.length ? (
           <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
