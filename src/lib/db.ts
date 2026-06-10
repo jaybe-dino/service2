@@ -73,6 +73,45 @@ export function ensureSchema(): Promise<void> {
         value jsonb,
         updated_at timestamptz NOT NULL DEFAULT now()
       )`;
+      // 신규 브랜드 발굴 요청 큐 (유저/어드민이 추가)
+      await sql`CREATE TABLE IF NOT EXISTS brand_requests (
+        id serial PRIMARY KEY,
+        brand_name text NOT NULL,
+        handle text,
+        hashtags text,
+        requested_by text,
+        source text NOT NULL DEFAULT 'user',
+        status text NOT NULL DEFAULT 'pending',
+        note text,
+        collected int NOT NULL DEFAULT 0,
+        created_at timestamptz NOT NULL DEFAULT now(),
+        updated_at timestamptz NOT NULL DEFAULT now()
+      )`;
+      // 수집된 영상 (틱톡 video_id UNIQUE = 멱등/중복방지, 증분 수집)
+      await sql`CREATE TABLE IF NOT EXISTS videos (
+        video_id text PRIMARY KEY,
+        brand_name text,
+        handle text,
+        views bigint DEFAULT 0,
+        likes bigint DEFAULT 0,
+        comments bigint DEFAULT 0,
+        shares bigint DEFAULT 0,
+        is_ad boolean DEFAULT false,
+        is_shop boolean DEFAULT false,
+        posted_at text,
+        url text,
+        collected_at timestamptz NOT NULL DEFAULT now()
+      )`;
+      // 수집 실행 로그
+      await sql`CREATE TABLE IF NOT EXISTS collection_runs (
+        id serial PRIMARY KEY,
+        kind text NOT NULL,
+        target text,
+        status text NOT NULL,
+        collected int NOT NULL DEFAULT 0,
+        error text,
+        created_at timestamptz NOT NULL DEFAULT now()
+      )`;
       // 데모/관리자 계정 시드 (bcrypt("ktrend2026")) — 서버 세션 로그인 가능하도록
       const DEMO_HASH = "$2b$10$mLc7sBm3zK4a83l6/Tg9NOoDGLLYsfp4SXRfZcls4.LTw6Tsy/8Oy";
       await sql`INSERT INTO users (id, email, password_hash, name, brand, role, plan) VALUES

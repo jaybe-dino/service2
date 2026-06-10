@@ -95,9 +95,15 @@ export default function Explorer() {
     setBrandQuery("");
   };
 
-  const submitNewBrand = (name: string) => {
+  const submitNewBrand = (name: string, handle?: string, hashtags?: string) => {
     setModalOpen(false);
     if (!name.trim()) return;
+    // 서버 수집 큐에 실제 요청 등록 (수집 워커/cron가 처리)
+    fetch("/api/brands/request", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ brandName: name.trim(), handle, hashtags }),
+    }).catch(() => {});
     const entry = { name: name.trim(), progress: 0 };
     setPendingBrands((p) => [...p, entry]);
     const id = setInterval(() => {
@@ -380,7 +386,7 @@ function FilterGroup({ title, children }: { title: string; children: React.React
   );
 }
 
-function NewBrandModal({ onClose, onSubmit }: { onClose: () => void; onSubmit: (name: string) => void }) {
+function NewBrandModal({ onClose, onSubmit }: { onClose: () => void; onSubmit: (name: string, handle?: string, hashtags?: string) => void }) {
   const [name, setName] = useState("");
   const [handle, setHandle] = useState("");
   const [tags, setTags] = useState("");
@@ -403,7 +409,7 @@ function NewBrandModal({ onClose, onSubmit }: { onClose: () => void; onSubmit: (
         <div className="mt-5 flex justify-end gap-2">
           <button onClick={onClose} className="kt-btn kt-btn-outline px-4 py-2 text-[12px]">취소</button>
           <button
-            onClick={() => onSubmit(name)}
+            onClick={() => onSubmit(name, handle, tags)}
             disabled={!name.trim()}
             className="kt-btn kt-btn-primary px-4 py-2 text-[12px] disabled:opacity-40"
           >

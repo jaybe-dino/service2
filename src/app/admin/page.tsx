@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ShieldCheck, Users, CreditCard, UserSquare2, Tag, SlidersHorizontal, Loader2, LogOut, Gift, Inbox } from "lucide-react";
+import { ShieldCheck, Users, CreditCard, UserSquare2, Tag, SlidersHorizontal, Loader2, LogOut, Gift, Inbox, Database, Play } from "lucide-react";
 import PageShell from "@/components/ktrend/PageShell";
 import { INFLUENCERS, contactFor } from "@/data/ktrend/influencers";
 import { BRANDS } from "@/data/ktrend/brands";
@@ -17,6 +17,8 @@ interface Order {
 }
 interface Totals { users: number; payments: number; revenue: number; active_pro: number; }
 interface Inquiry { id: number; kind: string; user_email: string | null; payload: Record<string, unknown> | null; created_at: string; }
+interface BrandReq { id: number; brand_name: string; handle: string | null; source: string; status: string; collected: number; created_at: string; }
+interface Run { id: number; kind: string; target: string | null; status: string; collected: number; created_at: string; }
 
 const KIND_LABEL: Record<string, string> = {
   marketing: "마케팅 1:1", tiktokshop: "틱톡샵 온보딩", proposal: "인플루언서 제안", sales: "도입 문의",
@@ -26,7 +28,7 @@ const won = (n: number) => "₩" + Number(n || 0).toLocaleString();
 const dt = (s: string | null) => (s ? s.slice(0, 16).replace("T", " ") : "—");
 const proState = (until: number) => (Number(until) > Date.now() ? `Pro ~${new Date(Number(until)).toISOString().slice(0, 10)}` : "—");
 
-type Tab = "members" | "payments" | "inquiries" | "influencers" | "brands" | "rules";
+type Tab = "members" | "payments" | "inquiries" | "collect" | "influencers" | "brands" | "rules";
 
 export default function AdminPage() {
   const [authed, setAuthed] = useState<boolean | null>(null);
@@ -39,6 +41,11 @@ export default function AdminPage() {
   const [members, setMembers] = useState<Member[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
   const [inquiries, setInquiries] = useState<Inquiry[]>([]);
+  const [brandReqs, setBrandReqs] = useState<BrandReq[]>([]);
+  const [runs, setRuns] = useState<Run[]>([]);
+  const [collectedCount, setCollectedCount] = useState(0);
+  const [newBrand, setNewBrand] = useState("");
+  const [collecting, setCollecting] = useState(false);
   const [totals, setTotals] = useState<Totals | null>(null);
   const [rules, setRules] = useState<CrawlRules>(DEFAULT_CRAWL_RULES);
   const [loadingData, setLoadingData] = useState(false);
@@ -61,6 +68,9 @@ export default function AdminPage() {
       setMembers(r.members ?? []);
       setOrders(r.orders ?? []);
       setInquiries(r.inquiries ?? []);
+      setBrandReqs(r.brandRequests ?? []);
+      setRuns(r.collectionRuns ?? []);
+      setCollectedCount(r.collectedCount ?? 0);
       setTotals(r.totals ?? null);
       if (r.crawlRules) setRules({ ...DEFAULT_CRAWL_RULES, ...r.crawlRules });
     }
@@ -101,6 +111,26 @@ export default function AdminPage() {
     if (r.ok) { setGrantEmail(""); loadData(); }
   };
 
+  const addBrand = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newBrand.trim()) return;
+    await fetch("/api/brands/request", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ brandName: newBrand }) });
+    setNewBrand("");
+    setToast("브랜드 수집 요청 추가됨");
+    setTimeout(() => setToast(""), 2000);
+    loadData();
+  };
+
+  const runCollect = async () => {
+    setCollecting(true);
+    const r = await fetch("/api/admin/collect", { method: "POST" });
+    const d = await r.json().catch(() => ({}));
+    setCollecting(false);
+    setToast(r.ok ? `수집 실행: 신규 ${d.collected ?? 0}건${d.scraper === false ? " (스크래퍼 키 미설정 → 0)" : ""}` : "수집 실패");
+    setTimeout(() => setToast(""), 3500);
+    loadData();
+  };
+
   if (authed === null) {
     return <PageShell><div className="py-24 text-center text-[var(--muted)]"><Loader2 className="mx-auto animate-spin" /></div></PageShell>;
   }
@@ -128,6 +158,7 @@ export default function AdminPage() {
     { id: "members", label: "회원·결제", icon: <Users size={13} /> },
     { id: "payments", label: "결제현황", icon: <CreditCard size={13} /> },
     { id: "inquiries", label: "문의·제안", icon: <Inbox size={13} /> },
+    { id: "collect", label: "브랜드 수집", icon: <Database size={13} /> },
     { id: "influencers", label: "인플루언서", icon: <UserSquare2 size={13} /> },
     { id: "brands", label: "브랜드", icon: <Tag size={13} /> },
     { id: "rules", label: "크롤링 규칙", icon: <SlidersHorizontal size={13} /> },
@@ -222,6 +253,52 @@ export default function AdminPage() {
           })}
           {!inquiries.length && <EmptyRow cols={5} text="문의·제안 없음" />}
         </Table>
+      )}
+
+      {tab === "collect" && (
+        <>
+          <div className="mb-3 flex flex-wrap items-center gap-2 kt-card p-3">
+            <span className="flex items-center gap-1.5 text-[11px] font-bold"><Database size={13} className="text-[var(--accent)]" /> 신규 브랜드 발굴 요청</span>
+            <form onSubmit={addBrand} className="flex items-center gap-2">
+              <input value={newBrand} onChange={(e) => setNewBrand(e.target.value)} placeholder="브랜드명" className="rounded-md border border-[var(--border)] px-2 py-1.5 text-[11px]" />
+              <button className="kt-btn kt-btn-outline px-3 py-1.5 text-[11px]">요청 추가</button>
+            </form>
+            <button onClick={runCollect} disabled={collecting} className="kt-btn kt-btn-primary ml-auto px-3 py-1.5 text-[11px] disabled:opacity-50">
+              {collecting ? <Loader2 size={13} className="animate-spin" /> : <Play size={13} />} 지금 수집 실행
+            </button>
+            <span className="text-[10px] text-[var(--muted)]">수집 영상 {collectedCount.toLocaleString()}건</span>
+          </div>
+          <h2 className="mb-2 text-[13px] font-bold">브랜드 요청 큐 ({brandReqs.length})</h2>
+          <div className="mb-5">
+            <Table head={["브랜드", "핸들", "요청자", "상태", "수집", "시각"]}>
+              {brandReqs.map((b) => (
+                <tr key={b.id} className="border-b border-[var(--border)] last:border-0">
+                  <td className="p-2 font-semibold">{b.brand_name}</td>
+                  <td className="p-2 text-[10px]">{b.handle ?? "—"}</td>
+                  <td className="p-2 text-[10px]">{b.source}</td>
+                  <td className="p-2"><span className={b.status === "active" ? "text-emerald-600" : b.status === "collecting" ? "text-[var(--accent)]" : "text-[var(--muted)]"}>{b.status}</span></td>
+                  <td className="p-2 text-right">{b.collected}</td>
+                  <td className="p-2 text-[var(--muted)]">{dt(b.created_at)}</td>
+                </tr>
+              ))}
+              {!brandReqs.length && <EmptyRow cols={6} text="요청 없음" />}
+            </Table>
+          </div>
+          <h2 className="mb-2 text-[13px] font-bold">최근 수집 로그</h2>
+          <Table head={["종류", "대상", "상태", "건수", "시각"]}>
+            {runs.map((r) => (
+              <tr key={r.id} className="border-b border-[var(--border)] last:border-0">
+                <td className="p-2">{r.kind}</td>
+                <td className="p-2">{r.target ?? "—"}</td>
+                <td className="p-2"><span className={r.status === "ok" ? "text-emerald-600" : "text-rose-600"}>{r.status}</span></td>
+                <td className="p-2 text-right">{r.collected}</td>
+                <td className="p-2 text-[var(--muted)]">{dt(r.created_at)}</td>
+              </tr>
+            ))}
+            {!runs.length && <EmptyRow cols={5} text="수집 로그 없음" />}
+          </Table>
+          <p className="mt-3 text-[10px] text-[var(--muted)]">※ 스크래핑 키(SCRAPER_API_KEY) 설정 시 실제 수집됩니다. 정기 수집은 매일 자동(Vercel Cron)으로 실행됩니다.</p>
+        </>
       )}
 
       {tab === "influencers" && (
