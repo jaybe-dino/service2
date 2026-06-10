@@ -26,6 +26,14 @@ export default function ReportsPage() {
 
   useEffect(() => { loadContent().then(setContent); }, []);
 
+  // 콘텐츠가 1개라도 있는 브랜드만 셀렉트에 노출 (수집 전 빈 브랜드 숨김)
+  const brandOptions = useMemo(() => {
+    const present = content ? new Set(content.map((c) => c.brandId)) : null;
+    return [...BRANDS]
+      .filter((b) => !present || present.has(b.id))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }, [content]);
+
   // /reports?brand=<id> 로 진입 시 해당 브랜드 선택 (브랜드 상세 통합)
   useEffect(() => {
     try {
@@ -201,7 +209,7 @@ export default function ReportsPage() {
           onChange={(e) => setBrandId(e.target.value)}
           className="rounded-md border border-[var(--border)] px-3 py-2 text-[12px] font-semibold outline-none focus:border-[var(--accent)]"
         >
-          {[...BRANDS].sort((a, b) => a.name.localeCompare(b.name)).map((b) => (<option key={b.id} value={b.id}>{b.name}</option>))}
+          {brandOptions.map((b) => (<option key={b.id} value={b.id}>{b.name}</option>))}
         </select>
         <a href={`/brand/${brandId}`} className="kt-btn kt-btn-outline px-3 py-2 text-[12px]">브랜드 상세 →</a>
         <div className="ml-auto inline-flex rounded-md border border-[var(--border)] p-0.5 text-[11px] font-semibold">

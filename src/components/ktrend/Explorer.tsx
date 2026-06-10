@@ -54,8 +54,15 @@ export default function Explorer() {
     loadContent().then(setAll);
   }, []);
 
+  // 콘텐츠가 1개라도 있는 브랜드만 노출 (수집 전 빈 브랜드 숨김)
+  const brandsWithContent = useMemo(() => {
+    if (!all) return null;
+    return new Set(all.map((c) => c.brandId));
+  }, [all]);
+
   const visibleBrands = useMemo(() => {
     let list = BRANDS;
+    if (brandsWithContent) list = list.filter((b) => brandsWithContent.has(b.id));
     if (az !== "ALL") list = list.filter((b) => b.az === az);
     if (brandQuery.trim()) {
       const q = brandQuery.trim().toLowerCase();
@@ -63,7 +70,7 @@ export default function Explorer() {
     }
     if (!isPro) list = list.filter((b) => isPopular(b.id));
     return list;
-  }, [az, brandQuery, isPro]);
+  }, [az, brandQuery, isPro, brandsWithContent]);
 
   const filtered = useMemo(() => {
     if (!all) return [];
