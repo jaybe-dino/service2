@@ -111,6 +111,7 @@ export function PlanProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<Account | null>(null);
   const [proUntil, setProUntil] = useState<number>(0);
   const [serverMode, setServerMode] = useState(false);
+  const [adminSession, setAdminSession] = useState(false); // dino 어드민 콘솔 세션
   const [ready, setReady] = useState(false);
   const quotaRef = useRef<Quota>({ day: today(), passes: [] });
   const [quota, setQuotaState] = useState<Quota>(quotaRef.current);
@@ -153,6 +154,12 @@ export function PlanProvider({ children }: { children: ReactNode }) {
       }
       setReady(true);
     });
+
+    // 별도 어드민 콘솔(dino) 세션이면 서비스 페이지에서 전 권한 오픈 + 블락 가능
+    fetch("/api/admin/session", { cache: "no-store" })
+      .then((r) => r.json())
+      .then((d) => setAdminSession(Boolean(d?.authed)))
+      .catch(() => {});
   }, []);
 
   const persistUser = (acc: Account | null) => {
@@ -248,8 +255,9 @@ export function PlanProvider({ children }: { children: ReactNode }) {
   const plan: PlanId = user?.plan ?? "basic";
   const effectiveProUntil = serverMode ? (user?.proUntil ?? 0) : proUntil;
   const trialActive = effectiveProUntil > Date.now();
-  const isPro = plan === "pro" || plan === "enterprise" || trialActive;
-  const isAdmin = !!user && ADMIN_EMAILS.includes(user.email.toLowerCase());
+  const isAdmin = adminSession || (!!user && ADMIN_EMAILS.includes(user.email.toLowerCase()));
+  // 어드민은 서비스 전 영역 권한 오픈
+  const isPro = plan === "pro" || plan === "enterprise" || trialActive || isAdmin;
   const trialMsLeft = trialActive ? effectiveProUntil - Date.now() : 0;
 
   const currentQuota = (): Quota => {

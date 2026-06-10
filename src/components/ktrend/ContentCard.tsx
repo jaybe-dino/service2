@@ -3,14 +3,14 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Heart, MessageCircle, Play, Eye, Lock, LogIn, TrendingUp, Share2, Sparkles } from "lucide-react";
+import { Heart, MessageCircle, Play, Eye, Lock, LogIn, TrendingUp, Share2, Sparkles, Ban } from "lucide-react";
 import CreatorName from "./CreatorName";
 import ContentAnalysisModal from "./ContentAnalysisModal";
 import BookmarkButton from "./BookmarkButton";
 import { usePlan, CLICK_LIMIT } from "./PlanContext";
 import { BRAND_MAP } from "@/data/ktrend/brands";
 import { CATEGORY_MAP, SUBCATEGORY_MAP, TIERS } from "@/data/ktrend/meta";
-import { fmtCompact, fmtUSD, type Content } from "@/data/ktrend/content";
+import { fmtCompact, fmtUSD, tiktokVideoId, type Content } from "@/data/ktrend/content";
 
 // --- TikTok oEmbed 썸네일: 뷰포트 진입 시 지연 로드 + 캐시 (실패 시 그라데이션 폴백) ---
 const thumbCache = new Map<string, string | null>();
@@ -88,8 +88,21 @@ function Metric({ label, value }: { label: string; value: string }) {
 }
 
 export default function ContentCard({ content }: { content: Content }) {
-  const { user, openVideo, isVideoOpened } = usePlan();
+  const { user, openVideo, isVideoOpened, isAdmin } = usePlan();
   const router = useRouter();
+  const [adminBlocked, setAdminBlocked] = useState<null | string>(null);
+
+  const adminBlock = async (kind: "video" | "handle") => {
+    const value = kind === "video" ? tiktokVideoId(content.tiktokUrl) ?? content.id : content.influencerId;
+    const label = kind === "video" ? "이 콘텐츠" : `@${content.influencerId}`;
+    if (!confirm(`${label}를 블락하시겠습니까?\n수집·노출이 모두 차단됩니다.`)) return;
+    const r = await fetch("/api/admin/block", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ kind, value, reason: "admin-card" }),
+    });
+    if (r.ok) setAdminBlocked(kind === "video" ? "콘텐츠 블락됨" : "인플루언서 블락됨");
+  };
   const brand = BRAND_MAP[content.brandId];
   const tier = TIERS[content.tier];
   const cat = SUBCATEGORY_MAP[content.subCategory] ?? CATEGORY_MAP[content.category];
@@ -114,6 +127,16 @@ export default function ContentCard({ content }: { content: Content }) {
   };
 
   const opened = isVideoOpened(content.id);
+
+  if (adminBlocked) {
+    return (
+      <article className="kt-card flex aspect-[3/4] flex-col items-center justify-center gap-1 border-dashed border-rose-300 bg-rose-50 p-3 text-center">
+        <Ban size={18} className="text-rose-500" />
+        <p className="text-[11px] font-semibold text-rose-600">{adminBlocked}</p>
+        <p className="text-[9px] text-[var(--muted)]">새로고침 후 전 영역에서 제외</p>
+      </article>
+    );
+  }
 
   return (
     <article className="kt-card group flex flex-col overflow-hidden" onContextMenu={(e) => e.preventDefault()}>
@@ -226,6 +249,17 @@ export default function ContentCard({ content }: { content: Content }) {
 
         {opened && (
           <p className="text-[8px] font-medium text-emerald-600">✓ 오늘 열람한 콘텐츠</p>
+        )}
+
+        {isAdmin && (
+          <div className="mt-0.5 flex gap-1">
+            <button onClick={() => adminBlock("video")} className="flex flex-1 items-center justify-center gap-1 rounded border border-rose-200 bg-rose-50 py-1 text-[9px] font-semibold text-rose-600">
+              <Ban size={10} /> 콘텐츠 블락
+            </button>
+            <button onClick={() => adminBlock("handle")} className="flex flex-1 items-center justify-center gap-1 rounded border border-rose-200 bg-rose-50 py-1 text-[9px] font-semibold text-rose-600">
+              <Ban size={10} /> 인플루언서 블락
+            </button>
+          </div>
         )}
       </div>
 

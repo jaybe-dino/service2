@@ -150,8 +150,8 @@ function mapDbRow(r: DbRow): Content | null {
   });
 }
 
-// 틱톡 video_id 추출 (정적/DB 중복 제거 키)
-function tiktokVideoId(url: string): string | null {
+// 틱톡 video_id 추출 (정적/DB 중복 제거 키, 콘텐츠 블락 키)
+export function tiktokVideoId(url: string): string | null {
   const m = url.match(/\/video\/(\d+)/);
   return m ? m[1] : null;
 }
@@ -166,16 +166,17 @@ async function loadStatic(): Promise<Content[]> {
 }
 
 // 수집(DB) 피드 + 블락리스트 — 실패해도 정적 데이터로 동작하도록 폴백
-async function loadDb(): Promise<{ list: Content[]; blockedHandles: Set<string>; blockedBrands: Set<string> }> {
-  const empty = { list: [] as Content[], blockedHandles: new Set<string>(), blockedBrands: new Set<string>() };
+async function loadDb(): Promise<{ list: Content[]; blockedHandles: Set<string>; blockedBrands: Set<string>; blockedVideos: Set<string> }> {
+  const empty = { list: [] as Content[], blockedHandles: new Set<string>(), blockedBrands: new Set<string>(), blockedVideos: new Set<string>() };
   try {
     const res = await fetch(`${BASE_PATH}/api/feed`, { cache: "no-store" });
     if (!res.ok) return empty;
-    const data = (await res.json()) as { videos?: DbRow[]; blockedHandles?: string[]; blockedBrands?: string[] };
+    const data = (await res.json()) as { videos?: DbRow[]; blockedHandles?: string[]; blockedBrands?: string[]; blockedVideos?: string[] };
     return {
       list: (data.videos ?? []).map((r) => mapDbRow(r)).filter((c): c is Content => c !== null),
       blockedHandles: new Set(data.blockedHandles ?? []),
       blockedBrands: new Set((data.blockedBrands ?? []).map((b) => b.toLowerCase())),
+      blockedVideos: new Set(data.blockedVideos ?? []),
     };
   } catch {
     return empty;
@@ -202,11 +203,13 @@ export function loadContent(): Promise<Content[]> {
       merged.push(c);
     }
 
-    // 제외: ① 브랜드 공식/샵 계정 ② 블락된 인플루언서/브랜드 (정적+DB 공통)
+    // 제외: ① 브랜드 공식/샵 계정 ② 블락된 인플루언서/브랜드/콘텐츠 (정적+DB 공통)
     const visible = merged.filter((c) => {
       if (isOfficialHandle(c.influencerId)) return false;
       if (db.blockedHandles.has(c.influencerId)) return false;
       if (db.blockedBrands.has((BRAND_MAP[c.brandId]?.name ?? "").toLowerCase())) return false;
+      const vid = tiktokVideoId(c.tiktokUrl);
+      if (vid && db.blockedVideos.has(vid)) return false;
       return true;
     });
 

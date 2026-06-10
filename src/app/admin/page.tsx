@@ -395,8 +395,8 @@ export default function AdminPage() {
         <>
           {/* 블락리스트 관리 */}
           <div className="mb-4 rounded-md border border-rose-200 bg-rose-50/50 p-3">
-            <h3 className="mb-2 text-[12px] font-bold text-rose-700">블락리스트 ({blocks.length}) — 잘못 태깅된 인플루언서/브랜드 차단</h3>
-            <div className="mb-2 flex flex-wrap items-center gap-1.5">
+            <h3 className="mb-2 text-[12px] font-bold text-rose-700">블락리스트 ({blocks.length}) — 수집·노출 차단</h3>
+            <div className="mb-3 flex flex-wrap items-center gap-1.5">
               <select value={blockKind} onChange={(e) => setBlockKind(e.target.value as "handle" | "brand")} className="rounded border border-[var(--border)] px-2 py-1 text-[11px]">
                 <option value="handle">인플루언서(handle)</option>
                 <option value="brand">브랜드(brand)</option>
@@ -404,14 +404,28 @@ export default function AdminPage() {
               <input value={blockVal} onChange={(e) => setBlockVal(e.target.value)} placeholder={blockKind === "handle" ? "@handle" : "브랜드명"} className="rounded border border-[var(--border)] px-2 py-1 text-[11px]" />
               <button onClick={() => addBlock(blockKind, blockVal)} className="rounded-md bg-rose-600 px-3 py-1 text-[11px] font-semibold text-white">블락 추가</button>
             </div>
-            <div className="flex flex-wrap gap-1.5">
-              {blocks.map((b) => (
-                <span key={`${b.kind}:${b.value}`} className="inline-flex items-center gap-1 rounded bg-white px-2 py-0.5 text-[10px] text-rose-700 ring-1 ring-rose-200">
-                  {b.kind === "handle" ? "@" : "브랜드 "}{b.value}
-                  <button onClick={() => removeBlock(b.kind, b.value)} className="font-bold text-rose-400 hover:text-rose-700">×</button>
-                </span>
-              ))}
-              {!blocks.length && <span className="text-[10px] text-[var(--muted)]">블락된 항목 없음</span>}
+            <div className="grid gap-3 md:grid-cols-3">
+              {([
+                { kind: "handle", title: "인플루언서", pre: "@" },
+                { kind: "brand", title: "브랜드", pre: "" },
+                { kind: "video", title: "콘텐츠(영상)", pre: "" },
+              ] as const).map((grp) => {
+                const items = blocks.filter((b) => b.kind === grp.kind);
+                return (
+                  <div key={grp.kind} className="rounded border border-rose-100 bg-white p-2">
+                    <div className="mb-1.5 text-[10px] font-bold text-rose-700">{grp.title} ({items.length})</div>
+                    <div className="flex flex-wrap gap-1">
+                      {items.map((b) => (
+                        <span key={b.value} className="inline-flex items-center gap-1 rounded bg-rose-50 px-1.5 py-0.5 text-[10px] text-rose-700 ring-1 ring-rose-200">
+                          {grp.kind === "video" ? <a href={`https://www.tiktok.com/video/${b.value}`} target="_blank" rel="noreferrer" className="hover:underline">{b.value.slice(0, 10)}…</a> : `${grp.pre}${b.value}`}
+                          <button onClick={() => removeBlock(b.kind, b.value)} className="font-bold text-rose-400 hover:text-rose-700">×</button>
+                        </span>
+                      ))}
+                      {!items.length && <span className="text-[10px] text-[var(--muted)]">없음</span>}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
 

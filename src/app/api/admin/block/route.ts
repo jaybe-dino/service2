@@ -20,8 +20,13 @@ export async function POST(req: Request) {
   if (!isConfigured()) return NextResponse.json({ error: "DB 미설정" }, { status: 503 });
   await ensureSchema();
   const body = await req.json().catch(() => ({}));
-  const kind = body?.kind === "brand" ? "brand" : "handle";
-  const value = String(body?.value ?? "").trim();
+  const kind = body?.kind === "brand" ? "brand" : body?.kind === "video" ? "video" : "handle";
+  let value = String(body?.value ?? "").trim();
+  // 콘텐츠는 틱톡 video_id로 정규화 (URL이 넘어오면 id 추출)
+  if (kind === "video") {
+    const m = value.match(/\/video\/(\d+)/);
+    if (m) value = m[1];
+  }
   const reason = body?.reason ? String(body.reason).slice(0, 200) : null;
   if (!value) return NextResponse.json({ error: "value 필요" }, { status: 400 });
 
@@ -32,13 +37,15 @@ export async function POST(req: Request) {
   if (kind === "handle") {
     await sql`DELETE FROM videos WHERE handle=${value}`;
     await sql`DELETE FROM creators WHERE handle=${value}`;
+  } else if (kind === "video") {
+    await sql`DELETE FROM videos WHERE video_id=${value}`;
   } else {
     await sql`DELETE FROM videos WHERE brand_name=${value}`;
     await sql`DELETE FROM brand_stats WHERE brand_name=${value}`;
     await sql`UPDATE brand_tracking SET tracked=false WHERE brand_name=${value}`;
     await sql`UPDATE brand_requests SET status='failed', note='blocked' WHERE brand_name=${value} AND status IN ('pending','collecting')`;
   }
-  return NextResponse.json({ ok: true });
+  return NextResponse.json({ ok: true, kind, value });
 }
 
 // { kind, value } → 블락 해제
@@ -47,7 +54,7 @@ export async function DELETE(req: Request) {
   if (!isConfigured()) return NextResponse.json({ error: "DB 미설정" }, { status: 503 });
   await ensureSchema();
   const body = await req.json().catch(() => ({}));
-  const kind = body?.kind === "brand" ? "brand" : "handle";
+  const kind = body?.kind === "brand" ? "brand" : body?.kind === "video" ? "video" : "handle";
   const value = String(body?.value ?? "").trim();
   if (!value) return NextResponse.json({ error: "value 필요" }, { status: 400 });
   await sql`DELETE FROM blocklist WHERE kind=${kind} AND value=${value}`;
