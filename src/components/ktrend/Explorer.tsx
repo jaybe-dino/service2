@@ -365,7 +365,7 @@ function NewBrandModal({ onClose, onSubmit }: { onClose: () => void; onSubmit: (
           <button onClick={onClose} className="text-[var(--muted)] hover:text-[var(--fg)]"><X size={18} /></button>
         </div>
         <p className="mb-4 text-[11px] leading-relaxed text-[var(--muted)]">
-          제출 즉시 백엔드 수집 에이전트가 가동됩니다. 정확히 12시간의 AI 자가 학습 후 전용 틱톡 콘텐츠
+          제출 즉시 백엔드 수집 에이전트가 가동됩니다. 정확히 12시간의 자가 학습 후 전용 틱톡 콘텐츠
           분석 데이터가 해금됩니다. (데모에서는 빠르게 진행됩니다)
         </p>
         <div className="space-y-2.5">

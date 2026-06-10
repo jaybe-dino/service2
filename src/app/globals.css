@@ -1,13 +1,16 @@
 @import "tailwindcss";
 
-/* K-Trend Analytics — Light Clean 디자인 시스템 (v6.0) */
+/* Glovek — Light Clean 디자인 시스템 (핑크 그라데이션) */
 :root {
   --bg: #ffffff;
   --fg: #2d3748;
-  --accent: #1a56db;
-  --accent-light: #eff6ff;
+  --accent: #ec4899; /* pink-500 */
+  --accent-2: #f9a8d4; /* pink-300 */
+  --accent-deep: #db2777; /* pink-600 */
+  --accent-light: #fdf2f8; /* pink-50 */
   --border: #e2e8f0;
   --muted: #64748b;
+  --accent-grad: linear-gradient(135deg, #f472b6 0%, #ec4899 50%, #db2777 100%);
 }
 
 @theme inline {
@@ -57,11 +60,22 @@ body {
   cursor: pointer;
 }
 .kt-btn-primary {
-  background: var(--accent);
+  background: var(--accent-grad);
   color: #fff;
 }
 .kt-btn-primary:hover {
-  background: #1646b8;
+  filter: brightness(1.05);
+}
+
+/* 핑크 그라데이션 텍스트 (로고 등) */
+.kt-grad-text {
+  background: var(--accent-grad);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.kt-grad-bg {
+  background: var(--accent-grad);
 }
 .kt-btn-primary:active {
   transform: scale(0.97);

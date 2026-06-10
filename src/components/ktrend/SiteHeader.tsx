@@ -33,13 +33,10 @@ export default function SiteHeader() {
     <header className="sticky top-0 z-40 border-b border-[var(--border)] bg-white/90 backdrop-blur">
       <div className="mx-auto flex h-14 max-w-[1480px] items-center gap-6 px-4">
         <Link href="/explorer" className="flex items-center gap-2">
-          <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-[var(--accent)] text-white">
+          <span className="kt-grad-bg flex h-7 w-7 items-center justify-center rounded-lg text-white">
             <Sparkles size={16} />
           </span>
-          <span className="text-[15px] font-black tracking-tight">
-            Glo<span className="text-[var(--accent)]">vek</span>
-          </span>
-          <span className="kt-badge-brand ml-1">v6.0</span>
+          <span className="text-[16px] font-black tracking-tight kt-grad-text">Glovek</span>
         </Link>
 
         <nav className="hidden items-center gap-1 md:flex">

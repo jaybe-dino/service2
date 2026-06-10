@@ -101,7 +101,7 @@ export default function BrandDetailPage() {
         <div className="kt-card flex items-center gap-3 p-3 text-[11px]">
           <CalendarClock size={16} className="text-[var(--accent)]" />
           <div>
-            <div className="font-bold">주간 AI 학습 업데이트</div>
+            <div className="font-bold">주간 학습 업데이트</div>
             <div className="text-[var(--muted)]">매주 월·목 09:00 재학습 · 추정 지표 보정</div>
           </div>
         </div>

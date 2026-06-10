@@ -15,7 +15,7 @@ const VALUE = [
   { icon: TrendingUp, title: "콘텐츠별 성과 조회", desc: "모든 리스팅을 틱톡 영상(콘텐츠) 단위로 보고 조회수·참여율·추정 ROAS·기여 매출을 즉시 비교." },
   { icon: BarChart3, title: "브랜드 벤치마킹", desc: "K-뷰티 브랜드의 틱톡 마케팅 성과를 자사·경쟁사 한눈에 비교." },
   { icon: Contact, title: "검증된 인플루언서 DB", desc: "실제 매출을 발생시킨 어필리에이트 크리에이터의 성과와 컨택 라인 제공." },
-  { icon: Bell, title: "실시간 바이럴 감지", desc: "매주 월·목 정기 AI 트렌드 업데이트와 급상승 영상 푸시 알림." },
+  { icon: Bell, title: "실시간 바이럴 감지", desc: "매주 월·목 정기 트렌드 업데이트와 급상승 영상 푸시 알림." },
 ];
 
 export default function Home() {
@@ -40,7 +40,7 @@ export default function Home() {
       <section className="relative overflow-hidden border-b border-[var(--border)] bg-gradient-to-b from-[var(--accent-light)]/60 to-white">
         <HeroBackground />
         <div className="relative z-10 mx-auto max-w-[1480px] px-4 py-16 text-center">
-          <span className="kt-badge-brand mx-auto">{SERVICE.version} · 실데이터 기반 · TikTok 중심</span>
+          <span className="kt-badge-brand mx-auto">실데이터 기반 · TikTok 중심</span>
           <h1 className="mx-auto mt-4 max-w-3xl text-[34px] font-black leading-tight tracking-tight md:text-[44px]">
             글로벌 틱톡 K-뷰티 콘텐츠를<br />
             <span className="text-[var(--accent)]">브랜드·콘텐츠·인플루언서</span>별로 분석

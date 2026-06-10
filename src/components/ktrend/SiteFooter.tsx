@@ -8,9 +8,7 @@ export default function SiteFooter() {
       <div className="mx-auto max-w-[1480px] px-4 py-10">
         <div className="grid gap-8 md:grid-cols-4">
           <div className="md:col-span-2">
-            <div className="text-[15px] font-black">
-              Glo<span className="text-[var(--accent)]">vek</span>
-            </div>
+            <div className="text-[16px] font-black kt-grad-text">Glovek</div>
             <p className="mt-2 max-w-md text-[12px] leading-relaxed text-[var(--muted)]">
               {SERVICE.tagline}. K-뷰티 브랜드의 실제 틱톡 콘텐츠를
               브랜드·콘텐츠·인플루언서별로 분석합니다.
@@ -47,7 +45,7 @@ export default function SiteFooter() {
           <FooterCTAs />
         </div>
         <div className="mt-8 border-t border-[var(--border)] pt-4 text-[10px] text-[var(--muted)]">
-          © 2026 Glovek. 본 화면의 지표는 데모용 샘플 데이터입니다. {SERVICE.version}
+          © 2026 Glovek. 본 화면의 지표는 데모용 샘플 데이터입니다.
         </div>
       </div>
     </footer>
