@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Search, Send } from "lucide-react";
 import Link from "next/link";
 import PageShell from "@/components/ktrend/PageShell";
@@ -8,29 +8,55 @@ import CreatorName from "@/components/ktrend/CreatorName";
 import BookmarkButton from "@/components/ktrend/BookmarkButton";
 import InquiryModal from "@/components/ktrend/InquiryModal";
 import ProGate from "@/components/ktrend/ProGate";
-import { INFLUENCERS } from "@/data/ktrend/influencers";
-import { TIERS, type InfluencerTier } from "@/data/ktrend/meta";
-import { fmtCompact } from "@/data/ktrend/content";
+import { INFLUENCER_MAP } from "@/data/ktrend/influencers";
+import { BRAND_MAP } from "@/data/ktrend/brands";
+import { TIERS, tierOf, type InfluencerTier } from "@/data/ktrend/meta";
+import { fmtCompact, loadContent, type Content } from "@/data/ktrend/content";
 
 const TIER_KEYS = Object.keys(TIERS) as InfluencerTier[];
 const PAGE = 50;
+
+interface Inf { handle: string; tier: InfluencerTier; videos: number; totalViews: number; avgViews: number; brands: string[] }
 
 export default function InfluencersPage() {
   const [tier, setTier] = useState<InfluencerTier | "ALL">("ALL");
   const [q, setQ] = useState("");
   const [propose, setPropose] = useState<string | null>(null);
   const [visible, setVisible] = useState(PAGE);
+  const [content, setContent] = useState<Content[] | null>(null);
+
+  useEffect(() => { loadContent().then(setContent); }, []);
+
+  // 병합된 콘텐츠(정적+수집)에서 인플루언서 집계 → 콘텐츠 수와 매칭
+  const influencers = useMemo<Inf[]>(() => {
+    if (!content) return [];
+    const map = new Map<string, { handle: string; videos: number; totalViews: number; brands: Set<string> }>();
+    for (const c of content) {
+      const e = map.get(c.influencerId) ?? { handle: c.influencerId, videos: 0, totalViews: 0, brands: new Set<string>() };
+      e.videos += 1;
+      e.totalViews += c.views;
+      const bn = BRAND_MAP[c.brandId]?.name;
+      if (bn) e.brands.add(bn);
+      map.set(c.influencerId, e);
+    }
+    return [...map.values()]
+      .map((e) => {
+        const avgViews = Math.round(e.totalViews / e.videos);
+        return { handle: e.handle, videos: e.videos, totalViews: e.totalViews, avgViews, tier: INFLUENCER_MAP[e.handle]?.tier ?? tierOf(avgViews), brands: [...e.brands] };
+      })
+      .sort((a, b) => b.totalViews - a.totalViews);
+  }, [content]);
 
   const rows = useMemo(() => {
     const query = q.trim().toLowerCase();
-    return INFLUENCERS.filter(
+    return influencers.filter(
       (i) =>
         (tier === "ALL" || i.tier === tier) &&
         (!query ||
           i.handle.toLowerCase().includes(query) ||
           i.brands.some((b) => b.toLowerCase().includes(query))),
     );
-  }, [tier, q]);
+  }, [influencers, tier, q]);
 
   return (
     <PageShell>
@@ -38,7 +64,7 @@ export default function InfluencersPage() {
       <div className="mb-4">
         <h1 className="text-[20px] font-black tracking-tight">인플루언서 DB</h1>
         <p className="mt-1 text-[12px] text-[var(--muted)]">
-          실제 매출을 발생시킨 검증된 틱톡 어필리에이트 크리에이터 상위 {INFLUENCERS.length}명. 협업을 원하면 제안하기로 문의하세요.
+          실제 매출을 발생시킨 검증된 틱톡 어필리에이트 크리에이터 {content ? influencers.length.toLocaleString() : "…"}명 (수집 콘텐츠 기준 자동 집계). 협업을 원하면 제안하기로 문의하세요.
         </p>
       </div>
 
