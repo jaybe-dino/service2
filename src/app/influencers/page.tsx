@@ -7,6 +7,7 @@ import PageShell from "@/components/ktrend/PageShell";
 import CreatorName from "@/components/ktrend/CreatorName";
 import BookmarkButton from "@/components/ktrend/BookmarkButton";
 import InquiryModal from "@/components/ktrend/InquiryModal";
+import ProGate from "@/components/ktrend/ProGate";
 import { INFLUENCERS } from "@/data/ktrend/influencers";
 import { TIERS, type InfluencerTier } from "@/data/ktrend/meta";
 import { fmtCompact } from "@/data/ktrend/content";
@@ -33,6 +34,7 @@ export default function InfluencersPage() {
 
   return (
     <PageShell>
+      <ProGate label="인플루언서 DB">
       <div className="mb-4">
         <h1 className="text-[20px] font-black tracking-tight">인플루언서 DB</h1>
         <p className="mt-1 text-[12px] text-[var(--muted)]">
@@ -126,6 +128,7 @@ export default function InfluencersPage() {
       {propose && (
         <InquiryModal kind="proposal" context={`@${propose}`} onClose={() => setPropose(null)} />
       )}
+      </ProGate>
     </PageShell>
   );
 }

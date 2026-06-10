@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { ArrowLeft, Loader2, Lock, Megaphone, ShoppingBag, Activity, CalendarClock, RefreshCw } from "lucide-react";
 import PageShell from "@/components/ktrend/PageShell";
+import ProGate from "@/components/ktrend/ProGate";
 import BookmarkButton from "@/components/ktrend/BookmarkButton";
 import ContentCard from "@/components/ktrend/ContentCard";
 import { usePlan } from "@/components/ktrend/PlanContext";
@@ -75,6 +76,7 @@ export default function BrandDetailPage() {
 
   return (
     <PageShell>
+      <ProGate label="브랜드 상세">
       <Link href="/explorer" className="mb-3 inline-flex items-center gap-1 text-[11px] font-semibold text-[var(--muted)] hover:text-[var(--accent)]">
         <ArrowLeft size={13} /> 콘텐츠 탐색기
       </Link>
@@ -226,6 +228,7 @@ export default function BrandDetailPage() {
           </div>
         </>
       )}
+      </ProGate>
     </PageShell>
   );
 }
