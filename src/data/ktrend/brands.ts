@@ -63,6 +63,45 @@ export const BRAND_MAP: Record<string, Brand> = Object.fromEntries(
   BRANDS.map((b) => [b.id, b]),
 );
 
+// 브랜드명(정규화) → Brand. 수집 데이터(DB)는 brand_name으로 참조되므로 이름 기준 룩업 필요.
+export const BRAND_BY_NAME: Record<string, Brand> = Object.fromEntries(
+  BRANDS.map((b) => [b.name.toLowerCase(), b]),
+);
+
+let dynSeq = 0;
+
+// 정적 시드에 없는, 수집으로 새로 발굴된 브랜드를 런타임 등록.
+// (BRANDS/BRAND_MAP/BRAND_BY_NAME에 합류시켜 리스트·필터·상세가 함께 동작)
+export function ensureBrandByName(name: string): Brand {
+  const key = name.trim().toLowerCase();
+  const existing = BRAND_BY_NAME[key];
+  if (existing) return existing;
+  const category: CategoryId = "skincare";
+  const subCategory: SubCategoryId = SUB_BY_NAME[name] ?? subFallback(category);
+  const az = /^[A-Za-z]/.test(name) ? name[0].toUpperCase() : "#";
+  const brand: Brand = {
+    id: `db-${++dynSeq}-${key.replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "brand"}`,
+    name,
+    az,
+    category,
+    subCategory,
+    rank: 1000 + dynSeq,
+    videos: 0,
+    influencers: 0,
+    totalViews: 0,
+    avgViews: 0,
+    maxViews: 0,
+    adCount: 0,
+    shopCount: 0,
+    shopRatio: 0,
+  };
+  BRANDS.push(brand);
+  BRAND_MAP[brand.id] = brand;
+  BRAND_BY_NAME[key] = brand;
+  if (!BRAND_AZ_KEYS.includes(az)) BRAND_AZ_KEYS.push(az);
+  return brand;
+}
+
 export const BRAND_AZ_KEYS: string[] = Array.from(new Set(BRANDS.map((b) => b.az))).sort(
   (a, b) => (a === "#" ? 1 : b === "#" ? -1 : a.localeCompare(b)),
 );
