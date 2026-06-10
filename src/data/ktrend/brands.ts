@@ -1,5 +1,7 @@
 // 실제 K-뷰티 브랜드 DB (출처: brands_1to100_MASTER.xlsx, 98개 브랜드)
+// + 확장 브랜드 마스터 (출처: K-뷰티 422 브랜드 리스트, 신규 376개) — 수집 1차학습 대상
 import raw from "./real-brands.json";
+import collectMaster from "./collect-brands.json";
 import type { CategoryId, SubCategoryId } from "./meta";
 
 export interface Brand {
@@ -54,10 +56,42 @@ function subFallback(cat: CategoryId): SubCategoryId {
   return "skincare";
 }
 
-export const BRANDS: Brand[] = (raw as Omit<Brand, "subCategory">[])
+function slugId(name: string): string {
+  return name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "brand";
+}
+function azKey(name: string): string {
+  return /^[A-Za-z]/.test(name) ? name[0].toUpperCase() : "#";
+}
+
+const seedBrands: Brand[] = (raw as Omit<Brand, "subCategory">[])
   .slice()
   .sort((a, b) => a.rank - b.rank)
   .map((b) => ({ ...b, subCategory: SUB_BY_NAME[b.name] ?? subFallback(b.category) }));
+
+// 확장 마스터의 신규 브랜드(서비스 미수록분)를 디렉터리에 합류.
+// 콘텐츠 통계는 0에서 시작 → 수집 1차학습 후 loadContent가 실수치로 갱신.
+type MasterRow = { name: string; category: CategoryId; subCategory: SubCategoryId; isNew: boolean };
+const seedNames = new Set(seedBrands.map((b) => b.name.toLowerCase()));
+const extraBrands: Brand[] = (collectMaster as MasterRow[])
+  .filter((m) => m.isNew && !seedNames.has(m.name.toLowerCase()))
+  .map((m, i) => ({
+    id: `m-${slugId(m.name)}`,
+    name: m.name,
+    az: azKey(m.name),
+    category: m.category,
+    subCategory: m.subCategory,
+    rank: 1000 + i,
+    videos: 0,
+    influencers: 0,
+    totalViews: 0,
+    avgViews: 0,
+    maxViews: 0,
+    adCount: 0,
+    shopCount: 0,
+    shopRatio: 0,
+  }));
+
+export const BRANDS: Brand[] = [...seedBrands, ...extraBrands];
 
 export const BRAND_MAP: Record<string, Brand> = Object.fromEntries(
   BRANDS.map((b) => [b.id, b]),

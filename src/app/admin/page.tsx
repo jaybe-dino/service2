@@ -142,6 +142,15 @@ export default function AdminPage() {
     loadTracking();
   };
 
+  const seedMaster = async () => {
+    setToast("브랜드 마스터 시드 중…");
+    const r = await fetch("/api/admin/seed-brands", { method: "POST" });
+    const d = await r.json().catch(() => ({}));
+    setToast(r.ok ? `마스터 시드 완료: 추적 ${d.tracked ?? 0} / 1차학습 큐 ${d.queued ?? 0}` : "시드 실패");
+    setTimeout(() => setToast(""), 3500);
+    loadTracking();
+  };
+
   const runCollect = async () => {
     setCollecting(true);
     const r = await fetch("/api/admin/collect", { method: "POST" });
@@ -329,6 +338,7 @@ export default function AdminPage() {
             {tracking.length === 0 && (
               <button onClick={seedTracking} className="kt-btn kt-btn-outline px-3 py-1 text-[10px]">기존 브랜드 추적 등록</button>
             )}
+            <button onClick={seedMaster} className="kt-btn kt-btn-outline px-3 py-1 text-[10px]">브랜드 마스터(422) 시드 + 1차학습 큐</button>
           </div>
           <Table head={["브랜드", "추적", "수집 주기(시간)", "마지막 수집"]}>
             {tracking.map((t) => (

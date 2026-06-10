@@ -203,7 +203,9 @@ export function loadContent(): Promise<Content[]> {
     // (목록·필터에 표기되는 영상 수/인플루언서 수/조회수가 0으로 남지 않도록)
     const byBrand = new Map<string, Content[]>();
     for (const c of visible) {
-      if (!c.brandId.startsWith("db-")) continue;
+      // 통계 시드가 없는 브랜드(확장 마스터 m-, 런타임 발굴 db-)만 실수치로 갱신.
+      // 기존 98개 정적 브랜드는 전체 데이터셋 기준 통계라 덮어쓰지 않음.
+      if (!c.brandId.startsWith("db-") && !c.brandId.startsWith("m-")) continue;
       const arr = byBrand.get(c.brandId);
       if (arr) arr.push(c);
       else byBrand.set(c.brandId, [c]);

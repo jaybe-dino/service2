@@ -113,6 +113,8 @@ export function ensureSchema(): Promise<void> {
         last_collected_at timestamptz,
         updated_at timestamptz NOT NULL DEFAULT now()
       )`;
+      // 틱톡 핸들(프로파일 타겟 수집용) — 기존 테이블에도 보강
+      await sql`ALTER TABLE brand_tracking ADD COLUMN IF NOT EXISTS handle text`;
       // 수집 영상에서 집계된 인플루언서(크리에이터)
       await sql`CREATE TABLE IF NOT EXISTS creators (
         handle text PRIMARY KEY,

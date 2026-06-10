@@ -70,6 +70,19 @@ async function syncDerived(brandName: string) {
   await recomputeCreatorsForBrand(brandName);
 }
 
+// B안 webhook 적재 공용 함수: dedup upsert → 통계/인플루언서 갱신 → 추적/로그 갱신
+export async function ingestVideos(brandName: string, vids: CollectedVideo[]): Promise<number> {
+  await ensureSchema();
+  const rules = await getRules();
+  const c = await upsertVideos(brandName, vids, rules); // video_id 멱등 = 중복 저장 차단
+  if (c > 0) await syncDerived(brandName);
+  await sql`INSERT INTO brand_tracking (brand_name, last_collected_at, updated_at)
+            VALUES (${brandName}, now(), now())
+            ON CONFLICT (brand_name) DO UPDATE SET last_collected_at=now(), updated_at=now()`;
+  await sql`INSERT INTO collection_runs (kind, target, status, collected) VALUES ('ingest', ${brandName}, 'ok', ${c})`;
+  return c;
+}
+
 async function cursor(): Promise<number> {
   const r = await sql`SELECT value FROM admin_settings WHERE key='collect_cursor' LIMIT 1`;
   return Number((r.rows[0]?.value as { idx?: number })?.idx ?? 0);
@@ -101,8 +114,8 @@ export async function runCollection(opts: { maxPending?: number; maxRefresh?: nu
   for (const req of pending.rows) {
     await sql`UPDATE brand_requests SET status='collecting', updated_at=now() WHERE id=${req.id}`;
     try {
-      // 비용 최소화: 신규 브랜드 1회 수집량 축소(30)
-      const vids = await collectBrand({ brandName: req.brand_name, handle: req.handle, hashtags: req.hashtags, limit: 30 });
+      // 신규 브랜드 1차학습: 최근 1년치 백필(이후엔 증분만 → 중복/비용 최소화)
+      const vids = await collectBrand({ brandName: req.brand_name, handle: req.handle, hashtags: req.hashtags, backfillDays: 365, limit: 60 });
       const c = await upsertVideos(req.brand_name, vids, rules);
       await syncDerived(req.brand_name); // 콘텐츠→브랜드통계·인플루언서 동시 갱신
       collected += c;

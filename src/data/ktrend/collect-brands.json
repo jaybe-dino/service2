@@ -1,0 +1,3378 @@
+[
+{
+"name": "Aestura",
+"korean": "에스트라",
+"category": "skincare",
+"subCategory": "skincare",
+"handle": "aestura_us",
+"isNew": false
+},
+{
+"name": "Beauty of Joseon",
+"korean": "조선미녀",
+"category": "skincare",
+"subCategory": "skincare",
+"handle": "beautyofjoseon.official",
+"isNew": true
+},
+{
+"name": "Dr. Althea",
+"korean": "닥터알테아",
+"category": "skincare",
+"subCategory": "skincare",
+"handle": "dr.althea_official",
+"isNew": false
+},
+{
+"name": "IOPE",
+"korean": "아이오페",
+"category": "skincare",
+"subCategory": "skincare",
+"handle": "iope_official",
+"isNew": false
+},
+{
+"name": "Medicube",
+"korean": "메디큐브",
+"category": "skincare",
+"subCategory": "skincare",
+"handle": "medicube_official",
+"isNew": false
+},
+{
+"name": "Haruharu Wonder",
+"korean": "하루하루 원더",
+"category": "skincare",
+"subCategory": "skincare",
+"handle": "haruharuwonder_official",
+"isNew": false
+},
+{
+"name": "Sulwhasoo",
+"korean": "설화수",
+"category": "skincare",
+"subCategory": "skincare",
+"handle": "sulwhasoo_official",
+"isNew": true
+},
+{
+"name": "Anua",
+"korean": "아누아",
+"category": "skincare",
+"subCategory": "skincare",
+"handle": "anua.skincare_kr",
+"isNew": false
+},
+{
+"name": "COSRX",
+"korean": "코스알엑스",
+"category": "skincare",
+"subCategory": "skincare",
+"handle": "cosrx_official",
+"isNew": true
+},
+{
+"name": "SeoulCeuticals",
+"korean": "서울슈티컬즈",
+"category": "skincare",
+"subCategory": "skincare",
+"handle": null,
+"isNew": true
+},
+{
+"name": "dear, klairs",
+"korean": "디어, 클레어스",
+"category": "skincare",
+"subCategory": "skincare",
+"handle": null,
+"isNew": true
+},
+{
+"name": "Cos De BAHA",
+"korean": "코스드바하",
+"category": "skincare",
+"subCategory": "skincare",
+"handle": "cosdebaha",
+"isNew": true
+},
+{
+"name": "MIZON",
+"korean": "미샤",
+"category": "skincare",
+"subCategory": "skincare",
+"handle": "mizon_official",
+"isNew": true
+},
+{
+"name": "Elizavecca",
+"korean": "엘리자베카",
+"category": "skincare",
+"subCategory": "skincare",
+"handle": "elizavecca_official",
+"isNew": true
+},
+{
+"name": "IUNIK",
+"korean": "아이유닉",
+"category": "skincare",
+"subCategory": "skincare",
+"handle": null,
+"isNew": false
+},
+{
+"name": "MISSHA",
+"korean": "미샤",
+"category": "skincare",
+"subCategory": "skincare",
+"handle": "missha.official",
+"isNew": false
+},
+{
+"name": "SOME BY MI",
+"korean": "썸바이미",
+"category": "skincare",
+"subCategory": "skincare",
+"handle": "somebymi.official",
+"isNew": false
+},
+{
+"name": "innisfree",
+"korean": "이니스프리",
+"category": "skincare",
+"subCategory": "skincare",
+"handle": "innisfreeofficial",
+"isNew": false
+},
+{
+"name": "numbuzin",
+"korean": "넘버즈인",
+"category": "skincare",
+"subCategory": "skincare",
+"handle": null,
+"isNew": false
+},
+{
+"name": "Torriden",
+"korean": "토리든",
+"category": "skincare",
+"subCategory": "skincare",
+"handle": null,
+"isNew": false
+},
+{
+"name": "Goodal",
+"korean": "굿달",
+"category": "skincare",
+"subCategory": "skincare",
+"handle": null,
+"isNew": false
+},
+{
+"name": "I'm from",
+"korean": "아임프롬",
+"category": "skincare",
+"subCategory": "skincare",
+"handle": null,
+"isNew": false
+},
+{
+"name": "Isntree",
+"korean": "이즈앤트리",
+"category": "skincare",
+"subCategory": "skincare",
+"handle": null,
+"isNew": false
+},
+{
+"name": "mixsoon",
+"korean": "믹순",
+"category": "skincare",
+"subCategory": "skincare",
+"handle": "mixsoon_official",
+"isNew": false
+},
+{
+"name": "Purito",
+"korean": "푸리토",
+"category": "skincare",
+"subCategory": "skincare",
+"handle": "purito_official",
+"isNew": false
+},
+{
+"name": "celimax",
+"korean": "셀리맥스",
+"category": "skincare",
+"subCategory": "skincare",
+"handle": null,
+"isNew": false
+},
+{
+"name": "TOCOBO",
+"korean": "토코보",
+"category": "skincare",
+"subCategory": "skincare",
+"handle": "tocobo_official",
+"isNew": false
+},
+{
+"name": "Acwell",
+"korean": "아크웰",
+"category": "skincare",
+"subCategory": "skincare",
+"handle": "acwell_official",
+"isNew": true
+},
+{
+"name": "Banila Co",
+"korean": "바닐라코",
+"category": "skincare",
+"subCategory": "skincare",
+"handle": "banilaco_kr",
+"isNew": true
+},
+{
+"name": "Neogen Dermalogy",
+"korean": "네오젠 더마로지",
+"category": "skincare",
+"subCategory": "skincare",
+"handle": "neogen_official",
+"isNew": true
+},
+{
+"name": "Mediheal",
+"korean": "메디힐",
+"category": "skincare",
+"subCategory": "skincare",
+"handle": "mediheal_official",
+"isNew": false
+},
+{
+"name": "Aesthetic Hydration Cosmetics",
+"korean": "AHC",
+"category": "skincare",
+"subCategory": "skincare",
+"handle": null,
+"isNew": true
+},
+{
+"name": "Centellian24",
+"korean": "센텔리안24",
+"category": "skincare",
+"subCategory": "skincare",
+"handle": "centellian24_official",
+"isNew": false
+},
+{
+"name": "Dr. Jart+",
+"korean": "닥터자르트",
+"category": "skincare",
+"subCategory": "skincare",
+"handle": "drjart_official",
+"isNew": false
+},
+{
+"name": "Abib",
+"korean": "아비브",
+"category": "skincare",
+"subCategory": "skincare",
+"handle": "abib.global",
+"isNew": false
+},
+{
+"name": "VT Cosmetics",
+"korean": "VT 코스메틱",
+"category": "skincare",
+"subCategory": "skincare",
+"handle": "vtcosmetics_official",
+"isNew": false
+},
+{
+"name": "Manyo Factory",
+"korean": "마녀공장",
+"category": "skincare",
+"subCategory": "skincare",
+"handle": "manyofactory_official",
+"isNew": true
+},
+{
+"name": "CKD",
+"korean": "CKD",
+"category": "skincare",
+"subCategory": "skincare",
+"handle": null,
+"isNew": true
+},
+{
+"name": "LBB",
+"korean": "LBB",
+"category": "skincare",
+"subCategory": "skincare",
+"handle": null,
+"isNew": true
+},
+{
+"name": "NDP",
+"korean": "NDP",
+"category": "skincare",
+"subCategory": "skincare",
+"handle": null,
+"isNew": true
+},
+{
+"name": "SNP",
+"korean": "SNP",
+"category": "skincare",
+"subCategory": "skincare",
+"handle": null,
+"isNew": true
+},
+{
+"name": "rdrd",
+"korean": "rdrd",
+"category": "skincare",
+"subCategory": "skincare",
+"handle": null,
+"isNew": true
+},
+{
+"name": "가히",
+"korean": "가히",
+"category": "skincare",
+"subCategory": "skincare",
+"handle": null,
+"isNew": true
+},
+{
+"name": "구달",
+"korean": "구달",
+"category": "skincare",
+"subCategory": "skincare",
+"handle": null,
+"isNew": true
+},
+{
+"name": "그라운드플랜",
+"korean": "그라운드플랜",
+"category": "skincare",
+"subCategory": "skincare",
+"handle": null,
+"isNew": true
+},
+{
+"name": "그라펜",
+"korean": "그라펜",
+"category": "skincare",
+"subCategory": "skincare",
+"handle": "grafenphofficial",
+"isNew": true
+},
+{
+"name": "나노레시피",
+"korean": "나노레시피",
+"category": "skincare",
+"subCategory": "skincare",
+"handle": null,
+"isNew": true
+},
+{
+"name": "나인위시스",
+"korean": "나인위시스",
+"category": "skincare",
+"subCategory": "skincare",
+"handle": null,
+"isNew": true
+},
+{
+"name": "네이처리퍼블릭",
+"korean": "네이처리퍼블릭",
+"category": "skincare",
+"subCategory": "skincare",
+"handle": "naturerepublic_official",
+"isNew": true
+},
+{
+"name": "뉴라덤",
+"korean": "뉴라덤",
+"category": "skincare",
+"subCategory": "skincare",
+"handle": null,
+"isNew": true
+},
+{
+"name": "다룸",
+"korean": "다룸",
+"category": "skincare",
+"subCategory": "skincare",
+"handle": null,
+"isNew": true
+},
+{
+"name": "다슈",
+"korean": "다슈",
+"category": "skincare",
+"subCategory": "skincare",
+"handle": "dashu_korea",
+"isNew": true
+},
+{
+"name": "닥터디퍼런트",
+"korean": "닥터디퍼런트",
+"category": "skincare",
+"subCategory": "skincare",
+"handle": null,
+"isNew": true
+},
+{
+"name": "닥터멜락신",
+"korean": "닥터멜락신",
+"category": "skincare",
+"subCategory": "skincare",
+"handle": "dr.melaxin_global",
+"isNew": true
+},
+{
+"name": "닥터엘시아",
+"korean": "닥터엘시아",
+"category": "skincare",
+"subCategory": "skincare",
+"handle": "dr.althea_kr",
+"isNew": true
+},
+{
+"name": "닥터오라클",
+"korean": "닥터오라클",
+"category": "skincare",
+"subCategory": "skincare",
+"handle": null,
+"isNew": true
+},
+{
+"name": "닥터지",
+"korean": "닥터지",
+"category": "skincare",
+"subCategory": "skincare",
+"handle": "dr.g_global",
+"isNew": true
+},
+{
+"name": "닥터하우쉬카",
+"korean": "닥터하우쉬카",
+"category": "skincare",
+"subCategory": "skincare",
+"handle": null,
+"isNew": true
+},
+{
+"name": "달바",
+"korean": "달바",
+"category": "skincare",
+"subCategory": "skincare",
+"handle": "dalba_global",
+"isNew": true
+},
+{
+"name": "더랩바이블랑두",
+"korean": "더랩바이블랑두",
+"category": "skincare",
+"subCategory": "skincare",
+"handle": "thelabbyblancdoux",
+"isNew": true
+},
+{
+"name": "더마라인",
+"korean": "더마라인",
+"category": "skincare",
+"subCategory": "skincare",
+"handle": null,
+"isNew": true
+},
+{
+"name": "더마젼시",
+"korean": "더마젼시",
+"category": "skincare",
+"subCategory": "skincare",
+"handle": null,
+"isNew": true
+},
+{
+"name": "더마토리",
+"korean": "더마토리",
+"category": "skincare",
+"subCategory": "skincare",
+"handle": null,
+"isNew": true
+},
+{
+"name": "더마팩토리",
+"korean": "더마팩토리",
+"category": "skincare",
+"subCategory": "skincare",
+"handle": null,
+"isNew": true
+},
+{
+"name": "더마펌",
+"korean": "더마펌",
+"category": "skincare",
+"subCategory": "skincare",
+"handle": null,
+"isNew": true
+},
+{
+"name": "더마픽스",
+"korean": "더마픽스",
+"category": "skincare",
+"subCategory": "skincare",
+"handle": null,
+"isNew": true
+},
+{
+"name": "더바디샵",
+"korean": "더바디샵",
+"category": "skincare",
+"subCategory": "skincare",
+"handle": null,
+"isNew": true
+},
+{
+"name": "더파이에센셜",
+"korean": "더파이에센셜",
+"category": "skincare",
+"subCategory": "skincare",
+"handle": null,
+"isNew": true
+},
+{
+"name": "더페이스샵",
+"korean": "더페이스샵",
+"category": "skincare",
+"subCategory": "skincare",
+"handle": null,
+"isNew": true
+},
+{
+"name": "더하르나이",
+"korean": "더하르나이",
+"category": "skincare",
+"subCategory": "skincare",
+"handle": null,
+"isNew": true
+},
+{
+"name": "더후",
+"korean": "더후",
+"category": "skincare",
+"subCategory": "skincare",
+"handle": null,
+"isNew": true
+},
+{
+"name": "도미나스",
+"korean": "도미나스",
+"category": "skincare",
+"subCategory": "skincare",
+"handle": null,
+"isNew": true
+},
+{
+"name": "동국제약",
+"korean": "동국제약",
+"category": "skincare",
+"subCategory": "skincare",
+"handle": null,
+"isNew": true
+},
+{
+"name": "동아제약",
+"korean": "동아제약",
+"category": "skincare",
+"subCategory": "skincare",
+"handle": null,
+"isNew": true
+},
+{
+"name": "듀이트리",
+"korean": "듀이트리",
+"category": "skincare",
+"subCategory": "skincare",
+"handle": "dewytree_global",
+"isNew": true
+},
+{
+"name": "디마르3",
+"korean": "디마르3",
+"category": "skincare",
+"subCategory": "skincare",
+"handle": null,
+"isNew": true
+},
+{
+"name": "디마프",
+"korean": "디마프",
+"category": "skincare",
+"subCategory": "skincare",
+"handle": null,
+"isNew": true
+},
+{
+"name": "디에이브",
+"korean": "디에이브",
+"category": "skincare",
+"subCategory": "skincare",
+"handle": null,
+"isNew": true
+},
+{
+"name": "디퍼",
+"korean": "디퍼",
+"category": "skincare",
+"subCategory": "skincare",
+"handle": null,
+"isNew": true
+},
+{
+"name": "딕셔니스트",
+"korean": "딕셔니스트",
+"category": "skincare",
+"subCategory": "skincare",
+"handle": null,
+"isNew": true
+},
+{
+"name": "라네즈",
+"korean": "라네즈",
+"category": "skincare",
+"subCategory": "skincare",
+"handle": "laneige_kr",
+"isNew": true
+},
+{
+"name": "라돌프",
+"korean": "라돌프",
+"category": "skincare",
+"subCategory": "skincare",
+"handle": null,
+"isNew": true
+},
+{
+"name": "라빠레뜨 뷰티",
+"korean": "라빠레뜨 뷰티",
+"category": "skincare",
+"subCategory": "skincare",
+"handle": null,
+"isNew": true
+},
+{
+"name": "라씨엘르",
+"korean": "라씨엘르",
+"category": "skincare",
+"subCategory": "skincare",
+"handle": null,
+"isNew": true
+},
+{
+"name": "라운드랩",
+"korean": "라운드랩",
+"category": "skincare",
+"subCategory": "skincare",
+"handle": "roundlab.us",
+"isNew": true
+},
+{
+"name": "랑벨",
+"korean": "랑벨",
+"category": "skincare",
+"subCategory": "skincare",
+"handle": null,
+"isNew": true
+},
+{
+"name": "러븀",
+"korean": "러븀",
+"category": "skincare",
+"subCategory": "skincare",
+"handle": null,
+"isNew": true
+},
+{
+"name": "레이어랩",
+"korean": "레이어랩",
+"category": "skincare",
+"subCategory": "skincare",
+"handle": null,
+"isNew": true
+},
+{
+"name": "AHC(에이에이치씨)",
+"korean": "AHC",
+"category": "skincare",
+"subCategory": "cleansing",
+"handle": "ahc.official",
+"isNew": true
+},
+{
+"name": "Arencia(아렌시아)",
+"korean": "Arencia",
+"category": "skincare",
+"subCategory": "cleansing",
+"handle": null,
+"isNew": true
+},
+{
+"name": "Aromatica(아로마티카)",
+"korean": "Aromatica",
+"category": "skincare",
+"subCategory": "cleansing",
+"handle": null,
+"isNew": true
+},
+{
+"name": "Axis-Y(액시스 와이)",
+"korean": "Axis-Y",
+"category": "skincare",
+"subCategory": "cleansing",
+"handle": "axisy_official",
+"isNew": true
+},
+{
+"name": "B.LAB(비랩)",
+"korean": "B.LAB",
+"category": "skincare",
+"subCategory": "cleansing",
+"handle": null,
+"isNew": true
+},
+{
+"name": "BIODANCE(바이오댄스)",
+"korean": "BIODANCE",
+"category": "skincare",
+"subCategory": "cleansing",
+"handle": "biodance_official",
+"isNew": true
+},
+{
+"name": "Belif(빌리프)",
+"korean": "Belif",
+"category": "skincare",
+"subCategory": "cleansing",
+"handle": "belif",
+"isNew": true
+},
+{
+"name": "Blanc Nature(블랑네이처)",
+"korean": "Blanc Nature",
+"category": "skincare",
+"subCategory": "cleansing",
+"handle": null,
+"isNew": true
+},
+{
+"name": "Bonajour(보나쥬르)",
+"korean": "Bonajour",
+"category": "skincare",
+"subCategory": "cleansing",
+"handle": "bonajour_global",
+"isNew": true
+},
+{
+"name": "By Wishtrend(바이위시트렌드)",
+"korean": "By Wishtrend",
+"category": "skincare",
+"subCategory": "cleansing",
+"handle": null,
+"isNew": true
+},
+{
+"name": "Dermall Matrix(더멀매트릭스)",
+"korean": "Dermall Matrix",
+"category": "skincare",
+"subCategory": "cleansing",
+"handle": null,
+"isNew": true
+},
+{
+"name": "Dr.G(닥터지)",
+"korean": "Dr.G",
+"category": "skincare",
+"subCategory": "cleansing",
+"handle": null,
+"isNew": true
+},
+{
+"name": "EQQUALBERRY(이퀄베리)",
+"korean": "EQQUALBERRY",
+"category": "skincare",
+"subCategory": "cleansing",
+"handle": null,
+"isNew": true
+},
+{
+"name": "EasyDew(이지듀)",
+"korean": "EasyDew",
+"category": "skincare",
+"subCategory": "cleansing",
+"handle": "easydew.global",
+"isNew": true
+},
+{
+"name": "Hanyul(한율)",
+"korean": "Hanyul",
+"category": "skincare",
+"subCategory": "cleansing",
+"handle": null,
+"isNew": true
+},
+{
+"name": "Heimish(헤이미쉬)",
+"korean": "Heimish",
+"category": "skincare",
+"subCategory": "cleansing",
+"handle": null,
+"isNew": true
+},
+{
+"name": "Heveblue(헤브블루)",
+"korean": "Heveblue",
+"category": "skincare",
+"subCategory": "cleansing",
+"handle": null,
+"isNew": true
+},
+{
+"name": "House of Hur(하우스 오브 허)",
+"korean": "House of Hur",
+"category": "skincare",
+"subCategory": "cleansing",
+"handle": "houseofhur",
+"isNew": true
+},
+{
+"name": "I DEW CARE(아이듀케어)",
+"korean": "I DEW CARE",
+"category": "skincare",
+"subCategory": "cleansing",
+"handle": null,
+"isNew": true
+},
+{
+"name": "Ilso(일소)",
+"korean": "Ilso",
+"category": "skincare",
+"subCategory": "cleansing",
+"handle": null,
+"isNew": true
+},
+{
+"name": "Illiyoon(일리윤)",
+"korean": "Illiyoon",
+"category": "skincare",
+"subCategory": "cleansing",
+"handle": null,
+"isNew": true
+},
+{
+"name": "JiYu(지유)",
+"korean": "JiYu",
+"category": "skincare",
+"subCategory": "cleansing",
+"handle": null,
+"isNew": true
+},
+{
+"name": "Jumiso(주미소)",
+"korean": "Jumiso",
+"category": "skincare",
+"subCategory": "cleansing",
+"handle": null,
+"isNew": true
+},
+{
+"name": "Lagom(라곰)",
+"korean": "Lagom",
+"category": "skincare",
+"subCategory": "cleansing",
+"handle": null,
+"isNew": true
+},
+{
+"name": "LANEIGE(라네즈)",
+"korean": "LANEIGE",
+"category": "skincare",
+"subCategory": "cleansing",
+"handle": "laneige_kr",
+"isNew": true
+},
+{
+"name": "makeprem(메이크프렘)",
+"korean": "makeprem",
+"category": "skincare",
+"subCategory": "cleansing",
+"handle": null,
+"isNew": true
+},
+{
+"name": "Manyo(마녀공장)",
+"korean": "Manyo",
+"category": "skincare",
+"subCategory": "cleansing",
+"handle": "manyofactory_official",
+"isNew": true
+},
+{
+"name": "Mary&May(마리앤메이)",
+"korean": "Mary&May",
+"category": "skincare",
+"subCategory": "cleansing",
+"handle": "marynmay_official",
+"isNew": true
+},
+{
+"name": "Melixir(멜릭서)",
+"korean": "Melixir",
+"category": "skincare",
+"subCategory": "cleansing",
+"handle": null,
+"isNew": true
+},
+{
+"name": "MENOKIN(메노킨)",
+"korean": "MENOKIN",
+"category": "skincare",
+"subCategory": "cleansing",
+"handle": null,
+"isNew": true
+},
+{
+"name": "Needly(니들리)",
+"korean": "Needly",
+"category": "skincare",
+"subCategory": "cleansing",
+"handle": null,
+"isNew": true
+},
+{
+"name": "O HUI(오휘)",
+"korean": "O HUI",
+"category": "skincare",
+"subCategory": "cleansing",
+"handle": null,
+"isNew": true
+},
+{
+"name": "OBgE(오브제)",
+"korean": "OBgE",
+"category": "skincare",
+"subCategory": "cleansing",
+"handle": null,
+"isNew": true
+},
+{
+"name": "P.CALM(피캄)",
+"korean": "P.CALM",
+"category": "skincare",
+"subCategory": "cleansing",
+"handle": null,
+"isNew": true
+},
+{
+"name": "PEACH & LILY(피치앤릴리)",
+"korean": "PEACH & LILY",
+"category": "skincare",
+"subCategory": "cleansing",
+"handle": null,
+"isNew": true
+},
+{
+"name": "Peach Slices(피치 슬라이스)",
+"korean": "Peach Slices",
+"category": "skincare",
+"subCategory": "cleansing",
+"handle": null,
+"isNew": true
+},
+{
+"name": "Pyunkang Yul(편강율)",
+"korean": "Pyunkang Yul",
+"category": "skincare",
+"subCategory": "cleansing",
+"handle": null,
+"isNew": true
+},
+{
+"name": "ROUND LAB(라운드랩)",
+"korean": "ROUND LAB",
+"category": "skincare",
+"subCategory": "cleansing",
+"handle": "roundlab.us",
+"isNew": true
+},
+{
+"name": "REJURAN(리쥬란)",
+"korean": "REJURAN",
+"category": "skincare",
+"subCategory": "cleansing",
+"handle": null,
+"isNew": true
+},
+{
+"name": "S.NATURE(에스네이처)",
+"korean": "S.NATURE",
+"category": "skincare",
+"subCategory": "cleansing",
+"handle": null,
+"isNew": true
+},
+{
+"name": "SKIN&LAB(스킨앤랩)",
+"korean": "SKIN&LAB",
+"category": "skincare",
+"subCategory": "cleansing",
+"handle": "skinnlab_global",
+"isNew": true
+},
+{
+"name": "SKIN1004(스킨천사)",
+"korean": "SKIN1004",
+"category": "skincare",
+"subCategory": "cleansing",
+"handle": "skin1004official",
+"isNew": true
+},
+{
+"name": "SKINFOOD(스킨푸드)",
+"korean": "SKINFOOD",
+"category": "skincare",
+"subCategory": "cleansing",
+"handle": null,
+"isNew": true
+},
+{
+"name": "The Face Shop(더페이스샵)",
+"korean": "The Face Shop",
+"category": "skincare",
+"subCategory": "cleansing",
+"handle": null,
+"isNew": true
+},
+{
+"name": "TIRTIR(티르티르)",
+"korean": "TIRTIR",
+"category": "skincare",
+"subCategory": "cleansing",
+"handle": "tirtir_official",
+"isNew": true
+},
+{
+"name": "TONYMOLY(토니모리)",
+"korean": "TONYMOLY",
+"category": "skincare",
+"subCategory": "cleansing",
+"handle": null,
+"isNew": true
+},
+{
+"name": "Vegreen(비건)",
+"korean": "Vegreen",
+"category": "skincare",
+"subCategory": "cleansing",
+"handle": "eatwithreen",
+"isNew": true
+},
+{
+"name": "VT(브이티)",
+"korean": "VT",
+"category": "skincare",
+"subCategory": "cleansing",
+"handle": null,
+"isNew": true
+},
+{
+"name": "Wellage(웰라쥬)",
+"korean": "Wellage",
+"category": "skincare",
+"subCategory": "cleansing",
+"handle": null,
+"isNew": true
+},
+{
+"name": "WHIPPED(휩드)",
+"korean": "WHIPPED",
+"category": "skincare",
+"subCategory": "cleansing",
+"handle": null,
+"isNew": true
+},
+{
+"name": "Nature Republic (네이처리퍼블릭)",
+"korean": "Nature Republic",
+"category": "skincare",
+"subCategory": "derma",
+"handle": "naturerepublic_official",
+"isNew": true
+},
+{
+"name": "Physiogel",
+"korean": "피지오겔",
+"category": "skincare",
+"subCategory": "derma",
+"handle": null,
+"isNew": true
+},
+{
+"name": "AboutMe (어바웃미)",
+"korean": "AboutMe",
+"category": "skincare",
+"subCategory": "derma",
+"handle": null,
+"isNew": true
+},
+{
+"name": "Acnes",
+"korean": "아크네스",
+"category": "skincare",
+"subCategory": "derma",
+"handle": null,
+"isNew": true
+},
+{
+"name": "AMPLE:N (앰플엔)",
+"korean": "AMPLE:N",
+"category": "skincare",
+"subCategory": "derma",
+"handle": null,
+"isNew": true
+},
+{
+"name": "d'Alba",
+"korean": "달바",
+"category": "skincare",
+"subCategory": "derma",
+"handle": null,
+"isNew": false
+},
+{
+"name": "Etude",
+"korean": "에뛰드",
+"category": "skincare",
+"subCategory": "derma",
+"handle": "etude_official",
+"isNew": true
+},
+{
+"name": "CLIO",
+"korean": "클리오",
+"category": "skincare",
+"subCategory": "derma",
+"handle": "clio_official_kr",
+"isNew": false
+},
+{
+"name": "The Saem",
+"korean": "더샘",
+"category": "skincare",
+"subCategory": "derma",
+"handle": "thesaem_official",
+"isNew": true
+},
+{
+"name": "Peripera",
+"korean": "페리페라",
+"category": "skincare",
+"subCategory": "derma",
+"handle": "peripera_official_kr",
+"isNew": false
+},
+{
+"name": "Rom&nd",
+"korean": "롬앤",
+"category": "skincare",
+"subCategory": "derma",
+"handle": "romandyou_official",
+"isNew": false
+},
+{
+"name": "3CE (쓰리씨이)",
+"korean": "3CE",
+"category": "skincare",
+"subCategory": "derma",
+"handle": "3ce_global",
+"isNew": true
+},
+{
+"name": "Too Cool For School",
+"korean": "투쿨포스쿨",
+"category": "skincare",
+"subCategory": "derma",
+"handle": null,
+"isNew": true
+},
+{
+"name": "eSpoir",
+"korean": "에스쁘아",
+"category": "skincare",
+"subCategory": "derma",
+"handle": "espoir_official_us",
+"isNew": false
+},
+{
+"name": "HERA",
+"korean": "헤라",
+"category": "skincare",
+"subCategory": "derma",
+"handle": "herabeauty.official",
+"isNew": false
+},
+{
+"name": "Mamonde",
+"korean": "마몽드",
+"category": "skincare",
+"subCategory": "derma",
+"handle": "mamonde_kr",
+"isNew": false
+},
+{
+"name": "Primera",
+"korean": "프리메라",
+"category": "skincare",
+"subCategory": "derma",
+"handle": null,
+"isNew": true
+},
+{
+"name": "Real Barrier",
+"korean": "리얼베리어",
+"category": "skincare",
+"subCategory": "derma",
+"handle": null,
+"isNew": true
+},
+{
+"name": "Cell Fusion C",
+"korean": "셀퓨전씨",
+"category": "skincare",
+"subCategory": "derma",
+"handle": null,
+"isNew": true
+},
+{
+"name": "CNP Laboratory",
+"korean": "차앤박",
+"category": "skincare",
+"subCategory": "derma",
+"handle": null,
+"isNew": false
+},
+{
+"name": "WAKEMAKE",
+"korean": "웨이크메이크",
+"category": "skincare",
+"subCategory": "derma",
+"handle": "wakemake.official",
+"isNew": true
+},
+{
+"name": "colorgram",
+"korean": "컬러그램",
+"category": "skincare",
+"subCategory": "derma",
+"handle": "colorgram.official",
+"isNew": false
+},
+{
+"name": "FilliMilli",
+"korean": "필리밀리",
+"category": "skincare",
+"subCategory": "derma",
+"handle": null,
+"isNew": true
+},
+{
+"name": "ROUND A'ROUND",
+"korean": "라운드어라운드",
+"category": "skincare",
+"subCategory": "derma",
+"handle": null,
+"isNew": true
+},
+{
+"name": "Botanic Heal boH",
+"korean": "보타닉힐보",
+"category": "skincare",
+"subCategory": "derma",
+"handle": null,
+"isNew": true
+},
+{
+"name": "BRING GREEN",
+"korean": "브링그린",
+"category": "skincare",
+"subCategory": "derma",
+"handle": "eatwithreen",
+"isNew": true
+},
+{
+"name": "Shingmulnara",
+"korean": "식물나라",
+"category": "skincare",
+"subCategory": "derma",
+"handle": null,
+"isNew": true
+},
+{
+"name": "Huxley",
+"korean": "헉슬리",
+"category": "skincare",
+"subCategory": "derma",
+"handle": null,
+"isNew": false
+},
+{
+"name": "cosnori",
+"korean": "코스노리",
+"category": "skincare",
+"subCategory": "derma",
+"handle": "cosnori_official_kr",
+"isNew": true
+},
+{
+"name": "beplain",
+"korean": "비플레인",
+"category": "skincare",
+"subCategory": "derma",
+"handle": null,
+"isNew": true
+},
+{
+"name": "3CE",
+"korean": "3CE",
+"category": "skincare",
+"subCategory": "derma",
+"handle": null,
+"isNew": false
+},
+{
+"name": "It's skin",
+"korean": "잇츠스킨",
+"category": "skincare",
+"subCategory": "derma",
+"handle": null,
+"isNew": true
+},
+{
+"name": "Holika Holika",
+"korean": "홀리카홀리카",
+"category": "skincare",
+"subCategory": "derma",
+"handle": null,
+"isNew": false
+},
+{
+"name": "papa recipe",
+"korean": "파파레서피",
+"category": "skincare",
+"subCategory": "derma",
+"handle": null,
+"isNew": true
+},
+{
+"name": "nine wishes",
+"korean": "나인위쉬스",
+"category": "skincare",
+"subCategory": "derma",
+"handle": null,
+"isNew": true
+},
+{
+"name": "DEWYTREE",
+"korean": "듀이트리",
+"category": "skincare",
+"subCategory": "derma",
+"handle": null,
+"isNew": false
+},
+{
+"name": "isoi",
+"korean": "아이소이",
+"category": "skincare",
+"subCategory": "derma",
+"handle": null,
+"isNew": true
+},
+{
+"name": "BIOHEAL BOH",
+"korean": "바이오힐 보",
+"category": "skincare",
+"subCategory": "derma",
+"handle": null,
+"isNew": true
+},
+{
+"name": "Sioris",
+"korean": "시오리스",
+"category": "skincare",
+"subCategory": "derma",
+"handle": null,
+"isNew": false
+},
+{
+"name": "Neogen",
+"korean": "네오젠",
+"category": "skincare",
+"subCategory": "derma",
+"handle": null,
+"isNew": false
+},
+{
+"name": "Koolsol by Knours (쿨솔 바이 나우어스)",
+"korean": "Koolsol by Knours",
+"category": "skincare",
+"subCategory": "suncare",
+"handle": "knours",
+"isNew": true
+},
+{
+"name": "A'Pieu (어퓨)",
+"korean": "A'Pieu",
+"category": "skincare",
+"subCategory": "suncare",
+"handle": "apieu_global",
+"isNew": true
+},
+{
+"name": "Dr. Ceuracle (닥터시그라클)",
+"korean": "Dr. Ceuracle",
+"category": "skincare",
+"subCategory": "suncare",
+"handle": null,
+"isNew": true
+},
+{
+"name": "Scinic (싸이닉)",
+"korean": "Scinic",
+"category": "skincare",
+"subCategory": "suncare",
+"handle": null,
+"isNew": true
+},
+{
+"name": "Shikmulnara (식물나라)",
+"korean": "Shikmulnara",
+"category": "skincare",
+"subCategory": "suncare",
+"handle": null,
+"isNew": true
+},
+{
+"name": "Athe (아떼)",
+"korean": "Athe",
+"category": "skincare",
+"subCategory": "suncare",
+"handle": null,
+"isNew": true
+},
+{
+"name": "Atopalm (아토팜)",
+"korean": "Atopalm",
+"category": "skincare",
+"subCategory": "suncare",
+"handle": null,
+"isNew": true
+},
+{
+"name": "Rovectin (로벡틴)",
+"korean": "Rovectin",
+"category": "skincare",
+"subCategory": "suncare",
+"handle": null,
+"isNew": true
+},
+{
+"name": "AGE20S (에이지투웨니스)",
+"korean": "AGE20S",
+"category": "skincare",
+"subCategory": "suncare",
+"handle": "age20s_global",
+"isNew": true
+},
+{
+"name": "Derma Factory (더마팩토리)",
+"korean": "Derma Factory",
+"category": "skincare",
+"subCategory": "suncare",
+"handle": null,
+"isNew": true
+},
+{
+"name": "Romand (롬앤)",
+"korean": "Romand",
+"category": "skincare",
+"subCategory": "suncare",
+"handle": "romandyou_official",
+"isNew": true
+},
+{
+"name": "Black Rouge (블랙루즈)",
+"korean": "Black Rouge",
+"category": "skincare",
+"subCategory": "suncare",
+"handle": "blackrougevietnam",
+"isNew": true
+},
+{
+"name": "Peach C (피치씨)",
+"korean": "Peach C",
+"category": "skincare",
+"subCategory": "suncare",
+"handle": null,
+"isNew": true
+},
+{
+"name": "Millimage (밀리마쥬)",
+"korean": "Millimage",
+"category": "skincare",
+"subCategory": "suncare",
+"handle": null,
+"isNew": true
+},
+{
+"name": "Laka (라카)",
+"korean": "Laka",
+"category": "skincare",
+"subCategory": "suncare",
+"handle": "laka.beauty",
+"isNew": true
+},
+{
+"name": "KraveBeauty (크레이브뷰티)",
+"korean": "KraveBeauty",
+"category": "skincare",
+"subCategory": "suncare",
+"handle": null,
+"isNew": true
+},
+{
+"name": "So Natural (쏘내추럴)",
+"korean": "So Natural",
+"category": "skincare",
+"subCategory": "suncare",
+"handle": null,
+"isNew": true
+},
+{
+"name": "Keep Cool (킵쿨)",
+"korean": "Keep Cool",
+"category": "skincare",
+"subCategory": "suncare",
+"handle": null,
+"isNew": true
+},
+{
+"name": "Sungboon Editor (성분에디터)",
+"korean": "Sungboon Editor",
+"category": "skincare",
+"subCategory": "suncare",
+"handle": "sungbooneditor_official",
+"isNew": true
+},
+{
+"name": "House of Dohwa (하우스 오브 도화)",
+"korean": "House of Dohwa",
+"category": "skincare",
+"subCategory": "suncare",
+"handle": null,
+"isNew": true
+},
+{
+"name": "Klairs (클레어스)",
+"korean": "Klairs",
+"category": "skincare",
+"subCategory": "suncare",
+"handle": null,
+"isNew": true
+},
+{
+"name": "UIQ Biome Remedy (유이크 바이옴 레미디)",
+"korean": "UIQ Biome Remedy",
+"category": "skincare",
+"subCategory": "suncare",
+"handle": null,
+"isNew": true
+},
+{
+"name": "Ooznary (우즈너리)",
+"korean": "Ooznary",
+"category": "skincare",
+"subCategory": "suncare",
+"handle": null,
+"isNew": true
+},
+{
+"name": "Dr. Different (닥터디퍼런트)",
+"korean": "Dr. Different",
+"category": "skincare",
+"subCategory": "suncare",
+"handle": null,
+"isNew": true
+},
+{
+"name": "APLB (에이플비)",
+"korean": "APLB",
+"category": "skincare",
+"subCategory": "suncare",
+"handle": null,
+"isNew": true
+},
+{
+"name": "Benton (벤튼)",
+"korean": "Benton",
+"category": "skincare",
+"subCategory": "suncare",
+"handle": "bentoncosmetic",
+"isNew": true
+},
+{
+"name": "Frudia (프루디아)",
+"korean": "Frudia",
+"category": "skincare",
+"subCategory": "suncare",
+"handle": "frudia.official",
+"isNew": true
+},
+{
+"name": "Troiareuke (트로이아르케)",
+"korean": "Troiareuke",
+"category": "skincare",
+"subCategory": "suncare",
+"handle": null,
+"isNew": true
+},
+{
+"name": "Thank You Farmer (땡큐파머)",
+"korean": "Thank You Farmer",
+"category": "skincare",
+"subCategory": "suncare",
+"handle": null,
+"isNew": true
+},
+{
+"name": "Kaja Beauty (카자 뷰티)",
+"korean": "Kaja Beauty",
+"category": "makeup",
+"subCategory": "makeup",
+"handle": "kajabeauty",
+"isNew": true
+},
+{
+"name": "Clio Professional (클리오 프로페셔널)",
+"korean": "Clio Professional",
+"category": "makeup",
+"subCategory": "makeup",
+"handle": "clio_official_kr",
+"isNew": true
+},
+{
+"name": "Milimage",
+"korean": "밀리마쥬",
+"category": "makeup",
+"subCategory": "makeup",
+"handle": null,
+"isNew": true
+},
+{
+"name": "ABOUT_TONE (어바웃톤)",
+"korean": "ABOUT_TONE",
+"category": "makeup",
+"subCategory": "makeup",
+"handle": null,
+"isNew": true
+},
+{
+"name": "AMUSE (어뮤즈)",
+"korean": "AMUSE",
+"category": "makeup",
+"subCategory": "makeup",
+"handle": "amuse_official",
+"isNew": true
+},
+{
+"name": "AOU (에이오유)",
+"korean": "AOU",
+"category": "makeup",
+"subCategory": "makeup",
+"handle": null,
+"isNew": true
+},
+{
+"name": "BBIA (삐아)",
+"korean": "BBIA",
+"category": "makeup",
+"subCategory": "makeup",
+"handle": null,
+"isNew": true
+},
+{
+"name": "CORINGCO (코링코)",
+"korean": "CORINGCO",
+"category": "makeup",
+"subCategory": "makeup",
+"handle": null,
+"isNew": true
+},
+{
+"name": "dasique (데이지크)",
+"korean": "dasique",
+"category": "makeup",
+"subCategory": "makeup",
+"handle": "dasique_official",
+"isNew": true
+},
+{
+"name": "dear.A (디어에이)",
+"korean": "dear.A",
+"category": "makeup",
+"subCategory": "makeup",
+"handle": null,
+"isNew": true
+},
+{
+"name": "Dinto (딘토)",
+"korean": "Dinto",
+"category": "makeup",
+"subCategory": "makeup",
+"handle": null,
+"isNew": true
+},
+{
+"name": "eglips (이글립스)",
+"korean": "eglips",
+"category": "makeup",
+"subCategory": "makeup",
+"handle": null,
+"isNew": true
+},
+{
+"name": "fwee (휘)",
+"korean": "fwee",
+"category": "makeup",
+"subCategory": "makeup",
+"handle": "fwee_makeup",
+"isNew": true
+},
+{
+"name": "glint (글린트)",
+"korean": "glint",
+"category": "makeup",
+"subCategory": "makeup",
+"handle": null,
+"isNew": true
+},
+{
+"name": "hince (힌스)",
+"korean": "hince",
+"category": "makeup",
+"subCategory": "makeup",
+"handle": "hince_official",
+"isNew": true
+},
+{
+"name": "I'M MEME (아임미미)",
+"korean": "I'M MEME",
+"category": "makeup",
+"subCategory": "makeup",
+"handle": null,
+"isNew": true
+},
+{
+"name": "Jung Saem Mool (정샘물)",
+"korean": "Jung Saem Mool",
+"category": "makeup",
+"subCategory": "makeup",
+"handle": null,
+"isNew": true
+},
+{
+"name": "keybo (키보)",
+"korean": "keybo",
+"category": "makeup",
+"subCategory": "makeup",
+"handle": null,
+"isNew": true
+},
+{
+"name": "lilybyred (릴리바이레드)",
+"korean": "lilybyred",
+"category": "makeup",
+"subCategory": "makeup",
+"handle": "lilybyred_official",
+"isNew": true
+},
+{
+"name": "LUNA (루나)",
+"korean": "LUNA",
+"category": "makeup",
+"subCategory": "makeup",
+"handle": null,
+"isNew": true
+},
+{
+"name": "macqueen (맥퀸)",
+"korean": "macqueen",
+"category": "makeup",
+"subCategory": "makeup",
+"handle": null,
+"isNew": true
+},
+{
+"name": "makeheal (메이크힐)",
+"korean": "makeheal",
+"category": "makeup",
+"subCategory": "makeup",
+"handle": null,
+"isNew": true
+},
+{
+"name": "mude. (뮤드)",
+"korean": "mude.",
+"category": "makeup",
+"subCategory": "makeup",
+"handle": null,
+"isNew": true
+},
+{
+"name": "nuse (누즈)",
+"korean": "nuse",
+"category": "makeup",
+"subCategory": "makeup",
+"handle": null,
+"isNew": true
+},
+{
+"name": "oenir (오에니르)",
+"korean": "oenir",
+"category": "makeup",
+"subCategory": "makeup",
+"handle": null,
+"isNew": true
+},
+{
+"name": "piciberry (피치베리)",
+"korean": "piciberry",
+"category": "makeup",
+"subCategory": "makeup",
+"handle": null,
+"isNew": true
+},
+{
+"name": "tooq (투크)",
+"korean": "tooq",
+"category": "makeup",
+"subCategory": "makeup",
+"handle": null,
+"isNew": true
+},
+{
+"name": "touchinSOL (터치인솔)",
+"korean": "touchinSOL",
+"category": "makeup",
+"subCategory": "makeup",
+"handle": null,
+"isNew": true
+},
+{
+"name": "unleashia (언리시아)",
+"korean": "unleashia",
+"category": "makeup",
+"subCategory": "makeup",
+"handle": "unleashia_kor",
+"isNew": true
+},
+{
+"name": "VDL (브이디엘)",
+"korean": "VDL",
+"category": "makeup",
+"subCategory": "makeup",
+"handle": "vdl_cosmetics",
+"isNew": true
+},
+{
+"name": "Wonjungyo (원정요)",
+"korean": "Wonjungyo",
+"category": "makeup",
+"subCategory": "makeup",
+"handle": "wonjungyo",
+"isNew": true
+},
+{
+"name": "Yadah (야다)",
+"korean": "Yadah",
+"category": "makeup",
+"subCategory": "makeup",
+"handle": "yadah.official",
+"isNew": true
+},
+{
+"name": "Y.N.M (와이앤엠)",
+"korean": "Y.N.M",
+"category": "makeup",
+"subCategory": "makeup",
+"handle": null,
+"isNew": true
+},
+{
+"name": "NAMING. (네이밍)",
+"korean": "NAMING.",
+"category": "makeup",
+"subCategory": "makeup",
+"handle": null,
+"isNew": true
+},
+{
+"name": "FEEV (피브)",
+"korean": "FEEV",
+"category": "makeup",
+"subCategory": "makeup",
+"handle": null,
+"isNew": true
+},
+{
+"name": "Heart Percent (하트퍼센트)",
+"korean": "Heart Percent",
+"category": "makeup",
+"subCategory": "makeup",
+"handle": null,
+"isNew": true
+},
+{
+"name": "Flynn (플린)",
+"korean": "Flynn",
+"category": "makeup",
+"subCategory": "makeup",
+"handle": null,
+"isNew": true
+},
+{
+"name": "Muzigae Mansion (무지개맨션)",
+"korean": "Muzigae Mansion",
+"category": "makeup",
+"subCategory": "makeup",
+"handle": "muzigaemansion_official",
+"isNew": true
+},
+{
+"name": "A.Black (에이블랙)",
+"korean": "A.Black",
+"category": "makeup",
+"subCategory": "makeup",
+"handle": null,
+"isNew": true
+},
+{
+"name": "BOM (봄)",
+"korean": "BOM",
+"category": "makeup",
+"subCategory": "makeup",
+"handle": null,
+"isNew": true
+},
+{
+"name": "CILY (실리)",
+"korean": "CILY",
+"category": "makeup",
+"subCategory": "makeup",
+"handle": null,
+"isNew": true
+},
+{
+"name": "Equmal (이큐말)",
+"korean": "Equmal",
+"category": "makeup",
+"subCategory": "makeup",
+"handle": null,
+"isNew": true
+},
+{
+"name": "Forencos (포렌코즈)",
+"korean": "Forencos",
+"category": "makeup",
+"subCategory": "makeup",
+"handle": null,
+"isNew": true
+},
+{
+"name": "Giverny (지베르니)",
+"korean": "Giverny",
+"category": "makeup",
+"subCategory": "makeup",
+"handle": null,
+"isNew": true
+},
+{
+"name": "Karadium (카라디움)",
+"korean": "Karadium",
+"category": "makeup",
+"subCategory": "makeup",
+"handle": null,
+"isNew": true
+},
+{
+"name": "Keep in Touch (킵인터치)",
+"korean": "Keep in Touch",
+"category": "makeup",
+"subCategory": "makeup",
+"handle": null,
+"isNew": true
+},
+{
+"name": "Merzy (머지)",
+"korean": "Merzy",
+"category": "makeup",
+"subCategory": "makeup",
+"handle": null,
+"isNew": true
+},
+{
+"name": "Milk Touch (밀크터치)",
+"korean": "Milk Touch",
+"category": "makeup",
+"subCategory": "makeup",
+"handle": "milktouch_kr",
+"isNew": true
+},
+{
+"name": "Moart (모아트)",
+"korean": "Moart",
+"category": "makeup",
+"subCategory": "makeup",
+"handle": null,
+"isNew": true
+},
+{
+"name": "Pony Effect (포니이펙트)",
+"korean": "Pony Effect",
+"category": "makeup",
+"subCategory": "makeup",
+"handle": null,
+"isNew": true
+},
+{
+"name": "Siero (시에로)",
+"korean": "Siero",
+"category": "makeup",
+"subCategory": "makeup",
+"handle": null,
+"isNew": true
+},
+{
+"name": "Sister Ann (시스터앤)",
+"korean": "Sister Ann",
+"category": "makeup",
+"subCategory": "makeup",
+"handle": null,
+"isNew": true
+},
+{
+"name": "Stonebrick (스톤브릭)",
+"korean": "Stonebrick",
+"category": "makeup",
+"subCategory": "makeup",
+"handle": null,
+"isNew": true
+},
+{
+"name": "Vely Vely (블리블리)",
+"korean": "Vely Vely",
+"category": "makeup",
+"subCategory": "makeup",
+"handle": "velyvely_global",
+"isNew": true
+},
+{
+"name": "Dr.FORHAIR",
+"korean": "닥터포헤어",
+"category": "haircare",
+"subCategory": "hair",
+"handle": null,
+"isNew": true
+},
+{
+"name": "Dr. Groot",
+"korean": "닥터그루트",
+"category": "haircare",
+"subCategory": "hair",
+"handle": "drgroothair",
+"isNew": false
+},
+{
+"name": "Ryo",
+"korean": "려",
+"category": "haircare",
+"subCategory": "hair",
+"handle": null,
+"isNew": false
+},
+{
+"name": "UNOVE",
+"korean": "어노브",
+"category": "haircare",
+"subCategory": "hair",
+"handle": null,
+"isNew": true
+},
+{
+"name": "Healing Bird",
+"korean": "힐링버드",
+"category": "haircare",
+"subCategory": "hair",
+"handle": null,
+"isNew": true
+},
+{
+"name": "Narka",
+"korean": "나르카",
+"category": "haircare",
+"subCategory": "hair",
+"handle": null,
+"isNew": true
+},
+{
+"name": "Lilyeve",
+"korean": "릴리이브",
+"category": "haircare",
+"subCategory": "hair",
+"handle": null,
+"isNew": true
+},
+{
+"name": "Moremo",
+"korean": "모레모",
+"category": "haircare",
+"subCategory": "hair",
+"handle": "moremo_official",
+"isNew": false
+},
+{
+"name": "LABO-H",
+"korean": "라보에이치",
+"category": "haircare",
+"subCategory": "hair",
+"handle": null,
+"isNew": true
+},
+{
+"name": "Mise-en-scène",
+"korean": "미쟝센",
+"category": "haircare",
+"subCategory": "hair",
+"handle": null,
+"isNew": true
+},
+{
+"name": "TS Shampoo",
+"korean": "TS샴푸",
+"category": "haircare",
+"subCategory": "hair",
+"handle": null,
+"isNew": true
+},
+{
+"name": "Daeng Gi Meo Ri",
+"korean": "댕기머리",
+"category": "haircare",
+"subCategory": "hair",
+"handle": null,
+"isNew": false
+},
+{
+"name": "Kerasys",
+"korean": "케라시스",
+"category": "haircare",
+"subCategory": "hair",
+"handle": null,
+"isNew": false
+},
+{
+"name": "Anaze",
+"korean": "어네이즈",
+"category": "haircare",
+"subCategory": "hair",
+"handle": null,
+"isNew": true
+},
+{
+"name": "Hair+",
+"korean": "헤어플러스",
+"category": "haircare",
+"subCategory": "hair",
+"handle": null,
+"isNew": true
+},
+{
+"name": "Kundal",
+"korean": "쿤달",
+"category": "haircare",
+"subCategory": "hair",
+"handle": null,
+"isNew": true
+},
+{
+"name": "Growus",
+"korean": "그로우어스",
+"category": "haircare",
+"subCategory": "hair",
+"handle": null,
+"isNew": true
+},
+{
+"name": "Truezyme",
+"korean": "트루자임",
+"category": "haircare",
+"subCategory": "hair",
+"handle": null,
+"isNew": true
+},
+{
+"name": "Perseve",
+"korean": "퍼시브",
+"category": "haircare",
+"subCategory": "hair",
+"handle": null,
+"isNew": true
+},
+{
+"name": "Dryope",
+"korean": "드라이오페",
+"category": "haircare",
+"subCategory": "hair",
+"handle": null,
+"isNew": true
+},
+{
+"name": "8grow",
+"korean": "에잇그로우",
+"category": "haircare",
+"subCategory": "hair",
+"handle": null,
+"isNew": true
+},
+{
+"name": "Base-K",
+"korean": "베이스케이",
+"category": "haircare",
+"subCategory": "hair",
+"handle": null,
+"isNew": true
+},
+{
+"name": "Chungmijung",
+"korean": "청미정",
+"category": "haircare",
+"subCategory": "hair",
+"handle": null,
+"isNew": true
+},
+{
+"name": "Rooton",
+"korean": "루톤",
+"category": "haircare",
+"subCategory": "hair",
+"handle": null,
+"isNew": true
+},
+{
+"name": "Treecell",
+"korean": "트리셀",
+"category": "haircare",
+"subCategory": "hair",
+"handle": "treecell_us",
+"isNew": true
+},
+{
+"name": "Curly Shyll",
+"korean": "커리쉴",
+"category": "haircare",
+"subCategory": "hair",
+"handle": "curlyshyll_us",
+"isNew": true
+},
+{
+"name": "Jsoop",
+"korean": "제이숲",
+"category": "haircare",
+"subCategory": "hair",
+"handle": "JSOOP",
+"isNew": true
+},
+{
+"name": "Eirua",
+"korean": "에이루아",
+"category": "haircare",
+"subCategory": "hair",
+"handle": null,
+"isNew": true
+},
+{
+"name": "Levemier",
+"korean": "르브미에",
+"category": "haircare",
+"subCategory": "hair",
+"handle": null,
+"isNew": true
+},
+{
+"name": "Julyme",
+"korean": "줄라이미",
+"category": "haircare",
+"subCategory": "hair",
+"handle": null,
+"isNew": true
+},
+{
+"name": "Anillo",
+"korean": "아닐로",
+"category": "haircare",
+"subCategory": "hair",
+"handle": null,
+"isNew": true
+},
+{
+"name": "Ayunche",
+"korean": "아윤채",
+"category": "haircare",
+"subCategory": "hair",
+"handle": null,
+"isNew": true
+},
+{
+"name": "La'dor",
+"korean": "라비도",
+"category": "haircare",
+"subCategory": "hair",
+"handle": "lador_id",
+"isNew": true
+},
+{
+"name": "Ador",
+"korean": "아도르",
+"category": "haircare",
+"subCategory": "hair",
+"handle": "lador_id",
+"isNew": true
+},
+{
+"name": "Aipe",
+"korean": "에이페",
+"category": "haircare",
+"subCategory": "hair",
+"handle": null,
+"isNew": true
+},
+{
+"name": "Vivelab",
+"korean": "바이브랩",
+"category": "haircare",
+"subCategory": "hair",
+"handle": null,
+"isNew": true
+},
+{
+"name": "Bioga",
+"korean": "바이오가",
+"category": "haircare",
+"subCategory": "hair",
+"handle": null,
+"isNew": true
+},
+{
+"name": "Urban Tribe",
+"korean": "어반트라이브",
+"category": "haircare",
+"subCategory": "hair",
+"handle": null,
+"isNew": true
+},
+{
+"name": "Etaderm",
+"korean": "에타덤",
+"category": "haircare",
+"subCategory": "hair",
+"handle": null,
+"isNew": true
+},
+{
+"name": "Delliston",
+"korean": "델리스톤",
+"category": "haircare",
+"subCategory": "hair",
+"handle": null,
+"isNew": true
+},
+{
+"name": "Kerarose",
+"korean": "케라로즈",
+"category": "haircare",
+"subCategory": "hair",
+"handle": null,
+"isNew": true
+},
+{
+"name": "Kerastudio",
+"korean": "케라스타디오",
+"category": "haircare",
+"subCategory": "hair",
+"handle": null,
+"isNew": true
+},
+{
+"name": "Lutonix",
+"korean": "루토닉스",
+"category": "haircare",
+"subCategory": "hair",
+"handle": null,
+"isNew": true
+},
+{
+"name": "Rebrush",
+"korean": "리브러쉬",
+"category": "haircare",
+"subCategory": "hair",
+"handle": null,
+"isNew": true
+},
+{
+"name": "Rael",
+"korean": "라엘",
+"category": "haircare",
+"subCategory": "hair",
+"handle": null,
+"isNew": true
+},
+{
+"name": "Whamisa",
+"korean": "화미사",
+"category": "haircare",
+"subCategory": "hair",
+"handle": null,
+"isNew": true
+},
+{
+"name": "Face Factory",
+"korean": "페이스팩토리",
+"category": "haircare",
+"subCategory": "hair",
+"handle": null,
+"isNew": true
+},
+{
+"name": "Factory Normal",
+"korean": "팩토리노멀",
+"category": "haircare",
+"subCategory": "hair",
+"handle": null,
+"isNew": true
+},
+{
+"name": "Good Factory",
+"korean": "착한팩토리",
+"category": "haircare",
+"subCategory": "hair",
+"handle": null,
+"isNew": true
+},
+{
+"name": "Impact",
+"korean": "임팩트",
+"category": "haircare",
+"subCategory": "hair",
+"handle": null,
+"isNew": true
+},
+{
+"name": "Impactime",
+"korean": "임팩타임",
+"category": "haircare",
+"subCategory": "hair",
+"handle": null,
+"isNew": true
+},
+{
+"name": "Me Factory",
+"korean": "미팩토리",
+"category": "haircare",
+"subCategory": "hair",
+"handle": null,
+"isNew": true
+},
+{
+"name": "Recorder Factory",
+"korean": "리코더팩토리",
+"category": "haircare",
+"subCategory": "hair",
+"handle": null,
+"isNew": true
+},
+{
+"name": "Refilled",
+"korean": "리필드",
+"category": "haircare",
+"subCategory": "hair",
+"handle": null,
+"isNew": true
+},
+{
+"name": "Fromlabs",
+"korean": "프롬랩스",
+"category": "haircare",
+"subCategory": "hair",
+"handle": null,
+"isNew": true
+},
+{
+"name": "Code Glokolor",
+"korean": "코드글로컬러",
+"category": "haircare",
+"subCategory": "hair",
+"handle": null,
+"isNew": true
+},
+{
+"name": "Dashu",
+"korean": "다슈",
+"category": "haircare",
+"subCategory": "hair",
+"handle": "dashu_korea",
+"isNew": true
+},
+{
+"name": "Amos Professional",
+"korean": "아모스프로페셔널",
+"category": "haircare",
+"subCategory": "hair",
+"handle": "amosprofessional_global",
+"isNew": false
+},
+{
+"name": "Beyond",
+"korean": "비욘드",
+"category": "haircare",
+"subCategory": "hair",
+"handle": null,
+"isNew": true
+},
+{
+"name": "AURORA QUEEN (오로라퀸)",
+"korean": "AURORA QUEEN",
+"category": "skincare",
+"subCategory": "body",
+"handle": null,
+"isNew": true
+},
+{
+"name": "Glow Recipe (글로우레시피)",
+"korean": "Glow Recipe",
+"category": "skincare",
+"subCategory": "body",
+"handle": "glowrecipe",
+"isNew": true
+},
+{
+"name": "Nonfiction (논픽션)",
+"korean": "Nonfiction",
+"category": "skincare",
+"subCategory": "body",
+"handle": null,
+"isNew": true
+},
+{
+"name": "Tamburins (탬버린즈)",
+"korean": "Tamburins",
+"category": "skincare",
+"subCategory": "body",
+"handle": "tamburins",
+"isNew": true
+},
+{
+"name": "Nutri Ever Collagen (뉴트리 에버콜라겐)",
+"korean": "Nutri Ever Collagen",
+"category": "skincare",
+"subCategory": "body",
+"handle": null,
+"isNew": true
+},
+{
+"name": "Ownist (오니스트)",
+"korean": "Ownist",
+"category": "skincare",
+"subCategory": "body",
+"handle": null,
+"isNew": true
+},
+{
+"name": "MODI (모디네일)",
+"korean": "MODI",
+"category": "skincare",
+"subCategory": "body",
+"handle": null,
+"isNew": true
+},
+{
+"name": "La Baiete (라 바이에떼)",
+"korean": "La Baiete",
+"category": "skincare",
+"subCategory": "body",
+"handle": null,
+"isNew": true
+},
+{
+"name": "Borntostandout (보른투스탠드아웃)",
+"korean": "Borntostandout",
+"category": "skincare",
+"subCategory": "body",
+"handle": null,
+"isNew": true
+},
+{
+"name": "Chwi (취)",
+"korean": "Chwi",
+"category": "skincare",
+"subCategory": "body",
+"handle": null,
+"isNew": true
+},
+{
+"name": "A'ddict (어딕트)",
+"korean": "A'ddict",
+"category": "skincare",
+"subCategory": "body",
+"handle": null,
+"isNew": true
+},
+{
+"name": "Granhand (그랑핸드)",
+"korean": "Granhand",
+"category": "skincare",
+"subCategory": "body",
+"handle": null,
+"isNew": true
+},
+{
+"name": "Pesade (페사드)",
+"korean": "Pesade",
+"category": "skincare",
+"subCategory": "body",
+"handle": null,
+"isNew": true
+},
+{
+"name": "ELOREA (엘로레아)",
+"korean": "ELOREA",
+"category": "skincare",
+"subCategory": "body",
+"handle": null,
+"isNew": true
+},
+{
+"name": "W.DRESSROOM (더블유드레스룸)",
+"korean": "W.DRESSROOM",
+"category": "skincare",
+"subCategory": "body",
+"handle": null,
+"isNew": true
+},
+{
+"name": "GRAFEN (그라펜)",
+"korean": "GRAFEN",
+"category": "skincare",
+"subCategory": "body",
+"handle": "grafenphofficial",
+"isNew": true
+},
+{
+"name": "The Gel (더젤)",
+"korean": "The Gel",
+"category": "skincare",
+"subCategory": "body",
+"handle": null,
+"isNew": true
+},
+{
+"name": "Fasset (파셋)",
+"korean": "Fasset",
+"category": "skincare",
+"subCategory": "body",
+"handle": null,
+"isNew": true
+},
+{
+"name": "Estemio (에스떼미오)",
+"korean": "Estemio",
+"category": "skincare",
+"subCategory": "body",
+"handle": null,
+"isNew": true
+},
+{
+"name": "Gracia (그라시아)",
+"korean": "Gracia",
+"category": "skincare",
+"subCategory": "body",
+"handle": null,
+"isNew": true
+},
+{
+"name": "Candy Gel (캔디젤)",
+"korean": "Candy Gel",
+"category": "skincare",
+"subCategory": "body",
+"handle": null,
+"isNew": true
+},
+{
+"name": "Think of Nail (띵크오브네일)",
+"korean": "Think of Nail",
+"category": "skincare",
+"subCategory": "body",
+"handle": null,
+"isNew": true
+},
+{
+"name": "Yogurt Nail (요거트 네일)",
+"korean": "Yogurt Nail",
+"category": "skincare",
+"subCategory": "body",
+"handle": null,
+"isNew": true
+},
+{
+"name": "BY MUSE (바이뮤즈)",
+"korean": "BY MUSE",
+"category": "skincare",
+"subCategory": "body",
+"handle": null,
+"isNew": true
+},
+{
+"name": "JIN.B (진비)",
+"korean": "JIN.B",
+"category": "skincare",
+"subCategory": "body",
+"handle": null,
+"isNew": true
+},
+{
+"name": "DGEL (디젤)",
+"korean": "DGEL",
+"category": "skincare",
+"subCategory": "body",
+"handle": null,
+"isNew": true
+},
+{
+"name": "Diami (다이아미)",
+"korean": "Diami",
+"category": "skincare",
+"subCategory": "body",
+"handle": null,
+"isNew": true
+},
+{
+"name": "Fauve (포브)",
+"korean": "Fauve",
+"category": "skincare",
+"subCategory": "body",
+"handle": null,
+"isNew": true
+},
+{
+"name": "F Gel (에프젤)",
+"korean": "F Gel",
+"category": "skincare",
+"subCategory": "body",
+"handle": null,
+"isNew": true
+},
+{
+"name": "Tiny (타이니)",
+"korean": "Tiny",
+"category": "skincare",
+"subCategory": "body",
+"handle": null,
+"isNew": true
+},
+{
+"name": "Fiote (피오떼)",
+"korean": "Fiote",
+"category": "skincare",
+"subCategory": "body",
+"handle": null,
+"isNew": true
+},
+{
+"name": "Mayour (메이아워)",
+"korean": "Mayour",
+"category": "skincare",
+"subCategory": "body",
+"handle": null,
+"isNew": true
+},
+{
+"name": "DVOK (드보크)",
+"korean": "DVOK",
+"category": "skincare",
+"subCategory": "body",
+"handle": null,
+"isNew": true
+},
+{
+"name": "I Will Mibaek (아윌미백)",
+"korean": "I Will Mibaek",
+"category": "skincare",
+"subCategory": "body",
+"handle": null,
+"isNew": true
+},
+{
+"name": "YUSE (유즈)",
+"korean": "YUSE",
+"category": "skincare",
+"subCategory": "body",
+"handle": null,
+"isNew": true
+},
+{
+"name": "BANDI (반디)",
+"korean": "BANDI",
+"category": "skincare",
+"subCategory": "body",
+"handle": null,
+"isNew": true
+},
+{
+"name": "Derma B (더마비)",
+"korean": "Derma B",
+"category": "skincare",
+"subCategory": "body",
+"handle": null,
+"isNew": true
+},
+{
+"name": "Longtake (롱테이크)",
+"korean": "Longtake",
+"category": "skincare",
+"subCategory": "body",
+"handle": null,
+"isNew": true
+},
+{
+"name": "BB LAB (비비랩)",
+"korean": "BB LAB",
+"category": "skincare",
+"subCategory": "body",
+"handle": null,
+"isNew": true
+},
+{
+"name": "Vital Beautie (바이탈뷰티)",
+"korean": "Vital Beautie",
+"category": "skincare",
+"subCategory": "body",
+"handle": null,
+"isNew": true
+},
+{
+"name": "Cube Me (큐브미)",
+"korean": "Cube Me",
+"category": "skincare",
+"subCategory": "body",
+"handle": null,
+"isNew": true
+},
+{
+"name": "Gongmi (공미)",
+"korean": "Gongmi",
+"category": "skincare",
+"subCategory": "body",
+"handle": null,
+"isNew": true
+},
+{
+"name": "Teazen (티젠)",
+"korean": "Teazen",
+"category": "skincare",
+"subCategory": "body",
+"handle": null,
+"isNew": true
+},
+{
+"name": "Sery Box (세리박스)",
+"korean": "Sery Box",
+"category": "skincare",
+"subCategory": "body",
+"handle": null,
+"isNew": true
+},
+{
+"name": "Grn+ (지알엔)",
+"korean": "Grn+",
+"category": "skincare",
+"subCategory": "body",
+"handle": null,
+"isNew": true
+},
+{
+"name": "Foodology (푸드올로지)",
+"korean": "Foodology",
+"category": "skincare",
+"subCategory": "body",
+"handle": "foodology.official",
+"isNew": true
+},
+{
+"name": "Nard (나드)",
+"korean": "Nard",
+"category": "skincare",
+"subCategory": "body",
+"handle": null,
+"isNew": true
+},
+{
+"name": "Plu (플루)",
+"korean": "Plu",
+"category": "skincare",
+"subCategory": "body",
+"handle": null,
+"isNew": true
+},
+{
+"name": "Treehut (트리헛)",
+"korean": "Treehut",
+"category": "skincare",
+"subCategory": "body",
+"handle": null,
+"isNew": true
+},
+{
+"name": "Skybottle (스카이보틀)",
+"korean": "Skybottle",
+"category": "skincare",
+"subCategory": "body",
+"handle": null,
+"isNew": true
+},
+{
+"name": "Duft&Doft (더프트앤도프트)",
+"korean": "Duft&Doft",
+"category": "skincare",
+"subCategory": "body",
+"handle": null,
+"isNew": true
+},
+{
+"name": "The History of Whoo / The Whoo",
+"korean": "더후",
+"category": "skincare",
+"subCategory": "skincare",
+"handle": null,
+"isNew": true
+},
+{
+"name": "SU:M37°",
+"korean": "숨37°",
+"category": "skincare",
+"subCategory": "skincare",
+"handle": null,
+"isNew": true
+},
+{
+"name": "Sooryehan",
+"korean": "수려한",
+"category": "skincare",
+"subCategory": "skincare",
+"handle": null,
+"isNew": true
+},
+{
+"name": "Donginbi",
+"korean": "동인비",
+"category": "skincare",
+"subCategory": "skincare",
+"handle": null,
+"isNew": true
+},
+{
+"name": "AMOREPACIFIC",
+"korean": "아모레퍼시픽",
+"category": "skincare",
+"subCategory": "skincare",
+"handle": null,
+"isNew": true
+},
+{
+"name": "Primera / prmr",
+"korean": "프리메라",
+"category": "skincare",
+"subCategory": "skincare",
+"handle": null,
+"isNew": true
+},
+{
+"name": "ZEROID",
+"korean": "제로이드",
+"category": "skincare",
+"subCategory": "skincare",
+"handle": null,
+"isNew": true
+},
+{
+"name": "Lirikos",
+"korean": "리리코스",
+"category": "skincare",
+"subCategory": "skincare",
+"handle": null,
+"isNew": true
+},
+{
+"name": "Flamel MD",
+"korean": "플라멜엠디",
+"category": "skincare",
+"subCategory": "skincare",
+"handle": null,
+"isNew": true
+},
+{
+"name": "CHOGONGJIN",
+"korean": "초공진",
+"category": "skincare",
+"subCategory": "skincare",
+"handle": null,
+"isNew": true
+},
+{
+"name": "CNP",
+"korean": "CNP Laboratory",
+"category": "skincare",
+"subCategory": "skincare",
+"handle": null,
+"isNew": true
+},
+{
+"name": "Equalberry",
+"korean": "이퀄베리",
+"category": "skincare",
+"subCategory": "skincare",
+"handle": "eqqualberry_global",
+"isNew": true
+},
+{
+"name": "Dr.Melaxin",
+"korean": "닥터멜락신",
+"category": "skincare",
+"subCategory": "skincare",
+"handle": "dr.melaxin_global",
+"isNew": true
+},
+{
+"name": "ACROPASS (아크로패스)",
+"korean": "ACROPASS",
+"category": "skincare",
+"subCategory": "skincare",
+"handle": "acropass",
+"isNew": true
+},
+{
+"name": "Arocell",
+"korean": "아로셀",
+"category": "skincare",
+"subCategory": "skincare",
+"handle": null,
+"isNew": true
+},
+{
+"name": "Isa Knox",
+"korean": "이자녹스",
+"category": "skincare",
+"subCategory": "skincare",
+"handle": null,
+"isNew": true
+},
+{
+"name": "Alternative Stereo (얼터너티브 스테레오)",
+"korean": "Alternative Stereo",
+"category": "skincare",
+"subCategory": "skincare",
+"handle": null,
+"isNew": true
+},
+{
+"name": "Banobagi",
+"korean": "바노바기",
+"category": "skincare",
+"subCategory": "skincare",
+"handle": null,
+"isNew": true
+},
+{
+"name": "Dermafirm",
+"korean": "더마펌",
+"category": "skincare",
+"subCategory": "skincare",
+"handle": null,
+"isNew": true
+},
+{
+"name": "Aprilskin (에이프릴스킨)",
+"korean": "Aprilskin",
+"category": "skincare",
+"subCategory": "skincare",
+"handle": null,
+"isNew": true
+},
+{
+"name": "Kaja (카자)",
+"korean": "Kaja",
+"category": "skincare",
+"subCategory": "skincare",
+"handle": "kajabeauty",
+"isNew": true
+},
+{
+"name": "Airive (에어리브)",
+"korean": "Airive",
+"category": "skincare",
+"subCategory": "skincare",
+"handle": null,
+"isNew": true
+},
+{
+"name": "BOTAONE (보타원)",
+"korean": "BOTAONE",
+"category": "skincare",
+"subCategory": "skincare",
+"handle": null,
+"isNew": true
+},
+{
+"name": "Beigic (베이직)",
+"korean": "Beigic",
+"category": "skincare",
+"subCategory": "skincare",
+"handle": null,
+"isNew": true
+},
+{
+"name": "CHASIN RABBITS (체이싱 래빗츠)",
+"korean": "CHASIN RABBITS",
+"category": "skincare",
+"subCategory": "skincare",
+"handle": "chasinrabbits.global",
+"isNew": true
+},
+{
+"name": "Face Shop (더페이스샵)",
+"korean": "Face Shop",
+"category": "skincare",
+"subCategory": "skincare",
+"handle": null,
+"isNew": true
+},
+{
+"name": "Frankly (프랭클리)",
+"korean": "Frankly",
+"category": "skincare",
+"subCategory": "skincare",
+"handle": null,
+"isNew": true
+},
+{
+"name": "Fruitfull (프루트풀)",
+"korean": "Fruitfull",
+"category": "skincare",
+"subCategory": "skincare",
+"handle": null,
+"isNew": true
+},
+{
+"name": "Herbloom (허블룸)",
+"korean": "Herbloom",
+"category": "skincare",
+"subCategory": "skincare",
+"handle": null,
+"isNew": true
+},
+{
+"name": "K-SECRET (케이시크릿)",
+"korean": "K-SECRET",
+"category": "skincare",
+"subCategory": "skincare",
+"handle": null,
+"isNew": true
+},
+{
+"name": "Lovbod (러브바드)",
+"korean": "Lovbod",
+"category": "skincare",
+"subCategory": "skincare",
+"handle": null,
+"isNew": true
+},
+{
+"name": "Naintee (나인티/하얀연탄)",
+"korean": "Naintee",
+"category": "skincare",
+"subCategory": "skincare",
+"handle": null,
+"isNew": true
+},
+{
+"name": "OliviaUmma (올리비아엄마)",
+"korean": "OliviaUmma",
+"category": "skincare",
+"subCategory": "skincare",
+"handle": null,
+"isNew": true
+},
+{
+"name": "Parnell (파넬)",
+"korean": "Parnell",
+"category": "skincare",
+"subCategory": "skincare",
+"handle": null,
+"isNew": true
+},
+{
+"name": "Seoul Beauty Club (서울 뷰티 클럽)",
+"korean": "Seoul Beauty Club",
+"category": "skincare",
+"subCategory": "skincare",
+"handle": null,
+"isNew": true
+},
+{
+"name": "Shaishaishai (샤이샤이샤이)",
+"korean": "Shaishaishai",
+"category": "skincare",
+"subCategory": "skincare",
+"handle": null,
+"isNew": true
+},
+{
+"name": "Soroh (소로)",
+"korean": "Soroh",
+"category": "skincare",
+"subCategory": "skincare",
+"handle": null,
+"isNew": true
+},
+{
+"name": "VYVYD Studio (비비드 스튜디오)",
+"korean": "VYVYD Studio",
+"category": "skincare",
+"subCategory": "skincare",
+"handle": null,
+"isNew": true
+},
+{
+"name": "Vinoir (비느와르)",
+"korean": "Vinoir",
+"category": "skincare",
+"subCategory": "skincare",
+"handle": null,
+"isNew": true
+},
+{
+"name": "Mildlab",
+"korean": "마일드랩",
+"category": "skincare",
+"subCategory": "skincare",
+"handle": null,
+"isNew": true
+},
+{
+"name": "Bplain",
+"korean": "비플레인",
+"category": "skincare",
+"subCategory": "skincare",
+"handle": null,
+"isNew": true
+},
+{
+"name": "Ingredient Editor",
+"korean": "성분에디터",
+"category": "skincare",
+"subCategory": "skincare",
+"handle": null,
+"isNew": true
+},
+{
+"name": "Cicago",
+"korean": "시카고",
+"category": "skincare",
+"subCategory": "skincare",
+"handle": null,
+"isNew": true
+},
+{
+"name": "Etude House",
+"korean": "에뛰드하우스",
+"category": "skincare",
+"subCategory": "skincare",
+"handle": "etude_official",
+"isNew": false
+},
+{
+"name": "Ohora",
+"korean": "오호라",
+"category": "skincare",
+"subCategory": "skincare",
+"handle": null,
+"isNew": true
+},
+{
+"name": "Ongredients",
+"korean": "온그리디언츠",
+"category": "skincare",
+"subCategory": "skincare",
+"handle": null,
+"isNew": true
+},
+{
+"name": "Urang",
+"korean": "유랑",
+"category": "skincare",
+"subCategory": "skincare",
+"handle": null,
+"isNew": true
+},
+{
+"name": "Klavuu",
+"korean": "클라뷰",
+"category": "skincare",
+"subCategory": "skincare",
+"handle": null,
+"isNew": true
+},
+{
+"name": "Haua",
+"korean": "하우아",
+"category": "skincare",
+"subCategory": "skincare",
+"handle": null,
+"isNew": true
+},
+{
+"name": "Hyggee",
+"korean": "휘게",
+"category": "skincare",
+"subCategory": "skincare",
+"handle": null,
+"isNew": true
+},
+{
+"name": "Sweet Chef",
+"korean": "스윗 셰프",
+"category": "skincare",
+"subCategory": "skincare",
+"handle": null,
+"isNew": true
+}
+]
