@@ -2,13 +2,11 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { Check, UserPlus, Mail, Gift, ArrowRight } from "lucide-react";
 import PageShell from "@/components/ktrend/PageShell";
 import { usePlan } from "@/components/ktrend/PlanContext";
 
 export default function SignupPage() {
-  const router = useRouter();
   const { user, isPro, signup, invite, trialMsLeft } = usePlan();
   const [step, setStep] = useState<1 | 2>(user ? 2 : 1);
 

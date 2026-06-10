@@ -1,5 +1,16 @@
 import { sql } from "@vercel/postgres";
 
+// Vercel/Neon이 prefix에 따라 POSTGRES_URL 외 다른 이름으로 주입해도 동작하도록 보정.
+// (@vercel/postgres는 POSTGRES_URL을 읽음)
+if (!process.env.POSTGRES_URL) {
+  const alt =
+    process.env.DATABASE_URL ||
+    process.env.POSTGRES_PRISMA_URL ||
+    process.env.POSTGRES_URL_NON_POOLING ||
+    process.env.DATABASE_URL_UNPOOLED;
+  if (alt) process.env.POSTGRES_URL = alt;
+}
+
 // Postgres 스키마 초기화 (최초 호출 시 1회). Vercel Postgres / Neon / Supabase 호환.
 let schemaReady: Promise<void> | null = null;
 
@@ -43,7 +54,7 @@ export function ensureSchema(): Promise<void> {
   return schemaReady;
 }
 
-export { sql };
+export { sql } from "@vercel/postgres";
 
 export interface DbUser {
   id: string;
@@ -56,5 +67,11 @@ export interface DbUser {
 }
 
 export function isConfigured(): boolean {
-  return Boolean(process.env.POSTGRES_URL || process.env.DATABASE_URL);
+  return Boolean(
+    process.env.POSTGRES_URL ||
+      process.env.DATABASE_URL ||
+      process.env.POSTGRES_PRISMA_URL ||
+      process.env.POSTGRES_URL_NON_POOLING ||
+      process.env.DATABASE_URL_UNPOOLED,
+  );
 }
