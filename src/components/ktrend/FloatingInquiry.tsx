@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { MessageCircle, X, ShoppingBag, Megaphone, ExternalLink } from "lucide-react";
+import { X, ShoppingBag, Megaphone, ExternalLink } from "lucide-react";
 import InquiryModal, { type InquiryKind } from "./InquiryModal";
 
 // PC/모바일 공통 우하단 플로팅 문의 버튼
@@ -50,11 +50,11 @@ export default function FloatingInquiry() {
 
         <button
           onClick={() => setOpen((v) => !v)}
-          aria-label="문의하기"
-          className="flex h-13 w-13 items-center justify-center rounded-full bg-[var(--accent)] text-white shadow-xl transition-transform hover:scale-105 active:scale-95"
-          style={{ height: 52, width: 52 }}
+          aria-label="틱톡샵 온보딩·마케팅 문의"
+          className="flex items-center gap-2 rounded-full bg-[var(--accent)] py-3 pl-4 pr-4 text-white shadow-xl transition-transform hover:scale-105 active:scale-95"
         >
-          {open ? <X size={22} /> : <MessageCircle size={22} />}
+          {open ? <X size={20} /> : <ShoppingBag size={20} />}
+          <span className="text-[13px] font-bold whitespace-nowrap">{open ? "닫기" : "틱톡샵 온보딩"}</span>
         </button>
       </div>
 
