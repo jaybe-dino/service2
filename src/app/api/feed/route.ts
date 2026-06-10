@@ -7,10 +7,13 @@ export const dynamic = "force-dynamic";
 // 콘텐츠 성과 지표는 공개 정책 → 인증 없이 수집된 영상 피드를 제공.
 // 클라이언트(loadContent)가 정적 videos.json과 병합해 소스 데이터로 노출한다.
 export async function GET() {
-  if (!isConfigured()) return NextResponse.json({ configured: false, videos: [] });
+  if (!isConfigured()) return NextResponse.json({ configured: false, videos: [], blockedHandles: [], blockedBrands: [] });
   try {
     await ensureSchema();
-    // 최신 수집분 우선, 과도한 페이로드 방지 위해 상한.
+    const block = await sql<{ kind: string; value: string }>`SELECT kind, value FROM blocklist`;
+    const blockedHandles = block.rows.filter((b) => b.kind === "handle").map((b) => b.value);
+    const blockedBrands = block.rows.filter((b) => b.kind === "brand").map((b) => b.value);
+    // 최신 수집분 우선, 과도한 페이로드 방지 위해 상한. 블락 대상은 제외.
     const r = await sql<{
       video_id: string;
       brand_name: string | null;
@@ -26,6 +29,8 @@ export async function GET() {
     }>`SELECT video_id, brand_name, handle, views, likes, comments, shares, is_ad, is_shop, posted_at, url
        FROM videos
        WHERE handle IS NOT NULL AND brand_name IS NOT NULL
+         AND handle NOT IN (SELECT value FROM blocklist WHERE kind='handle')
+         AND brand_name NOT IN (SELECT value FROM blocklist WHERE kind='brand')
        ORDER BY collected_at DESC
        LIMIT 5000`;
 
@@ -44,9 +49,9 @@ export async function GET() {
       v.url ?? "",
     ]);
 
-    return NextResponse.json({ configured: true, videos });
+    return NextResponse.json({ configured: true, videos, blockedHandles, blockedBrands });
   } catch {
     // 수집 데이터가 아직 없거나 DB 일시 오류 → 정적 데이터만으로 동작하도록 빈 피드 반환
-    return NextResponse.json({ configured: true, videos: [] });
+    return NextResponse.json({ configured: true, videos: [], blockedHandles: [], blockedBrands: [] });
   }
 }

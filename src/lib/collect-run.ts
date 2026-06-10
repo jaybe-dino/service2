@@ -26,10 +26,21 @@ async function notifyFailure(msg: string) {
   }
 }
 
+async function getBlocked(): Promise<{ handles: Set<string>; brands: Set<string> }> {
+  const r = await sql<{ kind: string; value: string }>`SELECT kind, value FROM blocklist`;
+  return {
+    handles: new Set(r.rows.filter((x) => x.kind === "handle").map((x) => x.value)),
+    brands: new Set(r.rows.filter((x) => x.kind === "brand").map((x) => x.value)),
+  };
+}
+
 async function upsertVideos(brandName: string, vids: CollectedVideo[], rules: CrawlRules): Promise<number> {
+  const blocked = await getBlocked();
+  if (blocked.brands.has(brandName)) return 0; // 블락 브랜드는 적재하지 않음
   let n = 0;
   for (const v of vids) {
     if (rules.excludeOfficialAccounts && isOfficialHandle(v.handle)) continue;
+    if (blocked.handles.has(v.handle)) continue; // 블락 인플루언서 제외
     if (rules.minViews && v.views < rules.minViews) continue;
     await sql`INSERT INTO videos (video_id, brand_name, handle, views, likes, comments, shares, is_ad, is_shop, posted_at, url, collected_at)
       VALUES (${v.videoId}, ${brandName}, ${v.handle}, ${v.views}, ${v.likes}, ${v.comments}, ${v.shares}, ${v.isAd}, ${v.isShop}, ${v.date}, ${v.url}, now())

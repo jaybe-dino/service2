@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { ArrowLeft, Loader2, Lock, ExternalLink, Send, Sparkles } from "lucide-react";
+import { ArrowLeft, Loader2, Lock, ExternalLink, Send, Sparkles, Ban } from "lucide-react";
 import PageShell from "@/components/ktrend/PageShell";
 import BrandAvatar from "@/components/ktrend/BrandAvatar";
 import BookmarkButton from "@/components/ktrend/BookmarkButton";
@@ -20,10 +20,26 @@ export default function InfluencerDetailPage() {
   const { user, isPro } = usePlan();
   const [content, setContent] = useState<Content[] | null>(null);
   const [proposeOpen, setProposeOpen] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [blocked, setBlocked] = useState(false);
 
   useEffect(() => {
     loadContent().then(setContent);
+    fetch("/api/admin/session", { cache: "no-store" })
+      .then((r) => r.json())
+      .then((d) => setIsAdmin(Boolean(d?.authed)))
+      .catch(() => {});
   }, []);
+
+  const blockInfluencer = async () => {
+    if (!confirm(`@${handle} 를 블락하시겠습니까?\n수집·노출이 모두 차단되고 기존 수집분도 제거됩니다.`)) return;
+    const r = await fetch("/api/admin/block", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ kind: "handle", value: handle, reason: "wrong-tagging" }),
+    });
+    if (r.ok) setBlocked(true);
+  };
 
   const items = useMemo(
     () => (content ? sortContent(content.filter((c) => c.influencerId === handle), "views") : []),
@@ -105,8 +121,22 @@ export default function InfluencerDetailPage() {
           <BookmarkButton type="influencer" id={handle} label size={14} />
           <button onClick={() => setProposeOpen(true)} className="kt-btn kt-btn-primary px-3 py-1.5 text-[11px]"><Send size={13} /> 제안 보내기</button>
           <a href={`https://www.tiktok.com/@${handle}`} target="_blank" rel="noreferrer noopener" className="kt-btn kt-btn-outline px-3 py-1.5 text-[11px]"><ExternalLink size={13} /> 틱톡</a>
+          {isAdmin && (
+            <button
+              onClick={blockInfluencer}
+              disabled={blocked}
+              className="inline-flex items-center gap-1 rounded-md border border-rose-300 bg-rose-50 px-3 py-1.5 text-[11px] font-semibold text-rose-600 disabled:opacity-50"
+            >
+              <Ban size={13} /> {blocked ? "블락됨" : "블락 (수집·노출 차단)"}
+            </button>
+          )}
         </div>
       </div>
+      {blocked && (
+        <div className="mb-4 rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-[11px] text-rose-600">
+          이 인플루언서는 블락되었습니다. 다음 배포/새로고침부터 전 영역에서 제외됩니다.
+        </div>
+      )}
 
       {/* 스탯 */}
       <div className="mb-4 grid grid-cols-2 gap-3 lg:grid-cols-4">

@@ -165,22 +165,28 @@ async function loadStatic(): Promise<Content[]> {
   return data.rows.map((r, i) => mapRow(r, i)).filter((c): c is Content => c !== null);
 }
 
-// 수집(DB) 피드 — 실패해도 정적 데이터로 동작하도록 빈 배열 폴백
-async function loadDb(): Promise<Content[]> {
+// 수집(DB) 피드 + 블락리스트 — 실패해도 정적 데이터로 동작하도록 폴백
+async function loadDb(): Promise<{ list: Content[]; blockedHandles: Set<string>; blockedBrands: Set<string> }> {
+  const empty = { list: [] as Content[], blockedHandles: new Set<string>(), blockedBrands: new Set<string>() };
   try {
     const res = await fetch(`${BASE_PATH}/api/feed`, { cache: "no-store" });
-    if (!res.ok) return [];
-    const data = (await res.json()) as { videos?: DbRow[] };
-    return (data.videos ?? []).map((r) => mapDbRow(r)).filter((c): c is Content => c !== null);
+    if (!res.ok) return empty;
+    const data = (await res.json()) as { videos?: DbRow[]; blockedHandles?: string[]; blockedBrands?: string[] };
+    return {
+      list: (data.videos ?? []).map((r) => mapDbRow(r)).filter((c): c is Content => c !== null),
+      blockedHandles: new Set(data.blockedHandles ?? []),
+      blockedBrands: new Set((data.blockedBrands ?? []).map((b) => b.toLowerCase())),
+    };
   } catch {
-    return [];
+    return empty;
   }
 }
 
 export function loadContent(): Promise<Content[]> {
   if (cache) return cache;
   cache = (async () => {
-    const [staticList, dbList] = await Promise.all([loadStatic(), loadDb()]);
+    const [staticList, db] = await Promise.all([loadStatic(), loadDb()]);
+    const dbList = db.list;
 
     // 정적 데이터에 이미 있는 틱톡 영상은 중복 제외 (DB가 정적을 덮어쓰지 않음)
     const seen = new Set<string>();
@@ -196,8 +202,13 @@ export function loadContent(): Promise<Content[]> {
       merged.push(c);
     }
 
-    // 브랜드 공식/샵 계정 콘텐츠는 전 영역에서 제외 (정적+DB 공통)
-    const visible = merged.filter((c) => !isOfficialHandle(c.influencerId));
+    // 제외: ① 브랜드 공식/샵 계정 ② 블락된 인플루언서/브랜드 (정적+DB 공통)
+    const visible = merged.filter((c) => {
+      if (isOfficialHandle(c.influencerId)) return false;
+      if (db.blockedHandles.has(c.influencerId)) return false;
+      if (db.blockedBrands.has((BRAND_MAP[c.brandId]?.name ?? "").toLowerCase())) return false;
+      return true;
+    });
 
     // 수집으로 새로 등록된 브랜드(db-*)의 통계를 실제 콘텐츠 기준으로 갱신
     // (목록·필터에 표기되는 영상 수/인플루언서 수/조회수가 0으로 남지 않도록)

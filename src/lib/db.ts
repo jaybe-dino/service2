@@ -135,6 +135,14 @@ export function ensureSchema(): Promise<void> {
         shop_count int NOT NULL DEFAULT 0,
         updated_at timestamptz NOT NULL DEFAULT now()
       )`;
+      // 블락리스트: 잘못 태깅된 인플루언서(handle)/브랜드(brand) 수집·노출 차단
+      await sql`CREATE TABLE IF NOT EXISTS blocklist (
+        kind text NOT NULL,
+        value text NOT NULL,
+        reason text,
+        created_at timestamptz NOT NULL DEFAULT now(),
+        PRIMARY KEY (kind, value)
+      )`;
       // 수집 실행 로그
       await sql`CREATE TABLE IF NOT EXISTS collection_runs (
         id serial PRIMARY KEY,

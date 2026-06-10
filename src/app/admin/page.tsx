@@ -49,6 +49,9 @@ export default function AdminPage() {
   const [newBrand, setNewBrand] = useState("");
   const [collecting, setCollecting] = useState(false);
   const [tracking, setTracking] = useState<Track[]>([]);
+  const [blocks, setBlocks] = useState<{ kind: string; value: string; reason: string | null }[]>([]);
+  const [blockVal, setBlockVal] = useState("");
+  const [blockKind, setBlockKind] = useState<"handle" | "brand">("handle");
   const [totals, setTotals] = useState<Totals | null>(null);
   const [rules, setRules] = useState<CrawlRules>(DEFAULT_CRAWL_RULES);
   const [loadingData, setLoadingData] = useState(false);
@@ -129,7 +132,7 @@ export default function AdminPage() {
     const r = await fetch("/api/admin/tracking", { cache: "no-store" }).then((x) => x.json()).catch(() => ({ rows: [] }));
     setTracking(r.rows ?? []);
   };
-  useEffect(() => { if (authed) loadTracking(); }, [authed]);
+  useEffect(() => { if (authed) { loadTracking(); loadBlocks(); } }, [authed]);
 
   const updateTrack = async (brand_name: string, patch: Partial<Track>) => {
     await fetch("/api/admin/tracking", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ brand_name, ...patch }) });
@@ -140,6 +143,24 @@ export default function AdminPage() {
     setToast("기존 브랜드 추적 등록됨");
     setTimeout(() => setToast(""), 2000);
     loadTracking();
+  };
+
+  const loadBlocks = async () => {
+    const r = await fetch("/api/admin/block", { cache: "no-store" }).then((x) => x.json()).catch(() => ({ rows: [] }));
+    setBlocks(r.rows ?? []);
+  };
+  const addBlock = async (kind: "handle" | "brand", value: string) => {
+    const v = value.trim().replace(/^@/, "");
+    if (!v) return;
+    await fetch("/api/admin/block", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ kind, value: v }) });
+    setBlockVal("");
+    setToast(`블락: ${kind === "handle" ? "@" : ""}${v}`);
+    setTimeout(() => setToast(""), 2000);
+    loadBlocks();
+  };
+  const removeBlock = async (kind: string, value: string) => {
+    await fetch("/api/admin/block", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ kind, value }) });
+    loadBlocks();
   };
 
   const seedMaster = async () => {
@@ -372,10 +393,33 @@ export default function AdminPage() {
 
       {tab === "influencers" && (
         <>
+          {/* 블락리스트 관리 */}
+          <div className="mb-4 rounded-md border border-rose-200 bg-rose-50/50 p-3">
+            <h3 className="mb-2 text-[12px] font-bold text-rose-700">블락리스트 ({blocks.length}) — 잘못 태깅된 인플루언서/브랜드 차단</h3>
+            <div className="mb-2 flex flex-wrap items-center gap-1.5">
+              <select value={blockKind} onChange={(e) => setBlockKind(e.target.value as "handle" | "brand")} className="rounded border border-[var(--border)] px-2 py-1 text-[11px]">
+                <option value="handle">인플루언서(handle)</option>
+                <option value="brand">브랜드(brand)</option>
+              </select>
+              <input value={blockVal} onChange={(e) => setBlockVal(e.target.value)} placeholder={blockKind === "handle" ? "@handle" : "브랜드명"} className="rounded border border-[var(--border)] px-2 py-1 text-[11px]" />
+              <button onClick={() => addBlock(blockKind, blockVal)} className="rounded-md bg-rose-600 px-3 py-1 text-[11px] font-semibold text-white">블락 추가</button>
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              {blocks.map((b) => (
+                <span key={`${b.kind}:${b.value}`} className="inline-flex items-center gap-1 rounded bg-white px-2 py-0.5 text-[10px] text-rose-700 ring-1 ring-rose-200">
+                  {b.kind === "handle" ? "@" : "브랜드 "}{b.value}
+                  <button onClick={() => removeBlock(b.kind, b.value)} className="font-bold text-rose-400 hover:text-rose-700">×</button>
+                </span>
+              ))}
+              {!blocks.length && <span className="text-[10px] text-[var(--muted)]">블락된 항목 없음</span>}
+            </div>
+          </div>
+
           <p className="mb-2 text-[10px] text-[var(--muted)]">※ 컨택 정보는 내부 DB 전용입니다 (사용자 화면 미노출).</p>
-          <Table head={["#", "핸들", "티어", "영상", "평균조회", "누적조회", "이메일", "연락처", "평균단가", "협업 브랜드"]}>
+          <Table head={["#", "핸들", "티어", "영상", "평균조회", "누적조회", "이메일", "연락처", "평균단가", "협업 브랜드", "블락"]}>
             {INFLUENCERS.slice(0, 200).map((inf, i) => {
               const c = contactFor(inf.handle);
+              const isBlocked = blocks.some((b) => b.kind === "handle" && b.value === inf.handle);
               return (
                 <tr key={inf.handle} className="border-b border-[var(--border)] last:border-0">
                   <td className="p-2 text-[var(--muted)]">{i + 1}</td>
@@ -388,6 +432,13 @@ export default function AdminPage() {
                   <td className="p-2 text-[10px]">{c.whatsapp}</td>
                   <td className="p-2 text-[10px] font-semibold text-[var(--accent)]">{won(c.avgRateUSD * 1300)}</td>
                   <td className="p-2 text-[10px] text-[var(--muted)]">{inf.brands.slice(0, 3).join(", ")}</td>
+                  <td className="p-2">
+                    {isBlocked ? (
+                      <button onClick={() => removeBlock("handle", inf.handle)} className="text-[10px] font-semibold text-rose-600">해제</button>
+                    ) : (
+                      <button onClick={() => addBlock("handle", inf.handle)} className="text-[10px] text-[var(--muted)] hover:text-rose-600">블락</button>
+                    )}
+                  </td>
                 </tr>
               );
             })}
