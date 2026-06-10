@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import SiteHeader from "./SiteHeader";
 import SiteFooter from "./SiteFooter";
+import FloatingInquiry from "./FloatingInquiry";
 
 export default function PageShell({
   children,
@@ -16,6 +17,7 @@ export default function PageShell({
         {children}
       </main>
       <SiteFooter />
+      <FloatingInquiry />
     </div>
   );
 }
