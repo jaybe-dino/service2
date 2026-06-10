@@ -1,7 +1,7 @@
 # K-Trend Analytics (v6.0)
 
 글로벌 틱톡(TikTok) K-뷰티 콘텐츠 조회·분석 전문 B2B SaaS.
-실제 98개 K-뷰티 브랜드의 틱톡 영상 11,703건을 **브랜드 · 콘텐츠 · 인플루언서별**로 분석합니다.
+실제 K-뷰티 브랜드의 틱톡 영상을 **브랜드 · 콘텐츠 · 인플루언서별**로 분석합니다.
 
 > **동적 서버 앱** (Next.js App Router + API Routes + Postgres). 배포: **Vercel**.
 
