@@ -9,7 +9,7 @@ import HeroBackground from "@/components/ktrend/HeroBackground";
 import { usePlan } from "@/components/ktrend/PlanContext";
 import { CATEGORIES, SERVICE } from "@/data/ktrend/meta";
 import { BRANDS } from "@/data/ktrend/brands";
-import { loadContent, randomSample, fmtCompact, type Content } from "@/data/ktrend/content";
+import { loadContent, loadContentStaged, randomSample, fmtCompact, type Content } from "@/data/ktrend/content";
 
 const VALUE = [
   { icon: TrendingUp, title: "콘텐츠별 성과 조회", desc: "모든 리스팅을 틱톡 영상(콘텐츠) 단위로 보고 조회수·참여율·추정 ROAS·기여 매출을 즉시 비교." },
@@ -24,7 +24,8 @@ export default function Home() {
   const [totalContent, setTotalContent] = useState(0);
 
   useEffect(() => {
-    loadContent().then((all) => {
+    // 단계적 로드: 정적 데이터로 메인 영상을 먼저 채우고, 수집 DB 병합 후 갱신
+    loadContentStaged((all) => {
       setTotalContent(all.length);
       setRandom(randomSample(all, 8));
     });

@@ -14,7 +14,7 @@ import {
   type InfluencerTier,
 } from "@/data/ktrend/meta";
 import {
-  loadContent,
+  loadContentStaged,
   SORTS,
   sortContent,
   type Content,
@@ -51,7 +51,8 @@ export default function Explorer() {
   const [pendingBrands, setPendingBrands] = useState<{ name: string; progress: number }[]>([]);
 
   useEffect(() => {
-    loadContent().then(setAll);
+    // 단계적 로드: 정적 데이터로 먼저 화면을 채우고, 수집 DB는 뒤이어 병합
+    loadContentStaged(setAll);
   }, []);
 
   // 콘텐츠가 1개라도 있는 브랜드만 노출 (수집 전 빈 브랜드 숨김)

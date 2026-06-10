@@ -183,66 +183,90 @@ async function loadDb(): Promise<{ list: Content[]; blockedHandles: Set<string>;
   }
 }
 
+let staticCache: Promise<Content[]> | null = null;
+function getStatic(): Promise<Content[]> {
+  if (!staticCache) staticCache = loadStatic();
+  return staticCache;
+}
+
+type DbResult = { list: Content[]; blockedHandles: Set<string>; blockedBrands: Set<string>; blockedVideos: Set<string> };
+
+// 정적+수집 병합 → 가시성 필터 → 신규 브랜드 통계 backfill
+function finalize(staticList: Content[], db: DbResult): Content[] {
+  const dbList = db.list;
+  // 정적 데이터에 이미 있는 틱톡 영상은 중복 제외 (DB가 정적을 덮어쓰지 않음)
+  const seen = new Set<string>();
+  for (const c of staticList) {
+    const vid = tiktokVideoId(c.tiktokUrl);
+    if (vid) seen.add(vid);
+  }
+  const merged = [...staticList];
+  for (const c of dbList) {
+    const vid = tiktokVideoId(c.tiktokUrl);
+    if (vid && seen.has(vid)) continue;
+    if (vid) seen.add(vid);
+    merged.push(c);
+  }
+
+  // 제외: ① 브랜드 공식/샵 계정 ② 블락된 인플루언서/브랜드/콘텐츠 (정적+DB 공통)
+  const visible = merged.filter((c) => {
+    if (isOfficialHandle(c.influencerId)) return false;
+    if (db.blockedHandles.has(c.influencerId)) return false;
+    if (db.blockedBrands.has((BRAND_MAP[c.brandId]?.name ?? "").toLowerCase())) return false;
+    const vid = tiktokVideoId(c.tiktokUrl);
+    if (vid && db.blockedVideos.has(vid)) return false;
+    return true;
+  });
+
+  // 수집으로 새로 등록된 브랜드(db-*/m-*)의 통계를 실제 콘텐츠 기준으로 갱신
+  const byBrand = new Map<string, Content[]>();
+  for (const c of visible) {
+    if (!c.brandId.startsWith("db-") && !c.brandId.startsWith("m-")) continue;
+    const arr = byBrand.get(c.brandId);
+    if (arr) arr.push(c);
+    else byBrand.set(c.brandId, [c]);
+  }
+  for (const [brandId, items] of byBrand) {
+    const b = BRAND_MAP[brandId];
+    if (!b) continue;
+    const handles = new Set(items.map((c) => c.influencerId));
+    const totalViews = items.reduce((s, c) => s + c.views, 0);
+    const shopCount = items.filter((c) => c.isShop).length;
+    b.videos = items.length;
+    b.influencers = handles.size;
+    b.totalViews = totalViews;
+    b.avgViews = Math.round(totalViews / items.length);
+    b.maxViews = items.reduce((m, c) => Math.max(m, c.views), 0);
+    b.adCount = items.filter((c) => c.isAd).length;
+    b.shopCount = shopCount;
+    b.shopRatio = Math.round((shopCount / items.length) * 1000) / 10;
+  }
+
+  return visible;
+}
+
 export function loadContent(): Promise<Content[]> {
   if (cache) return cache;
   cache = (async () => {
-    const [staticList, db] = await Promise.all([loadStatic(), loadDb()]);
-    const dbList = db.list;
-
-    // 정적 데이터에 이미 있는 틱톡 영상은 중복 제외 (DB가 정적을 덮어쓰지 않음)
-    const seen = new Set<string>();
-    for (const c of staticList) {
-      const vid = tiktokVideoId(c.tiktokUrl);
-      if (vid) seen.add(vid);
-    }
-    const merged = [...staticList];
-    for (const c of dbList) {
-      const vid = tiktokVideoId(c.tiktokUrl);
-      if (vid && seen.has(vid)) continue;
-      if (vid) seen.add(vid);
-      merged.push(c);
-    }
-
-    // 제외: ① 브랜드 공식/샵 계정 ② 블락된 인플루언서/브랜드/콘텐츠 (정적+DB 공통)
-    const visible = merged.filter((c) => {
-      if (isOfficialHandle(c.influencerId)) return false;
-      if (db.blockedHandles.has(c.influencerId)) return false;
-      if (db.blockedBrands.has((BRAND_MAP[c.brandId]?.name ?? "").toLowerCase())) return false;
-      const vid = tiktokVideoId(c.tiktokUrl);
-      if (vid && db.blockedVideos.has(vid)) return false;
-      return true;
-    });
-
-    // 수집으로 새로 등록된 브랜드(db-*)의 통계를 실제 콘텐츠 기준으로 갱신
-    // (목록·필터에 표기되는 영상 수/인플루언서 수/조회수가 0으로 남지 않도록)
-    const byBrand = new Map<string, Content[]>();
-    for (const c of visible) {
-      // 통계 시드가 없는 브랜드(확장 마스터 m-, 런타임 발굴 db-)만 실수치로 갱신.
-      // 기존 98개 정적 브랜드는 전체 데이터셋 기준 통계라 덮어쓰지 않음.
-      if (!c.brandId.startsWith("db-") && !c.brandId.startsWith("m-")) continue;
-      const arr = byBrand.get(c.brandId);
-      if (arr) arr.push(c);
-      else byBrand.set(c.brandId, [c]);
-    }
-    for (const [brandId, items] of byBrand) {
-      const b = BRAND_MAP[brandId];
-      if (!b) continue;
-      const handles = new Set(items.map((c) => c.influencerId));
-      const totalViews = items.reduce((s, c) => s + c.views, 0);
-      const shopCount = items.filter((c) => c.isShop).length;
-      b.videos = items.length;
-      b.influencers = handles.size;
-      b.totalViews = totalViews;
-      b.avgViews = Math.round(totalViews / items.length);
-      b.maxViews = items.reduce((m, c) => Math.max(m, c.views), 0);
-      b.adCount = items.filter((c) => c.isAd).length;
-      b.shopCount = shopCount;
-      b.shopRatio = Math.round((shopCount / items.length) * 1000) / 10;
-    }
-
-    return visible;
+    const [staticList, db] = await Promise.all([getStatic(), loadDb()]);
+    return finalize(staticList, db);
   })();
   return cache;
+}
+
+// 단계적 로드: 정적 데이터로 먼저 렌더(빠름) → 수집 DB 병합 후 다시 갱신.
+// onUpdate가 phase별로 2회 호출됨 (static → full). 첫 호출로 화면을 즉시 채운다.
+export function loadContentStaged(onUpdate: (list: Content[]) => void): void {
+  let done = false;
+  getStatic().then((s) => {
+    if (done) return; // 전체본이 이미 도착했으면 정적본은 건너뜀
+    // 정적 단계: 공식계정만 제외 (블락은 전체 단계에서 반영 — 보통 소수)
+    onUpdate(s.filter((c) => !isOfficialHandle(c.influencerId)));
+  });
+  loadContent().then((full) => {
+    done = true;
+    onUpdate(full);
+  });
 }
 
 // 랜덤 샘플 (메인/앞단 노출용)
