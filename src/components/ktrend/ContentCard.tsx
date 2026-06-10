@@ -78,11 +78,13 @@ function useThumbnail(url: string, ref: React.RefObject<HTMLElement | null>): st
   return thumb;
 }
 
-function Metric({ label, value }: { label: string; value: string }) {
+function Metric({ label, value, blur }: { label: string; value: string; blur?: boolean }) {
   return (
     <div className="rounded-md bg-[var(--accent-light)]/60 px-2 py-1.5">
       <div className="text-[9px] font-medium text-[var(--muted)]">{label}</div>
-      <div className="text-[13px] font-bold text-[var(--fg)]">{value}</div>
+      <div className={`text-[13px] font-bold text-[var(--fg)] ${blur ? "select-none blur-[6px]" : ""}`} aria-hidden={blur || undefined}>
+        {blur ? "$••••" : value}
+      </div>
     </div>
   );
 }
@@ -91,6 +93,7 @@ export default function ContentCard({ content }: { content: Content }) {
   const { user, openVideo, isVideoOpened, isAdmin } = usePlan();
   const router = useRouter();
   const [adminBlocked, setAdminBlocked] = useState<null | string>(null);
+  const lockMetrics = !user && !isAdmin; // 비로그인 시 추정 매출·ROAS 실루엣
 
   const adminBlock = async (kind: "video" | "handle") => {
     const value = kind === "video" ? tiktokVideoId(content.tiktokUrl) ?? content.id : content.influencerId;
@@ -232,11 +235,11 @@ export default function ContentCard({ content }: { content: Content }) {
           </span>
         </div>
 
-        {/* 2x2 성과 지표 (전체 공개) */}
+        {/* 2x2 성과 지표 — 추정 매출·ROAS는 비로그인 시 실루엣 처리 */}
         <div className="mt-0.5 grid grid-cols-2 gap-1.5">
           <Metric label="수수료율 (추정)" value={`${content.commissionRate}%`} />
-          <Metric label="추정 ROAS" value={`${content.estRoasX}x`} />
-          <Metric label="추정 매출" value={fmtUSD(content.estRevenueUSD)} />
+          <Metric label="추정 ROAS" value={`${content.estRoasX}x`} blur={lockMetrics} />
+          <Metric label="추정 매출" value={fmtUSD(content.estRevenueUSD)} blur={lockMetrics} />
           <Metric label="참여율" value={`${content.engagementRate}%`} />
         </div>
 

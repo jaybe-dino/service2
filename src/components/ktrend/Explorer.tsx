@@ -310,7 +310,7 @@ export default function Explorer() {
               activeCount > 0 ? (
                 <><span className="text-[var(--accent)]">{filtered.length.toLocaleString()}</span>개 결과</>
               ) : (
-                <span className="text-[var(--muted)]">콘텐츠 탐색</span>
+                <span className="text-[var(--muted)]">콘텐츠 레퍼런스</span>
               )
             ) : (
               "데이터 로딩 중…"

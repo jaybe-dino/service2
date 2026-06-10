@@ -111,7 +111,7 @@ export default function MyPage() {
         <div className="mt-4 kt-card p-5">
           <h2 className="mb-3 text-[13px] font-bold">바로가기</h2>
           <div className="flex flex-wrap gap-2">
-            <Link href="/explorer" className="kt-btn kt-btn-outline px-4 py-2 text-[12px]">콘텐츠 탐색</Link>
+            <Link href="/explorer" className="kt-btn kt-btn-outline px-4 py-2 text-[12px]">콘텐츠 레퍼런스</Link>
             <Link href="/saved" className="kt-btn kt-btn-outline px-4 py-2 text-[12px]">저장한 항목</Link>
             <Link href="/reports" className="kt-btn kt-btn-outline px-4 py-2 text-[12px]">브랜드</Link>
             <Link href="/plans" className="kt-btn kt-btn-outline px-4 py-2 text-[12px]">요금제</Link>
