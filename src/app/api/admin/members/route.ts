@@ -5,7 +5,7 @@ import { getCurrentUser } from "@/lib/auth";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const ADMIN_EMAILS = (process.env.ADMIN_EMAILS || "admin@ktrend.demo")
+const ADMIN_EMAILS = (process.env.ADMIN_EMAILS || "admin@ktrend.demo,jbheo91@gmail.com,jaybe@dinostudio.kr")
   .split(",")
   .map((e) => e.trim().toLowerCase());
 

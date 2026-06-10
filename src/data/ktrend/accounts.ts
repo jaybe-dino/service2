@@ -20,7 +20,7 @@ export const DEMO_ACCOUNTS: Account[] = [
   { id: "admin-demo", email: "admin@ktrend.demo", password: "ktrend2026", name: "관리자", company: "K-Trend Analytics", plan: "enterprise" },
 ];
 
-export const ADMIN_EMAILS = ["admin@ktrend.demo"];
+export const ADMIN_EMAILS = ["admin@ktrend.demo", "jbheo91@gmail.com", "jaybe@dinostudio.kr"];
 
 const MEMBERS_KEY = "ktrend.members";
 
