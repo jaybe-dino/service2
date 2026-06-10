@@ -66,7 +66,7 @@ export default function InquiryModal({
           <div className="py-8 text-center">
             <Check className="mx-auto text-emerald-500" />
             <p className="mt-2 text-[13px] font-bold">접수되었습니다</p>
-            <p className="mt-1 text-[11px] text-[var(--muted)]">담당자가 입력하신 이메일로 회신드립니다.</p>
+            <p className="mt-1 text-[11px] text-[var(--muted)]">관리자에 접수되었습니다. 확인 후 회신드립니다. (자동 이메일 발송 없음)</p>
             <button onClick={onClose} className="kt-btn kt-btn-primary mt-4 px-5 py-2 text-[12px]">닫기</button>
           </div>
         ) : (

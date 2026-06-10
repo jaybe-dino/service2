@@ -17,6 +17,6 @@ export async function POST(req: Request) {
   await ensureSchema();
   await sql`INSERT INTO inquiries (kind, user_email, payload)
             VALUES (${kind}, ${userEmail}, ${JSON.stringify(body ?? {})}::jsonb)`;
-  // 이메일 발송은 별도 트랜잭션 메일러(SMTP/Resend) 연동 시 활성화
+  // 정책: 자동 이메일 발송 안 함 — 어드민(/admin)에만 적재. 회신은 관리자가 수동 처리.
   return NextResponse.json({ ok: true });
 }
