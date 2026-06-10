@@ -25,8 +25,10 @@ export default function LoginPage() {
     }
   };
 
-  const quick = (id: string) => {
-    loginAs(id);
+  const quick = async (acc: { id: string; email: string; password: string }) => {
+    // 서버모드면 실제 API 로그인(세션 발급), 아니면 로컬 데모
+    const ok = await login(acc.email, acc.password);
+    if (!ok) loginAs(acc.id);
     router.push("/explorer");
   };
 
@@ -107,7 +109,7 @@ export default function LoginPage() {
                 </ul>
 
                 <button
-                  onClick={() => quick(acc.id)}
+                  onClick={() => quick(acc)}
                   className={`kt-btn mt-4 w-full py-2.5 text-[12px] ${isEnt ? "kt-btn-primary" : "kt-btn-outline"}`}
                 >
                   <LogIn size={14} /> {planInfo?.name} 계정으로 로그인

@@ -67,6 +67,13 @@ export function ensureSchema(): Promise<void> {
         raw jsonb,
         created_at timestamptz NOT NULL DEFAULT now()
       )`;
+      // 데모/관리자 계정 시드 (bcrypt("ktrend2026")) — 서버 세션 로그인 가능하도록
+      const DEMO_HASH = "$2b$10$mLc7sBm3zK4a83l6/Tg9NOoDGLLYsfp4SXRfZcls4.LTw6Tsy/8Oy";
+      await sql`INSERT INTO users (id, email, password_hash, name, brand, role, plan) VALUES
+        ('admin-demo', 'admin@ktrend.demo', ${DEMO_HASH}, '관리자', 'K-Trend Analytics', '관리자', 'enterprise'),
+        ('enterprise-demo', 'pro@ktrend.demo', ${DEMO_HASH}, '프로 테스터', '글로우랩', '마케터', 'enterprise'),
+        ('basic-demo', 'basic@ktrend.demo', ${DEMO_HASH}, '베이직 테스터', '스타트업 코스메틱', '마케터', 'basic')
+        ON CONFLICT (email) DO NOTHING`;
     })();
   }
   return schemaReady;

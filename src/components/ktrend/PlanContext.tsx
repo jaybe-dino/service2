@@ -125,12 +125,11 @@ export function PlanProvider({ children }: { children: ReactNode }) {
   };
 
   useEffect(() => {
-    let demoRestored = false;
     try {
       const id = localStorage.getItem(STORAGE_KEY);
       if (id) {
         const acc = findById(id);
-        if (acc) { setUser(acc); demoRestored = true; }
+        if (acc) setUser(acc); // 초기 표시용 (서버모드면 아래 apiMe가 덮어씀)
       }
       const pu = Number(localStorage.getItem(TRIAL_KEY) || 0);
       if (pu) setProUntil(pu);
@@ -142,9 +141,15 @@ export function PlanProvider({ children }: { children: ReactNode }) {
     // 서버(DB) 연결 여부 확인 + 세션 복원
     apiMe().then(({ configured, user: su }) => {
       setServerMode(configured);
-      if (configured && su && !demoRestored) {
-        setUser(mapApiUser(su));
-        setProUntil(su.proUntil);
+      if (configured) {
+        // 서버모드에선 서버 세션이 진실의 원천 (클라이언트 전용 데모 복원 무시)
+        if (su) {
+          setUser(mapApiUser(su));
+          setProUntil(su.proUntil);
+        } else {
+          setUser(null);
+          persistUser(null);
+        }
       }
       setReady(true);
     });
@@ -167,14 +172,15 @@ export function PlanProvider({ children }: { children: ReactNode }) {
   };
 
   const login = async (email: string, password: string): Promise<boolean> => {
-    // 데모 계정은 어느 모드에서나 즉시 허용 (QA)
-    const demo = findAccount(email, password);
-    if (demo) { applyUser(demo); return true; }
+    // 서버모드: 데모 계정 포함 모두 API 경유 → 실제 서버 세션 발급 (관리자 API 동작)
     if (serverMode) {
       const { ok, data } = await apiLogin({ email, password });
       if (ok && data.user) { applyUser(mapApiUser(data.user), data.user.proUntil); return true; }
       return false;
     }
+    // 오프라인/데모 모드(로컬)
+    const demo = findAccount(email, password);
+    if (demo) { applyUser(demo); return true; }
     return false;
   };
 
