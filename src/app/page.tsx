@@ -1,19 +1,36 @@
+"use client";
+
+import { useEffect, useState } from "react";
 import Link from "next/link";
-import { ArrowRight, BarChart3, Bell, Contact, TrendingUp } from "lucide-react";
+import { ArrowRight, BarChart3, Bell, Contact, TrendingUp, Shuffle } from "lucide-react";
 import PageShell from "@/components/ktrend/PageShell";
+import ContentCard from "@/components/ktrend/ContentCard";
+import { usePlan } from "@/components/ktrend/PlanContext";
 import { CATEGORIES, SERVICE } from "@/data/ktrend/meta";
 import { BRANDS } from "@/data/ktrend/brands";
-import { fmtCompact } from "@/data/ktrend/content";
+import { loadContent, randomSample, fmtCompact, type Content } from "@/data/ktrend/content";
 
 const VALUE = [
   { icon: TrendingUp, title: "콘텐츠별 성과 조회", desc: "모든 리스팅을 틱톡 영상(콘텐츠) 단위로 보고 조회수·참여율·추정 ROAS·기여 매출을 즉시 비교." },
-  { icon: BarChart3, title: "브랜드 벤치마킹", desc: "98개 K-뷰티 브랜드의 틱톡 마케팅 성과를 자사·경쟁사 한눈에 비교." },
+  { icon: BarChart3, title: "브랜드 벤치마킹", desc: "K-뷰티 브랜드의 틱톡 마케팅 성과를 자사·경쟁사 한눈에 비교." },
   { icon: Contact, title: "검증된 인플루언서 DB", desc: "실제 매출을 발생시킨 어필리에이트 크리에이터의 성과와 컨택 라인 제공." },
   { icon: Bell, title: "실시간 바이럴 감지", desc: "매주 월·목 정기 AI 트렌드 업데이트와 급상승 영상 푸시 알림." },
 ];
 
 export default function Home() {
-  const totalVideos = BRANDS.reduce((s, b) => s + b.videos, 0);
+  const { isAdmin } = usePlan();
+  const [random, setRandom] = useState<Content[]>([]);
+  const [totalContent, setTotalContent] = useState(0);
+
+  useEffect(() => {
+    loadContent().then((all) => {
+      setTotalContent(all.length);
+      setRandom(randomSample(all, 8));
+    });
+  }, []);
+
+  const reshuffle = () => loadContent().then((all) => setRandom(randomSample(all, 8)));
+
   const totalViews = BRANDS.reduce((s, b) => s + b.totalViews, 0);
   const featured = BRANDS.slice(0, 6);
 
@@ -27,8 +44,7 @@ export default function Home() {
             <span className="text-[var(--accent)]">브랜드·콘텐츠·인플루언서</span>별로 분석
           </h1>
           <p className="mx-auto mt-4 max-w-2xl text-[14px] leading-relaxed text-[var(--muted)]">
-            {SERVICE.tagline}. 98개 K-뷰티 브랜드의 실제 틱톡 영상 {fmtCompact(totalVideos)}건과
-            누적 {fmtCompact(totalViews)} 조회 데이터를 추적합니다.
+            {SERVICE.tagline}. 실제 틱톡 콘텐츠를 브랜드·콘텐츠·인플루언서별로 추적합니다.
           </p>
           <div className="mt-7 flex items-center justify-center gap-3">
             <Link href="/explorer" className="kt-btn kt-btn-primary px-6 py-3 text-[13px]">
@@ -37,18 +53,45 @@ export default function Home() {
             <Link href="/plans" className="kt-btn kt-btn-outline px-6 py-3 text-[13px]">요금제 보기</Link>
           </div>
 
-          <div className="mx-auto mt-12 grid max-w-2xl grid-cols-3 gap-4">
-            {[
-              { n: `${BRANDS.length}`, l: "추적 브랜드" },
-              { n: fmtCompact(totalVideos), l: "분석 콘텐츠" },
-              { n: fmtCompact(totalViews), l: "누적 조회수" },
-            ].map((s) => (
-              <div key={s.l} className="kt-card p-4">
-                <div className="text-[24px] font-black text-[var(--accent)]">{s.n}</div>
-                <div className="text-[11px] text-[var(--muted)]">{s.l}</div>
-              </div>
+          {/* 데이터 규모: 관리자 전용 */}
+          {isAdmin && (
+            <div className="mx-auto mt-12 grid max-w-2xl grid-cols-3 gap-4">
+              {[
+                { n: `${BRANDS.length}`, l: "추적 브랜드" },
+                { n: fmtCompact(totalContent), l: "분석 콘텐츠" },
+                { n: fmtCompact(totalViews), l: "누적 조회수" },
+              ].map((s) => (
+                <div key={s.l} className="kt-card p-4">
+                  <div className="text-[24px] font-black text-[var(--accent)]">{s.n}</div>
+                  <div className="text-[11px] text-[var(--muted)]">{s.l}</div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </section>
+
+      {/* 지금 뜨는 콘텐츠 (랜덤) */}
+      <section className="mx-auto max-w-[1480px] px-4 py-12">
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="text-[20px] font-black">지금 뜨는 콘텐츠</h2>
+          <button onClick={reshuffle} className="kt-btn kt-btn-outline px-3 py-1.5 text-[11px]">
+            <Shuffle size={13} /> 다시 섞기
+          </button>
+        </div>
+        {random.length ? (
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+            {random.map((c) => (
+              <ContentCard key={c.id} content={c} />
             ))}
           </div>
+        ) : (
+          <div className="py-12 text-center text-[12px] text-[var(--muted)]">콘텐츠 로딩 중…</div>
+        )}
+        <div className="mt-6 text-center">
+          <Link href="/explorer" className="kt-btn kt-btn-primary px-6 py-3 text-[13px]">
+            전체 콘텐츠 탐색하기 <ArrowRight size={15} />
+          </Link>
         </div>
       </section>
 
@@ -79,9 +122,11 @@ export default function Home() {
                 <div key={c.id} className="kt-card p-5 text-center">
                   <div className="text-[28px]">{c.icon}</div>
                   <div className="mt-1 text-[14px] font-bold">{c.nameKo}</div>
-                  <div className="mt-1 text-[11px] text-[var(--muted)]">
-                    브랜드 {brands.length} · 영상 {fmtCompact(vids)}
-                  </div>
+                  {isAdmin && (
+                    <div className="mt-1 text-[11px] text-[var(--muted)]">
+                      브랜드 {brands.length} · 영상 {fmtCompact(vids)}
+                    </div>
+                  )}
                 </div>
               );
             })}
@@ -89,12 +134,12 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Featured 브랜드 (실제 랭킹 Top 6) */}
+      {/* 대표 브랜드 */}
       <section className="mx-auto max-w-[1480px] px-4 py-14">
-        <h2 className="text-center text-[22px] font-black">조회수 상위 브랜드 Top 6</h2>
+        <h2 className="text-center text-[22px] font-black">조회수 상위 브랜드</h2>
         <div className="mt-8 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {featured.map((b) => (
-            <div key={b.id} className="kt-card p-5">
+            <Link href={`/brand/${b.id}`} key={b.id} className="kt-card block p-5">
               <div className="flex items-center gap-2">
                 <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[var(--accent)] text-[10px] font-bold text-white">
                   {b.rank}
@@ -102,18 +147,12 @@ export default function Home() {
                 <span className="text-[14px] font-bold">{b.name}</span>
                 <span className="kt-badge-brand ml-auto">Shop {b.shopRatio}%</span>
               </div>
-              <div className="mt-3 grid grid-cols-3 gap-2 text-center">
-                <Stat l="영상" v={`${b.videos}`} />
+              <div className="mt-3 grid grid-cols-2 gap-2 text-center">
                 <Stat l="누적 조회" v={fmtCompact(b.totalViews)} />
                 <Stat l="인플루언서" v={`${b.influencers}`} />
               </div>
-            </div>
+            </Link>
           ))}
-        </div>
-        <div className="mt-8 text-center">
-          <Link href="/explorer" className="kt-btn kt-btn-primary px-6 py-3 text-[13px]">
-            전체 콘텐츠 탐색하기 <ArrowRight size={15} />
-          </Link>
         </div>
       </section>
     </PageShell>

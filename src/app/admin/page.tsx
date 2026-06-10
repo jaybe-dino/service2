@@ -7,6 +7,9 @@ import PageShell from "@/components/ktrend/PageShell";
 import { usePlan } from "@/components/ktrend/PlanContext";
 import { apiAdminMembers, type AdminMember, type AdminInquiry } from "@/lib/client-api";
 import { loadMembers } from "@/data/ktrend/accounts";
+import { BRANDS } from "@/data/ktrend/brands";
+import { INFLUENCERS } from "@/data/ktrend/influencers";
+import { loadContent, fmtCompact } from "@/data/ktrend/content";
 
 const KIND_LABEL: Record<string, string> = {
   marketing: "마케팅 1:1",
@@ -21,6 +24,11 @@ export default function AdminPage() {
   const [inquiries, setInquiries] = useState<AdminInquiry[]>([]);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState("");
+  const [contentCount, setContentCount] = useState(0);
+
+  useEffect(() => {
+    if (isAdmin) loadContent().then((all) => setContentCount(all.length));
+  }, [isAdmin]);
 
   useEffect(() => {
     if (!isAdmin) { setLoading(false); return; }
@@ -65,6 +73,21 @@ export default function AdminPage() {
         {serverMode ? "Postgres 연동 — 실시간 가입자·문의" : "데모 모드 — 로컬 가입자만 표시 (DB 연결 시 전체)"}
       </p>
       {err && <p className="mb-3 rounded-md bg-rose-50 px-3 py-2 text-[11px] font-semibold text-rose-600">{err}</p>}
+
+      {/* 데이터 현황 (관리자 전용) */}
+      <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
+        {[
+          { l: "추적 브랜드", v: `${BRANDS.length}` },
+          { l: "분석 콘텐츠", v: contentCount ? fmtCompact(contentCount) : "…" },
+          { l: "인플루언서", v: fmtCompact(INFLUENCERS.length) },
+          { l: "가입 회원", v: `${members.length}` },
+        ].map((s) => (
+          <div key={s.l} className="kt-card p-4">
+            <div className="text-[11px] text-[var(--muted)]">{s.l}</div>
+            <div className="mt-1 text-[20px] font-black text-[var(--accent)]">{s.v}</div>
+          </div>
+        ))}
+      </div>
 
       {loading ? (
         <div className="flex items-center justify-center gap-2 py-16 text-[var(--muted)]"><Loader2 className="animate-spin" size={16} /> 로딩…</div>

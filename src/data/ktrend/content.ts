@@ -4,6 +4,7 @@
 import { BRANDS } from "./brands";
 import { INFLUENCER_MAP } from "./influencers";
 import { BASE_PATH, CATEGORY_MAP, tierOf, type CategoryId, type InfluencerTier } from "./meta";
+import { isOfficialHandle } from "./official";
 
 export interface Content {
   id: string;
@@ -26,6 +27,7 @@ export interface Content {
   cpmUSD: number; // 추정
   viralScore: number; // 0-100
   hue: number;
+  rand: number; // 세션 내 랜덤 정렬용
   tiktokUrl: string;
 }
 
@@ -90,6 +92,7 @@ function mapRow(r: RawVideos["rows"][number], i: number): Content | null {
     cpmUSD,
     viralScore,
     hue: h % 360,
+    rand: Math.random(),
     tiktokUrl: vid ? `https://www.tiktok.com/@${handle}/video/${vid}` : `https://www.tiktok.com/@${handle}`,
   };
 }
@@ -104,17 +107,27 @@ export function loadContent(): Promise<Content[]> {
       return res.json() as Promise<RawVideos>;
     })
     .then((data) =>
-      data.rows.map((r, i) => mapRow(r, i)).filter((c): c is Content => c !== null),
+      data.rows
+        .map((r, i) => mapRow(r, i))
+        .filter((c): c is Content => c !== null)
+        // 브랜드 공식/샵 계정 콘텐츠는 전 영역에서 제외
+        .filter((c) => !isOfficialHandle(c.influencerId)),
     );
   return cache;
+}
+
+// 랜덤 샘플 (메인/앞단 노출용)
+export function randomSample(list: Content[], n: number): Content[] {
+  return [...list].sort((a, b) => a.rand - b.rand).slice(0, n);
 }
 
 // ---------------------------------------------------------------------------
 // 정렬 / 포맷 헬퍼
 // ---------------------------------------------------------------------------
-export type SortKey = "viral" | "views" | "engagement" | "revenue" | "recent";
+export type SortKey = "random" | "viral" | "views" | "engagement" | "revenue" | "recent";
 
 export const SORTS: { key: SortKey; label: string }[] = [
+  { key: "random", label: "랜덤" },
   { key: "viral", label: "바이럴 점수순" },
   { key: "views", label: "조회수순" },
   { key: "engagement", label: "참여율순" },
@@ -125,6 +138,8 @@ export const SORTS: { key: SortKey; label: string }[] = [
 export function sortContent(list: Content[], key: SortKey): Content[] {
   const arr = [...list];
   switch (key) {
+    case "random":
+      return arr.sort((a, b) => a.rand - b.rand);
     case "views":
       return arr.sort((a, b) => b.views - a.views);
     case "engagement":

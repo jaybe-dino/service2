@@ -30,7 +30,7 @@ const TIER_KEYS = Object.keys(TIERS) as InfluencerTier[];
 const PAGE = 48;
 
 export default function Explorer() {
-  const { isPro } = usePlan();
+  const { isPro, isAdmin } = usePlan();
 
   const [all, setAll] = useState<Content[] | null>(null);
   const [az, setAz] = useState<string>("ALL");
@@ -40,7 +40,7 @@ export default function Explorer() {
   const [tiers, setTiers] = useState<Set<InfluencerTier>>(new Set());
   const [onlyShop, setOnlyShop] = useState(false);
   const [onlyAd, setOnlyAd] = useState(false);
-  const [sort, setSort] = useState<SortKey>("viral");
+  const [sort, setSort] = useState<SortKey>("random");
   const [showFilters, setShowFilters] = useState(false);
   const [visible, setVisible] = useState(PAGE);
 
@@ -171,7 +171,7 @@ export default function Explorer() {
           </FilterGroup>
 
           {/* 브랜드 */}
-          <FilterGroup title={`브랜드 (${BRANDS.length})`}>
+          <FilterGroup title={isAdmin ? `브랜드 (${BRANDS.length})` : "브랜드"}>
             <div className="kt-noscrollbar mb-2 flex gap-1 overflow-x-auto pb-1">
               {["ALL", ...BRAND_AZ_KEYS].map((k) => (
                 <button
@@ -198,7 +198,7 @@ export default function Explorer() {
 
             {!isPro && (
               <p className="mb-2 rounded-md bg-amber-50 px-2 py-1.5 text-[9px] font-medium text-amber-700">
-                Basic 플랜은 상위 브랜드만 노출됩니다. Pro 가입 시 98개 전체 해금.
+                Basic 플랜은 상위 브랜드만 노출됩니다. Pro 가입 시 전체 브랜드 해금.
               </p>
             )}
 
@@ -266,12 +266,16 @@ export default function Explorer() {
           </button>
           <div className="text-[12px] font-semibold">
             {all ? (
-              <>
-                <span className="text-[var(--accent)]">{filtered.length.toLocaleString()}</span>개 콘텐츠
-                <span className="ml-1 text-[var(--muted)]">/ 전체 {all.length.toLocaleString()}</span>
-              </>
+              activeCount > 0 ? (
+                <><span className="text-[var(--accent)]">{filtered.length.toLocaleString()}</span>개 결과</>
+              ) : (
+                <span className="text-[var(--muted)]">콘텐츠 탐색</span>
+              )
             ) : (
               "데이터 로딩 중…"
+            )}
+            {isAdmin && all && (
+              <span className="ml-1 text-[var(--muted)]">/ 전체 {all.length.toLocaleString()}</span>
             )}
           </div>
           <div className="ml-auto flex items-center gap-2">

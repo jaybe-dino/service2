@@ -2,6 +2,7 @@
 // 출처: brands_1to100_MASTER.xlsx — 팔로워 부재로 티어는 평균 조회수 기반 산출.
 import raw from "./real-influencers.json";
 import type { InfluencerTier } from "./meta";
+import { isOfficialHandle } from "./official";
 
 export interface Influencer {
   handle: string;
@@ -12,7 +13,10 @@ export interface Influencer {
   brands: string[]; // 협업 브랜드명 목록
 }
 
-export const INFLUENCERS: Influencer[] = raw as Influencer[];
+// 브랜드 공식/샵 계정은 제외
+export const INFLUENCERS: Influencer[] = (raw as Influencer[]).filter(
+  (i) => !isOfficialHandle(i.handle),
+);
 
 export const INFLUENCER_MAP: Record<string, Influencer> = Object.fromEntries(
   INFLUENCERS.map((i) => [i.handle, i]),
