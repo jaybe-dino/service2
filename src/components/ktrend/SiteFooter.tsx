@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { SERVICE } from "@/data/ktrend/meta";
+import FooterCTAs from "./FooterCTAs";
 
 export default function SiteFooter() {
   return (
@@ -35,10 +36,15 @@ export default function SiteFooter() {
             </div>
             <ul className="space-y-1.5 text-[12px]">
               <li><Link href="/plans" className="hover:text-[var(--accent)]">요금제</Link></li>
-              <li><span className="text-[var(--muted)]">데이터: 틱톡 샵 오픈 DB + AI 예측 (V1)</span></li>
-              <li><span className="text-[var(--muted)]">V2: 틱톡원 다이렉트 API 연동 예정</span></li>
+              <li><Link href="/signup" className="hover:text-[var(--accent)]">회원가입</Link></li>
+              <li><Link href="/admin" className="hover:text-[var(--accent)]">회원관리(관리자)</Link></li>
             </ul>
           </div>
+        </div>
+
+        <div className="mt-6">
+          <div className="mb-2 text-[11px] font-bold uppercase tracking-wide text-[var(--muted)]">문의</div>
+          <FooterCTAs />
         </div>
         <div className="mt-8 border-t border-[var(--border)] pt-4 text-[10px] text-[var(--muted)]">
           © 2026 K-Trend Analytics. 본 화면의 지표는 데모용 샘플 데이터입니다. {SERVICE.version}

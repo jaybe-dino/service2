@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { Lock, Mail, Phone, Search } from "lucide-react";
+import Link from "next/link";
 import PageShell from "@/components/ktrend/PageShell";
 import CreatorName from "@/components/ktrend/CreatorName";
 import BookmarkButton from "@/components/ktrend/BookmarkButton";
@@ -81,6 +82,7 @@ export default function InfluencersPage() {
                     <div className="flex items-center gap-1.5">
                       <CreatorName handle={inf.handle} avatarSize={26} />
                       <BookmarkButton type="influencer" id={inf.handle} size={12} className="!px-1 !py-0.5" />
+                      <Link href={`/influencer/${inf.handle}`} className="rounded border border-[var(--border)] px-1.5 py-0.5 text-[9px] font-semibold text-[var(--muted)] hover:border-[var(--accent)] hover:text-[var(--accent)]">상세</Link>
                     </div>
                   </td>
                   <td className="p-3">

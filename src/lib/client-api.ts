@@ -60,3 +60,24 @@ export async function apiBookmarks(): Promise<{ brands: string[]; influencers: s
 
 export const apiToggleBookmark = (type: "brand" | "influencer", id: string) =>
   jpost<{ active: boolean }>("/api/bookmarks", { type, id });
+
+export interface AdminMember {
+  id: string; email: string; name: string; brand: string | null;
+  role: string | null; plan: string; pro_until: number; created_at: string;
+}
+export interface AdminInquiry {
+  id: number; kind: string; user_email: string | null; created_at: string;
+}
+
+export async function apiAdminMembers(): Promise<{
+  ok: boolean; members: AdminMember[]; inquiries: AdminInquiry[]; error?: string;
+}> {
+  try {
+    const res = await fetch(`${BASE}/api/admin/members`, { cache: "no-store" });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) return { ok: false, members: [], inquiries: [], error: data.error ?? `${res.status}` };
+    return { ok: true, members: data.members ?? [], inquiries: data.inquiries ?? [] };
+  } catch {
+    return { ok: false, members: [], inquiries: [], error: "네트워크 오류" };
+  }
+}
