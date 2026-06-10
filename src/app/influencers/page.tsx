@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { Lock, Mail, Phone, Search } from "lucide-react";
 import PageShell from "@/components/ktrend/PageShell";
 import CreatorName from "@/components/ktrend/CreatorName";
+import BookmarkButton from "@/components/ktrend/BookmarkButton";
 import { usePlan } from "@/components/ktrend/PlanContext";
 import { INFLUENCERS, contactFor } from "@/data/ktrend/influencers";
 import { TIERS, type InfluencerTier } from "@/data/ktrend/meta";
@@ -77,7 +78,10 @@ export default function InfluencersPage() {
                 <tr key={inf.handle} className="border-b border-[var(--border)] last:border-0 hover:bg-slate-50">
                   <td className="p-3 text-[var(--muted)]">{i + 1}</td>
                   <td className="p-3">
-                    <CreatorName handle={inf.handle} avatarSize={26} />
+                    <div className="flex items-center gap-1.5">
+                      <CreatorName handle={inf.handle} avatarSize={26} />
+                      <BookmarkButton type="influencer" id={inf.handle} size={12} className="!px-1 !py-0.5" />
+                    </div>
                   </td>
                   <td className="p-3">
                     <span className="rounded px-1.5 py-0.5 text-[9px] font-bold text-white" style={{ background: TIERS[inf.tier].color }}>

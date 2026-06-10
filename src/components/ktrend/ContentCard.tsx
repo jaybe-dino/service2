@@ -3,8 +3,10 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Heart, MessageCircle, Play, Eye, Lock, LogIn, TrendingUp, Share2 } from "lucide-react";
+import { Heart, MessageCircle, Play, Eye, Lock, LogIn, TrendingUp, Share2, Sparkles } from "lucide-react";
 import CreatorName from "./CreatorName";
+import ContentAnalysisModal from "./ContentAnalysisModal";
+import BookmarkButton from "./BookmarkButton";
 import { usePlan, CLICK_LIMIT } from "./PlanContext";
 import { BRAND_MAP } from "@/data/ktrend/brands";
 import { CATEGORY_MAP, TIERS } from "@/data/ktrend/meta";
@@ -96,6 +98,7 @@ export default function ContentCard({ content }: { content: Content }) {
   const thumb = useThumbnail(content.tiktokUrl, mediaRef);
   const [loaded, setLoaded] = useState(false);
   const [blocked, setBlocked] = useState(false);
+  const [showAnalysis, setShowAnalysis] = useState(false);
 
   const handleOpen = () => {
     if (!user) {
@@ -195,7 +198,7 @@ export default function ContentCard({ content }: { content: Content }) {
           <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[9px] font-semibold text-slate-500">
             {cat?.icon} {cat?.nameKo}
           </span>
-          <span className="ml-auto text-[9px] text-[var(--muted)]">{content.date}</span>
+          <BookmarkButton type="brand" id={content.brandId} size={11} className="ml-auto !px-1 !py-0.5" />
         </div>
 
         {/* 크리에이터 (계정 이름 게이팅) */}
@@ -214,10 +217,21 @@ export default function ContentCard({ content }: { content: Content }) {
           <Metric label="참여율" value={`${content.engagementRate}%`} />
         </div>
 
+        <button
+          onClick={() => setShowAnalysis(true)}
+          className="kt-btn kt-btn-outline mt-0.5 w-full py-1.5 text-[10px]"
+        >
+          <Sparkles size={11} /> 후킹·소구점 분석
+        </button>
+
         {opened && (
           <p className="text-[8px] font-medium text-emerald-600">✓ 오늘 열람한 콘텐츠</p>
         )}
       </div>
+
+      {showAnalysis && (
+        <ContentAnalysisModal content={content} onClose={() => setShowAnalysis(false)} />
+      )}
     </article>
   );
 }

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LogIn, LogOut, Sparkles } from "lucide-react";
+import { LogIn, LogOut, Sparkles, Bookmark } from "lucide-react";
 import { usePlan } from "./PlanContext";
 import type { PlanId } from "@/data/ktrend/meta";
 
@@ -69,6 +69,9 @@ export default function SiteHeader() {
           )}
           {user ? (
             <>
+              <Link href="/saved" title="저장됨" className="kt-btn kt-btn-outline px-2 py-1.5 text-[11px]">
+                <Bookmark size={13} />
+              </Link>
               <span
                 className="rounded-full px-2 py-0.5 text-[9px] font-bold text-white"
                 style={{ background: PLAN_COLOR[plan] }}

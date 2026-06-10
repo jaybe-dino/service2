@@ -1,10 +1,25 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { Check, Star } from "lucide-react";
 import PageShell from "@/components/ktrend/PageShell";
 import { usePlan } from "@/components/ktrend/PlanContext";
 import { ADDONS, PLANS } from "@/data/ktrend/meta";
+
+const ANNUAL_OFF = 0.2; // 연간 결제 20% 할인 (2개월+ 무료)
+
+function priceParts(price: string, annual: boolean): { main: string; sub: string | null } {
+  const m = price.match(/\$([\d,]+)/);
+  if (!m) return { main: price, sub: null };
+  const monthly = Number(m[1].replace(/,/g, ""));
+  if (monthly === 0) return { main: price, sub: null };
+  if (!annual) return { main: price, sub: null };
+  const tilde = price.includes("~") ? "~" : "";
+  const discounted = Math.round(monthly * (1 - ANNUAL_OFF));
+  const yearly = discounted * 12;
+  return { main: `$${discounted}${tilde}`, sub: `연 $${yearly.toLocaleString()}${tilde} 청구 · 20% 절약` };
+}
 
 const COMPARE = [
   { feature: "콘텐츠 성과 지표", basic: "전체 공개", pro: "전체 공개", ent: "전체 공개 + 실매출" },
@@ -17,6 +32,7 @@ const COMPARE = [
 
 export default function PlansPage() {
   const { plan } = usePlan();
+  const [annual, setAnnual] = useState(true);
 
   return (
     <PageShell>
@@ -25,6 +41,21 @@ export default function PlansPage() {
         <p className="mt-2 text-[13px] text-[var(--muted)]">
           비즈니스 성장 단계에 맞춰 결합 가능한 SaaS 구독 + Add-on 모델.
         </p>
+        {/* 월간/연간 토글 */}
+        <div className="mt-4 inline-flex items-center gap-1 rounded-full border border-[var(--border)] p-1 text-[11px] font-semibold">
+          <button
+            onClick={() => setAnnual(false)}
+            className={`rounded-full px-3 py-1 ${!annual ? "bg-[var(--accent)] text-white" : "text-[var(--muted)]"}`}
+          >
+            월간
+          </button>
+          <button
+            onClick={() => setAnnual(true)}
+            className={`flex items-center gap-1 rounded-full px-3 py-1 ${annual ? "bg-[var(--accent)] text-white" : "text-[var(--muted)]"}`}
+          >
+            연간 <span className={`rounded-full px-1.5 py-0.5 text-[8px] ${annual ? "bg-white/25" : "bg-emerald-100 text-emerald-700"}`}>20% OFF</span>
+          </button>
+        </div>
       </div>
 
       {/* 플랜 카드 */}
@@ -45,10 +76,18 @@ export default function PlansPage() {
               )}
               <h2 className="text-[18px] font-black">{p.name}</h2>
               <p className="mt-1 text-[11px] text-[var(--muted)]">{p.tagline}</p>
-              <div className="mt-4 flex items-end gap-1">
-                <span className="text-[32px] font-black">{p.price}</span>
-                <span className="mb-1.5 text-[12px] text-[var(--muted)]">{p.priceNote}</span>
-              </div>
+              {(() => {
+                const pp = priceParts(p.price, annual);
+                return (
+                  <>
+                    <div className="mt-4 flex items-end gap-1">
+                      <span className="text-[32px] font-black">{pp.main}</span>
+                      <span className="mb-1.5 text-[12px] text-[var(--muted)]">{p.priceNote}</span>
+                    </div>
+                    <div className="h-4 text-[10px] font-semibold text-emerald-600">{pp.sub ?? ""}</div>
+                  </>
+                );
+              })()}
               <ul className="mt-5 flex-1 space-y-2">
                 {p.features.map((f) => (
                   <li key={f} className="flex items-start gap-2 text-[11px]">
