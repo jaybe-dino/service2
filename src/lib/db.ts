@@ -87,6 +87,8 @@ export function ensureSchema(): Promise<void> {
         created_at timestamptz NOT NULL DEFAULT now(),
         updated_at timestamptz NOT NULL DEFAULT now()
       )`;
+      // 재시도 횟수 (기존 테이블에도 보강) — N회 초과 시 'failed'로 격리해 무한 재시도 방지
+      await sql`ALTER TABLE brand_requests ADD COLUMN IF NOT EXISTS attempts int NOT NULL DEFAULT 0`;
       // 수집된 영상 (틱톡 video_id UNIQUE = 멱등/중복방지, 증분 수집)
       await sql`CREATE TABLE IF NOT EXISTS videos (
         video_id text PRIMARY KEY,

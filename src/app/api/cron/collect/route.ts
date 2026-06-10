@@ -4,7 +4,7 @@ import { runCollection } from "@/lib/collect-run";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-export const maxDuration = 300; // Vercel Pro: 최대 5분
+export const maxDuration = 60; // Vercel Hobby(무료) 한도. 소량 배치로 60초 내 완료.
 
 // Vercel Cron이 호출. CRON_SECRET 설정 시 Vercel이 Authorization: Bearer 로 전달.
 function authorized(req: Request): boolean {
@@ -16,7 +16,8 @@ function authorized(req: Request): boolean {
 async function handle(req: Request) {
   if (!authorized(req)) return new Response("forbidden", { status: 403 });
   if (!isConfigured()) return NextResponse.json({ error: "DB 미설정" }, { status: 503 });
-  const summary = await runCollection({ maxPending: 3, maxRefresh: 6 });
+  // 비용 최소화: 한 사이클당 소량만 처리(무료 한도 + 60초 내 완료)
+  const summary = await runCollection({ maxPending: 2, maxRefresh: 3 });
   return NextResponse.json({ ok: true, ...summary });
 }
 

@@ -4,9 +4,26 @@ import { isOfficialHandle } from "@/data/ktrend/official";
 import { BRANDS } from "@/data/ktrend/brands";
 import { DEFAULT_CRAWL_RULES, type CrawlRules } from "./crawl-rules";
 
+const MAX_ATTEMPTS = 3; // 재시도 상한 — 초과 시 'failed'로 격리
+
 async function getRules(): Promise<CrawlRules> {
   const r = await sql`SELECT value FROM admin_settings WHERE key='crawl_rules' LIMIT 1`;
   return { ...DEFAULT_CRAWL_RULES, ...(r.rows[0]?.value ?? {}) };
+}
+
+// 수집 실패만 Slack 통지(설정된 경우). 조용한 실패 방지, 비용 0.
+async function notifyFailure(msg: string) {
+  const url = process.env.SLACK_WEBHOOK_URL;
+  if (!url) return;
+  try {
+    await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text: `⚠️ [Glovek 수집] ${msg}` }),
+    });
+  } catch {
+    /* 통지 실패는 무시 */
+  }
 }
 
 async function upsertVideos(brandName: string, vids: CollectedVideo[], rules: CrawlRules): Promise<number> {
@@ -74,17 +91,18 @@ export async function runCollection(opts: { maxPending?: number; maxRefresh?: nu
   await ensureSchema();
   const rules = await getRules();
   const configured = scraperConfigured();
-  const maxPending = opts.maxPending ?? 3;
-  const maxRefresh = opts.maxRefresh ?? 5;
+  const maxPending = opts.maxPending ?? 2;
+  const maxRefresh = opts.maxRefresh ?? 3;
   let collected = 0;
 
-  // 1) 신규 브랜드 요청 처리 (pending → active)
-  const pending = await sql<{ id: number; brand_name: string; handle: string | null; hashtags: string | null }>`
-    SELECT id, brand_name, handle, hashtags FROM brand_requests WHERE status='pending' ORDER BY created_at ASC LIMIT ${maxPending}`;
+  // 1) 신규 브랜드 요청 처리 (pending → active). failed는 자동 제외.
+  const pending = await sql<{ id: number; brand_name: string; handle: string | null; hashtags: string | null; attempts: number }>`
+    SELECT id, brand_name, handle, hashtags, attempts FROM brand_requests WHERE status='pending' ORDER BY created_at ASC LIMIT ${maxPending}`;
   for (const req of pending.rows) {
     await sql`UPDATE brand_requests SET status='collecting', updated_at=now() WHERE id=${req.id}`;
     try {
-      const vids = await collectBrand({ brandName: req.brand_name, handle: req.handle, hashtags: req.hashtags, limit: 60 });
+      // 비용 최소화: 신규 브랜드 1회 수집량 축소(30)
+      const vids = await collectBrand({ brandName: req.brand_name, handle: req.handle, hashtags: req.hashtags, limit: 30 });
       const c = await upsertVideos(req.brand_name, vids, rules);
       await syncDerived(req.brand_name); // 콘텐츠→브랜드통계·인플루언서 동시 갱신
       collected += c;
@@ -95,8 +113,12 @@ export async function runCollection(opts: { maxPending?: number; maxRefresh?: nu
                 ON CONFLICT (brand_name) DO UPDATE SET last_collected_at=now(), hashtags=COALESCE(EXCLUDED.hashtags, brand_tracking.hashtags), updated_at=now()`;
       await sql`INSERT INTO collection_runs (kind, target, status, collected) VALUES ('new_brand', ${req.brand_name}, 'ok', ${c})`;
     } catch (e) {
-      await sql`UPDATE brand_requests SET status='pending', note=${String(e).slice(0, 200)}, updated_at=now() WHERE id=${req.id}`;
+      // 재시도 격리: N회 초과하면 'failed'로 (무한 pending 루프 방지)
+      const next = (req.attempts ?? 0) + 1;
+      const status = next >= MAX_ATTEMPTS ? "failed" : "pending";
+      await sql`UPDATE brand_requests SET status=${status}, attempts=${next}, note=${String(e).slice(0, 200)}, updated_at=now() WHERE id=${req.id}`;
       await sql`INSERT INTO collection_runs (kind, target, status, error) VALUES ('new_brand', ${req.brand_name}, 'error', ${String(e).slice(0, 200)})`;
+      if (status === "failed") await notifyFailure(`신규 브랜드 '${req.brand_name}' 수집 ${MAX_ATTEMPTS}회 실패 → 격리`);
     }
   }
 
@@ -126,7 +148,8 @@ export async function runCollection(opts: { maxPending?: number; maxRefresh?: nu
 
   for (const t of targets) {
     try {
-      const vids = await collectBrand({ brandName: t.name, hashtags: t.hashtags, sinceDate: since, limit: 40 });
+      // 비용 최소화: 증분 갱신 1회 수집량 축소(15)
+      const vids = await collectBrand({ brandName: t.name, hashtags: t.hashtags, sinceDate: since, limit: 15 });
       const c = await upsertVideos(t.name, vids, rules);
       if (c > 0) await syncDerived(t.name);
       collected += c;

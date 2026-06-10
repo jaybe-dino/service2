@@ -47,7 +47,8 @@ async function collectViaApify(input: CollectInput): Promise<CollectedVideo[]> {
   const body = {
     hashtags: hashtagsFor(input),
     profiles: input.handle ? [input.handle] : [],
-    resultsPerPage: input.limit ?? 50,
+    resultsPerPage: input.limit ?? 20, // 비용 최소화 기본값
+
     shouldDownloadVideos: false,
     shouldDownloadCovers: false,
   };
