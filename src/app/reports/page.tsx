@@ -94,6 +94,64 @@ export default function ReportsPage() {
   const maxMonthViews = Math.max(...(stats?.months.map((m) => m.views) ?? [1]), 1);
   const tierTotalViews = stats ? TIER_ORDER.reduce((s, t) => s + stats.tierAgg[t].views, 0) || 1 : 1;
 
+  const downloadReport = () => {
+    if (!stats) return;
+    const esc = (s: string) => s.replace(/[&<>]/g, (m) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[m] as string));
+    const today = new Date().toISOString().slice(0, 10);
+    const monthsRows = stats.months
+      .map((r) => `<tr><td>${r.m}</td><td style="text-align:right">${r.views.toLocaleString()}</td><td style="text-align:right">${r.uploads}</td><td style="text-align:right">${Math.round(r.views / Math.max(1, r.uploads)).toLocaleString()}</td></tr>`)
+      .join("");
+    const tierRows = TIER_ORDER
+      .map((t) => `<tr><td>${TIERS[t].label}</td><td style="text-align:right">${stats.tierAgg[t].count}</td><td style="text-align:right">${stats.tierAgg[t].views.toLocaleString()}</td><td style="text-align:right">${fmtUSD(stats.tierAgg[t].revenue)}</td></tr>`)
+      .join("");
+    const infRows = stats.topInf
+      .map(([h, d]) => `<tr><td>@${esc(h)}</td><td style="text-align:right">${d.count}</td><td style="text-align:right">${d.views.toLocaleString()}</td><td style="text-align:right">${fmtUSD(d.rev)}</td></tr>`)
+      .join("");
+    const html = `<!doctype html><html lang="ko"><head><meta charset="utf-8"><title>${esc(brand.name)} 리포트</title>
+<style>
+  *{font-family:'Malgun Gothic',Inter,system-ui,sans-serif;color:#2d3748}
+  body{margin:28px;font-size:12px}
+  h1{font-size:22px;margin:0 0 2px} h2{font-size:14px;margin:20px 0 6px;color:#1A56DB}
+  .muted{color:#64748b;font-size:11px}
+  .kpi{display:flex;flex-wrap:wrap;gap:10px;margin-top:12px}
+  .kpi div{border:1px solid #E2E8F0;border-radius:8px;padding:10px 14px;min-width:120px}
+  .kpi b{display:block;font-size:18px;color:#1A56DB}
+  table{width:100%;border-collapse:collapse;margin-top:6px;font-size:11px}
+  th,td{border-bottom:1px solid #E2E8F0;padding:6px 8px;text-align:left}
+  th{color:#64748b;font-size:10px;text-transform:uppercase}
+  .foot{margin-top:24px;color:#94a3b8;font-size:10px}
+  @media print{button{display:none}}
+</style></head><body>
+<h1>K-Trend Analytics — 브랜드 성장 리포트</h1>
+<div class="muted">${esc(brand.name)} · 생성일 ${today} · 최근 ${range}개월 · 수익화 지표는 추정치</div>
+<div class="kpi">
+  <div><span class="muted">누적 조회수</span><b>${brand.totalViews.toLocaleString()}</b></div>
+  <div><span class="muted">추정 기여 매출</span><b>${fmtUSD(stats.totalRevenue)}</b></div>
+  <div><span class="muted">평균 참여율</span><b>${stats.avgEng}%</b></div>
+  <div><span class="muted">평균 추정 ROAS</span><b>${stats.avgRoas}x</b></div>
+  <div><span class="muted">영상 수</span><b>${brand.videos}</b></div>
+  <div><span class="muted">전월 대비</span><b>${stats.mom > 0 ? "+" : ""}${stats.mom}%</b></div>
+</div>
+<h2>월별 조회수 · 업로드 추이</h2>
+<table><thead><tr><th>월</th><th style="text-align:right">조회수</th><th style="text-align:right">업로드</th><th style="text-align:right">평균 조회</th></tr></thead><tbody>${monthsRows}</tbody></table>
+<h2>인플루언서 규모별 기여도</h2>
+<table><thead><tr><th>규모</th><th style="text-align:right">콘텐츠</th><th style="text-align:right">조회수</th><th style="text-align:right">추정 매출</th></tr></thead><tbody>${tierRows}</tbody></table>
+<h2>콘텐츠 유형 믹스</h2>
+<table><tbody>
+  <tr><td>TikTok Shop</td><td style="text-align:right">${stats.shopCount}건</td><td style="text-align:right">조회 ${Math.round((stats.shopViews / (stats.totalViews || 1)) * 100)}%</td></tr>
+  <tr><td>광고(#ad)</td><td style="text-align:right">${stats.adCount}건</td><td style="text-align:right">조회 ${Math.round((stats.adViews / (stats.totalViews || 1)) * 100)}%</td></tr>
+</tbody></table>
+<h2>고성과 인플루언서</h2>
+<table><thead><tr><th>크리에이터</th><th style="text-align:right">콘텐츠</th><th style="text-align:right">조회수</th><th style="text-align:right">추정 매출</th></tr></thead><tbody>${infRows}</tbody></table>
+<div class="foot">© ${new Date().getFullYear()} K-Trend Analytics · 본 리포트의 수수료율·ROAS·매출은 조회·참여·Shop 기반 추정치입니다.</div>
+<script>window.onload=function(){setTimeout(function(){window.print()},300)}</script>
+</body></html>`;
+    const w = window.open("", "_blank");
+    if (!w) { alert("팝업이 차단되었습니다. 팝업 허용 후 다시 시도하세요."); return; }
+    w.document.write(html);
+    w.document.close();
+  };
+
   return (
     <PageShell>
       <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
@@ -101,8 +159,12 @@ export default function ReportsPage() {
           <h1 className="text-[20px] font-black tracking-tight">브랜드 성장 리포트</h1>
           <p className="mt-1 text-[12px] text-[var(--muted)]">자사·경쟁사 틱톡 성과를 기간·티어·콘텐츠 유형별로 심층 분석합니다.</p>
         </div>
-        <button className={`kt-btn px-4 py-2 text-[12px] ${isPro ? "kt-btn-primary" : "kt-btn-outline cursor-not-allowed"}`} disabled={!isPro}>
-          <Download size={14} /> PDF 리포트 {isPro ? "다운로드" : "(Enterprise)"}
+        <button
+          onClick={isPro ? downloadReport : undefined}
+          disabled={!isPro || !stats}
+          className={`kt-btn px-4 py-2 text-[12px] ${isPro ? "kt-btn-primary" : "kt-btn-outline cursor-not-allowed"} disabled:opacity-50`}
+        >
+          <Download size={14} /> PDF 리포트 {isPro ? "다운로드" : "(Pro 전용)"}
         </button>
       </div>
 
