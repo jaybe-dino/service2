@@ -154,9 +154,9 @@ export default function BrandDetailPage() {
               <h3 className="mb-3 text-[13px] font-bold">월별 조회수 · 업로드 추이</h3>
               <div className="flex h-36 items-end gap-2">
                 {data.months.map(([m, v]) => (
-                  <div key={m} className="flex flex-1 flex-col items-center gap-1">
+                  <div key={m} className="flex flex-1 flex-col items-center justify-end gap-1">
                     <span className="text-[7px] text-[var(--muted)]">{v.count}건</span>
-                    <div className="w-full rounded-t bg-[var(--accent)]" style={{ height: `${(v.views / maxMonthViews) * 100}%` }} title={fmtCompact(v.views)} />
+                    <div className="w-full rounded-t bg-[var(--accent)]" style={{ height: `${Math.max(2, (v.views / maxMonthViews) * 110)}px` }} title={fmtCompact(v.views)} />
                     <span className="text-[8px] text-[var(--muted)]">{m.slice(2)}</span>
                   </div>
                 ))}
