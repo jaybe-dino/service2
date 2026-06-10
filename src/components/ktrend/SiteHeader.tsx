@@ -9,8 +9,7 @@ import type { PlanId } from "@/data/ktrend/meta";
 const NAV = [
   { href: "/explorer", label: "콘텐츠 탐색" },
   { href: "/influencers", label: "인플루언서 DB" },
-  { href: "/reports", label: "성장 리포트" },
-  { href: "/viral", label: "바이럴 감지" },
+  { href: "/reports", label: "브랜드" },
   { href: "/plans", label: "요금제" },
 ];
 
@@ -69,16 +68,18 @@ export default function SiteHeader() {
               <Link href="/saved" title="저장됨" className="kt-btn kt-btn-outline px-2 py-1.5 text-[11px]">
                 <Bookmark size={13} />
               </Link>
-              <span
+              <Link
+                href="/mypage"
                 className="rounded-full px-2 py-0.5 text-[9px] font-bold text-white"
                 style={{ background: PLAN_COLOR[plan] }}
+                title="마이페이지"
               >
                 {PLAN_LABEL[plan]}
-              </span>
-              <div className="hidden text-right leading-tight sm:block">
-                <div className="text-[11px] font-bold">{user.name}</div>
+              </Link>
+              <Link href="/mypage" className="hidden text-right leading-tight sm:block">
+                <div className="text-[11px] font-bold hover:text-[var(--accent)]">{user.name}</div>
                 <div className="text-[9px] text-[var(--muted)]">{user.company}</div>
-              </div>
+              </Link>
               <button
                 onClick={logout}
                 title="로그아웃"

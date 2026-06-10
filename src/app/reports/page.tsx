@@ -1,13 +1,16 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Download, Loader2, TrendingUp, TrendingDown, Megaphone, ShoppingBag, Sparkles } from "lucide-react";
+import { Download, Loader2, TrendingUp, TrendingDown, Megaphone, ShoppingBag, Sparkles, Activity, RefreshCw, CalendarClock } from "lucide-react";
 import PageShell from "@/components/ktrend/PageShell";
 import CreatorName from "@/components/ktrend/CreatorName";
+import ContentCard from "@/components/ktrend/ContentCard";
+import ProGate from "@/components/ktrend/ProGate";
 import { usePlan } from "@/components/ktrend/PlanContext";
 import { BRANDS, BRAND_MAP } from "@/data/ktrend/brands";
 import { TIERS, type InfluencerTier } from "@/data/ktrend/meta";
-import { loadContent, fmtCompact, fmtUSD, type Content } from "@/data/ktrend/content";
+import { loadContent, sortContent, fmtCompact, fmtUSD, type Content } from "@/data/ktrend/content";
+import { brandHealthScore } from "@/data/ktrend/analysis";
 
 const palette = ["#1A56DB", "#7C3AED", "#0E9F6E", "#F59E0B", "#EF4444"];
 const TIER_ORDER: InfluencerTier[] = ["mega", "macro", "micro"];
@@ -22,6 +25,14 @@ export default function ReportsPage() {
   const brand = BRAND_MAP[brandId];
 
   useEffect(() => { loadContent().then(setContent); }, []);
+
+  // /reports?brand=<id> 로 진입 시 해당 브랜드 선택 (브랜드 상세 통합)
+  useEffect(() => {
+    try {
+      const b = new URLSearchParams(window.location.search).get("brand");
+      if (b && BRAND_MAP[b]) setBrandId(b);
+    } catch { /* ignore */ }
+  }, []);
 
   const stats = useMemo(() => {
     if (!content) return null;
@@ -75,12 +86,26 @@ export default function ReportsPage() {
     const bestMonth = allMonths.reduce<MonthRow | null>((mx, r) => (!mx || r.views > mx.views ? r : mx), null);
     const topTier = TIER_ORDER.reduce((a, b) => (tierAgg[b].views > tierAgg[a].views ? b : a), "micro" as InfluencerTier);
 
+    // 브랜드 상세: 누적 성장 곡선 / 최근 1주 이슈 / 상위 콘텐츠
+    const sorted = [...items].filter((c) => c.date).sort((a, b) => a.date.localeCompare(b.date));
+    let acc = 0;
+    const cum = sorted.map((c) => { acc += c.views; return acc; });
+    const step = Math.max(1, Math.floor(cum.length / 24));
+    const curve = cum.filter((_, i) => i % step === 0);
+    const maxDate = items.reduce((mx, c) => (c.date > mx ? c.date : mx), "");
+    const weekAgo = maxDate ? new Date(Date.parse(maxDate) - 7 * 86_400_000).toISOString().slice(0, 10) : "";
+    const issues = sortContent(items.filter((c) => c.date && c.date > weekAgo), "viral").slice(0, 5);
+    const topVideos = sortContent(items, "views").slice(0, 8);
+
     return {
       items, months, mom, tierAgg, shopCount: shop.length, adCount: ad.length, shopViews, adViews,
       topInf, totalViews, totalRevenue, avgEng: Math.round(avgEng * 10) / 10, avgRoas: Math.round(avgRoas * 10) / 10,
-      bestMonth, topTier,
+      bestMonth, topTier, curve, issues, topVideos, weekAgo, maxDate,
     };
   }, [content, brandId, range]);
+
+  const health = brandHealthScore(brand);
+  const maxCurve = Math.max(...(stats?.curve ?? [1]), 1);
 
   // 카테고리 SOV
   const sov = useMemo(() => {
@@ -154,10 +179,11 @@ export default function ReportsPage() {
 
   return (
     <PageShell>
+      <ProGate label="브랜드">
       <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-[20px] font-black tracking-tight">브랜드 성장 리포트</h1>
-          <p className="mt-1 text-[12px] text-[var(--muted)]">자사·경쟁사 틱톡 성과를 기간·티어·콘텐츠 유형별로 심층 분석합니다.</p>
+          <h1 className="text-[20px] font-black tracking-tight">브랜드 리포트 · 상세</h1>
+          <p className="mt-1 text-[12px] text-[var(--muted)]">브랜드별 성장 리포트와 상세 분석을 한 곳에서.</p>
         </div>
         <button
           onClick={isPro ? downloadReport : undefined}
@@ -319,8 +345,72 @@ export default function ReportsPage() {
               </tbody>
             </table>
           </div>
+
+          {/* ── 브랜드 상세 (통합) ── */}
+          <div className="mt-6 grid gap-3 sm:grid-cols-2">
+            <div className="kt-card flex items-center gap-3 p-3 text-[11px]">
+              <RefreshCw size={16} className="text-emerald-500" />
+              <div>
+                <div className="font-bold">지속 콘텐츠 수집: 정상</div>
+                <div className="text-[var(--muted)]">마지막 업데이트 {stats.maxDate || "—"} · 매일 자동 수집</div>
+              </div>
+            </div>
+            <div className="kt-card flex items-center gap-3 p-3 text-[11px]">
+              <CalendarClock size={16} className="text-[var(--accent)]" />
+              <div>
+                <div className="font-bold">주간 학습 업데이트</div>
+                <div className="text-[var(--muted)]">매주 월·목 09:00 재학습 · 추정 지표 보정</div>
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-3 grid gap-4 lg:grid-cols-3">
+            <div className="kt-card p-4">
+              <h3 className="mb-2 flex items-center gap-1.5 text-[13px] font-bold"><Activity size={14} className="text-[var(--accent)]" /> 브랜드 헬스 스코어</h3>
+              <div className="mb-2 flex items-end gap-1"><span className="text-[30px] font-black text-[var(--accent)]">{health.score}</span><span className="mb-1.5 text-[11px] text-[var(--muted)]">/ 100</span></div>
+              <div className="space-y-1.5">
+                {health.parts.map((pt) => (
+                  <div key={pt.label} className="text-[10px]">
+                    <div className="flex justify-between"><span className="text-[var(--muted)]">{pt.label}</span><span className="font-semibold">{pt.v}</span></div>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="kt-card p-4 lg:col-span-2">
+              <h3 className="mb-3 text-[13px] font-bold">누적 성장(바이럴) 곡선</h3>
+              <svg viewBox="0 0 100 40" preserveAspectRatio="none" className="h-36 w-full">
+                <polyline fill="none" stroke="var(--accent)" strokeWidth="1.5"
+                  points={stats.curve.map((v, i) => `${(i / Math.max(1, stats.curve.length - 1)) * 100},${40 - (v / maxCurve) * 38}`).join(" ")} />
+              </svg>
+              <p className="text-[9px] text-[var(--muted)]">누적 조회수 {fmtCompact(stats.curve[stats.curve.length - 1] ?? 0)}</p>
+            </div>
+          </div>
+
+          <div className="mt-3 kt-card p-4">
+            <h3 className="mb-2 text-[13px] font-bold">최근 1주 이슈 스냅샷 <span className="text-[10px] font-normal text-[var(--muted)]">({stats.weekAgo} ~ {stats.maxDate})</span></h3>
+            {stats.issues.length ? (
+              <ul className="space-y-1.5">
+                {stats.issues.map((c) => (
+                  <li key={c.id} className="flex items-center gap-2 rounded-md bg-slate-50 px-3 py-2 text-[11px]">
+                    <span className="rounded bg-rose-500 px-1.5 py-0.5 text-[9px] font-bold text-white">바이럴 {c.viralScore}</span>
+                    <span className="flex-1 truncate">@{c.influencerId}</span>
+                    <span className="font-semibold">{fmtCompact(c.views)} 조회</span>
+                    <span className="text-[var(--muted)]">추정 {fmtUSD(c.estRevenueUSD)}</span>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="py-3 text-center text-[11px] text-[var(--muted)]">최근 1주 신규 이슈 콘텐츠 없음</p>
+            )}
+          </div>
+
+          <h3 className="mb-2 mt-6 text-[13px] font-bold">조회수 상위 콘텐츠</h3>
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-4">
+            {stats.topVideos.map((c) => (<ContentCard key={c.id} content={c} />))}
+          </div>
         </>
       )}
+      </ProGate>
     </PageShell>
   );
 }

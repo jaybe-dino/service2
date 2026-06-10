@@ -17,7 +17,14 @@ const levelStyle: Record<string, string> = {
 
 export default function ViralPage() {
   const [content, setContent] = useState<Content[] | null>(null);
-  useEffect(() => { loadContent().then(setContent); }, []);
+  const [adminAuthed, setAdminAuthed] = useState<boolean | null>(null);
+  useEffect(() => {
+    fetch("/api/admin/session", { cache: "no-store" })
+      .then((r) => r.json())
+      .then((d) => setAdminAuthed(!!d.authed))
+      .catch(() => setAdminAuthed(false));
+  }, []);
+  useEffect(() => { if (adminAuthed) loadContent().then(setContent); }, [adminAuthed]);
 
   const topViral = useMemo(() => (content ? sortContent(content, "viral").slice(0, 12) : []), [content]);
 
@@ -36,6 +43,21 @@ export default function ViralPage() {
       }),
     [topViral],
   );
+
+  if (adminAuthed === null) {
+    return <PageShell><div className="py-24 text-center text-[var(--muted)]"><Loader2 className="mx-auto animate-spin" /></div></PageShell>;
+  }
+  if (!adminAuthed) {
+    return (
+      <PageShell>
+        <div className="mx-auto max-w-md py-20 text-center">
+          <Bell className="mx-auto text-[var(--muted)]" />
+          <h1 className="mt-3 text-[18px] font-black">실시간 바이럴 감지</h1>
+          <p className="mt-2 text-[12px] text-[var(--muted)]">현재 비활성화된 기능입니다. (관리자 전용)</p>
+        </div>
+      </PageShell>
+    );
+  }
 
   return (
     <PageShell>
