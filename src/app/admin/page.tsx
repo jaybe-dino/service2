@@ -44,6 +44,7 @@ export default function AdminPage() {
   const [brandReqs, setBrandReqs] = useState<BrandReq[]>([]);
   const [runs, setRuns] = useState<Run[]>([]);
   const [collectedCount, setCollectedCount] = useState(0);
+  const [creatorsCount, setCreatorsCount] = useState(0);
   const [newBrand, setNewBrand] = useState("");
   const [collecting, setCollecting] = useState(false);
   const [totals, setTotals] = useState<Totals | null>(null);
@@ -71,6 +72,7 @@ export default function AdminPage() {
       setBrandReqs(r.brandRequests ?? []);
       setRuns(r.collectionRuns ?? []);
       setCollectedCount(r.collectedCount ?? 0);
+      setCreatorsCount(r.creatorsCount ?? 0);
       setTotals(r.totals ?? null);
       if (r.crawlRules) setRules({ ...DEFAULT_CRAWL_RULES, ...r.crawlRules });
     }
@@ -266,8 +268,11 @@ export default function AdminPage() {
             <button onClick={runCollect} disabled={collecting} className="kt-btn kt-btn-primary ml-auto px-3 py-1.5 text-[11px] disabled:opacity-50">
               {collecting ? <Loader2 size={13} className="animate-spin" /> : <Play size={13} />} 지금 수집 실행
             </button>
-            <span className="text-[10px] text-[var(--muted)]">수집 영상 {collectedCount.toLocaleString()}건</span>
+            <span className="text-[10px] text-[var(--muted)]">수집 영상 {collectedCount.toLocaleString()}건 · 인플루언서 {creatorsCount.toLocaleString()}명</span>
           </div>
+          <p className="mb-3 rounded-md bg-[var(--accent-light)] px-3 py-2 text-[10px] text-[var(--muted)]">
+            수집 1회 = <b>브랜드 → 콘텐츠(영상) → 인플루언서 집계 → 브랜드 통계 재계산</b>이 한 사이클로 함께 갱신됩니다.
+          </p>
           <h2 className="mb-2 text-[13px] font-bold">브랜드 요청 큐 ({brandReqs.length})</h2>
           <div className="mb-5">
             <Table head={["브랜드", "핸들", "요청자", "상태", "수집", "시각"]}>

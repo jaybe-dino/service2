@@ -22,6 +22,37 @@ async function upsertVideos(brandName: string, vids: CollectedVideo[], rules: Cr
   return n;
 }
 
+// 콘텐츠 → 브랜드 통계 재계산 (수집된 videos 기준)
+async function recomputeBrandStats(brandName: string) {
+  await sql`INSERT INTO brand_stats (brand_name, videos, influencers, total_views, avg_views, max_views, shop_count, updated_at)
+    SELECT brand_name, count(*)::int, count(distinct handle)::int, sum(views)::bigint,
+           (sum(views)/GREATEST(count(*),1))::bigint, max(views)::bigint,
+           sum(case when is_shop then 1 else 0 end)::int, now()
+    FROM videos WHERE brand_name=${brandName} GROUP BY brand_name
+    ON CONFLICT (brand_name) DO UPDATE SET
+      videos=EXCLUDED.videos, influencers=EXCLUDED.influencers, total_views=EXCLUDED.total_views,
+      avg_views=EXCLUDED.avg_views, max_views=EXCLUDED.max_views, shop_count=EXCLUDED.shop_count, updated_at=now()`;
+}
+
+// 콘텐츠 → 인플루언서(크리에이터) 집계/갱신 (해당 브랜드와 협업한 핸들 전체 재계산)
+async function recomputeCreatorsForBrand(brandName: string) {
+  await sql`INSERT INTO creators (handle, videos, total_views, avg_views, brands, updated_at)
+    SELECT v.handle, count(*)::int, sum(v.views)::bigint, (sum(v.views)/GREATEST(count(*),1))::bigint,
+           array_agg(distinct v.brand_name), now()
+    FROM videos v
+    WHERE v.handle IN (SELECT DISTINCT handle FROM videos WHERE brand_name=${brandName})
+    GROUP BY v.handle
+    ON CONFLICT (handle) DO UPDATE SET
+      videos=EXCLUDED.videos, total_views=EXCLUDED.total_views, avg_views=EXCLUDED.avg_views,
+      brands=EXCLUDED.brands, updated_at=now()`;
+}
+
+// 브랜드→콘텐츠→인플루언서 연계: 영상 적재 후 통계/크리에이터 동시 갱신
+async function syncDerived(brandName: string) {
+  await recomputeBrandStats(brandName);
+  await recomputeCreatorsForBrand(brandName);
+}
+
 async function cursor(): Promise<number> {
   const r = await sql`SELECT value FROM admin_settings WHERE key='collect_cursor' LIMIT 1`;
   return Number((r.rows[0]?.value as { idx?: number })?.idx ?? 0);
@@ -55,6 +86,7 @@ export async function runCollection(opts: { maxPending?: number; maxRefresh?: nu
     try {
       const vids = await collectBrand({ brandName: req.brand_name, handle: req.handle, hashtags: req.hashtags, limit: 60 });
       const c = await upsertVideos(req.brand_name, vids, rules);
+      await syncDerived(req.brand_name); // 콘텐츠→브랜드통계·인플루언서 동시 갱신
       collected += c;
       await sql`UPDATE brand_requests SET status='active', collected=${c}, updated_at=now() WHERE id=${req.id}`;
       await sql`INSERT INTO collection_runs (kind, target, status, collected) VALUES ('new_brand', ${req.brand_name}, 'ok', ${c})`;
@@ -74,6 +106,7 @@ export async function runCollection(opts: { maxPending?: number; maxRefresh?: nu
     try {
       const vids = await collectBrand({ brandName: brand.name, sinceDate: since, limit: 40 });
       const c = await upsertVideos(brand.name, vids, rules);
+      if (c > 0) await syncDerived(brand.name); // 콘텐츠→브랜드통계·인플루언서 동시 갱신
       collected += c;
       refreshed += 1;
       if (c > 0) await sql`INSERT INTO collection_runs (kind, target, status, collected) VALUES ('refresh', ${brand.name}, 'ok', ${c})`;

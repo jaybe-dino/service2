@@ -102,6 +102,26 @@ export function ensureSchema(): Promise<void> {
         url text,
         collected_at timestamptz NOT NULL DEFAULT now()
       )`;
+      // 수집 영상에서 집계된 인플루언서(크리에이터)
+      await sql`CREATE TABLE IF NOT EXISTS creators (
+        handle text PRIMARY KEY,
+        videos int NOT NULL DEFAULT 0,
+        total_views bigint NOT NULL DEFAULT 0,
+        avg_views bigint NOT NULL DEFAULT 0,
+        brands text[] DEFAULT '{}',
+        updated_at timestamptz NOT NULL DEFAULT now()
+      )`;
+      // 수집 영상에서 재계산된 브랜드 통계
+      await sql`CREATE TABLE IF NOT EXISTS brand_stats (
+        brand_name text PRIMARY KEY,
+        videos int NOT NULL DEFAULT 0,
+        influencers int NOT NULL DEFAULT 0,
+        total_views bigint NOT NULL DEFAULT 0,
+        avg_views bigint NOT NULL DEFAULT 0,
+        max_views bigint NOT NULL DEFAULT 0,
+        shop_count int NOT NULL DEFAULT 0,
+        updated_at timestamptz NOT NULL DEFAULT now()
+      )`;
       // 수집 실행 로그
       await sql`CREATE TABLE IF NOT EXISTS collection_runs (
         id serial PRIMARY KEY,

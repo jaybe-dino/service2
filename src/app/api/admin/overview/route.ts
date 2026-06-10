@@ -37,6 +37,7 @@ export async function GET() {
   const brandRequests = await sql`SELECT id, brand_name, handle, source, status, collected, created_at FROM brand_requests ORDER BY created_at DESC LIMIT 100`;
   const collectionRuns = await sql`SELECT id, kind, target, status, collected, created_at FROM collection_runs ORDER BY created_at DESC LIMIT 50`;
   const collectedCount = await sql`SELECT COUNT(*)::int AS c FROM videos`;
+  const creatorsCount = await sql`SELECT COUNT(*)::int AS c FROM creators`;
 
   const totals = await sql`
     SELECT
@@ -53,6 +54,7 @@ export async function GET() {
     brandRequests: brandRequests.rows,
     collectionRuns: collectionRuns.rows,
     collectedCount: collectedCount.rows[0]?.c ?? 0,
+    creatorsCount: creatorsCount.rows[0]?.c ?? 0,
     totals: totals.rows[0],
   });
 }
