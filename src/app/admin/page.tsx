@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ShieldCheck, Users, CreditCard, UserSquare2, Tag, SlidersHorizontal, Loader2, LogOut, Gift } from "lucide-react";
+import { ShieldCheck, Users, CreditCard, UserSquare2, Tag, SlidersHorizontal, Loader2, LogOut, Gift, Inbox } from "lucide-react";
 import PageShell from "@/components/ktrend/PageShell";
 import { INFLUENCERS, contactFor } from "@/data/ktrend/influencers";
 import { BRANDS } from "@/data/ktrend/brands";
@@ -16,12 +16,17 @@ interface Order {
   order_id: string; user_id: string; plan: string; amount: number; status: string; created_at: string; paid: boolean;
 }
 interface Totals { users: number; payments: number; revenue: number; active_pro: number; }
+interface Inquiry { id: number; kind: string; user_email: string | null; payload: Record<string, unknown> | null; created_at: string; }
+
+const KIND_LABEL: Record<string, string> = {
+  marketing: "마케팅 1:1", tiktokshop: "틱톡샵 온보딩", proposal: "인플루언서 제안", sales: "도입 문의",
+};
 
 const won = (n: number) => "₩" + Number(n || 0).toLocaleString();
 const dt = (s: string | null) => (s ? s.slice(0, 16).replace("T", " ") : "—");
 const proState = (until: number) => (Number(until) > Date.now() ? `Pro ~${new Date(Number(until)).toISOString().slice(0, 10)}` : "—");
 
-type Tab = "members" | "payments" | "influencers" | "brands" | "rules";
+type Tab = "members" | "payments" | "inquiries" | "influencers" | "brands" | "rules";
 
 export default function AdminPage() {
   const [authed, setAuthed] = useState<boolean | null>(null);
@@ -33,6 +38,7 @@ export default function AdminPage() {
 
   const [members, setMembers] = useState<Member[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
+  const [inquiries, setInquiries] = useState<Inquiry[]>([]);
   const [totals, setTotals] = useState<Totals | null>(null);
   const [rules, setRules] = useState<CrawlRules>(DEFAULT_CRAWL_RULES);
   const [loadingData, setLoadingData] = useState(false);
@@ -54,6 +60,7 @@ export default function AdminPage() {
     if (r && !r.error) {
       setMembers(r.members ?? []);
       setOrders(r.orders ?? []);
+      setInquiries(r.inquiries ?? []);
       setTotals(r.totals ?? null);
       if (r.crawlRules) setRules({ ...DEFAULT_CRAWL_RULES, ...r.crawlRules });
     }
@@ -120,6 +127,7 @@ export default function AdminPage() {
   const TABS: { id: Tab; label: string; icon: React.ReactNode }[] = [
     { id: "members", label: "회원·결제", icon: <Users size={13} /> },
     { id: "payments", label: "결제현황", icon: <CreditCard size={13} /> },
+    { id: "inquiries", label: "문의·제안", icon: <Inbox size={13} /> },
     { id: "influencers", label: "인플루언서", icon: <UserSquare2 size={13} /> },
     { id: "brands", label: "브랜드", icon: <Tag size={13} /> },
     { id: "rules", label: "크롤링 규칙", icon: <SlidersHorizontal size={13} /> },
@@ -195,6 +203,24 @@ export default function AdminPage() {
             </tr>
           ))}
           {!orders.length && <EmptyRow cols={7} text="결제 내역 없음" />}
+        </Table>
+      )}
+
+      {tab === "inquiries" && (
+        <Table head={["유형", "보낸 사람", "대상", "내용", "시각"]}>
+          {inquiries.map((q) => {
+            const pl = q.payload ?? {};
+            return (
+              <tr key={q.id} className="border-b border-[var(--border)] last:border-0 align-top">
+                <td className="p-2"><span className="kt-badge-brand">{KIND_LABEL[q.kind] ?? q.kind}</span></td>
+                <td className="p-2">{q.user_email ?? String(pl.email ?? "—")}</td>
+                <td className="p-2 text-[10px]">{String(pl.context ?? "—")}</td>
+                <td className="p-2 text-[10px] text-[var(--muted)]">{String(pl.message ?? "")}{pl.budget ? ` · 예산 ${pl.budget}` : ""}</td>
+                <td className="p-2 text-[var(--muted)]">{dt(q.created_at)}</td>
+              </tr>
+            );
+          })}
+          {!inquiries.length && <EmptyRow cols={5} text="문의·제안 없음" />}
         </Table>
       )}
 

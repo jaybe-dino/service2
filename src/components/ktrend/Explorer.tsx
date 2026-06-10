@@ -7,8 +7,10 @@ import { usePlan } from "./PlanContext";
 import { BRANDS, BRAND_AZ_KEYS, isPopular } from "@/data/ktrend/brands";
 import {
   CATEGORIES,
+  SUBCATEGORIES,
   TIERS,
   type CategoryId,
+  type SubCategoryId,
   type InfluencerTier,
 } from "@/data/ktrend/meta";
 import {
@@ -37,6 +39,7 @@ export default function Explorer() {
   const [brandQuery, setBrandQuery] = useState("");
   const [selectedBrands, setSelectedBrands] = useState<Set<string>>(new Set());
   const [categories, setCategories] = useState<Set<CategoryId>>(new Set());
+  const [subs, setSubs] = useState<Set<SubCategoryId>>(new Set());
   const [tiers, setTiers] = useState<Set<InfluencerTier>>(new Set());
   const [onlyShop, setOnlyShop] = useState(false);
   const [onlyAd, setOnlyAd] = useState(false);
@@ -67,22 +70,24 @@ export default function Explorer() {
     const list = all.filter((c) => {
       if (selectedBrands.size && !selectedBrands.has(c.brandId)) return false;
       if (categories.size && !categories.has(c.category)) return false;
+      if (subs.size && !subs.has(c.subCategory)) return false;
       if (tiers.size && !tiers.has(c.tier)) return false;
       if (onlyShop && !c.isShop) return false;
       if (onlyAd && !c.isAd) return false;
       return true;
     });
     return sortContent(list, sort);
-  }, [all, selectedBrands, categories, tiers, onlyShop, onlyAd, sort]);
+  }, [all, selectedBrands, categories, subs, tiers, onlyShop, onlyAd, sort]);
 
-  useEffect(() => setVisible(PAGE), [selectedBrands, categories, tiers, onlyShop, onlyAd, sort]);
+  useEffect(() => setVisible(PAGE), [selectedBrands, categories, subs, tiers, onlyShop, onlyAd, sort]);
 
   const activeCount =
-    selectedBrands.size + categories.size + tiers.size + (onlyShop ? 1 : 0) + (onlyAd ? 1 : 0);
+    selectedBrands.size + categories.size + subs.size + tiers.size + (onlyShop ? 1 : 0) + (onlyAd ? 1 : 0);
 
   const clearAll = () => {
     setSelectedBrands(new Set());
     setCategories(new Set());
+    setSubs(new Set());
     setTiers(new Set());
     setOnlyShop(false);
     setOnlyAd(false);
@@ -141,6 +146,28 @@ export default function Explorer() {
                     <span>{cat.icon}</span>
                     <span className="flex-1">{cat.nameKo}</span>
                     {on && <Check size={12} />}
+                  </button>
+                );
+              })}
+            </div>
+          </FilterGroup>
+
+          {/* 세부 카테고리 */}
+          <FilterGroup title="세부 카테고리">
+            <div className="flex flex-wrap gap-1.5">
+              {SUBCATEGORIES.map((sc) => {
+                const on = subs.has(sc.id);
+                return (
+                  <button
+                    key={sc.id}
+                    onClick={() => setSubs((s) => toggle(s, sc.id))}
+                    className={`rounded-md border px-2 py-1 text-[10px] font-semibold transition-colors ${
+                      on
+                        ? "border-[var(--accent)] bg-[var(--accent-light)] text-[var(--accent)]"
+                        : "border-[var(--border)] text-[var(--muted)] hover:border-[var(--accent)]"
+                    }`}
+                  >
+                    {sc.icon} {sc.nameKo}
                   </button>
                 );
               })}

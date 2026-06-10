@@ -29,7 +29,7 @@ export async function GET() {
     LEFT JOIN payments pm ON pm.order_id = o.order_id
     ORDER BY o.created_at DESC LIMIT 300`;
 
-  const inquiries = await sql`SELECT id, kind, user_email, created_at FROM inquiries ORDER BY created_at DESC LIMIT 200`;
+  const inquiries = await sql`SELECT id, kind, user_email, payload, created_at FROM inquiries ORDER BY created_at DESC LIMIT 200`;
 
   const settingsRow = await sql`SELECT value FROM admin_settings WHERE key='crawl_rules' LIMIT 1`;
   const crawlRules = settingsRow.rows[0]?.value ?? DEFAULT_CRAWL_RULES;

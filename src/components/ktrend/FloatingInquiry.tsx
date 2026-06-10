@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { X, ShoppingBag, Megaphone, ExternalLink } from "lucide-react";
 import InquiryModal, { type InquiryKind } from "./InquiryModal";
+import { tpartnersUrl } from "@/lib/tpartners";
 
 // PC/모바일 공통 우하단 플로팅 문의 버튼
 export default function FloatingInquiry() {
@@ -38,7 +39,7 @@ export default function FloatingInquiry() {
               </span>
             </button>
             <a
-              href="https://tpartners.live"
+              href={tpartnersUrl("tiktokshop_onboarding", "floating")}
               target="_blank"
               rel="noreferrer noopener"
               className="flex items-center gap-1.5 border-t border-[var(--border)] px-3 py-2 text-[10px] font-semibold text-[var(--muted)] hover:text-[var(--accent)]"

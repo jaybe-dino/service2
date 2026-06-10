@@ -3,7 +3,7 @@
 // 수익화 지표(수수료율·추정 ROAS·추정 매출)는 V1 AI 예측 모델 추정치(라벨: 추정).
 import { BRANDS } from "./brands";
 import { INFLUENCER_MAP } from "./influencers";
-import { BASE_PATH, CATEGORY_MAP, tierOf, type CategoryId, type InfluencerTier } from "./meta";
+import { BASE_PATH, CATEGORY_MAP, tierOf, type CategoryId, type InfluencerTier, type SubCategoryId } from "./meta";
 import { isOfficialHandle } from "./official";
 
 export interface Content {
@@ -11,6 +11,7 @@ export interface Content {
   brandId: string;
   influencerId: string; // handle
   category: CategoryId;
+  subCategory: SubCategoryId;
   tier: InfluencerTier;
   views: number;
   likes: number;
@@ -76,6 +77,7 @@ function mapRow(r: RawVideos["rows"][number], i: number): Content | null {
     brandId: brand.id,
     influencerId: handle,
     category: brand.category,
+    subCategory: brand.subCategory,
     tier: INFLUENCER_MAP[handle]?.tier ?? tierOf(views),
     views,
     likes,

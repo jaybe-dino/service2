@@ -9,7 +9,7 @@ import ContentAnalysisModal from "./ContentAnalysisModal";
 import BookmarkButton from "./BookmarkButton";
 import { usePlan, CLICK_LIMIT } from "./PlanContext";
 import { BRAND_MAP } from "@/data/ktrend/brands";
-import { CATEGORY_MAP, TIERS } from "@/data/ktrend/meta";
+import { CATEGORY_MAP, SUBCATEGORY_MAP, TIERS } from "@/data/ktrend/meta";
 import { fmtCompact, fmtUSD, type Content } from "@/data/ktrend/content";
 
 // --- TikTok oEmbed 썸네일: 뷰포트 진입 시 지연 로드 + 캐시 (실패 시 그라데이션 폴백) ---
@@ -92,7 +92,7 @@ export default function ContentCard({ content }: { content: Content }) {
   const router = useRouter();
   const brand = BRAND_MAP[content.brandId];
   const tier = TIERS[content.tier];
-  const cat = CATEGORY_MAP[content.category];
+  const cat = SUBCATEGORY_MAP[content.subCategory] ?? CATEGORY_MAP[content.category];
 
   const mediaRef = useRef<HTMLDivElement | null>(null);
   const thumb = useThumbnail(content.tiktokUrl, mediaRef);

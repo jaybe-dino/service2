@@ -27,6 +27,29 @@ export const CATEGORY_MAP: Record<CategoryId, Category> = Object.fromEntries(
   CATEGORIES.map((c) => [c.id, c]),
 ) as Record<CategoryId, Category>;
 
+// 세부 카테고리 (뷰티 세분화) — 브랜드/콘텐츠에 매칭
+export type SubCategoryId =
+  | "derma" | "skincare" | "suncare" | "cleansing" | "mask"
+  | "makeup" | "lip" | "hair" | "body";
+
+export interface SubCategory { id: SubCategoryId; nameKo: string; icon: string; parent: CategoryId }
+
+export const SUBCATEGORIES: SubCategory[] = [
+  { id: "derma", nameKo: "더마·진정", icon: "🩺", parent: "skincare" },
+  { id: "skincare", nameKo: "스킨케어", icon: "💧", parent: "skincare" },
+  { id: "suncare", nameKo: "선케어", icon: "☀️", parent: "skincare" },
+  { id: "cleansing", nameKo: "클렌징", icon: "🫧", parent: "skincare" },
+  { id: "mask", nameKo: "마스크·팩", icon: "🧖", parent: "skincare" },
+  { id: "makeup", nameKo: "메이크업", icon: "💄", parent: "makeup" },
+  { id: "lip", nameKo: "립", icon: "👄", parent: "makeup" },
+  { id: "hair", nameKo: "헤어케어", icon: "💇", parent: "haircare" },
+  { id: "body", nameKo: "바디케어", icon: "🧴", parent: "skincare" },
+];
+
+export const SUBCATEGORY_MAP: Record<SubCategoryId, SubCategory> = Object.fromEntries(
+  SUBCATEGORIES.map((c) => [c.id, c]),
+) as Record<SubCategoryId, SubCategory>;
+
 // ---------------------------------------------------------------------------
 // 인플루언서 규모(티어) — 평균 조회수 기반으로 산출 (팔로워 데이터 부재)
 // ---------------------------------------------------------------------------

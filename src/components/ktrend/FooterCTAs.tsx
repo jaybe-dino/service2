@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { MessageCircle, ShoppingBag, Briefcase } from "lucide-react";
 import InquiryModal, { type InquiryKind } from "./InquiryModal";
+import { tpartnersUrl } from "@/lib/tpartners";
 
 export default function FooterCTAs() {
   const [kind, setKind] = useState<InquiryKind | null>(null);
@@ -13,7 +14,7 @@ export default function FooterCTAs() {
         <MessageCircle size={13} /> 마케팅 1:1 문의
       </button>
       <a
-        href="https://tpartners.live"
+        href={tpartnersUrl("tiktokshop_onboarding", "footer")}
         target="_blank"
         rel="noreferrer noopener"
         className="kt-btn kt-btn-outline px-3 py-1.5 text-[11px]"
