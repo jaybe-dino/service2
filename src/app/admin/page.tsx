@@ -17,8 +17,8 @@ interface Order {
 }
 interface Totals { users: number; payments: number; revenue: number; active_pro: number; }
 interface Inquiry { id: number; kind: string; user_email: string | null; payload: Record<string, unknown> | null; created_at: string; }
-interface BrandReq { id: number; brand_name: string; handle: string | null; source: string; status: string; collected: number; created_at: string; }
-interface Run { id: number; kind: string; target: string | null; status: string; collected: number; created_at: string; }
+interface BrandReq { id: number; brand_name: string; handle: string | null; source: string; status: string; collected: number; note: string | null; created_at: string; }
+interface Run { id: number; kind: string; target: string | null; status: string; collected: number; error: string | null; created_at: string; }
 interface Track { brand_name: string; tracked: boolean; interval_hours: number; hashtags: string | null; last_collected_at: string | null; }
 
 const KIND_LABEL: Record<string, string> = {
@@ -303,32 +303,34 @@ export default function AdminPage() {
           </p>
           <h2 className="mb-2 text-[13px] font-bold">브랜드 요청 큐 ({brandReqs.length})</h2>
           <div className="mb-5">
-            <Table head={["브랜드", "핸들", "요청자", "상태", "수집", "시각"]}>
+            <Table head={["브랜드", "핸들", "요청자", "상태", "수집", "비고", "시각"]}>
               {brandReqs.map((b) => (
                 <tr key={b.id} className="border-b border-[var(--border)] last:border-0">
                   <td className="p-2 font-semibold">{b.brand_name}</td>
                   <td className="p-2 text-[10px]">{b.handle ?? "—"}</td>
                   <td className="p-2 text-[10px]">{b.source}</td>
-                  <td className="p-2"><span className={b.status === "active" ? "text-emerald-600" : b.status === "collecting" ? "text-[var(--accent)]" : "text-[var(--muted)]"}>{b.status}</span></td>
+                  <td className="p-2"><span className={b.status === "active" ? "text-emerald-600" : b.status === "collecting" ? "text-[var(--accent)]" : b.status === "failed" ? "text-rose-600" : "text-[var(--muted)]"}>{b.status}</span></td>
                   <td className="p-2 text-right">{b.collected}</td>
+                  <td className="p-2 max-w-[220px] truncate text-[10px] text-[var(--muted)]" title={b.note ?? ""}>{b.note ?? "—"}</td>
                   <td className="p-2 text-[var(--muted)]">{dt(b.created_at)}</td>
                 </tr>
               ))}
-              {!brandReqs.length && <EmptyRow cols={6} text="요청 없음" />}
+              {!brandReqs.length && <EmptyRow cols={7} text="요청 없음" />}
             </Table>
           </div>
           <h2 className="mb-2 text-[13px] font-bold">최근 수집 로그</h2>
-          <Table head={["종류", "대상", "상태", "건수", "시각"]}>
+          <Table head={["종류", "대상", "상태", "건수", "오류", "시각"]}>
             {runs.map((r) => (
               <tr key={r.id} className="border-b border-[var(--border)] last:border-0">
                 <td className="p-2">{r.kind}</td>
                 <td className="p-2">{r.target ?? "—"}</td>
                 <td className="p-2"><span className={r.status === "ok" ? "text-emerald-600" : "text-rose-600"}>{r.status}</span></td>
                 <td className="p-2 text-right">{r.collected}</td>
+                <td className="p-2 max-w-[220px] truncate text-[10px] text-rose-600" title={r.error ?? ""}>{r.error ?? "—"}</td>
                 <td className="p-2 text-[var(--muted)]">{dt(r.created_at)}</td>
               </tr>
             ))}
-            {!runs.length && <EmptyRow cols={5} text="수집 로그 없음" />}
+            {!runs.length && <EmptyRow cols={6} text="수집 로그 없음" />}
           </Table>
           <p className="mt-3 text-[10px] text-[var(--muted)]">※ 스크래핑 키(SCRAPER_API_KEY) 설정 시 실제 수집됩니다. 정기 수집은 매일 자동(Vercel Cron)으로 실행됩니다.</p>
 

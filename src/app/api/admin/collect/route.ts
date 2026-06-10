@@ -6,7 +6,7 @@ import { scraperConfigured } from "@/lib/collector";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-export const maxDuration = 300;
+export const maxDuration = 60; // Vercel Hobby 한도 (run-sync 지연 시 타임아웃→pending 복귀 방지)
 
 // 어드민 수동 수집 실행
 export async function POST() {

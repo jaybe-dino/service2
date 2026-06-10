@@ -34,8 +34,8 @@ export async function GET() {
   const settingsRow = await sql`SELECT value FROM admin_settings WHERE key='crawl_rules' LIMIT 1`;
   const crawlRules = settingsRow.rows[0]?.value ?? DEFAULT_CRAWL_RULES;
 
-  const brandRequests = await sql`SELECT id, brand_name, handle, source, status, collected, created_at FROM brand_requests ORDER BY created_at DESC LIMIT 100`;
-  const collectionRuns = await sql`SELECT id, kind, target, status, collected, created_at FROM collection_runs ORDER BY created_at DESC LIMIT 50`;
+  const brandRequests = await sql`SELECT id, brand_name, handle, source, status, collected, note, created_at FROM brand_requests ORDER BY created_at DESC LIMIT 100`;
+  const collectionRuns = await sql`SELECT id, kind, target, status, collected, error, created_at FROM collection_runs ORDER BY created_at DESC LIMIT 50`;
   const collectedCount = await sql`SELECT COUNT(*)::int AS c FROM videos`;
   const creatorsCount = await sql`SELECT COUNT(*)::int AS c FROM creators`;
 
