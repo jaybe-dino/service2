@@ -8,10 +8,7 @@ import BrandAvatar from "./BrandAvatar";
 import { usePlan } from "./PlanContext";
 
 // 계정 이름 게이팅: 비구매자는 열람권(하루 5건, 콘텐츠 열람과 공통)에서 차감.
-// 비로그인은 무조건 로그인 유도. 공개 전에는 마스킹 + href 미노출 + 우클릭 차단.
-function openExternal(url: string) {
-  window.open(url, "_blank", "noopener,noreferrer");
-}
+// 공개 후 핸들은 내부 인플루언서 상세(/influencer/<handle>)로 연결.
 
 export default function CreatorName({
   handle,
@@ -32,15 +29,15 @@ export default function CreatorName({
 
   if (revealed) {
     return (
-      <span className={`flex items-center gap-1.5 ${className}`} onContextMenu={noCtx}>
+      <span className={`flex items-center gap-1.5 ${className}`}>
         <BrandAvatar name={handle} size={avatarSize} />
-        <button
-          onClick={() => openExternal(`https://www.tiktok.com/@${handle}`)}
+        <Link
+          href={`/influencer/${handle}`}
           className="truncate text-[11px] font-semibold hover:text-[var(--accent)]"
-          title="틱톡 프로필 열기"
+          title="인플루언서 상세 보기"
         >
           @{handle}
-        </button>
+        </Link>
       </span>
     );
   }
