@@ -15,6 +15,7 @@ export async function POST(req: Request) {
   const password = body?.password ?? "";
   const brand = (body?.brand ?? "").trim();
   const role = (body?.role ?? "").trim();
+  const code = (body?.code ?? "").trim().toUpperCase();
 
   if (!name || !email || !password || !brand) {
     return NextResponse.json({ error: "필수 항목(이름·이메일·비밀번호·브랜드)을 입력하세요." }, { status: 400 });
@@ -28,7 +29,22 @@ export async function POST(req: Request) {
   const password_hash = await hashPassword(password);
   await sql`INSERT INTO users (id, email, password_hash, name, brand, role, plan)
             VALUES (${id}, ${email}, ${password_hash}, ${name}, ${brand}, ${role}, 'basic')`;
+
+  // 프로모션 코드: 유효하면 N일 무료 Pro 체험 부여
+  let promo: { applied: boolean; trialDays?: number } = { applied: false };
+  if (code) {
+    const pc = await sql`SELECT code, trial_days, max_uses, used_count, active FROM promo_codes WHERE code=${code} LIMIT 1`;
+    const row = pc.rows[0] as { code: string; trial_days: number; max_uses: number; used_count: number; active: boolean } | undefined;
+    if (row && row.active && (row.max_uses === 0 || row.used_count < row.max_uses)) {
+      const until = Date.now() + row.trial_days * 86_400_000;
+      await sql`UPDATE users SET pro_until = ${until} WHERE id=${id}`;
+      await sql`INSERT INTO promo_redemptions (code, user_id) VALUES (${code}, ${id}) ON CONFLICT DO NOTHING`;
+      await sql`UPDATE promo_codes SET used_count = used_count + 1 WHERE code=${code}`;
+      promo = { applied: true, trialDays: row.trial_days };
+    }
+  }
+
   await createSession(id, email);
   const { rows } = await sql`SELECT id,email,name,brand,role,plan,pro_until FROM users WHERE id=${id}`;
-  return NextResponse.json({ user: publicUser(rows[0] as never) });
+  return NextResponse.json({ user: publicUser(rows[0] as never), promo });
 }

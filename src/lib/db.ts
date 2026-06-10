@@ -59,6 +59,8 @@ export function ensureSchema(): Promise<void> {
         status text NOT NULL DEFAULT 'created',
         created_at timestamptz NOT NULL DEFAULT now()
       )`;
+      // 결제 종류: once(단건) | subscribe(정기/빌링키 등록)
+      await sql`ALTER TABLE orders ADD COLUMN IF NOT EXISTS kind text NOT NULL DEFAULT 'once'`;
       // payment_id(tid) UNIQUE = 멱등성. raw 7년 보관(audit).
       await sql`CREATE TABLE IF NOT EXISTS payments (
         payment_id text PRIMARY KEY,
@@ -152,6 +154,34 @@ export function ensureSchema(): Promise<void> {
         collected int NOT NULL DEFAULT 0,
         error text,
         created_at timestamptz NOT NULL DEFAULT now()
+      )`;
+      // 프로모션 코드 (가입 시 입력 → N일 무료 Pro 체험)
+      await sql`CREATE TABLE IF NOT EXISTS promo_codes (
+        code text PRIMARY KEY,
+        plan text NOT NULL DEFAULT 'pro',
+        trial_days int NOT NULL DEFAULT 3,
+        max_uses int NOT NULL DEFAULT 0,
+        used_count int NOT NULL DEFAULT 0,
+        active boolean NOT NULL DEFAULT true,
+        created_at timestamptz NOT NULL DEFAULT now()
+      )`;
+      await sql`CREATE TABLE IF NOT EXISTS promo_redemptions (
+        code text NOT NULL,
+        user_id text NOT NULL,
+        created_at timestamptz NOT NULL DEFAULT now(),
+        PRIMARY KEY (code, user_id)
+      )`;
+      // 정기결제 구독 (NICEpay 빌링키) — 7일 체험 후 매월 자동청구
+      await sql`CREATE TABLE IF NOT EXISTS subscriptions (
+        user_id text PRIMARY KEY,
+        bid text,
+        plan text NOT NULL DEFAULT 'pro',
+        amount int NOT NULL DEFAULT 0,
+        status text NOT NULL DEFAULT 'trial',
+        next_charge_at bigint NOT NULL DEFAULT 0,
+        failures int NOT NULL DEFAULT 0,
+        created_at timestamptz NOT NULL DEFAULT now(),
+        updated_at timestamptz NOT NULL DEFAULT now()
       )`;
       // 데모/관리자 계정 시드 (bcrypt("ktrend2026")) — 서버 세션 로그인 가능하도록
       const DEMO_HASH = "$2b$10$mLc7sBm3zK4a83l6/Tg9NOoDGLLYsfp4SXRfZcls4.LTw6Tsy/8Oy";

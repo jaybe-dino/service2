@@ -40,6 +40,7 @@ export interface SignupInput {
   password: string;
   brand: string;
   role: string;
+  code?: string;
 }
 
 interface PlanState {

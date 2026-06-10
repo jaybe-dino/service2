@@ -14,6 +14,8 @@ export async function POST(req: Request) {
 
   const body = await req.json().catch(() => ({}));
   const planKey = String(body?.plan ?? "pro");
+  // 기본: 정기결제(구독) — 카드 등록 후 trialDays 무료, 이후 자동청구
+  const mode = body?.mode === "once" ? "once" : "subscribe";
   const price = PAY_PLANS[planKey];
   if (!price) return NextResponse.json({ ok: false, error: "결제 불가 플랜" }, { status: 400 });
 
@@ -23,8 +25,10 @@ export async function POST(req: Request) {
 
   await ensureSchema();
   const orderId = buildOrderId(SERVICE_ORDER_PREFIX, price.planInitial);
-  await sql`INSERT INTO orders (order_id, user_id, plan, amount, goods_name, status)
-            VALUES (${orderId}, ${me.id}, ${planKey}, ${price.amount}, ${price.goodsName}, 'created')`;
+  // 구독 등록 인증은 금액 0(빌키 발급용), 단건은 정상 금액
+  const authAmount = mode === "subscribe" ? 0 : price.amount;
+  await sql`INSERT INTO orders (order_id, user_id, plan, amount, goods_name, status, kind)
+            VALUES (${orderId}, ${me.id}, ${planKey}, ${authAmount}, ${price.goodsName}, 'created', ${mode})`;
 
   const host = req.headers.get("x-forwarded-host") ?? req.headers.get("host");
   const proto = req.headers.get("x-forwarded-proto") ?? "https";
@@ -33,10 +37,12 @@ export async function POST(req: Request) {
   return NextResponse.json({
     ok: true,
     configured: true,
+    mode,
     clientKey: clientKey(),
     orderId,
-    amount: price.amount,
+    amount: authAmount,
     goodsName: price.goodsName,
     returnUrl,
+    trialDays: price.trialDays,
   });
 }

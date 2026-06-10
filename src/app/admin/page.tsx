@@ -52,6 +52,10 @@ export default function AdminPage() {
   const [blocks, setBlocks] = useState<{ kind: string; value: string; reason: string | null }[]>([]);
   const [blockVal, setBlockVal] = useState("");
   const [blockKind, setBlockKind] = useState<"handle" | "brand">("handle");
+  const [promos, setPromos] = useState<{ code: string; trial_days: number; max_uses: number; used_count: number; active: boolean }[]>([]);
+  const [promoDays, setPromoDays] = useState(3);
+  const [promoUses, setPromoUses] = useState(0);
+  const [promoCode, setPromoCode] = useState("");
   const [totals, setTotals] = useState<Totals | null>(null);
   const [rules, setRules] = useState<CrawlRules>(DEFAULT_CRAWL_RULES);
   const [loadingData, setLoadingData] = useState(false);
@@ -132,7 +136,7 @@ export default function AdminPage() {
     const r = await fetch("/api/admin/tracking", { cache: "no-store" }).then((x) => x.json()).catch(() => ({ rows: [] }));
     setTracking(r.rows ?? []);
   };
-  useEffect(() => { if (authed) { loadTracking(); loadBlocks(); } }, [authed]);
+  useEffect(() => { if (authed) { loadTracking(); loadBlocks(); loadPromos(); } }, [authed]);
 
   const updateTrack = async (brand_name: string, patch: Partial<Track>) => {
     await fetch("/api/admin/tracking", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ brand_name, ...patch }) });
@@ -148,6 +152,26 @@ export default function AdminPage() {
   const loadBlocks = async () => {
     const r = await fetch("/api/admin/block", { cache: "no-store" }).then((x) => x.json()).catch(() => ({ rows: [] }));
     setBlocks(r.rows ?? []);
+  };
+  const loadPromos = async () => {
+    const r = await fetch("/api/admin/promo", { cache: "no-store" }).then((x) => x.json()).catch(() => ({ rows: [] }));
+    setPromos(r.rows ?? []);
+  };
+  const createPromo = async () => {
+    const r = await fetch("/api/admin/promo", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ code: promoCode || undefined, trial_days: promoDays, max_uses: promoUses }) });
+    const d = await r.json().catch(() => ({}));
+    setPromoCode("");
+    setToast(r.ok ? `코드 생성: ${d.code} (${d.trial_days}일)` : "생성 실패");
+    setTimeout(() => setToast(""), 2500);
+    loadPromos();
+  };
+  const togglePromo = async (code: string, active: boolean) => {
+    await fetch("/api/admin/promo", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ code, active }) });
+    loadPromos();
+  };
+  const deletePromo = async (code: string) => {
+    await fetch("/api/admin/promo", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ code }) });
+    loadPromos();
   };
   const addBlock = async (kind: "handle" | "brand", value: string) => {
     const v = value.trim().replace(/^@/, "");
@@ -253,6 +277,30 @@ export default function AdminPage() {
             <span className="text-[10px] text-[var(--muted)]">일</span>
             <button className="kt-btn kt-btn-primary px-3 py-1.5 text-[11px]">부여</button>
           </form>
+
+          {/* 프로모션 코드 생성 (가입 시 입력 → 무료 Pro 체험) */}
+          <div className="mb-4 rounded-md border border-[var(--border)] p-3">
+            <div className="mb-2 flex flex-wrap items-center gap-2">
+              <span className="flex items-center gap-1.5 text-[11px] font-bold"><Gift size={13} className="text-[var(--accent)]" /> 프로모션 코드 ({promos.length})</span>
+              <input value={promoCode} onChange={(e) => setPromoCode(e.target.value.toUpperCase())} placeholder="코드(비우면 자동생성)" className="rounded-md border border-[var(--border)] px-2 py-1.5 text-[11px]" />
+              <input type="number" value={promoDays} onChange={(e) => setPromoDays(Number(e.target.value))} className="w-16 rounded-md border border-[var(--border)] px-2 py-1.5 text-[11px]" />
+              <span className="text-[10px] text-[var(--muted)]">일 체험</span>
+              <input type="number" value={promoUses} onChange={(e) => setPromoUses(Number(e.target.value))} className="w-16 rounded-md border border-[var(--border)] px-2 py-1.5 text-[11px]" />
+              <span className="text-[10px] text-[var(--muted)]">최대횟수(0=무제한)</span>
+              <button onClick={createPromo} className="kt-btn kt-btn-primary px-3 py-1.5 text-[11px]">코드 생성</button>
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              {promos.map((p) => (
+                <span key={p.code} className={`inline-flex items-center gap-1.5 rounded px-2 py-1 text-[10px] ring-1 ${p.active ? "bg-[var(--accent-light)] text-[var(--accent)] ring-[var(--accent)]/30" : "bg-slate-100 text-slate-400 ring-slate-200"}`}>
+                  <b>{p.code}</b> · {p.trial_days}일 · {p.used_count}/{p.max_uses || "∞"}
+                  <button onClick={() => togglePromo(p.code, !p.active)} className="font-semibold underline">{p.active ? "중지" : "재개"}</button>
+                  <button onClick={() => deletePromo(p.code)} className="font-bold text-rose-400 hover:text-rose-700">×</button>
+                </span>
+              ))}
+              {!promos.length && <span className="text-[10px] text-[var(--muted)]">생성된 코드 없음</span>}
+            </div>
+          </div>
+
           <Table head={["이메일", "이름", "브랜드", "플랜", "결제액", "최근결제", "Pro 상태", "가입일"]}>
             {members.map((m) => (
               <tr key={m.id} className="border-b border-[var(--border)] last:border-0">

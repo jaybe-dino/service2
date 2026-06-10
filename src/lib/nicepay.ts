@@ -92,6 +92,22 @@ export async function chargeByBillingKey({ bid, orderId, amount, goodsName }: { 
   }
 }
 
+// 3.4b 빌링키 발급 — 정기결제 카드 등록 인증(authResultCode=0000) 후 tid로 빌키 발급
+export async function registerBillingKey({ tid }: { tid: string }): Promise<{ ok: boolean; bid?: string; raw: unknown }> {
+  if (!isConfigured()) return { ok: false, raw: null };
+  try {
+    const res = await fetch(`${API_BASE}/v1/subscribe/regist`, {
+      method: "POST",
+      headers: { Authorization: basicAuth(), "Content-Type": "application/json" },
+      body: JSON.stringify({ tid }),
+    });
+    const raw = await res.json().catch(() => ({}));
+    return { ok: (raw as { resultCode?: string }).resultCode === "0000", bid: (raw as { bid?: string }).bid, raw };
+  } catch {
+    return { ok: false, raw: null };
+  }
+}
+
 // 3.5 빌링키 만료(해지)
 export async function expireBillingKey(bid: string): Promise<{ ok: boolean; raw: unknown }> {
   if (!isConfigured()) return { ok: false, raw: null };

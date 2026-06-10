@@ -111,12 +111,13 @@ export const PLANS: Plan[] = [
   {
     id: "pro",
     name: "Pro",
-    price: "$159",
+    price: "₩89,000",
     priceNote: "/ 월",
     tagline: "마케터를 위한 풀 액세스",
     popular: true,
-    cta: "Pro 시작하기",
+    cta: "7일 무료 체험 시작",
     features: [
+      "7일 무료 체험 후 매월 자동결제 (카드 등록, 언제든 해지)",
       "열람권 무제한 (콘텐츠 링크 · 계정 이름)",
       "인플루언서 컨택 라인 해금",
       "전체 브랜드 필터 무제한 · 모바일 뷰어",
@@ -127,8 +128,8 @@ export const PLANS: Plan[] = [
   {
     id: "enterprise",
     name: "Enterprise",
-    price: "$399",
-    priceNote: "/ 월~",
+    price: "가격 문의",
+    priceNote: "",
     tagline: "팀 단위 벤치마킹과 실매출 연동",
     cta: "도입 문의",
     features: [

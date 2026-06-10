@@ -5,20 +5,21 @@ import Link from "next/link";
 import { Check, Star } from "lucide-react";
 import PageShell from "@/components/ktrend/PageShell";
 import { usePlan } from "@/components/ktrend/PlanContext";
-import { ADDONS, PLANS } from "@/data/ktrend/meta";
+import { PLANS } from "@/data/ktrend/meta";
 
 const ANNUAL_OFF = 0.2; // 연간 결제 20% 할인 (2개월+ 무료)
 
 function priceParts(price: string, annual: boolean): { main: string; sub: string | null } {
-  const m = price.match(/\$([\d,]+)/);
+  const m = price.match(/([$₩])([\d,]+)/);
   if (!m) return { main: price, sub: null };
-  const monthly = Number(m[1].replace(/,/g, ""));
+  const cur = m[1];
+  const monthly = Number(m[2].replace(/,/g, ""));
   if (monthly === 0) return { main: price, sub: null };
   if (!annual) return { main: price, sub: null };
   const tilde = price.includes("~") ? "~" : "";
   const discounted = Math.round(monthly * (1 - ANNUAL_OFF));
   const yearly = discounted * 12;
-  return { main: `$${discounted}${tilde}`, sub: `연 $${yearly.toLocaleString()}${tilde} 청구 · 20% 절약` };
+  return { main: `${cur}${discounted.toLocaleString()}${tilde}`, sub: `연 ${cur}${yearly.toLocaleString()}${tilde} 청구 · 20% 절약` };
 }
 
 const COMPARE = [
@@ -143,24 +144,6 @@ export default function PlansPage() {
         </table>
       </div>
 
-      {/* Add-on */}
-      <h2 className="mb-3 mt-10 text-[16px] font-bold">Add-on 부분 유료화</h2>
-      <div className="grid gap-4 md:grid-cols-3">
-        {ADDONS.map((a) => (
-          <div key={a.id} className="kt-card p-5">
-            <div className="flex items-center justify-between">
-              <h3 className="text-[14px] font-bold">{a.name}</h3>
-              <span className="kt-badge-brand">{a.price}</span>
-            </div>
-            <p className="mt-2 text-[11px] leading-relaxed text-[var(--muted)]">{a.desc}</p>
-          </div>
-        ))}
-      </div>
-
-      <p className="mt-8 rounded-lg bg-[var(--accent-light)] px-4 py-3 text-center text-[11px] text-[var(--muted)]">
-        틱톡 샵 공식 판매자 계정(OAuth2)을 연동하면 <b className="text-[var(--accent)]">Pro 20% 할인</b> 혜택과 함께
-        실매출 피드백 루프로 분석 정밀도가 지속 향상됩니다.
-      </p>
     </PageShell>
   );
 }

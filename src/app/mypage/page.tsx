@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { User, Crown, Ticket, Bookmark, LogOut, CreditCard, Building2, Mail, Briefcase, LogIn } from "lucide-react";
@@ -7,10 +8,26 @@ import PageShell from "@/components/ktrend/PageShell";
 import { usePlan } from "@/components/ktrend/PlanContext";
 import { useBookmarks } from "@/components/ktrend/BookmarkContext";
 
+interface Sub { plan: string; amount: number; status: string; next_charge_at: number }
+
 export default function MyPage() {
   const { user, plan, isPro, trialMsLeft, passRemaining, logout } = usePlan();
   const { brands, influencers } = useBookmarks();
   const router = useRouter();
+  const [sub, setSub] = useState<Sub | null>(null);
+  const [canceling, setCanceling] = useState(false);
+
+  useEffect(() => {
+    if (user) fetch("/api/payment/cancel", { cache: "no-store" }).then((r) => r.json()).then((d) => setSub(d.subscription)).catch(() => {});
+  }, [user]);
+
+  const cancelSub = async () => {
+    if (!confirm("정기결제를 해지하시겠습니까?\n남은 Pro 이용 기간은 그대로 유지됩니다.")) return;
+    setCanceling(true);
+    const r = await fetch("/api/payment/cancel", { method: "POST" });
+    setCanceling(false);
+    if (r.ok) setSub((s) => (s ? { ...s, status: "canceled" } : s));
+  };
 
   if (!user) {
     return (
@@ -54,7 +71,23 @@ export default function MyPage() {
             <h2 className="mb-2 flex items-center gap-1.5 text-[13px] font-bold"><Crown size={14} className="text-[var(--accent)]" /> 구독</h2>
             <div className="text-[22px] font-black kt-grad-text">{planLabel}</div>
             {isPro ? (
-              <p className="mt-1 text-[11px] text-[var(--muted)]">{trialDays > 0 ? `Pro 이용 중 · 약 ${trialDays}일 남음` : "Pro 이용 중"}</p>
+              <>
+                <p className="mt-1 text-[11px] text-[var(--muted)]">{trialDays > 0 ? `Pro 이용 중 · 약 ${trialDays}일 남음` : "Pro 이용 중"}</p>
+                {sub && sub.status !== "canceled" && (
+                  <>
+                    <p className="mt-1 text-[10px] text-[var(--muted)]">
+                      {sub.status === "trial" ? "무료 체험 중 · " : "정기결제 중 · "}
+                      다음 결제 {new Date(sub.next_charge_at).toLocaleDateString("ko-KR")} · ₩{sub.amount.toLocaleString()}
+                    </p>
+                    <button onClick={cancelSub} disabled={canceling} className="mt-2 w-full rounded-md border border-[var(--border)] py-1.5 text-[11px] font-semibold text-[var(--muted)] hover:border-rose-300 hover:text-rose-600 disabled:opacity-50">
+                      {canceling ? "해지 중…" : "정기결제 해지"}
+                    </button>
+                  </>
+                )}
+                {sub && sub.status === "canceled" && (
+                  <p className="mt-1 text-[10px] text-rose-500">자동결제 해지됨 · 기간 종료까지 이용 가능</p>
+                )}
+              </>
             ) : (
               <>
                 <p className="mt-1 text-[11px] text-[var(--muted)]">무료 플랜 이용 중</p>

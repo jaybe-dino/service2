@@ -10,7 +10,7 @@ export default function SignupPage() {
   const { user, isPro, signup, invite, trialMsLeft } = usePlan();
   const [step, setStep] = useState<1 | 2>(user ? 2 : 1);
 
-  const [form, setForm] = useState({ name: "", email: "", password: "", brand: "", role: "" });
+  const [form, setForm] = useState({ name: "", email: "", password: "", brand: "", role: "", code: "" });
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState(false);
 
@@ -73,6 +73,7 @@ export default function SignupPage() {
             <Field label="비밀번호 *" type="password" value={form.password} onChange={(v) => set("password", v)} placeholder="********" />
             <Field label="담당 브랜드 *" value={form.brand} onChange={(v) => set("brand", v)} placeholder="예: Anua" />
             <Field label="직무" value={form.role} onChange={(v) => set("role", v)} placeholder="예: 글로벌 마케팅 매니저" />
+            <Field label="프로모션 코드 (선택 · 입력 시 3일 무료 Pro 체험)" value={form.code} onChange={(v) => set("code", v.toUpperCase())} placeholder="예: GLOVEK3" />
             {err && <p className="text-[11px] font-semibold text-rose-600">{err}</p>}
             <button disabled={busy} className="kt-btn kt-btn-primary w-full py-2.5 text-[12px] disabled:opacity-50">
               <UserPlus size={14} /> 가입하고 계속
