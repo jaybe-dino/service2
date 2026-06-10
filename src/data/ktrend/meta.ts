@@ -126,7 +126,7 @@ export const ADDONS = [
 ];
 
 export const SERVICE = {
-  name: "K-Trend Analytics",
+  name: "Glovek",
   version: "v6.0",
   tagline: "글로벌 틱톡 K-뷰티 콘텐츠 조회·분석 전문 B2B SaaS",
   updateNote: "매주 월·목 오전 9시 AI 트렌드 업데이트",

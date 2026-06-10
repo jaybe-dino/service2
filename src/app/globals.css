@@ -124,3 +124,13 @@ body {
   background: var(--border);
   border-radius: 3px;
 }
+
+/* 히어로 콘텐츠 흐름 배경 (마퀴) */
+@keyframes kt-flow-up {
+  from { transform: translateY(0); }
+  to { transform: translateY(-50%); }
+}
+@keyframes kt-flow-down {
+  from { transform: translateY(-50%); }
+  to { transform: translateY(0); }
+}

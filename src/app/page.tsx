@@ -5,6 +5,7 @@ import Link from "next/link";
 import { ArrowRight, BarChart3, Bell, Contact, TrendingUp, Shuffle } from "lucide-react";
 import PageShell from "@/components/ktrend/PageShell";
 import ContentCard from "@/components/ktrend/ContentCard";
+import HeroBackground from "@/components/ktrend/HeroBackground";
 import { usePlan } from "@/components/ktrend/PlanContext";
 import { CATEGORIES, SERVICE } from "@/data/ktrend/meta";
 import { BRANDS } from "@/data/ktrend/brands";
@@ -36,8 +37,9 @@ export default function Home() {
 
   return (
     <PageShell contained={false}>
-      <section className="border-b border-[var(--border)] bg-gradient-to-b from-[var(--accent-light)]/60 to-white">
-        <div className="mx-auto max-w-[1480px] px-4 py-16 text-center">
+      <section className="relative overflow-hidden border-b border-[var(--border)] bg-gradient-to-b from-[var(--accent-light)]/60 to-white">
+        <HeroBackground />
+        <div className="relative z-10 mx-auto max-w-[1480px] px-4 py-16 text-center">
           <span className="kt-badge-brand mx-auto">{SERVICE.version} · 실데이터 기반 · TikTok 중심</span>
           <h1 className="mx-auto mt-4 max-w-3xl text-[34px] font-black leading-tight tracking-tight md:text-[44px]">
             글로벌 틱톡 K-뷰티 콘텐츠를<br />

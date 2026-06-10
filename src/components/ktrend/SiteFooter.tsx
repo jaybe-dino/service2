@@ -9,7 +9,7 @@ export default function SiteFooter() {
         <div className="grid gap-8 md:grid-cols-4">
           <div className="md:col-span-2">
             <div className="text-[15px] font-black">
-              K-Trend<span className="text-[var(--accent)]"> Analytics</span>
+              Glo<span className="text-[var(--accent)]">vek</span>
             </div>
             <p className="mt-2 max-w-md text-[12px] leading-relaxed text-[var(--muted)]">
               {SERVICE.tagline}. K-뷰티 브랜드의 실제 틱톡 콘텐츠를
@@ -47,7 +47,7 @@ export default function SiteFooter() {
           <FooterCTAs />
         </div>
         <div className="mt-8 border-t border-[var(--border)] pt-4 text-[10px] text-[var(--muted)]">
-          © 2026 K-Trend Analytics. 본 화면의 지표는 데모용 샘플 데이터입니다. {SERVICE.version}
+          © 2026 Glovek. 본 화면의 지표는 데모용 샘플 데이터입니다. {SERVICE.version}
         </div>
       </div>
     </footer>

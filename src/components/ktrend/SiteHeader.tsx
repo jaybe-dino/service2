@@ -37,7 +37,7 @@ export default function SiteHeader() {
             <Sparkles size={16} />
           </span>
           <span className="text-[15px] font-black tracking-tight">
-            K-Trend<span className="text-[var(--accent)]"> Analytics</span>
+            Glo<span className="text-[var(--accent)]">vek</span>
           </span>
           <span className="kt-badge-brand ml-1">v6.0</span>
         </Link>

@@ -122,7 +122,7 @@ export default function ReportsPage() {
   .foot{margin-top:24px;color:#94a3b8;font-size:10px}
   @media print{button{display:none}}
 </style></head><body>
-<h1>K-Trend Analytics — 브랜드 성장 리포트</h1>
+<h1>Glovek — 브랜드 성장 리포트</h1>
 <div class="muted">${esc(brand.name)} · 생성일 ${today} · 최근 ${range}개월 · 수익화 지표는 추정치</div>
 <div class="kpi">
   <div><span class="muted">누적 조회수</span><b>${brand.totalViews.toLocaleString()}</b></div>
@@ -143,7 +143,7 @@ export default function ReportsPage() {
 </tbody></table>
 <h2>고성과 인플루언서</h2>
 <table><thead><tr><th>크리에이터</th><th style="text-align:right">콘텐츠</th><th style="text-align:right">조회수</th><th style="text-align:right">추정 매출</th></tr></thead><tbody>${infRows}</tbody></table>
-<div class="foot">© ${new Date().getFullYear()} K-Trend Analytics · 본 리포트의 수수료율·ROAS·매출은 조회·참여·Shop 기반 추정치입니다.</div>
+<div class="foot">© ${new Date().getFullYear()} Glovek · 본 리포트의 수수료율·ROAS·매출은 조회·참여·Shop 기반 추정치입니다.</div>
 <script>window.onload=function(){setTimeout(function(){window.print()},300)}</script>
 </body></html>`;
     const w = window.open("", "_blank");
