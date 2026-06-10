@@ -90,6 +90,7 @@ export default function ReportsPage() {
             <option key={b.id} value={b.id}>#{b.rank} {b.name}</option>
           ))}
         </select>
+        <a href={`/brand/${brandId}`} className="kt-btn kt-btn-outline ml-2 px-3 py-2 text-[12px]">브랜드 상세 →</a>
       </div>
 
       {/* 주요 지표 (브랜드 요약 — 실데이터) */}

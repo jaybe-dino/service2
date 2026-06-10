@@ -194,7 +194,7 @@ export default function ContentCard({ content }: { content: Content }) {
       {/* 카드 바디 — 성과 지표는 전체 공개 */}
       <div className="flex flex-1 flex-col gap-2 p-2.5">
         <div className="flex items-center gap-1.5">
-          <span className="kt-badge-brand">{brand?.name ?? "Brand"}</span>
+          <Link href={`/brand/${content.brandId}`} className="kt-badge-brand hover:underline">{brand?.name ?? "Brand"}</Link>
           <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[9px] font-semibold text-slate-500">
             {cat?.icon} {cat?.nameKo}
           </span>

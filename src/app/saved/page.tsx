@@ -48,7 +48,7 @@ export default function SavedPage() {
             <div key={b.id} className="kt-card flex items-center gap-3 p-4">
               <BrandAvatar name={b.name} size={32} />
               <div className="min-w-0 flex-1">
-                <div className="truncate text-[13px] font-bold">{b.name}</div>
+                <Link href={`/brand/${b.id}`} className="block truncate text-[13px] font-bold hover:text-[var(--accent)]">{b.name}</Link>
                 <div className="text-[10px] text-[var(--muted)]">영상 {b.videos} · 누적 {fmtCompact(b.totalViews)}</div>
               </div>
               <BookmarkButton type="brand" id={b.id} size={13} />
