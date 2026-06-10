@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LogIn, LogOut, Sparkles, Bookmark } from "lucide-react";
+import { LogIn, LogOut, Bookmark } from "lucide-react";
 import { usePlan } from "./PlanContext";
 import type { PlanId } from "@/data/ktrend/meta";
 
@@ -32,10 +32,8 @@ export default function SiteHeader() {
     <header className="sticky top-0 z-40 border-b border-[var(--border)] bg-white/90 backdrop-blur">
       <div className="mx-auto flex h-14 max-w-[1480px] items-center gap-6 px-4">
         <Link href="/explorer" className="flex items-center gap-2">
-          <span className="kt-grad-bg flex h-7 w-7 items-center justify-center rounded-lg text-white">
-            <Sparkles size={16} />
-          </span>
-          <span className="text-[16px] font-black tracking-tight kt-grad-text">Glovek</span>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/brand/glovek-logo.svg" alt="Glovek" className="h-6 w-auto" />
         </Link>
 
         <nav className="hidden items-center gap-1 md:flex">

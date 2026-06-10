@@ -8,7 +8,8 @@ export default function SiteFooter() {
       <div className="mx-auto max-w-[1480px] px-4 py-10">
         <div className="grid gap-8 md:grid-cols-4">
           <div className="md:col-span-2">
-            <div className="text-[16px] font-black kt-grad-text">Glovek</div>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/brand/glovek-logo.svg" alt="Glovek" className="h-7 w-auto" />
             <p className="mt-2 max-w-md text-[12px] leading-relaxed text-[var(--muted)]">
               {SERVICE.tagline}. K-뷰티 브랜드의 실제 틱톡 콘텐츠를
               브랜드·콘텐츠·인플루언서별로 분석합니다.
