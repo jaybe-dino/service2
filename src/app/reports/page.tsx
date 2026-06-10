@@ -156,27 +156,27 @@ export default function ReportsPage() {
   @media print{button{display:none}}
 </style></head><body>
 <h1>Glovek — 브랜드 성장 리포트</h1>
-<div class="muted">${esc(brand.name)} · 생성일 ${today} · 최근 ${range}개월 · 수익화 지표는 추정치</div>
+<div class="muted">${esc(brand.name)} · 생성일 ${today} · 최근 ${range}개월 · 수익화 지표는 예측 지표</div>
 <div class="kpi">
   <div><span class="muted">누적 조회수</span><b>${brand.totalViews.toLocaleString()}</b></div>
-  <div><span class="muted">추정 기여 매출</span><b>${fmtUSD(stats.totalRevenue)}</b></div>
+  <div><span class="muted">기여 매출</span><b>${fmtUSD(stats.totalRevenue)}</b></div>
   <div><span class="muted">평균 참여율</span><b>${stats.avgEng}%</b></div>
-  <div><span class="muted">평균 추정 ROAS</span><b>${stats.avgRoas}x</b></div>
+  <div><span class="muted">평균 ROAS</span><b>${stats.avgRoas}x</b></div>
   <div><span class="muted">영상 수</span><b>${brand.videos}</b></div>
   <div><span class="muted">전월 대비</span><b>${stats.mom > 0 ? "+" : ""}${stats.mom}%</b></div>
 </div>
 <h2>월별 조회수 · 업로드 추이</h2>
 <table><thead><tr><th>월</th><th style="text-align:right">조회수</th><th style="text-align:right">업로드</th><th style="text-align:right">평균 조회</th></tr></thead><tbody>${monthsRows}</tbody></table>
 <h2>인플루언서 규모별 기여도</h2>
-<table><thead><tr><th>규모</th><th style="text-align:right">콘텐츠</th><th style="text-align:right">조회수</th><th style="text-align:right">추정 매출</th></tr></thead><tbody>${tierRows}</tbody></table>
+<table><thead><tr><th>규모</th><th style="text-align:right">콘텐츠</th><th style="text-align:right">조회수</th><th style="text-align:right">매출</th></tr></thead><tbody>${tierRows}</tbody></table>
 <h2>콘텐츠 유형 믹스</h2>
 <table><tbody>
   <tr><td>TikTok Shop</td><td style="text-align:right">${stats.shopCount}건</td><td style="text-align:right">조회 ${Math.round((stats.shopViews / (stats.totalViews || 1)) * 100)}%</td></tr>
   <tr><td>광고(#ad)</td><td style="text-align:right">${stats.adCount}건</td><td style="text-align:right">조회 ${Math.round((stats.adViews / (stats.totalViews || 1)) * 100)}%</td></tr>
 </tbody></table>
 <h2>고성과 인플루언서</h2>
-<table><thead><tr><th>크리에이터</th><th style="text-align:right">콘텐츠</th><th style="text-align:right">조회수</th><th style="text-align:right">추정 매출</th></tr></thead><tbody>${infRows}</tbody></table>
-<div class="foot">© ${new Date().getFullYear()} Glovek · 본 리포트의 수수료율·ROAS·매출은 조회·참여·Shop 기반 추정치입니다.</div>
+<table><thead><tr><th>크리에이터</th><th style="text-align:right">콘텐츠</th><th style="text-align:right">조회수</th><th style="text-align:right">매출</th></tr></thead><tbody>${infRows}</tbody></table>
+<div class="foot">© ${new Date().getFullYear()} Glovek · 본 리포트의 수수료율·ROAS·매출은 조회·참여·Shop 기반 예측 지표입니다.</div>
 <script>window.onload=function(){setTimeout(function(){window.print()},300)}</script>
 </body></html>`;
     const w = window.open("", "_blank");
@@ -223,9 +223,9 @@ export default function ReportsPage() {
       <div className="mb-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
         {[
           { l: "누적 조회수", v: fmtCompact(brand.totalViews) },
-          { l: "추정 기여 매출", v: stats ? fmtUSD(stats.totalRevenue) : "…" },
+          { l: "기여 매출", v: stats ? fmtUSD(stats.totalRevenue) : "…" },
           { l: "평균 참여율", v: stats ? `${stats.avgEng}%` : "…" },
-          { l: "평균 추정 ROAS", v: stats ? `${stats.avgRoas}x` : "…" },
+          { l: "평균 ROAS", v: stats ? `${stats.avgRoas}x` : "…" },
           { l: "영상 수", v: `${brand.videos}` },
           { l: "평균 조회수", v: fmtCompact(brand.avgViews) },
           { l: "Shop 비율", v: `${brand.shopRatio}%` },
@@ -338,7 +338,7 @@ export default function ReportsPage() {
               <thead>
                 <tr className="border-b border-[var(--border)] text-left text-[10px] uppercase text-[var(--muted)]">
                   <th className="py-2">크리에이터</th><th className="py-2 text-right">콘텐츠</th>
-                  <th className="py-2 text-right">조회수</th><th className="py-2 text-right">추정 매출</th>
+                  <th className="py-2 text-right">조회수</th><th className="py-2 text-right">매출</th>
                 </tr>
               </thead>
               <tbody>
@@ -367,7 +367,7 @@ export default function ReportsPage() {
               <CalendarClock size={16} className="text-[var(--accent)]" />
               <div>
                 <div className="font-bold">주간 학습 업데이트</div>
-                <div className="text-[var(--muted)]">매주 월·목 09:00 재학습 · 추정 지표 보정</div>
+                <div className="text-[var(--muted)]">매주 월·목 09:00 재학습 · 예측 지표 보정</div>
               </div>
             </div>
           </div>
@@ -403,7 +403,7 @@ export default function ReportsPage() {
                     <span className="rounded bg-rose-500 px-1.5 py-0.5 text-[9px] font-bold text-white">바이럴 {c.viralScore}</span>
                     <span className="flex-1 truncate">@{c.influencerId}</span>
                     <span className="font-semibold">{fmtCompact(c.views)} 조회</span>
-                    <span className="text-[var(--muted)]">추정 {fmtUSD(c.estRevenueUSD)}</span>
+                    <span className="text-[var(--muted)]">매출 {fmtUSD(c.estRevenueUSD)}</span>
                   </li>
                 ))}
               </ul>

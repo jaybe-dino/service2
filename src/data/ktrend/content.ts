@@ -284,7 +284,7 @@ export const SORTS: { key: SortKey; label: string }[] = [
   { key: "viral", label: "바이럴 점수순" },
   { key: "views", label: "조회수순" },
   { key: "engagement", label: "참여율순" },
-  { key: "revenue", label: "추정 매출순" },
+  { key: "revenue", label: "매출순" },
   { key: "recent", label: "최신순" },
 ];
 

@@ -38,7 +38,7 @@ export default function ViralPage() {
           id: c.id,
           level: c.viralScore >= 90 ? "high" : i % 2 === 0 ? "mid" : "low",
           text: `${brand?.name} ${cat?.nameKo} 콘텐츠 @${c.influencerId} 조회수 ${surge}% 급증!`,
-          sub: `누적 ${fmtCompact(c.views)} 조회 · 참여율 ${c.engagementRate}% · 추정 ROAS ${c.estRoasX}x`,
+          sub: `누적 ${fmtCompact(c.views)} 조회 · 참여율 ${c.engagementRate}% · ROAS ${c.estRoasX}x`,
         };
       }),
     [topViral],

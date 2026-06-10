@@ -230,16 +230,17 @@ export default function ContentCard({ content }: { content: Content }) {
         {/* 크리에이터 (계정 이름 게이팅) */}
         <div className="flex items-center gap-1.5">
           <CreatorName handle={content.influencerId} className="min-w-0 flex-1" />
+          <BookmarkButton type="influencer" id={content.influencerId} size={11} className="!px-1 !py-0.5" />
           <span className="rounded px-1.5 py-0.5 text-[8px] font-bold text-white" style={{ background: tier.color }}>
             {tier.label}
           </span>
         </div>
 
-        {/* 2x2 성과 지표 — 추정 매출·ROAS는 비로그인 시 실루엣 처리 */}
+        {/* 2x2 성과 지표 — 매출·ROAS는 비로그인 시 실루엣 처리 */}
         <div className="mt-0.5 grid grid-cols-2 gap-1.5">
-          <Metric label="수수료율 (추정)" value={`${content.commissionRate}%`} />
-          <Metric label="추정 ROAS" value={`${content.estRoasX}x`} blur={lockMetrics} />
-          <Metric label="추정 매출" value={fmtUSD(content.estRevenueUSD)} blur={lockMetrics} />
+          <Metric label="수수료율" value={`${content.commissionRate}%`} />
+          <Metric label="ROAS" value={`${content.estRoasX}x`} blur={lockMetrics} />
+          <Metric label="매출" value={fmtUSD(content.estRevenueUSD)} blur={lockMetrics} />
           <Metric label="참여율" value={`${content.engagementRate}%`} />
         </div>
 
