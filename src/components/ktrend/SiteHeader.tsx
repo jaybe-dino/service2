@@ -8,7 +8,7 @@ import type { PlanId } from "@/data/ktrend/meta";
 
 const NAV = [
   { href: "/explorer", label: "콘텐츠 레퍼런스" },
-  { href: "/influencers", label: "인플루언서 DB" },
+  { href: "/influencers", label: "인플루언서" },
   { href: "/reports", label: "브랜드" },
   { href: "/plans", label: "요금제" },
 ];

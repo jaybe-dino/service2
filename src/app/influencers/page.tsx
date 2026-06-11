@@ -60,9 +60,9 @@ export default function InfluencersPage() {
 
   return (
     <PageShell>
-      <ProGate label="인플루언서 DB">
+      <ProGate label="인플루언서">
       <div className="mb-4">
-        <h1 className="text-[20px] font-black tracking-tight">인플루언서 DB</h1>
+        <h1 className="text-[20px] font-black tracking-tight">인플루언서</h1>
         <p className="mt-1 text-[12px] text-[var(--muted)]">
           실제 매출을 발생시킨 검증된 틱톡 어필리에이트 크리에이터 {content ? influencers.length.toLocaleString() : "…"}명 (수집 콘텐츠 기준 자동 집계). 협업을 원하면 제안하기로 문의하세요.
         </p>

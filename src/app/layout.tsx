@@ -7,7 +7,7 @@ import TopBanner from "@/components/ktrend/TopBanner";
 const SITE_URL = "https://glovek.space";
 const TITLE = "Glovek — 틱톡 K-뷰티 콘텐츠·인플루언서 분석 SaaS";
 const DESC =
-  "K-뷰티 브랜드의 실제 틱톡 콘텐츠를 브랜드·콘텐츠·인플루언서별로 조회·분석하는 B2B SaaS. 바이럴 콘텐츠 레퍼런스, 인플루언서 DB, 브랜드 성장 리포트를 제공합니다.";
+  "K-뷰티 브랜드의 실제 틱톡 콘텐츠를 브랜드·콘텐츠·인플루언서별로 조회·분석하는 B2B SaaS. 바이럴 콘텐츠 레퍼런스, 인플루언서, 브랜드 성장 리포트를 제공합니다.";
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
@@ -94,7 +94,7 @@ const JSON_LD = {
           name: "Glovek는 어떤 서비스인가요?",
           acceptedAnswer: {
             "@type": "Answer",
-            text: "Glovek는 K-뷰티 브랜드의 실제 틱톡 콘텐츠를 브랜드·콘텐츠·인플루언서별로 분석하는 B2B SaaS입니다. 바이럴 콘텐츠 레퍼런스, 검증된 어필리에이트 인플루언서 DB, 브랜드 성장 리포트를 제공합니다.",
+            text: "Glovek는 K-뷰티 브랜드의 실제 틱톡 콘텐츠를 브랜드·콘텐츠·인플루언서별로 분석하는 B2B SaaS입니다. 바이럴 콘텐츠 레퍼런스, 검증된 어필리에이트 인플루언서, 브랜드 성장 리포트를 제공합니다.",
           },
         },
         {

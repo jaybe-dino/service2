@@ -24,7 +24,7 @@ export default function SiteFooter() {
             </div>
             <ul className="space-y-1.5 text-[12px]">
               <li><Link href="/explorer" className="hover:text-[var(--accent)]">콘텐츠 레퍼런스</Link></li>
-              <li><Link href="/influencers" className="hover:text-[var(--accent)]">인플루언서 DB</Link></li>
+              <li><Link href="/influencers" className="hover:text-[var(--accent)]">인플루언서</Link></li>
               <li><Link href="/reports" className="hover:text-[var(--accent)]">브랜드</Link></li>
             </ul>
           </div>

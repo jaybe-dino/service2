@@ -78,7 +78,7 @@ export default function SavedPage() {
         </div>
       ) : (
         <p className="rounded-md bg-slate-50 px-3 py-3 text-[11px] text-[var(--muted)]">
-          저장한 인플루언서가 없습니다. 인플루언서 DB에서 북마크하세요.
+          저장한 인플루언서가 없습니다. 인플루언서에서 북마크하세요.
         </p>
       )}
     </PageShell>

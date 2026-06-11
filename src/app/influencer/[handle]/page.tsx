@@ -63,7 +63,7 @@ export default function InfluencerDetailPage() {
     return (
       <PageShell>
         <Link href="/influencers" className="mb-3 inline-flex items-center gap-1 text-[11px] font-semibold text-[var(--muted)] hover:text-[var(--accent)]">
-          <ArrowLeft size={13} /> 인플루언서 DB
+          <ArrowLeft size={13} /> 인플루언서
         </Link>
         <div className="kt-card mx-auto max-w-md p-8 text-center">
           <Lock className="mx-auto text-[var(--accent)]" />
@@ -93,7 +93,7 @@ export default function InfluencerDetailPage() {
       <PageShell>
         <div className="py-20 text-center">
           <p className="text-[14px] font-semibold">@{handle} 콘텐츠를 찾을 수 없습니다.</p>
-          <Link href="/influencers" className="kt-btn kt-btn-primary mt-3 px-4 py-2 text-[12px]">인플루언서 DB</Link>
+          <Link href="/influencers" className="kt-btn kt-btn-primary mt-3 px-4 py-2 text-[12px]">인플루언서</Link>
         </div>
       </PageShell>
     );
@@ -104,7 +104,7 @@ export default function InfluencerDetailPage() {
   return (
     <PageShell>
       <Link href="/influencers" className="mb-3 inline-flex items-center gap-1 text-[11px] font-semibold text-[var(--muted)] hover:text-[var(--accent)]">
-        <ArrowLeft size={13} /> 인플루언서 DB
+        <ArrowLeft size={13} /> 인플루언서
       </Link>
 
       {/* 프로필 헤더 */}
