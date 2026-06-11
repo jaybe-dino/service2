@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { LogIn, LogOut, Bookmark, Menu, X } from "lucide-react";
 import { usePlan } from "./PlanContext";
+import OnlineCount from "./OnlineCount";
 import type { PlanId } from "@/data/ktrend/meta";
 
 const NAV: { href: string; label: string; title?: string; desc?: string }[] = [
@@ -66,6 +67,8 @@ export default function SiteHeader() {
         </nav>
 
         <div className="ml-auto flex items-center gap-2">
+          {/* TEST1: 동시 접속자 (롤백 시 이 줄 제거) */}
+          <OnlineCount />
           {user && !isPro && (
             <span className="hidden rounded-md bg-amber-50 px-2 py-1 text-[9px] font-semibold text-amber-700 sm:inline">
               오늘 열람권 {passRemaining}건 남음

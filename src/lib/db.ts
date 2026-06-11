@@ -198,6 +198,11 @@ export function ensureSchema(): Promise<void> {
         user_email text,
         created_at timestamptz NOT NULL DEFAULT now()
       )`;
+      // 동시 접속자 표기용 하트비트 (TEST1 — 롤백 가능)
+      await sql`CREATE TABLE IF NOT EXISTS presence (
+        sid text PRIMARY KEY,
+        last_seen timestamptz NOT NULL DEFAULT now()
+      )`;
       // 데모/관리자 계정 시드 (bcrypt("ktrend2026")) — 서버 세션 로그인 가능하도록
       const DEMO_HASH = "$2b$10$mLc7sBm3zK4a83l6/Tg9NOoDGLLYsfp4SXRfZcls4.LTw6Tsy/8Oy";
       await sql`INSERT INTO users (id, email, password_hash, name, brand, role, plan) VALUES
