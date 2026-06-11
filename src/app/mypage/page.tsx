@@ -3,12 +3,22 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { User, Crown, Ticket, Bookmark, LogOut, CreditCard, Building2, Mail, Briefcase, LogIn } from "lucide-react";
+import { User, Crown, Ticket, Bookmark, LogOut, CreditCard, Building2, Mail, Briefcase, LogIn, Send, Loader2 } from "lucide-react";
 import PageShell from "@/components/ktrend/PageShell";
 import { usePlan } from "@/components/ktrend/PlanContext";
 import { useBookmarks } from "@/components/ktrend/BookmarkContext";
 
 interface Sub { plan: string; amount: number; status: string; next_charge_at: number }
+interface Proposal { id: number; handle: string | null; message: string | null; budget: string | null; status: string; response: string | null; created_at: string }
+
+const PROP_STATUS: Record<string, { label: string; cls: string }> = {
+  pending: { label: "대기중", cls: "bg-slate-100 text-slate-500" },
+  reviewing: { label: "검토중", cls: "bg-amber-50 text-amber-700" },
+  accepted: { label: "수락됨", cls: "bg-emerald-50 text-emerald-700" },
+  declined: { label: "반려됨", cls: "bg-rose-50 text-rose-600" },
+  done: { label: "완료", cls: "bg-emerald-50 text-emerald-700" },
+  withdrawn: { label: "철회됨", cls: "bg-slate-100 text-slate-400" },
+};
 
 export default function MyPage() {
   const { user, plan, isPro, trialMsLeft, passRemaining, logout } = usePlan();
@@ -16,10 +26,24 @@ export default function MyPage() {
   const router = useRouter();
   const [sub, setSub] = useState<Sub | null>(null);
   const [canceling, setCanceling] = useState(false);
+  const [proposals, setProposals] = useState<Proposal[] | null>(null);
+
+  const loadProposals = () => {
+    fetch("/api/proposals", { cache: "no-store" }).then((r) => r.json()).then((d) => setProposals(d.rows ?? [])).catch(() => setProposals([]));
+  };
 
   useEffect(() => {
-    if (user) fetch("/api/payment/cancel", { cache: "no-store" }).then((r) => r.json()).then((d) => setSub(d.subscription)).catch(() => {});
+    if (user) {
+      fetch("/api/payment/cancel", { cache: "no-store" }).then((r) => r.json()).then((d) => setSub(d.subscription)).catch(() => {});
+      loadProposals();
+    }
   }, [user]);
+
+  const withdraw = async (id: number) => {
+    if (!confirm("이 제안을 철회하시겠습니까?")) return;
+    await fetch("/api/proposals", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id }) });
+    loadProposals();
+  };
 
   const cancelSub = async () => {
     if (!confirm("정기결제를 해지하시겠습니까?\n남은 Pro 이용 기간은 그대로 유지됩니다.")) return;
@@ -105,6 +129,47 @@ export default function MyPage() {
             <div><div className="text-[18px] font-black text-[var(--accent)]">{brands.length + influencers.length}</div><div className="text-[10px] text-[var(--muted)]">저장한 항목</div></div>
           </Link>
           <Stat icon={<Crown size={16} />} label="플랜" value={planLabel} />
+        </div>
+
+        {/* 제안한 인플루언서 */}
+        <div className="mt-4 kt-card p-5">
+          <h2 className="mb-3 flex items-center gap-1.5 text-[13px] font-bold">
+            <Send size={14} className="text-[var(--accent)]" /> 제안한 인플루언서
+            {proposals && <span className="text-[11px] font-semibold text-[var(--muted)]">({proposals.length})</span>}
+          </h2>
+          {proposals === null ? (
+            <div className="flex items-center gap-2 py-4 text-[11px] text-[var(--muted)]"><Loader2 size={13} className="animate-spin" /> 불러오는 중…</div>
+          ) : proposals.length === 0 ? (
+            <p className="py-3 text-[12px] text-[var(--muted)]">
+              아직 보낸 제안이 없어요. <Link href="/influencers" className="font-semibold text-[var(--accent)] hover:underline">인플루언서</Link>에서 협업을 제안해 보세요.
+            </p>
+          ) : (
+            <div className="space-y-2">
+              {proposals.map((p) => {
+                const st = PROP_STATUS[p.status] ?? PROP_STATUS.pending;
+                return (
+                  <div key={p.id} className="rounded-lg border border-[var(--border)] p-3">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="text-[12px] font-bold">{p.handle ?? "인플루언서"}</span>
+                      <span className={`rounded px-1.5 py-0.5 text-[9px] font-bold ${st.cls}`}>{st.label}</span>
+                      <span className="ml-auto text-[10px] text-[var(--muted)]">{new Date(p.created_at).toLocaleDateString("ko-KR")}</span>
+                      {p.status === "pending" && (
+                        <button onClick={() => withdraw(p.id)} className="text-[10px] font-semibold text-rose-500 hover:underline">철회</button>
+                      )}
+                    </div>
+                    {p.message && <p className="mt-1.5 text-[11px] text-[var(--muted)]">제안 내용: {p.message}</p>}
+                    {p.budget && <p className="mt-0.5 text-[10px] text-[var(--muted)]">예산/단가: {p.budget}</p>}
+                    {p.response && (
+                      <div className="mt-2 rounded-md bg-[var(--accent-light)] px-3 py-2 text-[11px]">
+                        <span className="font-bold text-[var(--accent)]">담당자 답변</span>
+                        <p className="mt-0.5 leading-relaxed text-[var(--fg)]">{p.response}</p>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
 
         {/* 바로가기 */}

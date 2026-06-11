@@ -16,7 +16,7 @@ interface Order {
   order_id: string; user_id: string; plan: string; amount: number; status: string; created_at: string; paid: boolean;
 }
 interface Totals { users: number; payments: number; revenue: number; active_pro: number; }
-interface Inquiry { id: number; kind: string; user_email: string | null; payload: Record<string, unknown> | null; created_at: string; }
+interface Inquiry { id: number; kind: string; user_email: string | null; payload: Record<string, unknown> | null; status?: string; response?: string | null; created_at: string; }
 interface BrandReq { id: number; brand_name: string; handle: string | null; source: string; status: string; collected: number; note: string | null; created_at: string; }
 interface Run { id: number; kind: string; target: string | null; status: string; collected: number; error: string | null; created_at: string; }
 interface Track { brand_name: string; tracked: boolean; interval_hours: number; hashtags: string | null; last_collected_at: string | null; }
@@ -125,6 +125,13 @@ export default function AdminPage() {
     setToast(r.ok ? `${grantEmail}에 Pro ${grantDays}일 부여` : (d.error ?? "실패"));
     setTimeout(() => setToast(""), 2500);
     if (r.ok) { setGrantEmail(""); loadData(); }
+  };
+
+  const replyInquiry = async (id: number, status: string, response: string) => {
+    const r = await fetch("/api/admin/inquiry", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id, status, response }) });
+    setToast(r.ok ? "답변 저장됨 (회원 마이페이지 노출)" : "저장 실패");
+    setTimeout(() => setToast(""), 2500);
+    if (r.ok) loadData();
   };
 
   const resetPw = async (email: string) => {
@@ -370,7 +377,7 @@ export default function AdminPage() {
       )}
 
       {tab === "inquiries" && (
-        <Table head={["유형", "보낸 사람", "대상", "내용", "시각"]}>
+        <Table head={["유형", "보낸 사람", "대상", "내용", "상태·답변", "시각"]}>
           {inquiries.map((q) => {
             const pl = q.payload ?? {};
             return (
@@ -379,11 +386,12 @@ export default function AdminPage() {
                 <td className="p-2">{q.user_email ?? String(pl.email ?? "—")}</td>
                 <td className="p-2 text-[10px]">{String(pl.context ?? "—")}</td>
                 <td className="p-2 text-[10px] text-[var(--muted)]">{String(pl.message ?? "")}{pl.budget ? ` · 예산 ${pl.budget}` : ""}</td>
+                <td className="p-2 min-w-[220px]"><InquiryReply q={q} onSave={replyInquiry} /></td>
                 <td className="p-2 text-[var(--muted)]">{dt(q.created_at)}</td>
               </tr>
             );
           })}
-          {!inquiries.length && <EmptyRow cols={5} text="문의·제안 없음" />}
+          {!inquiries.length && <EmptyRow cols={6} text="문의·제안 없음" />}
         </Table>
       )}
 
@@ -652,6 +660,21 @@ function Table({ head, children }: { head: string[]; children: React.ReactNode }
 }
 function EmptyRow({ cols, text }: { cols: number; text: string }) {
   return <tr><td colSpan={cols} className="p-6 text-center text-[var(--muted)]">{text}</td></tr>;
+}
+function InquiryReply({ q, onSave }: { q: Inquiry; onSave: (id: number, status: string, response: string) => void }) {
+  const [status, setStatus] = useState(q.status ?? "pending");
+  const [resp, setResp] = useState(q.response ?? "");
+  return (
+    <div className="space-y-1">
+      <div className="flex items-center gap-1">
+        <select value={status} onChange={(e) => setStatus(e.target.value)} className="rounded border border-[var(--border)] px-1 py-0.5 text-[10px]">
+          {["pending", "reviewing", "accepted", "declined", "done"].map((s) => <option key={s} value={s}>{s}</option>)}
+        </select>
+        <button onClick={() => onSave(q.id, status, resp)} className="rounded bg-[var(--accent)] px-2 py-0.5 text-[10px] font-semibold text-white">저장</button>
+      </div>
+      <textarea value={resp} onChange={(e) => setResp(e.target.value)} rows={2} placeholder="회원에게 보낼 답변" className="w-full rounded border border-[var(--border)] px-1.5 py-1 text-[10px]" />
+    </div>
+  );
 }
 function RuleNum({ label, value, onChange }: { label: string; value: number; onChange: (v: number) => void }) {
   return <label className="block"><span className="mb-1 block text-[11px] font-semibold">{label}</span><input type="number" value={value} onChange={(e) => onChange(Number(e.target.value))} className="w-full rounded-md border border-[var(--border)] px-2.5 py-2 text-[12px] outline-none focus:border-[var(--accent)]" /></label>;

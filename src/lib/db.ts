@@ -49,6 +49,10 @@ export function ensureSchema(): Promise<void> {
         payload jsonb,
         created_at timestamptz NOT NULL DEFAULT now()
       )`;
+      // 제안/문의 상태 관리 + 관리자 답변 (마이페이지 노출)
+      await sql`ALTER TABLE inquiries ADD COLUMN IF NOT EXISTS status text NOT NULL DEFAULT 'pending'`;
+      await sql`ALTER TABLE inquiries ADD COLUMN IF NOT EXISTS response text`;
+      await sql`ALTER TABLE inquiries ADD COLUMN IF NOT EXISTS updated_at timestamptz NOT NULL DEFAULT now()`;
       // 결제(NICEpay) — 주문/원장
       await sql`CREATE TABLE IF NOT EXISTS orders (
         order_id text PRIMARY KEY,
