@@ -7,7 +7,7 @@ import PageShell from "@/components/ktrend/PageShell";
 import ContentCard from "@/components/ktrend/ContentCard";
 import HeroBackground from "@/components/ktrend/HeroBackground";
 import { usePlan } from "@/components/ktrend/PlanContext";
-import { CATEGORIES, SERVICE } from "@/data/ktrend/meta";
+import { CATEGORIES } from "@/data/ktrend/meta";
 import { BRANDS } from "@/data/ktrend/brands";
 import { loadContentStaged, randomSample, fmtCompact, type Content } from "@/data/ktrend/content";
 
@@ -40,12 +40,12 @@ export default function Home() {
         <HeroBackground />
         <div className="relative z-10 mx-auto max-w-[1480px] px-4 py-16 text-center">
           <span className="kt-badge-brand mx-auto">실데이터 기반 · TikTok 중심</span>
-          <h1 className="mx-auto mt-4 max-w-3xl text-[34px] font-black leading-tight tracking-tight md:text-[44px]">
-            글로벌 틱톡 K-뷰티 콘텐츠를<br />
-            <span className="text-[var(--accent)]">브랜드·콘텐츠·인플루언서</span>별로 분석
+          <h1 className="mx-auto mt-4 max-w-3xl text-[30px] font-black leading-tight tracking-tight md:text-[42px]">
+            글로벌에서 지금 <span className="text-[var(--accent)]">1위 브랜드</span>는<br />
+            누구와 캠페인을 하는지 찾아보세요
           </h1>
           <p className="mx-auto mt-4 max-w-2xl text-[14px] leading-relaxed text-[var(--muted)]">
-            {SERVICE.tagline}. 실제 틱톡 콘텐츠를 브랜드·콘텐츠·인플루언서별로 추적합니다.
+            브랜드별 캠페인 분석 서비스
           </p>
           <div className="mt-7 flex items-center justify-center gap-3">
             <Link href="/explorer" className="kt-btn kt-btn-primary px-6 py-3 text-[13px]">
