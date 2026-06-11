@@ -22,15 +22,6 @@ function priceParts(price: string, annual: boolean): { main: string; sub: string
   return { main: `${cur}${discounted.toLocaleString()}${tilde}`, sub: `연 ${cur}${yearly.toLocaleString()}${tilde} 청구 · 20% 절약` };
 }
 
-const COMPARE = [
-  { feature: "콘텐츠 성과 지표", basic: "전체 공개", pro: "전체 공개", ent: "전체 공개 + 실매출" },
-  { feature: "열람권 (링크 열람·이름 공개)", basic: "하루 5건", pro: "무제한", ent: "무제한" },
-  { feature: "인플루언서 컨택 라인", basic: "잠금", pro: "해금", ent: "해금 + 단가" },
-  { feature: "신규 브랜드 자가 학습", basic: "미지원", pro: "월 3회 (12h)", ent: "무제한 (12h)" },
-  { feature: "바이럴 알림 · 리포트", basic: "미지원", pro: "주 2회 · 제공", ent: "실시간 · 무제한 PDF" },
-  { feature: "틱톡 샵 API(OAuth2)", basic: "—", pro: "—", ent: "실시간 연동" },
-];
-
 export default function PlansPage() {
   const { plan } = usePlan();
   const [annual, setAnnual] = useState(true);
@@ -117,31 +108,6 @@ export default function PlansPage() {
             </div>
           );
         })}
-      </div>
-
-      {/* 기능 비교 테이블 */}
-      <h2 className="mb-3 mt-10 text-[16px] font-bold">기능 상세 비교</h2>
-      <div className="kt-card overflow-x-auto">
-        <table className="w-full min-w-[680px] text-[11px]">
-          <thead>
-            <tr className="border-b border-[var(--border)] text-left">
-              <th className="p-3 text-[var(--muted)]">기능</th>
-              <th className="p-3">Basic</th>
-              <th className="p-3 text-[var(--accent)]">Pro</th>
-              <th className="p-3">Enterprise</th>
-            </tr>
-          </thead>
-          <tbody>
-            {COMPARE.map((r) => (
-              <tr key={r.feature} className="border-b border-[var(--border)] last:border-0">
-                <td className="p-3 font-semibold">{r.feature}</td>
-                <td className="p-3 text-[var(--muted)]">{r.basic}</td>
-                <td className="p-3 font-semibold text-[var(--accent)]">{r.pro}</td>
-                <td className="p-3">{r.ent}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
       </div>
 
     </PageShell>
