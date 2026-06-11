@@ -11,15 +11,24 @@ import ProGate from "@/components/ktrend/ProGate";
 import { INFLUENCER_MAP } from "@/data/ktrend/influencers";
 import { BRAND_MAP } from "@/data/ktrend/brands";
 import { TIERS, tierOf, type InfluencerTier } from "@/data/ktrend/meta";
-import { fmtCompact, loadContent, type Content } from "@/data/ktrend/content";
+import { fmtCompact, fmtUSD, loadContent, type Content } from "@/data/ktrend/content";
 
 const TIER_KEYS = Object.keys(TIERS) as InfluencerTier[];
 const PAGE = 50;
 
-interface Inf { handle: string; tier: InfluencerTier; videos: number; totalViews: number; avgViews: number; brands: string[] }
+type SortKey = "reviews" | "revenue" | "views" | "roas";
+const SORTS: { key: SortKey; label: string }[] = [
+  { key: "reviews", label: "리뷰 많은 순" },
+  { key: "revenue", label: "매출 잘나오는 순" },
+  { key: "views", label: "조회수 높은 순" },
+  { key: "roas", label: "비용대비 성과 순" },
+];
+
+interface Inf { handle: string; tier: InfluencerTier; videos: number; totalViews: number; avgViews: number; revenue: number; avgRoas: number; brands: string[] }
 
 export default function InfluencersPage() {
   const [tier, setTier] = useState<InfluencerTier | "ALL">("ALL");
+  const [sort, setSort] = useState<SortKey>("reviews");
   const [q, setQ] = useState("");
   const [propose, setPropose] = useState<string | null>(null);
   const [visible, setVisible] = useState(PAGE);
@@ -30,33 +39,44 @@ export default function InfluencersPage() {
   // 병합된 콘텐츠(정적+수집)에서 인플루언서 집계 → 콘텐츠 수와 매칭
   const influencers = useMemo<Inf[]>(() => {
     if (!content) return [];
-    const map = new Map<string, { handle: string; videos: number; totalViews: number; brands: Set<string> }>();
+    const map = new Map<string, { handle: string; videos: number; totalViews: number; revenue: number; roasSum: number; brands: Set<string> }>();
     for (const c of content) {
-      const e = map.get(c.influencerId) ?? { handle: c.influencerId, videos: 0, totalViews: 0, brands: new Set<string>() };
+      const e = map.get(c.influencerId) ?? { handle: c.influencerId, videos: 0, totalViews: 0, revenue: 0, roasSum: 0, brands: new Set<string>() };
       e.videos += 1;
       e.totalViews += c.views;
+      e.revenue += c.estRevenueUSD;
+      e.roasSum += c.estRoasX;
       const bn = BRAND_MAP[c.brandId]?.name;
       if (bn) e.brands.add(bn);
       map.set(c.influencerId, e);
     }
-    return [...map.values()]
-      .map((e) => {
-        const avgViews = Math.round(e.totalViews / e.videos);
-        return { handle: e.handle, videos: e.videos, totalViews: e.totalViews, avgViews, tier: INFLUENCER_MAP[e.handle]?.tier ?? tierOf(avgViews), brands: [...e.brands] };
-      })
-      .sort((a, b) => b.totalViews - a.totalViews);
+    return [...map.values()].map((e) => {
+      const avgViews = Math.round(e.totalViews / e.videos);
+      return {
+        handle: e.handle, videos: e.videos, totalViews: e.totalViews, avgViews,
+        revenue: e.revenue, avgRoas: Math.round((e.roasSum / e.videos) * 10) / 10,
+        tier: INFLUENCER_MAP[e.handle]?.tier ?? tierOf(avgViews), brands: [...e.brands],
+      };
+    });
   }, [content]);
 
   const rows = useMemo(() => {
     const query = q.trim().toLowerCase();
-    return influencers.filter(
+    const filtered = influencers.filter(
       (i) =>
         (tier === "ALL" || i.tier === tier) &&
         (!query ||
           i.handle.toLowerCase().includes(query) ||
           i.brands.some((b) => b.toLowerCase().includes(query))),
     );
-  }, [influencers, tier, q]);
+    const cmp: Record<SortKey, (a: Inf, b: Inf) => number> = {
+      reviews: (a, b) => b.videos - a.videos,
+      revenue: (a, b) => b.revenue - a.revenue,
+      views: (a, b) => b.totalViews - a.totalViews,
+      roas: (a, b) => b.avgRoas - a.avgRoas,
+    };
+    return [...filtered].sort(cmp[sort]);
+  }, [influencers, tier, q, sort]);
 
   return (
     <PageShell>
@@ -66,6 +86,23 @@ export default function InfluencersPage() {
         <p className="mt-1 text-[12px] text-[var(--muted)]">
           실제 매출을 발생시킨 검증된 틱톡 어필리에이트 크리에이터 {content ? influencers.length.toLocaleString() : "…"}명 (수집 콘텐츠 기준 자동 집계). 협업을 원하면 제안하기로 문의하세요.
         </p>
+      </div>
+
+      {/* 상위 정렬 버튼 */}
+      <div className="mb-3 flex flex-wrap gap-1.5">
+        {SORTS.map((s) => (
+          <button
+            key={s.key}
+            onClick={() => { setSort(s.key); setVisible(PAGE); }}
+            className={`rounded-full border px-3 py-1.5 text-[11px] font-semibold transition-colors ${
+              sort === s.key
+                ? "border-[var(--accent)] bg-[var(--accent)] text-white"
+                : "border-[var(--border)] text-[var(--muted)] hover:border-[var(--accent)] hover:text-[var(--accent)]"
+            }`}
+          >
+            {s.label}
+          </button>
+        ))}
       </div>
 
       <div className="mb-4 flex flex-wrap items-center gap-2">
@@ -96,6 +133,8 @@ export default function InfluencersPage() {
               <th className="p-3 text-right">영상 수</th>
               <th className="p-3 text-right">평균 조회수</th>
               <th className="p-3 text-right">누적 조회수</th>
+              <th className="p-3 text-right">기여 매출</th>
+              <th className="p-3 text-right">ROAS</th>
               <th className="p-3">협업 브랜드</th>
               <th className="p-3">제안</th>
             </tr>
@@ -120,6 +159,8 @@ export default function InfluencersPage() {
                   <td className="p-3 text-right">{inf.videos}</td>
                   <td className="p-3 text-right">{fmtCompact(inf.avgViews)}</td>
                   <td className="p-3 text-right font-bold text-[var(--accent)]">{fmtCompact(inf.totalViews)}</td>
+                  <td className="p-3 text-right font-semibold">{fmtUSD(inf.revenue)}</td>
+                  <td className="p-3 text-right">{inf.avgRoas}x</td>
                   <td className="p-3">
                     <div className="flex flex-wrap gap-1">
                       {inf.brands.slice(0, 3).map((b) => (
