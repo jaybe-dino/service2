@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Check, UserPlus, Mail, Gift, ArrowRight } from "lucide-react";
 import PageShell from "@/components/ktrend/PageShell";
 import { usePlan } from "@/components/ktrend/PlanContext";
+import { getStoredUtm } from "@/lib/utm";
 
 export default function SignupPage() {
   const { user, isPro, signup, invite, trialMsLeft } = usePlan();
@@ -27,7 +28,7 @@ export default function SignupPage() {
     e.preventDefault();
     setErr("");
     setBusy(true);
-    const res = await signup(form);
+    const res = await signup({ ...form, utm: getStoredUtm() });
     setBusy(false);
     if (res.ok) setStep(2);
     else setErr(res.error ?? "가입 실패");

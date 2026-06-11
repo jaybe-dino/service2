@@ -41,6 +41,7 @@ export interface SignupInput {
   brand: string;
   role: string;
   code?: string;
+  utm?: { source?: string; medium?: string; campaign?: string; content?: string; term?: string };
 }
 
 interface PlanState {

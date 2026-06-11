@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ShieldCheck, Users, CreditCard, UserSquare2, Tag, SlidersHorizontal, Loader2, LogOut, Gift, Inbox, Database, Play } from "lucide-react";
+import { ShieldCheck, Users, CreditCard, UserSquare2, Tag, SlidersHorizontal, Loader2, LogOut, Gift, Inbox, Database, Play, Link2 as LinkIcon } from "lucide-react";
 import PageShell from "@/components/ktrend/PageShell";
 import { INFLUENCERS, contactFor } from "@/data/ktrend/influencers";
 import { BRANDS } from "@/data/ktrend/brands";
@@ -29,7 +29,9 @@ const won = (n: number) => "₩" + Number(n || 0).toLocaleString();
 const dt = (s: string | null) => (s ? s.slice(0, 16).replace("T", " ") : "—");
 const proState = (until: number) => (Number(until) > Date.now() ? `Pro ~${new Date(Number(until)).toISOString().slice(0, 10)}` : "—");
 
-type Tab = "members" | "payments" | "inquiries" | "collect" | "influencers" | "brands" | "rules";
+type Tab = "members" | "payments" | "inquiries" | "collect" | "influencers" | "brands" | "utm" | "rules";
+interface UtmRow { key: string; visits: number; signups: number }
+interface UtmRecent { kind: string; source: string | null; medium: string | null; campaign: string | null; content: string | null; user_email: string | null; created_at: string }
 
 export default function AdminPage() {
   const [authed, setAuthed] = useState<boolean | null>(null);
@@ -53,6 +55,9 @@ export default function AdminPage() {
   const [blockVal, setBlockVal] = useState("");
   const [blockKind, setBlockKind] = useState<"handle" | "brand">("handle");
   const [promos, setPromos] = useState<{ code: string; trial_days: number; max_uses: number; used_count: number; active: boolean }[]>([]);
+  const [utm, setUtm] = useState<{ bySource: UtmRow[]; byCampaign: UtmRow[]; byMedium: UtmRow[]; recent: UtmRecent[]; totals: { visits: number; signups: number } } | null>(null);
+  const [linkBase, setLinkBase] = useState("https://glovek.space");
+  const [linkUtm, setLinkUtm] = useState({ source: "", medium: "", campaign: "", content: "", term: "" });
   const [promoDays, setPromoDays] = useState(3);
   const [promoUses, setPromoUses] = useState(0);
   const [promoCode, setPromoCode] = useState("");
@@ -148,7 +153,7 @@ export default function AdminPage() {
     const r = await fetch("/api/admin/tracking", { cache: "no-store" }).then((x) => x.json()).catch(() => ({ rows: [] }));
     setTracking(r.rows ?? []);
   };
-  useEffect(() => { if (authed) { loadTracking(); loadBlocks(); loadPromos(); } }, [authed]);
+  useEffect(() => { if (authed) { loadTracking(); loadBlocks(); loadPromos(); loadUtm(); } }, [authed]);
 
   const updateTrack = async (brand_name: string, patch: Partial<Track>) => {
     await fetch("/api/admin/tracking", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ brand_name, ...patch }) });
@@ -168,6 +173,20 @@ export default function AdminPage() {
   const loadPromos = async () => {
     const r = await fetch("/api/admin/promo", { cache: "no-store" }).then((x) => x.json()).catch(() => ({ rows: [] }));
     setPromos(r.rows ?? []);
+  };
+  const loadUtm = async () => {
+    const r = await fetch("/api/admin/utm", { cache: "no-store" }).then((x) => x.json()).catch(() => null);
+    if (r) setUtm(r);
+  };
+  const builtLink = () => {
+    const p = new URLSearchParams();
+    if (linkUtm.source) p.set("utm_source", linkUtm.source);
+    if (linkUtm.medium) p.set("utm_medium", linkUtm.medium);
+    if (linkUtm.campaign) p.set("utm_campaign", linkUtm.campaign);
+    if (linkUtm.content) p.set("utm_content", linkUtm.content);
+    if (linkUtm.term) p.set("utm_term", linkUtm.term);
+    const qs = p.toString();
+    return qs ? `${linkBase}?${qs}` : linkBase;
   };
   const createPromo = async () => {
     const r = await fetch("/api/admin/promo", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ code: promoCode || undefined, trial_days: promoDays, max_uses: promoUses }) });
@@ -248,6 +267,7 @@ export default function AdminPage() {
     { id: "collect", label: "브랜드 수집", icon: <Database size={13} /> },
     { id: "influencers", label: "인플루언서", icon: <UserSquare2 size={13} /> },
     { id: "brands", label: "브랜드", icon: <Tag size={13} /> },
+    { id: "utm", label: "유입(UTM)", icon: <LinkIcon size={13} /> },
     { id: "rules", label: "크롤링 규칙", icon: <SlidersHorizontal size={13} /> },
   ];
 
@@ -535,6 +555,65 @@ export default function AdminPage() {
             </tr>
           ))}
         </Table>
+      )}
+
+      {tab === "utm" && (
+        <>
+          <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <div className="kt-card p-3"><div className="text-[10px] text-[var(--muted)]">UTM 방문</div><div className="mt-0.5 text-[18px] font-black text-[var(--accent)]">{utm?.totals.visits ?? "…"}</div></div>
+            <div className="kt-card p-3"><div className="text-[10px] text-[var(--muted)]">UTM 가입</div><div className="mt-0.5 text-[18px] font-black text-[var(--accent)]">{utm?.totals.signups ?? "…"}</div></div>
+            <div className="kt-card p-3"><div className="text-[10px] text-[var(--muted)]">가입 전환율</div><div className="mt-0.5 text-[18px] font-black text-[var(--accent)]">{utm && utm.totals.visits ? `${Math.round((utm.totals.signups / utm.totals.visits) * 1000) / 10}%` : "—"}</div></div>
+            <div className="kt-card p-3"><div className="text-[10px] text-[var(--muted)]">소스 수</div><div className="mt-0.5 text-[18px] font-black text-[var(--accent)]">{utm?.bySource.length ?? "…"}</div></div>
+          </div>
+
+          {/* 캠페인 링크 빌더 */}
+          <div className="mb-4 rounded-md border border-[var(--border)] p-3">
+            <h3 className="mb-2 text-[12px] font-bold">캠페인 링크 빌더 (UTM)</h3>
+            <div className="grid gap-2 sm:grid-cols-3">
+              <input value={linkBase} onChange={(e) => setLinkBase(e.target.value)} placeholder="기본 URL" className="rounded border border-[var(--border)] px-2 py-1.5 text-[11px]" />
+              {(["source", "medium", "campaign", "content", "term"] as const).map((k) => (
+                <input key={k} value={linkUtm[k]} onChange={(e) => setLinkUtm((s) => ({ ...s, [k]: e.target.value }))} placeholder={`utm_${k}`} className="rounded border border-[var(--border)] px-2 py-1.5 text-[11px]" />
+              ))}
+            </div>
+            <div className="mt-2 flex items-center gap-2">
+              <code className="flex-1 truncate rounded bg-slate-50 px-2 py-1.5 text-[11px]">{builtLink()}</code>
+              <button onClick={() => { navigator.clipboard?.writeText(builtLink()); setToast("링크 복사됨"); setTimeout(() => setToast(""), 1500); }} className="kt-btn kt-btn-outline px-3 py-1.5 text-[11px]">복사</button>
+            </div>
+          </div>
+
+          <div className="grid gap-4 lg:grid-cols-3">
+            {([["소스 (utm_source)", utm?.bySource], ["캠페인 (utm_campaign)", utm?.byCampaign], ["매체 (utm_medium)", utm?.byMedium]] as const).map(([title, rows]) => (
+              <div key={title}>
+                <h3 className="mb-2 text-[12px] font-bold">{title}</h3>
+                <Table head={["값", "방문", "가입"]}>
+                  {(rows ?? []).map((r) => (
+                    <tr key={r.key} className="border-b border-[var(--border)] last:border-0">
+                      <td className="p-2 font-semibold">{r.key}</td>
+                      <td className="p-2 text-right">{r.visits}</td>
+                      <td className="p-2 text-right text-[var(--accent)]">{r.signups}</td>
+                    </tr>
+                  ))}
+                  {!rows?.length && <EmptyRow cols={3} text="데이터 없음" />}
+                </Table>
+              </div>
+            ))}
+          </div>
+
+          <h3 className="mb-2 mt-6 text-[12px] font-bold">최근 유입 이벤트</h3>
+          <Table head={["종류", "소스", "매체", "캠페인", "가입이메일", "시각"]}>
+            {(utm?.recent ?? []).map((e, i) => (
+              <tr key={i} className="border-b border-[var(--border)] last:border-0">
+                <td className="p-2"><span className={e.kind === "signup" ? "font-semibold text-[var(--accent)]" : "text-[var(--muted)]"}>{e.kind}</span></td>
+                <td className="p-2">{e.source ?? "—"}</td>
+                <td className="p-2">{e.medium ?? "—"}</td>
+                <td className="p-2">{e.campaign ?? "—"}</td>
+                <td className="p-2 text-[10px]">{e.user_email ?? "—"}</td>
+                <td className="p-2 text-[var(--muted)]">{dt(e.created_at)}</td>
+              </tr>
+            ))}
+            {!utm?.recent.length && <EmptyRow cols={6} text="유입 이벤트 없음" />}
+          </Table>
+        </>
       )}
 
       {tab === "rules" && (

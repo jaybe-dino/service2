@@ -32,7 +32,7 @@ export async function apiMe(): Promise<{ configured: boolean; user: ApiUser | nu
   }
 }
 
-export const apiSignup = (b: { name: string; email: string; password: string; brand: string; role: string; code?: string }) =>
+export const apiSignup = (b: { name: string; email: string; password: string; brand: string; role: string; code?: string; utm?: Record<string, string | undefined> }) =>
   jpost<{ user?: ApiUser; error?: string; promo?: { applied: boolean; trialDays?: number } }>("/api/auth/signup", b);
 
 export const apiLogin = (b: { email: string; password: string }) =>

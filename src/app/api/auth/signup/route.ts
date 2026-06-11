@@ -30,6 +30,14 @@ export async function POST(req: Request) {
   await sql`INSERT INTO users (id, email, password_hash, name, brand, role, plan)
             VALUES (${id}, ${email}, ${password_hash}, ${name}, ${brand}, ${role}, 'basic')`;
 
+  // UTM 유입 출처 연결 (가입 어트리뷰션)
+  const utm = (body?.utm ?? {}) as Record<string, string | undefined>;
+  const cut = (v: unknown) => { const s = String(v ?? "").trim().slice(0, 200); return s || null; };
+  if (utm.source || utm.medium || utm.campaign) {
+    await sql`INSERT INTO utm_events (kind, source, medium, campaign, content, term, user_id, user_email)
+      VALUES ('signup', ${cut(utm.source)}, ${cut(utm.medium)}, ${cut(utm.campaign)}, ${cut(utm.content)}, ${cut(utm.term)}, ${id}, ${email})`;
+  }
+
   // 프로모션 코드: 유효하면 N일 무료 Pro 체험 부여
   let promo: { applied: boolean; trialDays?: number } = { applied: false };
   if (code) {

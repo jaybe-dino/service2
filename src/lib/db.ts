@@ -183,6 +183,21 @@ export function ensureSchema(): Promise<void> {
         created_at timestamptz NOT NULL DEFAULT now(),
         updated_at timestamptz NOT NULL DEFAULT now()
       )`;
+      // UTM 유입 추적 (방문/가입) — 캠페인 효과 측정용
+      await sql`CREATE TABLE IF NOT EXISTS utm_events (
+        id serial PRIMARY KEY,
+        kind text NOT NULL DEFAULT 'visit',
+        source text,
+        medium text,
+        campaign text,
+        content text,
+        term text,
+        landing_path text,
+        referrer text,
+        user_id text,
+        user_email text,
+        created_at timestamptz NOT NULL DEFAULT now()
+      )`;
       // 데모/관리자 계정 시드 (bcrypt("ktrend2026")) — 서버 세션 로그인 가능하도록
       const DEMO_HASH = "$2b$10$mLc7sBm3zK4a83l6/Tg9NOoDGLLYsfp4SXRfZcls4.LTw6Tsy/8Oy";
       await sql`INSERT INTO users (id, email, password_hash, name, brand, role, plan) VALUES
