@@ -224,7 +224,6 @@ export default function ContentCard({ content }: { content: Content }) {
           <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[9px] font-semibold text-slate-500">
             {cat?.icon} {cat?.nameKo}
           </span>
-          <BookmarkButton type="brand" id={content.brandId} size={11} className="ml-auto !px-1 !py-0.5" />
         </div>
 
         {/* 크리에이터 (계정 이름 게이팅) */}
