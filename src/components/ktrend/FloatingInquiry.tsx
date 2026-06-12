@@ -9,6 +9,23 @@ import { tpartnersUrl } from "@/lib/tpartners";
 export default function FloatingInquiry() {
   const [open, setOpen] = useState(false);
   const [kind, setKind] = useState<InquiryKind | null>(null);
+  const [minimized, setMinimized] = useState(false);
+
+  // 최소화(닫기): 작은 아이콘만 노출 → 겹침 방지. 클릭 시 다시 펼침.
+  if (minimized) {
+    return (
+      <>
+        <button
+          onClick={() => setMinimized(false)}
+          aria-label="틱톡샵 온보딩 문의 열기"
+          className="fixed bottom-4 right-4 z-40 flex h-11 w-11 items-center justify-center rounded-full bg-[var(--accent)] text-white opacity-80 shadow-lg transition hover:scale-105 hover:opacity-100 sm:bottom-6 sm:right-6"
+        >
+          <ShoppingBag size={18} />
+        </button>
+        {kind && <InquiryModal kind={kind} onClose={() => setKind(null)} />}
+      </>
+    );
+  }
 
   return (
     <>
@@ -49,14 +66,24 @@ export default function FloatingInquiry() {
           </div>
         )}
 
-        <button
-          onClick={() => setOpen((v) => !v)}
-          aria-label="틱톡샵 온보딩·마케팅 문의"
-          className="flex items-center gap-2 rounded-full bg-[var(--accent)] py-3 pl-4 pr-4 text-white shadow-xl transition-transform hover:scale-105 active:scale-95"
-        >
-          {open ? <X size={20} /> : <ShoppingBag size={20} />}
-          <span className="text-[13px] font-bold whitespace-nowrap">{open ? "닫기" : "틱톡샵 온보딩"}</span>
-        </button>
+        <div className="relative">
+          <button
+            onClick={() => setOpen((v) => !v)}
+            aria-label="틱톡샵 온보딩·마케팅 문의"
+            className="flex items-center gap-2 rounded-full bg-[var(--accent)] py-3 pl-4 pr-4 text-white shadow-xl transition-transform hover:scale-105 active:scale-95"
+          >
+            {open ? <X size={20} /> : <ShoppingBag size={20} />}
+            <span className="text-[13px] font-bold whitespace-nowrap">{open ? "닫기" : "틱톡샵 온보딩"}</span>
+          </button>
+          {/* 위젯 닫기(최소화) */}
+          <button
+            onClick={() => { setOpen(false); setMinimized(true); }}
+            aria-label="문의 버튼 닫기"
+            className="absolute -right-1.5 -top-1.5 flex h-5 w-5 items-center justify-center rounded-full border border-[var(--border)] bg-white text-[var(--muted)] shadow hover:text-[var(--fg)]"
+          >
+            <X size={12} />
+          </button>
+        </div>
       </div>
 
       {kind && <InquiryModal kind={kind} onClose={() => setKind(null)} />}
