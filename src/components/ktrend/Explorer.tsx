@@ -557,7 +557,16 @@ function BrandPickerModal({
           ) : (
             <Link href="/plans" className="text-[11px] font-semibold text-[var(--accent)] hover:underline">{isPro ? "Advance로 전체 보기 →" : "Pro로 더 보기 →"}</Link>
           )}
-          <button onClick={() => onConfirm(sel)} disabled={count === 0} className="kt-btn kt-btn-primary px-5 py-2 text-[12px] disabled:opacity-40">
+          <button
+            onClick={() => {
+              // Basic·Pro(로그인) 저장 시 취소 불가 경고
+              const hasNew = Object.keys(sel).some((id) => !(id in initial));
+              if (loggedIn && hasNew && !window.confirm(`선택한 브랜드는 저장하면 ${BRAND_LOCK_HOURS}시간 동안 취소·변경할 수 없습니다.\n저장하시겠습니까?`)) return;
+              onConfirm(sel);
+            }}
+            disabled={count === 0}
+            className="kt-btn kt-btn-primary px-5 py-2 text-[12px] disabled:opacity-40"
+          >
             {count}개 브랜드 보기
           </button>
         </div>
