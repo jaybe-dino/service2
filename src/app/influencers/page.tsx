@@ -80,7 +80,15 @@ export default function InfluencersPage() {
 
   return (
     <PageShell>
-      <ProGate label="인플루언서">
+      <ProGate
+        label="인플루언서"
+        features={[
+          "검증된 어필리에이트 크리에이터 전체 DB",
+          "리뷰 많은 순·매출·조회수·비용대비 성과 정렬",
+          "인플루언서별 성과 케이스·협업 브랜드 확인",
+          "제안하기로 직접 협업 컨택",
+        ]}
+      >
       <div className="mb-4">
         <h1 className="text-[20px] font-black tracking-tight">인플루언서</h1>
         <p className="mt-1 text-[12px] text-[var(--muted)]">

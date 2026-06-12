@@ -18,7 +18,8 @@ const TIER_ORDER: InfluencerTier[] = ["mega", "macro", "micro"];
 interface MonthRow { m: string; views: number; uploads: number; revenue: number; eng: number; }
 
 export default function ReportsPage() {
-  const { isPro } = usePlan();
+  const { plan, isAdmin } = usePlan();
+  const isAdvance = plan === "enterprise" || isAdmin; // Advance(=enterprise) 또는 어드민만 PDF
   const [content, setContent] = useState<Content[] | null>(null);
   const [brandId, setBrandId] = useState(BRANDS[0].id);
   const [range, setRange] = useState<6 | 12>(12);
@@ -187,18 +188,27 @@ export default function ReportsPage() {
 
   return (
     <PageShell>
-      <ProGate label="브랜드">
+      <ProGate
+        label="브랜드"
+        features={[
+          "브랜드별 월간 조회수·성장 추이",
+          "헬스 스코어·런칭 커브·SOV(점유율)",
+          "타 브랜드의 캠페인·협업 인플루언서 분석",
+          "브랜드 리포트 PDF는 Advance에서 다운로드",
+        ]}
+      >
       <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-[20px] font-black tracking-tight">브랜드 리포트 · 상세</h1>
           <p className="mt-1 text-[12px] text-[var(--muted)]">브랜드별 성장 리포트와 상세 분석을 한 곳에서.</p>
         </div>
         <button
-          onClick={isPro ? downloadReport : undefined}
-          disabled={!isPro || !stats}
-          className={`kt-btn px-4 py-2 text-[12px] ${isPro ? "kt-btn-primary" : "kt-btn-outline cursor-not-allowed"} disabled:opacity-50`}
+          onClick={isAdvance ? downloadReport : undefined}
+          disabled={!isAdvance || !stats}
+          title={isAdvance ? "PDF 다운로드" : "Advance 플랜에서 PDF 다운로드가 가능합니다"}
+          className={`kt-btn px-4 py-2 text-[12px] ${isAdvance ? "kt-btn-primary" : "kt-btn-outline cursor-not-allowed"} disabled:opacity-50`}
         >
-          <Download size={14} /> PDF 리포트 {isPro ? "다운로드" : "(Pro 전용)"}
+          <Download size={14} /> PDF 리포트 {isAdvance ? "다운로드" : "(Advance 전용)"}
         </button>
       </div>
 

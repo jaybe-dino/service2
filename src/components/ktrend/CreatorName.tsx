@@ -4,7 +4,7 @@ import Link from "next/link";
 import BrandAvatar from "./BrandAvatar";
 import { usePlan } from "./PlanContext";
 
-// 계정 이름 게이팅: Pro 이상만 공개(핸들 → /influencer/<handle>), 그 외는 실루엣 마스킹.
+// 계정 이름 게이팅(테스트2): 로그인하면 공개 + 틱톡/상세 이동, 비로그인은 실루엣.
 export default function CreatorName({
   handle,
   avatarSize = 22,
@@ -14,8 +14,8 @@ export default function CreatorName({
   avatarSize?: number;
   className?: string;
 }) {
-  const { isNameRevealed } = usePlan();
-  const revealed = isNameRevealed(handle);
+  const { user, isAdmin } = usePlan();
+  const revealed = Boolean(user) || isAdmin;
 
   if (revealed) {
     return (
@@ -32,7 +32,7 @@ export default function CreatorName({
     );
   }
 
-  // 마스킹: 핸들을 DOM에 노출하지 않음 (중립 아바타 + 실루엣)
+  // 비로그인: 핸들을 DOM에 노출하지 않음 (중립 아바타 + 실루엣)
   return (
     <span className={`flex items-center gap-1.5 ${className}`} onContextMenu={(e) => e.preventDefault()}>
       <span
