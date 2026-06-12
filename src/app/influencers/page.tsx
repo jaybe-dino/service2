@@ -39,13 +39,21 @@ export default function InfluencersPage() {
   const [content, setContent] = useState<Content[] | null>(null);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [batchOpen, setBatchOpen] = useState(false);
+  const [notice, setNotice] = useState("");
 
-  const toggleSel = (handle: string) =>
+  const onCheck = (handle: string) => {
+    if (!isAdvance) {
+      // Pro·Basic: 클릭은 되지만 다중 제안은 Advance부터
+      setNotice("다중 제안은 Advance부터 이용 가능합니다.");
+      setTimeout(() => setNotice(""), 2600);
+      return;
+    }
     setSelected((s) => {
       const n = new Set(s);
       if (n.has(handle)) n.delete(handle); else n.add(handle);
       return n;
     });
+  };
 
   useEffect(() => { loadContent().then(setContent); }, []);
 
@@ -148,7 +156,6 @@ export default function InfluencersPage() {
         <table className="w-full min-w-[760px] text-[11px]">
           <thead>
             <tr className="border-b border-[var(--border)] text-left text-[10px] uppercase text-[var(--muted)]">
-              <th className="p-3" title={isAdvance ? "함께 제안할 인플루언서 선택" : "다중 제안은 Advance 전용"}>{isAdvance ? "선택" : "—"}</th>
               <th className="p-3">#</th>
               <th className="p-3">크리에이터</th>
               <th className="p-3">규모</th>
@@ -158,23 +165,13 @@ export default function InfluencersPage() {
               <th className="p-3 text-right">기여 매출</th>
               <th className="p-3 text-right">ROAS</th>
               <th className="p-3">협업 브랜드</th>
-              <th className="p-3">제안</th>
+              <th className="p-3">제안 / 함께 제안</th>
             </tr>
           </thead>
           <tbody>
             {rows.slice(0, visible).map((inf, i) => {
               return (
                 <tr key={inf.handle} className="border-b border-[var(--border)] last:border-0 hover:bg-slate-50">
-                  <td className="p-3">
-                    <input
-                      type="checkbox"
-                      checked={selected.has(inf.handle)}
-                      disabled={!isAdvance}
-                      onChange={() => toggleSel(inf.handle)}
-                      title={isAdvance ? "함께 제안 선택" : "다중 제안은 Advance 전용"}
-                      className="h-3.5 w-3.5 accent-[var(--accent)] disabled:opacity-40"
-                    />
-                  </td>
                   <td className="p-3 text-[var(--muted)]">{i + 1}</td>
                   <td className="p-3">
                     <div className="flex items-center gap-1.5">
@@ -202,12 +199,23 @@ export default function InfluencersPage() {
                     </div>
                   </td>
                   <td className="p-3">
-                    <button
-                      onClick={() => setPropose(inf.handle)}
-                      className="kt-btn kt-btn-primary px-2.5 py-1 text-[10px]"
-                    >
-                      <Send size={11} /> 제안하기
-                    </button>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => setPropose(inf.handle)}
+                        className="kt-btn kt-btn-primary px-2.5 py-1 text-[10px]"
+                      >
+                        <Send size={11} /> 제안하기
+                      </button>
+                      <label className="flex cursor-pointer items-center gap-1 text-[10px] text-[var(--muted)]" title="함께 제안 (Advance)">
+                        <input
+                          type="checkbox"
+                          checked={isAdvance && selected.has(inf.handle)}
+                          onChange={() => onCheck(inf.handle)}
+                          className="h-3.5 w-3.5 accent-[var(--accent)]"
+                        />
+                        함께
+                      </label>
+                    </div>
                   </td>
                 </tr>
               );
@@ -255,6 +263,13 @@ export default function InfluencersPage() {
           onClose={() => setBatchOpen(false)}
           onDone={() => { setBatchOpen(false); setSelected(new Set()); }}
         />
+      )}
+
+      {/* 다중 제안 안내 토스트 (Pro·Basic) */}
+      {notice && (
+        <div className="fixed bottom-6 left-1/2 z-50 -translate-x-1/2 rounded-full bg-[var(--fg)] px-4 py-2 text-[12px] font-semibold text-white shadow-xl">
+          {notice} <Link href="/plans" className="ml-1 underline">Advance 보기</Link>
+        </div>
       )}
       </ProGate>
     </PageShell>
