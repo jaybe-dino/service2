@@ -211,9 +211,13 @@ export function ensureSchema(): Promise<void> {
       const DEMO_HASH = "$2b$10$mLc7sBm3zK4a83l6/Tg9NOoDGLLYsfp4SXRfZcls4.LTw6Tsy/8Oy";
       await sql`INSERT INTO users (id, email, password_hash, name, brand, role, plan) VALUES
         ('admin-demo', 'admin@ktrend.demo', ${DEMO_HASH}, '관리자', 'K-Trend Analytics', '관리자', 'enterprise'),
-        ('enterprise-demo', 'pro@ktrend.demo', ${DEMO_HASH}, '프로 테스터', '글로우랩', '마케터', 'enterprise'),
+        ('pro-demo', 'pro@ktrend.demo', ${DEMO_HASH}, '프로 테스터', '글로우랩', '마케터', 'pro'),
+        ('advance-demo', 'advance@ktrend.demo', ${DEMO_HASH}, '어드밴스 테스터', '글로우랩 에이전시', '마케터', 'enterprise'),
         ('basic-demo', 'basic@ktrend.demo', ${DEMO_HASH}, '베이직 테스터', '스타트업 코스메틱', '마케터', 'basic')
         ON CONFLICT (email) DO NOTHING`;
+      // 기존 DB 보정(테스트2): 데모 계정 플랜을 Pro/Advance로 정렬 (멱등)
+      await sql`UPDATE users SET plan='pro' WHERE email='pro@ktrend.demo'`;
+      await sql`UPDATE users SET plan='enterprise' WHERE email='advance@ktrend.demo'`;
     })();
   }
   return schemaReady;
