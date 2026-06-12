@@ -3,11 +3,11 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Heart, MessageCircle, Play, Eye, LogIn, TrendingUp, Share2, Sparkles, Ban } from "lucide-react";
+import { Heart, MessageCircle, Play, Eye, Lock, LogIn, TrendingUp, Share2, Sparkles, Ban } from "lucide-react";
 import CreatorName from "./CreatorName";
 import ContentAnalysisModal from "./ContentAnalysisModal";
 import BookmarkButton from "./BookmarkButton";
-import { usePlan } from "./PlanContext";
+import { usePlan, CLICK_LIMIT } from "./PlanContext";
 import { BRAND_MAP } from "@/data/ktrend/brands";
 import { CATEGORY_MAP, SUBCATEGORY_MAP, TIERS } from "@/data/ktrend/meta";
 import { fmtCompact, fmtUSD, tiktokVideoId, type Content } from "@/data/ktrend/content";
@@ -90,7 +90,7 @@ function Metric({ label, value, blur }: { label: string; value: string; blur?: b
 }
 
 export default function ContentCard({ content }: { content: Content }) {
-  const { user, isVideoOpened, isAdmin } = usePlan();
+  const { user, isPro, isAdmin, openVideo, isVideoOpened } = usePlan();
   const router = useRouter();
   const [adminBlocked, setAdminBlocked] = useState<null | string>(null);
   const lockMetrics = !user && !isAdmin; // 비로그인 시 추정 매출·ROAS 실루엣
@@ -113,6 +113,7 @@ export default function ContentCard({ content }: { content: Content }) {
   const mediaRef = useRef<HTMLDivElement | null>(null);
   const thumb = useThumbnail(content.tiktokUrl, mediaRef);
   const [loaded, setLoaded] = useState(false);
+  const [blocked, setBlocked] = useState(false);
   const [showAnalysis, setShowAnalysis] = useState(false);
 
   const handleOpen = () => {
@@ -121,8 +122,17 @@ export default function ContentCard({ content }: { content: Content }) {
       router.push("/login");
       return;
     }
-    // 로그인(또는 어드민): 틱톡 콘텐츠로 이동
-    window.open(content.tiktokUrl, "_blank", "noopener,noreferrer");
+    // Pro·Advance·어드민: 무제한 열람
+    if (isPro || isAdmin) {
+      window.open(content.tiktokUrl, "_blank", "noopener,noreferrer");
+      return;
+    }
+    // Basic: 열람권(하루 5건) 차감
+    if (openVideo(content.id)) {
+      window.open(content.tiktokUrl, "_blank", "noopener,noreferrer");
+    } else {
+      setBlocked(true);
+    }
   };
 
   const opened = isVideoOpened(content.id);
@@ -180,7 +190,17 @@ export default function ContentCard({ content }: { content: Content }) {
         )}
 
         {/* 로그인 유도 / 호버 재생 */}
-        {!user && !isAdmin ? (
+        {blocked ? (
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-black/65 p-3 text-center">
+            <Lock size={20} className="text-white" />
+            <p className="text-[10px] font-semibold leading-snug text-white">
+              오늘 무료 열람권({CLICK_LIMIT}건)을 모두 사용했어요
+            </p>
+            <Link href="/plans" className="kt-btn kt-btn-primary px-3 py-1.5 text-[10px]">
+              Pro로 무제한 열람
+            </Link>
+          </div>
+        ) : !user && !isAdmin ? (
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-1.5 opacity-0 transition-opacity duration-150 group-hover:opacity-100">
             <span className="flex h-11 w-11 items-center justify-center rounded-full bg-white/90 text-[var(--accent)] shadow-lg">
               <LogIn size={18} />

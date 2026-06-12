@@ -142,9 +142,12 @@ export const PLANS: Plan[] = [
   },
 ];
 
-// 브랜드 레퍼런스 열람 한도 (테스트2 BM). 비로그인=1, Basic=3. Pro/Advance는 제한 없음.
+// 브랜드 레퍼런스 열람 한도 (테스트2 BM). 비로그인=1, Basic=3, Pro=20. Advance는 제한 없음.
 export const GUEST_BRAND_LIMIT = 1;
 export const BASIC_BRAND_LIMIT = 3;
+export const PRO_BRAND_LIMIT = 20;
+// 브랜드 추가 후 변경(제거) 잠금 시간
+export const BRAND_LOCK_HOURS = 24;
 
 export const ADDONS = [
   { id: "contact", name: "컨택 라인", price: "$19 / 명", desc: "바이럴 영상 인플루언서의 실제 이메일·WhatsApp 및 평균 제휴 단가 해금" },

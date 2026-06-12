@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { Search, Plus, X, Check, SlidersHorizontal, Sparkles, Loader2, LayoutGrid } from "lucide-react";
+import { Search, Plus, X, Check, SlidersHorizontal, Sparkles, Loader2, LayoutGrid, Lock } from "lucide-react";
 import ContentCard from "./ContentCard";
 import { usePlan } from "./PlanContext";
 import { BRANDS, BRAND_MAP, BRAND_AZ_KEYS } from "@/data/ktrend/brands";
@@ -12,6 +12,8 @@ import {
   TIERS,
   GUEST_BRAND_LIMIT,
   BASIC_BRAND_LIMIT,
+  PRO_BRAND_LIMIT,
+  BRAND_LOCK_HOURS,
   type CategoryId,
   type SubCategoryId,
   type InfluencerTier,
@@ -35,17 +37,29 @@ const TIER_KEYS = Object.keys(TIERS) as InfluencerTier[];
 const PAGE = 48;
 
 const VIEW_KEY = "glovek.viewBrands";
+const LOCK_MS = BRAND_LOCK_HOURS * 3600 * 1000;
+// viewBrands: 브랜드ID → 추가 시각(ms). 추가 후 24시간 동안 제거 불가.
+type ViewMap = Record<string, number>;
+
+function lockRemainMs(addedAt: number): number {
+  return Math.max(0, addedAt + LOCK_MS - Date.now());
+}
+function fmtRemain(ms: number): string {
+  const h = Math.ceil(ms / 3600000);
+  return h > 1 ? `${h}시간` : "1시간";
+}
 
 export default function Explorer() {
   const { isPro, isAdmin, user, plan } = usePlan();
 
-  // 테스트2 BM: 비Pro는 브랜드 선택 게이팅 (비로그인 1개 / Basic 3개), Pro·Advance는 전체 열람
-  const gated = !isPro;
+  // 테스트2 BM: Advance(전체) 외에는 브랜드 선택 게이팅 (비로그인 1 / Basic 3 / Pro 20)
   const isAdvance = plan === "enterprise" || isAdmin; // Advance(=enterprise) 또는 어드민
-  const brandLimit = isPro ? Infinity : user ? BASIC_BRAND_LIMIT : GUEST_BRAND_LIMIT;
+  const gated = !isAdvance;
+  const brandLimit = isAdvance ? Infinity : isPro ? PRO_BRAND_LIMIT : user ? BASIC_BRAND_LIMIT : GUEST_BRAND_LIMIT;
 
-  const [viewBrands, setViewBrands] = useState<Set<string>>(new Set());
+  const [viewBrands, setViewBrands] = useState<ViewMap>({});
   const [pickerOpen, setPickerOpen] = useState(false);
+  const viewIds = useMemo(() => Object.keys(viewBrands), [viewBrands]);
 
   const [all, setAll] = useState<Content[] | null>(null);
   const [az, setAz] = useState<string>("ALL");
@@ -67,14 +81,22 @@ export default function Explorer() {
     // 단계적 로드: 정적 데이터로 먼저 화면을 채우고, 수집 DB는 뒤이어 병합
     loadContentStaged(setAll);
     try {
-      const saved = JSON.parse(localStorage.getItem(VIEW_KEY) || "[]") as string[];
-      if (Array.isArray(saved) && saved.length) setViewBrands(new Set(saved));
+      const raw = JSON.parse(localStorage.getItem(VIEW_KEY) || "{}");
+      if (raw && typeof raw === "object") {
+        // 구버전(배열) 마이그레이션
+        if (Array.isArray(raw)) {
+          const now = Date.now();
+          setViewBrands(Object.fromEntries((raw as string[]).map((id) => [id, now])));
+        } else {
+          setViewBrands(raw as ViewMap);
+        }
+      }
     } catch { /* ignore */ }
   }, []);
 
-  const saveViewBrands = (s: Set<string>) => {
-    setViewBrands(s);
-    try { localStorage.setItem(VIEW_KEY, JSON.stringify([...s])); } catch { /* ignore */ }
+  const saveViewBrands = (m: ViewMap) => {
+    setViewBrands(m);
+    try { localStorage.setItem(VIEW_KEY, JSON.stringify(m)); } catch { /* ignore */ }
   };
 
   // 콘텐츠가 1개라도 있는 브랜드만 노출 (수집 전 빈 브랜드 숨김)
@@ -85,16 +107,8 @@ export default function Explorer() {
 
   // 게이팅 활성 + 선택 브랜드 없음 → 브랜드 선택 레이어 자동 오픈
   useEffect(() => {
-    if (gated && brandsWithContent && viewBrands.size === 0) setPickerOpen(true);
-  }, [gated, brandsWithContent, viewBrands.size]);
-
-  // 한도 초과분 정리 (로그인/플랜 변경 시)
-  useEffect(() => {
-    if (viewBrands.size > brandLimit) {
-      saveViewBrands(new Set([...viewBrands].slice(0, brandLimit)));
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [brandLimit]);
+    if (gated && brandsWithContent && viewIds.length === 0) setPickerOpen(true);
+  }, [gated, brandsWithContent, viewIds.length]);
 
   const visibleBrands = useMemo(() => {
     let list = BRANDS;
@@ -112,7 +126,7 @@ export default function Explorer() {
     const list = all.filter((c) => {
       // 게이팅: 비Pro는 선택한 브랜드만. Pro·Advance는 좌측 필터 기준.
       if (gated) {
-        if (!viewBrands.has(c.brandId)) return false;
+        if (!(c.brandId in viewBrands)) return false;
       } else if (selectedBrands.size && !selectedBrands.has(c.brandId)) {
         return false;
       }
@@ -254,19 +268,29 @@ export default function Explorer() {
           <FilterGroup title={isAdmin ? `브랜드 (${BRANDS.length})` : "브랜드"}>
             {gated ? (
               <div className="mb-2">
-                <p className="mb-2 rounded-md bg-[var(--accent-light)] px-2 py-1.5 text-[9px] font-semibold text-[var(--accent)]">
-                  {user
-                    ? `Basic은 브랜드 ${BASIC_BRAND_LIMIT}개까지 열람 가능 · Pro 전환 시 전체 + 인플루언서/리포트`
-                    : `비로그인은 브랜드 ${GUEST_BRAND_LIMIT}개만 · 로그인하면 ${BASIC_BRAND_LIMIT}개까지 확인`}
+                <p className="mb-2 rounded-md bg-[var(--accent-light)] px-2 py-1.5 text-[9px] font-semibold leading-relaxed text-[var(--accent)]">
+                  {isPro
+                    ? `Pro는 브랜드 ${PRO_BRAND_LIMIT}개까지 · Advance 전환 시 전체 + 미수록 브랜드 추가`
+                    : user
+                    ? `Basic은 ${BASIC_BRAND_LIMIT}개까지 · Pro 전환 시 ${PRO_BRAND_LIMIT}개 + 인플루언서/리포트`
+                    : `비로그인은 ${GUEST_BRAND_LIMIT}개만 · 로그인하면 ${BASIC_BRAND_LIMIT}개까지 확인`}
+                  <br />⚠️ 추가한 브랜드는 {BRAND_LOCK_HOURS}시간 동안 변경할 수 없어요.
                 </p>
                 <div className="mb-2 flex flex-wrap gap-1">
-                  {[...viewBrands].map((id) => (
-                    <span key={id} className="inline-flex items-center gap-1 rounded bg-[var(--accent-light)] px-1.5 py-0.5 text-[10px] font-semibold text-[var(--accent)]">
-                      {BRAND_MAP[id]?.name ?? id}
-                      <button onClick={() => saveViewBrands(new Set([...viewBrands].filter((x) => x !== id)))} className="text-[var(--accent)]/60 hover:text-[var(--accent)]">×</button>
-                    </span>
-                  ))}
-                  {viewBrands.size === 0 && <span className="text-[10px] text-[var(--muted)]">선택된 브랜드 없음</span>}
+                  {viewIds.map((id) => {
+                    const remain = lockRemainMs(viewBrands[id]);
+                    return (
+                      <span key={id} className="inline-flex items-center gap-1 rounded bg-[var(--accent-light)] px-1.5 py-0.5 text-[10px] font-semibold text-[var(--accent)]">
+                        {BRAND_MAP[id]?.name ?? id}
+                        {remain > 0 ? (
+                          <Lock size={9} className="text-[var(--accent)]/50" />
+                        ) : (
+                          <button onClick={() => { const m = { ...viewBrands }; delete m[id]; saveViewBrands(m); }} className="text-[var(--accent)]/60 hover:text-[var(--accent)]">×</button>
+                        )}
+                      </span>
+                    );
+                  })}
+                  {viewIds.length === 0 && <span className="text-[10px] text-[var(--muted)]">선택된 브랜드 없음</span>}
                 </div>
                 <button onClick={() => setPickerOpen(true)} className="flex w-full items-center justify-center gap-1.5 rounded-md border border-[var(--accent)] py-2 text-[10px] font-bold text-[var(--accent)] hover:bg-[var(--accent-light)]">
                   <LayoutGrid size={12} /> 브랜드 선택 / 변경
@@ -411,12 +435,13 @@ export default function Explorer() {
               </div>
             )}
           </>
-        ) : gated && viewBrands.size === 0 ? (
+        ) : gated && viewIds.length === 0 ? (
           <div className="kt-card flex flex-col items-center justify-center gap-2 py-20 text-center">
             <LayoutGrid className="text-[var(--accent)]" />
             <p className="text-[13px] font-semibold">먼저 볼 브랜드를 선택하세요</p>
             <p className="max-w-xs text-[11px] text-[var(--muted)]">
-              {user ? `Basic은 ${BASIC_BRAND_LIMIT}개 브랜드까지 레퍼런스를 확인할 수 있어요.` : `비로그인은 ${GUEST_BRAND_LIMIT}개 브랜드를 미리 볼 수 있어요. 로그인하면 더 많이 확인 가능합니다.`}
+              {isPro ? `Pro는 ${PRO_BRAND_LIMIT}개 브랜드까지 선택할 수 있어요.` : user ? `Basic은 ${BASIC_BRAND_LIMIT}개 브랜드까지 레퍼런스를 확인할 수 있어요.` : `비로그인은 ${GUEST_BRAND_LIMIT}개 브랜드를 미리 볼 수 있어요. 로그인하면 더 많이 확인 가능합니다.`}
+              <br />선택한 브랜드는 {BRAND_LOCK_HOURS}시간 동안 변경할 수 없습니다.
             </p>
             <button onClick={() => setPickerOpen(true)} className="kt-btn kt-btn-primary px-4 py-2 text-[12px]"><LayoutGrid size={13} /> 브랜드 선택</button>
           </div>
@@ -435,36 +460,45 @@ export default function Explorer() {
           brands={(brandsWithContent ? BRANDS.filter((b) => brandsWithContent.has(b.id)) : []).slice().sort((a, b) => a.name.localeCompare(b.name))}
           limit={brandLimit}
           loggedIn={Boolean(user)}
+          isPro={isPro}
           initial={viewBrands}
           onClose={() => setPickerOpen(false)}
-          onConfirm={(s) => { saveViewBrands(s); setPickerOpen(false); }}
+          onConfirm={(m) => { saveViewBrands(m); setPickerOpen(false); }}
         />
       )}
     </div>
   );
 }
 
-// 브랜드 선택 레이어 (알파벳 탭, 검색 없음) — 테스트2 BM
+// 브랜드 선택 레이어 (알파벳 탭, 검색 없음, 24h 잠금) — 테스트2 BM
 function BrandPickerModal({
-  brands, limit, loggedIn, initial, onClose, onConfirm,
+  brands, limit, loggedIn, isPro, initial, onClose, onConfirm,
 }: {
   brands: typeof BRANDS;
   limit: number;
   loggedIn: boolean;
-  initial: Set<string>;
+  isPro: boolean;
+  initial: ViewMap;
   onClose: () => void;
-  onConfirm: (s: Set<string>) => void;
+  onConfirm: (m: ViewMap) => void;
 }) {
   const [az, setAz] = useState<string>("ALL");
-  const [sel, setSel] = useState<Set<string>>(new Set(initial));
+  const [sel, setSel] = useState<ViewMap>({ ...initial });
   const azKeys = useMemo(() => Array.from(new Set(brands.map((b) => b.az))).sort((a, b) => (a === "#" ? 1 : b === "#" ? -1 : a.localeCompare(b))), [brands]);
   const list = az === "ALL" ? brands : brands.filter((b) => b.az === az);
+  const count = Object.keys(sel).length;
+  // 기존 저장분 중 잠금 상태(24h 미경과) = 제거 불가
+  const locked = (id: string) => id in initial && lockRemainMs(initial[id]) > 0;
 
   const toggleSel = (id: string) => {
     setSel((s) => {
-      const next = new Set(s);
-      if (next.has(id)) next.delete(id);
-      else if (next.size < limit) next.add(id);
+      const next = { ...s };
+      if (id in next) {
+        if (locked(id)) return next; // 잠금: 제거 불가
+        delete next[id];
+      } else if (Object.keys(next).length < limit) {
+        next[id] = initial[id] ?? Date.now(); // 신규 선택은 현재 시각
+      }
       return next;
     });
   };
@@ -473,13 +507,16 @@ function BrandPickerModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4" onClick={onClose}>
       <div className="flex max-h-[85vh] w-full max-w-2xl flex-col rounded-xl bg-white p-5 text-[var(--fg)] shadow-2xl" onClick={(e) => e.stopPropagation()}>
         <div className="mb-2 flex items-center justify-between">
-          <h3 className="text-[15px] font-bold">볼 브랜드 선택 <span className="text-[var(--accent)]">{sel.size}/{Number.isFinite(limit) ? limit : "∞"}</span></h3>
+          <h3 className="text-[15px] font-bold">볼 브랜드 선택 <span className="text-[var(--accent)]">{count}/{Number.isFinite(limit) ? limit : "∞"}</span></h3>
           <button onClick={onClose} className="text-[var(--muted)] hover:text-[var(--fg)]"><X size={18} /></button>
         </div>
-        <p className="mb-3 rounded-md bg-[var(--accent-light)] px-3 py-2 text-[11px] font-semibold text-[var(--accent)]">
-          {loggedIn
-            ? `Basic은 ${limit}개까지 선택할 수 있어요. Pro로 전환하면 모든 브랜드 + 인플루언서 DB + 브랜드 리포트가 열립니다.`
-            : `비로그인은 ${limit}개만 선택 가능합니다. 로그인하면 더 많은 브랜드 레퍼런스를 확인할 수 있어요.`}
+        <p className="mb-3 rounded-md bg-[var(--accent-light)] px-3 py-2 text-[11px] font-semibold leading-relaxed text-[var(--accent)]">
+          {!loggedIn
+            ? `비로그인은 ${limit}개만 선택 가능 · 로그인하면 더 많은 브랜드를 확인할 수 있어요.`
+            : isPro
+            ? `Pro는 ${limit}개까지 선택 가능 · Advance 전환 시 모든 브랜드 + 미수록 브랜드 추가.`
+            : `Basic은 ${limit}개까지 · Pro 전환 시 ${PRO_BRAND_LIMIT}개 + 인플루언서/리포트.`}
+          <br />⚠️ <b>한 번 추가한 브랜드는 {BRAND_LOCK_HOURS}시간 동안 변경(제거)할 수 없습니다.</b> 신중히 선택하세요.
         </p>
 
         {/* 알파벳 탭 */}
@@ -492,13 +529,15 @@ function BrandPickerModal({
         {/* 브랜드 그리드 */}
         <div className="grid flex-1 grid-cols-2 gap-1.5 overflow-y-auto kt-thin-scroll sm:grid-cols-3">
           {list.map((b) => {
-            const on = sel.has(b.id);
-            const full = !on && sel.size >= limit;
+            const on = b.id in sel;
+            const isLocked = on && locked(b.id);
+            const full = !on && count >= limit;
             return (
               <button
                 key={b.id}
                 onClick={() => toggleSel(b.id)}
-                disabled={full}
+                disabled={full || isLocked}
+                title={isLocked ? `${fmtRemain(lockRemainMs(initial[b.id]))} 후 변경 가능` : undefined}
                 className={`flex items-center justify-between gap-1 rounded-md border px-2.5 py-2 text-left text-[12px] transition-colors ${
                   on ? "border-[var(--accent)] bg-[var(--accent-light)] font-semibold text-[var(--accent)]"
                      : full ? "cursor-not-allowed border-[var(--border)] text-[var(--muted)] opacity-50"
@@ -506,7 +545,7 @@ function BrandPickerModal({
                 }`}
               >
                 <span className="truncate">{b.name}</span>
-                {on && <Check size={13} className="shrink-0" />}
+                {isLocked ? <Lock size={12} className="shrink-0" /> : on ? <Check size={13} className="shrink-0" /> : null}
               </button>
             );
           })}
@@ -516,10 +555,10 @@ function BrandPickerModal({
           {!loggedIn ? (
             <Link href="/login" className="text-[11px] font-semibold text-[var(--accent)] hover:underline">로그인하고 더 보기 →</Link>
           ) : (
-            <Link href="/plans" className="text-[11px] font-semibold text-[var(--accent)] hover:underline">Pro로 모든 브랜드 보기 →</Link>
+            <Link href="/plans" className="text-[11px] font-semibold text-[var(--accent)] hover:underline">{isPro ? "Advance로 전체 보기 →" : "Pro로 더 보기 →"}</Link>
           )}
-          <button onClick={() => onConfirm(sel)} disabled={sel.size === 0} className="kt-btn kt-btn-primary px-5 py-2 text-[12px] disabled:opacity-40">
-            {sel.size}개 브랜드 보기
+          <button onClick={() => onConfirm(sel)} disabled={count === 0} className="kt-btn kt-btn-primary px-5 py-2 text-[12px] disabled:opacity-40">
+            {count}개 브랜드 보기
           </button>
         </div>
       </div>
