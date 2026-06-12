@@ -103,7 +103,7 @@ export const PLANS: Plan[] = [
     tagline: "로그인하고 브랜드 레퍼런스 둘러보기",
     cta: "무료로 시작하기",
     features: [
-      "로그인 후 최대 3개 브랜드 레퍼런스 열람",
+      "로그인 후 브랜드 1개 레퍼런스 열람",
       "콘텐츠 성과 지표 전체 (조회수·참여율·ROAS·매출)",
       "계정 이름 공개 · 콘텐츠 틱톡 열람 가능",
       "인플루언서 DB·브랜드 리포트는 Pro부터",
@@ -144,7 +144,7 @@ export const PLANS: Plan[] = [
 
 // 브랜드 레퍼런스 열람 한도 (테스트2 BM). 비로그인=1, Basic=3, Pro=20. Advance는 제한 없음.
 export const GUEST_BRAND_LIMIT = 1;
-export const BASIC_BRAND_LIMIT = 3;
+export const BASIC_BRAND_LIMIT = 1;
 export const PRO_BRAND_LIMIT = 20;
 // 브랜드 추가 후 변경(제거) 잠금 시간
 export const BRAND_LOCK_HOURS = 24;
