@@ -237,9 +237,13 @@ export default function AdminPage() {
     loadTracking();
   };
 
-  const runCollect = async () => {
+  const runCollect = async (retryFailed = false) => {
     setCollecting(true);
-    const r = await fetch("/api/admin/collect", { method: "POST" });
+    const r = await fetch("/api/admin/collect", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ retryFailed }),
+    });
     const d = await r.json().catch(() => ({}));
     setCollecting(false);
     if (!r.ok) setToast("수집 실패");
@@ -409,7 +413,10 @@ export default function AdminPage() {
               <input value={newBrand} onChange={(e) => setNewBrand(e.target.value)} placeholder="브랜드명" className="rounded-md border border-[var(--border)] px-2 py-1.5 text-[11px]" />
               <button className="kt-btn kt-btn-outline px-3 py-1.5 text-[11px]">요청 추가</button>
             </form>
-            <button onClick={runCollect} disabled={collecting} className="kt-btn kt-btn-primary ml-auto px-3 py-1.5 text-[11px] disabled:opacity-50">
+            <button onClick={() => runCollect(true)} disabled={collecting} className="kt-btn kt-btn-outline ml-auto px-3 py-1.5 text-[11px] disabled:opacity-50">
+              실패 재시도
+            </button>
+            <button onClick={() => runCollect(false)} disabled={collecting} className="kt-btn kt-btn-primary px-3 py-1.5 text-[11px] disabled:opacity-50">
               {collecting ? <Loader2 size={13} className="animate-spin" /> : <Play size={13} />} 지금 수집 실행
             </button>
             <span className="text-[10px] text-[var(--muted)]">수집 영상 {collectedCount.toLocaleString()}건 · 인플루언서 {creatorsCount.toLocaleString()}명</span>

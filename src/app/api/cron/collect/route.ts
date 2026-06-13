@@ -19,8 +19,12 @@ async function handle(req: Request) {
   const proto = req.headers.get("x-forwarded-proto") ?? "https";
   const host = req.headers.get("x-forwarded-host") ?? req.headers.get("host");
   const baseUrl = host ? `${proto}://${host}` : undefined;
-  // 비동기 kick — run만 시작(빠름), 결과는 webhook(ingest)으로 적재. 깊은 수집 가능.
-  const summary = await runCollection({ maxPending: 8, maxRefresh: 15, baseUrl });
+  // 비동기 kick — 동시 실행/크레딧 절약 위해 배치 보수적(환경변수로 조절).
+  const summary = await runCollection({
+    maxPending: Number(process.env.COLLECT_MAX_PENDING ?? 3),
+    maxRefresh: Number(process.env.COLLECT_MAX_REFRESH ?? 5),
+    baseUrl,
+  });
   return NextResponse.json({ ok: true, ...summary });
 }
 
