@@ -52,6 +52,7 @@ export default function AdminPage() {
   const [creatorsCount, setCreatorsCount] = useState(0);
   const [newBrand, setNewBrand] = useState("");
   const [collecting, setCollecting] = useState(false);
+  const [lastCollect, setLastCollect] = useState<{ at: string; ok: boolean; scraper?: boolean; mode?: string; reason?: string; ingested?: number; polledDone?: number; kickedNew?: number; kickedRefresh?: number } | null>(null);
   const [tracking, setTracking] = useState<Track[]>([]);
   const [blocks, setBlocks] = useState<{ kind: string; value: string; reason: string | null }[]>([]);
   const [blockVal, setBlockVal] = useState("");
@@ -246,10 +247,11 @@ export default function AdminPage() {
     });
     const d = await r.json().catch(() => ({}));
     setCollecting(false);
+    setLastCollect({ at: new Date().toLocaleString("ko-KR"), ok: r.ok, ...d });
     if (!r.ok) setToast("수집 실패");
     else if (d.scraper === false) setToast("스크래퍼 키(SCRAPER_API_KEY) 미설정 → 수집 시작 안 됨");
     else if (d.mode === "skipped") setToast(`수집 시작 보류: ${d.reason ?? "설정 확인 필요"}`);
-    else setToast(`적재 ${d.ingested ?? 0}건(완료 ${d.polledDone ?? 0}) · 신규 ${d.kickedNew ?? 0}·갱신 ${d.kickedRefresh ?? 0} run 시작 — 잠시 후 다시 눌러 결과 적재`);
+    else setToast(`적재 ${d.ingested ?? 0}건(완료 ${d.polledDone ?? 0}) · 신규 ${d.kickedNew ?? 0}·갱신 ${d.kickedRefresh ?? 0} run 시작`);
     setTimeout(() => setToast(""), 5000);
     loadData();
   };
@@ -421,6 +423,32 @@ export default function AdminPage() {
             </button>
             <span className="text-[10px] text-[var(--muted)]">수집 영상 {collectedCount.toLocaleString()}건 · 인플루언서 {creatorsCount.toLocaleString()}명</span>
           </div>
+
+          {/* 마지막 실행 결과 (상시 표기) */}
+          {lastCollect && (
+            <div className={`mb-3 rounded-md border p-3 text-[12px] ${lastCollect.ok && lastCollect.mode !== "skipped" ? "border-emerald-300 bg-emerald-50" : "border-amber-300 bg-amber-50"}`}>
+              <div className="font-bold">
+                마지막 실행 결과 <span className="font-normal text-[var(--muted)]">· {lastCollect.at}</span>
+              </div>
+              {!lastCollect.ok ? (
+                <div className="mt-1 text-rose-600">실행 실패</div>
+              ) : lastCollect.scraper === false ? (
+                <div className="mt-1 text-amber-700">SCRAPER_API_KEY 미설정 → 수집 시작 안 됨</div>
+              ) : lastCollect.mode === "skipped" ? (
+                <div className="mt-1 text-amber-700">보류: {lastCollect.reason ?? "설정 확인 필요"}</div>
+              ) : (
+                <div className="mt-1 grid grid-cols-2 gap-x-4 gap-y-0.5 sm:grid-cols-4">
+                  <span>✅ 적재 <b>{(lastCollect.ingested ?? 0).toLocaleString()}건</b></span>
+                  <span>완료 run <b>{lastCollect.polledDone ?? 0}</b></span>
+                  <span>신규 시작 <b>{lastCollect.kickedNew ?? 0}</b></span>
+                  <span>갱신 시작 <b>{lastCollect.kickedRefresh ?? 0}</b></span>
+                </div>
+              )}
+              <div className="mt-1.5 text-[10px] text-[var(--muted)]">
+                ※ run을 시작하면 Apify가 수 분간 수집합니다. <b>몇 분 뒤 다시 “지금 수집 실행”</b>을 누르면 끝난 run의 결과(적재 건수)가 올라갑니다.
+              </div>
+            </div>
+          )}
           <p className="mb-3 rounded-md bg-[var(--accent-light)] px-3 py-2 text-[10px] text-[var(--muted)]">
             수집 1회 = <b>브랜드 → 콘텐츠(영상) → 인플루언서 집계 → 브랜드 통계 재계산</b>이 한 사이클로 함께 갱신됩니다.
           </p>
