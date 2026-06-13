@@ -207,6 +207,16 @@ export function ensureSchema(): Promise<void> {
         sid text PRIMARY KEY,
         last_seen timestamptz NOT NULL DEFAULT now()
       )`;
+      // 비동기 수집 작업 추적 (Apify run) — webhook 차단 환경 대비 폴링(pull)용
+      await sql`CREATE TABLE IF NOT EXISTS collect_jobs (
+        run_id text PRIMARY KEY,
+        brand_name text NOT NULL,
+        since_date text,
+        status text NOT NULL DEFAULT 'running',
+        collected int NOT NULL DEFAULT 0,
+        created_at timestamptz NOT NULL DEFAULT now(),
+        updated_at timestamptz NOT NULL DEFAULT now()
+      )`;
       // 데모/관리자 계정 시드 (bcrypt("ktrend2026")) — 서버 세션 로그인 가능하도록
       const DEMO_HASH = "$2b$10$mLc7sBm3zK4a83l6/Tg9NOoDGLLYsfp4SXRfZcls4.LTw6Tsy/8Oy";
       await sql`INSERT INTO users (id, email, password_hash, name, brand, role, plan) VALUES

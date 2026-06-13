@@ -131,7 +131,7 @@ export async function startApifyRun(input: CollectInput, webhookUrl?: string): P
   return data?.data?.id ?? "";
 }
 
-// 완료된 run의 dataset을 가져와 매핑 (webhook ingest에서 사용)
+// 완료된 run의 dataset을 가져와 매핑 (webhook ingest / 폴링에서 사용)
 export async function fetchApifyDataset(datasetId: string, sinceDate?: string | null): Promise<CollectedVideo[]> {
   if (!scraperConfigured()) throw new Error("SCRAPER_API_KEY 미설정");
   const token = process.env.SCRAPER_API_KEY!;
@@ -139,6 +139,16 @@ export async function fetchApifyDataset(datasetId: string, sinceDate?: string | 
   if (!res.ok) throw new Error(`apify dataset ${res.status}`);
   const items = (await res.json()) as Array<Record<string, unknown>>;
   return mapApifyItems(items, sinceDate);
+}
+
+// run 상태 조회 (폴링 방식: webhook이 차단돼도 우리가 직접 결과를 가져옴)
+export async function fetchApifyRun(runId: string): Promise<{ status: string; datasetId?: string }> {
+  if (!scraperConfigured()) throw new Error("SCRAPER_API_KEY 미설정");
+  const token = process.env.SCRAPER_API_KEY!;
+  const res = await fetch(`https://api.apify.com/v2/actor-runs/${encodeURIComponent(runId)}?token=${token}`);
+  if (!res.ok) throw new Error(`apify run ${res.status}`);
+  const data = (await res.json()) as { data?: { status?: string; defaultDatasetId?: string } };
+  return { status: data?.data?.status ?? "UNKNOWN", datasetId: data?.data?.defaultDatasetId };
 }
 
 export async function collectBrand(input: CollectInput): Promise<CollectedVideo[]> {

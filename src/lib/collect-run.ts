@@ -1,5 +1,5 @@
 import { sql, ensureSchema } from "./db";
-import { startApifyRun, scraperConfigured, type CollectedVideo } from "./collector";
+import { startApifyRun, fetchApifyRun, fetchApifyDataset, scraperConfigured, type CollectedVideo } from "./collector";
 import { isOfficialHandle } from "@/data/ktrend/official";
 import { BRANDS } from "@/data/ktrend/brands";
 import { DEFAULT_CRAWL_RULES, type CrawlRules } from "./crawl-rules";
@@ -116,16 +116,46 @@ async function setCursor(idx: number) {
 export interface CollectSummary {
   configured: boolean;
   mode: "async" | "skipped";
+  polledDone: number;
+  ingested: number;
   kickedNew: number;
   kickedRefresh: number;
   reason?: string;
 }
 
-// 수집 결과를 받을 webhook URL (Apify가 run 완료 시 호출 → /api/ingest/apify)
+// 수집 결과를 받을 webhook URL (선택). webhook이 차단돼도 폴링이 결과를 가져옴.
 function ingestWebhook(baseUrl?: string): string | undefined {
   if (!baseUrl) return undefined;
   const secret = process.env.INGEST_SECRET || process.env.CRON_SECRET;
   return `${baseUrl}/api/ingest/apify${secret ? `?secret=${encodeURIComponent(secret)}` : ""}`;
+}
+
+// 폴링(pull): 진행 중 run의 완료 여부를 직접 확인 → 끝났으면 dataset 가져와 적재.
+// (Apify→우리 webhook 인바운드가 막혀도 동작 — 아웃바운드만 사용)
+async function pollJobs(maxPoll: number): Promise<{ ingested: number; done: number }> {
+  const jobs = await sql<{ run_id: string; brand_name: string; since_date: string | null }>`
+    SELECT run_id, brand_name, since_date FROM collect_jobs WHERE status='running' ORDER BY created_at ASC LIMIT ${maxPoll}`;
+  let ingested = 0;
+  let done = 0;
+  for (const j of jobs.rows) {
+    try {
+      const run = await fetchApifyRun(j.run_id);
+      if (run.status === "SUCCEEDED" && run.datasetId) {
+        const vids = await fetchApifyDataset(run.datasetId, j.since_date);
+        const c = await ingestVideos(j.brand_name, vids);
+        await sql`UPDATE collect_jobs SET status='done', collected=${c}, updated_at=now() WHERE run_id=${j.run_id}`;
+        ingested += c;
+        done += 1;
+      } else if (["FAILED", "ABORTED", "TIMED-OUT", "TIMED_OUT"].includes(run.status)) {
+        await sql`UPDATE collect_jobs SET status='failed', updated_at=now() WHERE run_id=${j.run_id}`;
+        await sql`INSERT INTO collection_runs (kind, target, status, error) VALUES ('poll', ${j.brand_name}, 'error', ${run.status})`;
+      }
+      // RUNNING/READY 등은 다음 폴링까지 대기
+    } catch (e) {
+      await sql`INSERT INTO collection_runs (kind, target, status, error) VALUES ('poll', ${j.brand_name}, 'error', ${String(e).slice(0, 200)})`;
+    }
+  }
+  return { ingested, done };
 }
 
 // B안 비동기 수집 사이클: Apify run을 "시작"만 하고(빠름) 결과는 webhook(ingest)으로 받음.
@@ -137,21 +167,25 @@ export async function runCollection(opts: { maxPending?: number; maxRefresh?: nu
   const maxPending = opts.maxPending ?? 5;
   const maxRefresh = opts.maxRefresh ?? 10;
 
-  if (!configured) return { configured, mode: "skipped", kickedNew: 0, kickedRefresh: 0, reason: "SCRAPER_API_KEY 미설정" };
-  if (!webhook) return { configured, mode: "skipped", kickedNew: 0, kickedRefresh: 0, reason: "수집 결과 수신 URL(baseUrl) 없음" };
+  if (!configured) return { configured, mode: "skipped", polledDone: 0, ingested: 0, kickedNew: 0, kickedRefresh: 0, reason: "SCRAPER_API_KEY 미설정" };
+
+  // 0) 진행 중 run 결과 먼저 적재 (폴링)
+  const poll = await pollJobs(6);
 
   let kickedNew = 0;
   let kickedRefresh = 0;
+  const backfillSince = new Date(Date.now() - BACKFILL_DAYS * 86_400_000).toISOString().slice(0, 10);
 
-  // 1) 신규 브랜드: 1년치 깊은 백필 run 시작 (pending → collecting). 결과는 webhook이 적재 → active.
+  // 1) 신규 브랜드: 1년치 깊은 백필 run 시작 (pending → collecting). 결과는 폴링이 적재 → active.
   const pending = await sql<{ id: number; brand_name: string; handle: string | null; hashtags: string | null; attempts: number }>`
     SELECT id, brand_name, handle, hashtags, attempts FROM brand_requests WHERE status='pending' ORDER BY created_at ASC LIMIT ${maxPending}`;
   for (const req of pending.rows) {
     try {
-      await startApifyRun(
+      const runId = await startApifyRun(
         { brandName: req.brand_name, handle: req.handle, hashtags: req.hashtags, backfillDays: BACKFILL_DAYS, limit: INITIAL_LIMIT },
         webhook,
       );
+      if (runId) await sql`INSERT INTO collect_jobs (run_id, brand_name, since_date) VALUES (${runId}, ${req.brand_name}, ${backfillSince}) ON CONFLICT (run_id) DO NOTHING`;
       await sql`UPDATE brand_requests SET status='collecting', updated_at=now() WHERE id=${req.id}`;
       await sql`INSERT INTO brand_tracking (brand_name, hashtags, updated_at)
                 VALUES (${req.brand_name}, ${req.hashtags}, now())
@@ -190,7 +224,8 @@ export async function runCollection(opts: { maxPending?: number; maxRefresh?: nu
 
   for (const t of targets) {
     try {
-      await startApifyRun({ brandName: t.name, hashtags: t.hashtags, sinceDate: since, limit: REFRESH_LIMIT }, webhook);
+      const runId = await startApifyRun({ brandName: t.name, hashtags: t.hashtags, sinceDate: since, limit: REFRESH_LIMIT }, webhook);
+      if (runId) await sql`INSERT INTO collect_jobs (run_id, brand_name, since_date) VALUES (${runId}, ${t.name}, ${since}) ON CONFLICT (run_id) DO NOTHING`;
       await sql`INSERT INTO brand_tracking (brand_name, last_collected_at, updated_at)
                 VALUES (${t.name}, now(), now())
                 ON CONFLICT (brand_name) DO UPDATE SET last_collected_at=now(), updated_at=now()`;
@@ -201,5 +236,5 @@ export async function runCollection(opts: { maxPending?: number; maxRefresh?: nu
     }
   }
 
-  return { configured, mode: "async", kickedNew, kickedRefresh };
+  return { configured, mode: "async", polledDone: poll.done, ingested: poll.ingested, kickedNew, kickedRefresh };
 }

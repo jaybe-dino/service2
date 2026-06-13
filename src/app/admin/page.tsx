@@ -249,8 +249,8 @@ export default function AdminPage() {
     if (!r.ok) setToast("수집 실패");
     else if (d.scraper === false) setToast("스크래퍼 키(SCRAPER_API_KEY) 미설정 → 수집 시작 안 됨");
     else if (d.mode === "skipped") setToast(`수집 시작 보류: ${d.reason ?? "설정 확인 필요"}`);
-    else setToast(`수집 시작됨(비동기): 신규 ${d.kickedNew ?? 0} · 갱신 ${d.kickedRefresh ?? 0}브랜드 — 결과는 잠시 후 자동 반영`);
-    setTimeout(() => setToast(""), 4500);
+    else setToast(`적재 ${d.ingested ?? 0}건(완료 ${d.polledDone ?? 0}) · 신규 ${d.kickedNew ?? 0}·갱신 ${d.kickedRefresh ?? 0} run 시작 — 잠시 후 다시 눌러 결과 적재`);
+    setTimeout(() => setToast(""), 5000);
     loadData();
   };
 
