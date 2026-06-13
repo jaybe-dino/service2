@@ -93,7 +93,8 @@ export default function ContentCard({ content }: { content: Content }) {
   const { user, isPro, isAdmin, openVideo, isVideoOpened } = usePlan();
   const router = useRouter();
   const [adminBlocked, setAdminBlocked] = useState<null | string>(null);
-  const lockMetrics = !user && !isAdmin; // 비로그인 시 추정 매출·ROAS 실루엣
+  const lockMetrics = !user && !isAdmin; // 비로그인: ROAS 실루엣
+  const lockRevenue = !isPro && !isAdmin; // 비로그인·Basic: 매출 실루엣 (Pro·Advance만 노출)
 
   const adminBlock = async (kind: "video" | "handle") => {
     const value = kind === "video" ? tiktokVideoId(content.tiktokUrl) ?? content.id : content.influencerId;
@@ -245,7 +246,7 @@ export default function ContentCard({ content }: { content: Content }) {
         <div className="mt-0.5 grid grid-cols-2 gap-1.5">
           <Metric label="수수료율" value={`${content.commissionRate}%`} />
           <Metric label="ROAS" value={`${content.estRoasX}x`} blur={lockMetrics} />
-          <Metric label="매출" value={fmtUSD(content.estRevenueUSD)} blur={lockMetrics} />
+          <Metric label="매출" value={fmtUSD(content.estRevenueUSD)} blur={lockRevenue} />
           <Metric label="참여율" value={`${content.engagementRate}%`} />
         </div>
 
