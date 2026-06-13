@@ -5,9 +5,9 @@ import { BRANDS } from "@/data/ktrend/brands";
 import { DEFAULT_CRAWL_RULES, type CrawlRules } from "./crawl-rules";
 
 const MAX_ATTEMPTS = 3; // 재시도 상한 — 초과 시 'failed'로 격리
-// 수집 깊이/배치 — 환경변수로 조절 (Apify 예산에 맞춰 상향 가능). 기본값은 무료 한도 보수적.
-const INITIAL_LIMIT = Number(process.env.COLLECT_INITIAL_LIMIT ?? 150); // 신규 1차 백필 깊이
-const REFRESH_LIMIT = Number(process.env.COLLECT_REFRESH_LIMIT ?? 80); // 정기 증분 깊이
+// 수집 깊이/배치 — 환경변수로 조절. 기본값은 Apify 월 상한 $100 기준(하드 상한이 안전망).
+const INITIAL_LIMIT = Number(process.env.COLLECT_INITIAL_LIMIT ?? 500); // 신규 1차 백필 깊이
+const REFRESH_LIMIT = Number(process.env.COLLECT_REFRESH_LIMIT ?? 100); // 정기 증분 깊이
 const BACKFILL_DAYS = Number(process.env.COLLECT_BACKFILL_DAYS ?? 365); // 신규 1차학습 기간
 const REFRESH_SINCE_DAYS = 30; // 증분 수집 기간
 
