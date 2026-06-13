@@ -52,6 +52,7 @@ export default function AdminPage() {
   const [creatorsCount, setCreatorsCount] = useState(0);
   const [newBrand, setNewBrand] = useState("");
   const [collecting, setCollecting] = useState(false);
+  const [debugLog, setDebugLog] = useState<string[]>([]);
   const [lastCollect, setLastCollect] = useState<{ at: string; ok: boolean; scraper?: boolean; mode?: string; reason?: string; ingested?: number; polledDone?: number; kickedNew?: number; kickedRefresh?: number } | null>(null);
   const [tracking, setTracking] = useState<Track[]>([]);
   const [blocks, setBlocks] = useState<{ kind: string; value: string; reason: string | null }[]>([]);
@@ -240,20 +241,31 @@ export default function AdminPage() {
 
   const runCollect = async (retryFailed = false) => {
     setCollecting(true);
-    const r = await fetch("/api/admin/collect", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ retryFailed }),
-    });
-    const d = await r.json().catch(() => ({}));
-    setCollecting(false);
-    setLastCollect({ at: new Date().toLocaleString("ko-KR"), ok: r.ok, ...d });
-    if (!r.ok) setToast("수집 실패");
-    else if (d.scraper === false) setToast("스크래퍼 키(SCRAPER_API_KEY) 미설정 → 수집 시작 안 됨");
-    else if (d.mode === "skipped") setToast(`수집 시작 보류: ${d.reason ?? "설정 확인 필요"}`);
-    else setToast(`적재 ${d.ingested ?? 0}건(완료 ${d.polledDone ?? 0}) · 신규 ${d.kickedNew ?? 0}·갱신 ${d.kickedRefresh ?? 0} run 시작`);
-    setTimeout(() => setToast(""), 5000);
-    loadData();
+    const t = new Date().toLocaleTimeString("ko-KR");
+    try {
+      const r = await fetch("/api/admin/collect", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ retryFailed }),
+      });
+      const text = await r.text();
+      let d: Record<string, unknown> = {};
+      try { d = JSON.parse(text); } catch { /* non-json */ }
+      setCollecting(false);
+      setLastCollect({ at: new Date().toLocaleString("ko-KR"), ok: r.ok, ...d });
+      setDebugLog((L) => [`[${t}] ${retryFailed ? "재시도+" : ""}실행 → HTTP ${r.status}: ${text.slice(0, 500)}`, ...L].slice(0, 20));
+      if (!r.ok) setToast(`수집 실패 (HTTP ${r.status})`);
+      else if (d.scraper === false) setToast("스크래퍼 키(SCRAPER_API_KEY) 미설정");
+      else if (d.mode === "skipped") setToast(`보류: ${d.reason ?? "설정 확인"}`);
+      else setToast(`적재 ${d.ingested ?? 0}건 · 신규 ${d.kickedNew ?? 0}·갱신 ${d.kickedRefresh ?? 0} 시작`);
+      setTimeout(() => setToast(""), 5000);
+      loadData();
+    } catch (e) {
+      setCollecting(false);
+      setDebugLog((L) => [`[${t}] 요청 오류: ${String(e).slice(0, 300)}`, ...L].slice(0, 20));
+      setToast("요청 오류 (네트워크/권한)");
+      setTimeout(() => setToast(""), 5000);
+    }
   };
 
   if (authed === null) {
@@ -447,6 +459,17 @@ export default function AdminPage() {
               <div className="mt-1.5 text-[10px] text-[var(--muted)]">
                 ※ run을 시작하면 Apify가 수 분간 수집합니다. <b>몇 분 뒤 다시 “지금 수집 실행”</b>을 누르면 끝난 run의 결과(적재 건수)가 올라갑니다.
               </div>
+            </div>
+          )}
+
+          {/* 디버그 로그: 클릭 시 서버 원본 응답을 쌓아둠 (캡처용) */}
+          {debugLog.length > 0 && (
+            <div className="mb-3 rounded-md border border-[var(--border)] bg-slate-900 p-3">
+              <div className="mb-1 flex items-center justify-between">
+                <span className="text-[11px] font-bold text-slate-200">실행 응답 로그 (캡처용)</span>
+                <button onClick={() => setDebugLog([])} className="text-[10px] text-slate-400 hover:text-white">지우기</button>
+              </div>
+              <pre className="max-h-48 overflow-auto whitespace-pre-wrap break-all text-[10px] leading-relaxed text-emerald-300">{debugLog.join("\n")}</pre>
             </div>
           )}
           <p className="mb-3 rounded-md bg-[var(--accent-light)] px-3 py-2 text-[10px] text-[var(--muted)]">
