@@ -38,6 +38,13 @@ export async function GET() {
   const collectionRuns = await sql`SELECT id, kind, target, status, collected, error, created_at FROM collection_runs ORDER BY created_at DESC LIMIT 50`;
   const collectedCount = await sql`SELECT COUNT(*)::int AS c FROM videos`;
   const creatorsCount = await sql`SELECT COUNT(*)::int AS c FROM creators`;
+  // 브랜드별 수집 현황(헬스보드): 수집 건수 + 마지막 수집/추적 주기
+  const brandHealth = await sql`
+    SELECT bs.brand_name, bs.videos, bs.influencers, bs.total_views,
+           bt.last_collected_at, bt.tracked, bt.interval_hours
+    FROM brand_stats bs
+    LEFT JOIN brand_tracking bt ON bt.brand_name = bs.brand_name
+    ORDER BY bs.videos DESC LIMIT 100`;
 
   const totals = await sql`
     SELECT
@@ -55,6 +62,7 @@ export async function GET() {
     collectionRuns: collectionRuns.rows,
     collectedCount: collectedCount.rows[0]?.c ?? 0,
     creatorsCount: creatorsCount.rows[0]?.c ?? 0,
+    brandHealth: brandHealth.rows,
     totals: totals.rows[0],
   });
 }

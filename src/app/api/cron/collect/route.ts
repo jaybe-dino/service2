@@ -16,8 +16,11 @@ function authorized(req: Request): boolean {
 async function handle(req: Request) {
   if (!authorized(req)) return new Response("forbidden", { status: 403 });
   if (!isConfigured()) return NextResponse.json({ error: "DB 미설정" }, { status: 503 });
-  // 비용 최소화: 한 사이클당 소량만 처리(무료 한도 + 60초 내 완료)
-  const summary = await runCollection({ maxPending: 2, maxRefresh: 3 });
+  const proto = req.headers.get("x-forwarded-proto") ?? "https";
+  const host = req.headers.get("x-forwarded-host") ?? req.headers.get("host");
+  const baseUrl = host ? `${proto}://${host}` : undefined;
+  // 비동기 kick — run만 시작(빠름), 결과는 webhook(ingest)으로 적재. 깊은 수집 가능.
+  const summary = await runCollection({ maxPending: 8, maxRefresh: 15, baseUrl });
   return NextResponse.json({ ok: true, ...summary });
 }
 

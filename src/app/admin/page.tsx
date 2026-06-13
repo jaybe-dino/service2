@@ -19,6 +19,7 @@ interface Totals { users: number; payments: number; revenue: number; active_pro:
 interface Inquiry { id: number; kind: string; user_email: string | null; payload: Record<string, unknown> | null; status?: string; response?: string | null; created_at: string; }
 interface BrandReq { id: number; brand_name: string; handle: string | null; source: string; status: string; collected: number; note: string | null; created_at: string; }
 interface Run { id: number; kind: string; target: string | null; status: string; collected: number; error: string | null; created_at: string; }
+interface BrandHealth { brand_name: string; videos: number; influencers: number; total_views: number; last_collected_at: string | null; tracked: boolean | null; interval_hours: number | null; }
 interface Track { brand_name: string; tracked: boolean; interval_hours: number; hashtags: string | null; last_collected_at: string | null; }
 
 const KIND_LABEL: Record<string, string> = {
@@ -46,6 +47,7 @@ export default function AdminPage() {
   const [inquiries, setInquiries] = useState<Inquiry[]>([]);
   const [brandReqs, setBrandReqs] = useState<BrandReq[]>([]);
   const [runs, setRuns] = useState<Run[]>([]);
+  const [brandHealth, setBrandHealth] = useState<BrandHealth[]>([]);
   const [collectedCount, setCollectedCount] = useState(0);
   const [creatorsCount, setCreatorsCount] = useState(0);
   const [newBrand, setNewBrand] = useState("");
@@ -85,6 +87,7 @@ export default function AdminPage() {
       setInquiries(r.inquiries ?? []);
       setBrandReqs(r.brandRequests ?? []);
       setRuns(r.collectionRuns ?? []);
+      setBrandHealth(r.brandHealth ?? []);
       setCollectedCount(r.collectedCount ?? 0);
       setCreatorsCount(r.creatorsCount ?? 0);
       setTotals(r.totals ?? null);
@@ -239,8 +242,11 @@ export default function AdminPage() {
     const r = await fetch("/api/admin/collect", { method: "POST" });
     const d = await r.json().catch(() => ({}));
     setCollecting(false);
-    setToast(r.ok ? `수집 실행: 신규 ${d.collected ?? 0}건${d.scraper === false ? " (스크래퍼 키 미설정 → 0)" : ""}` : "수집 실패");
-    setTimeout(() => setToast(""), 3500);
+    if (!r.ok) setToast("수집 실패");
+    else if (d.scraper === false) setToast("스크래퍼 키(SCRAPER_API_KEY) 미설정 → 수집 시작 안 됨");
+    else if (d.mode === "skipped") setToast(`수집 시작 보류: ${d.reason ?? "설정 확인 필요"}`);
+    else setToast(`수집 시작됨(비동기): 신규 ${d.kickedNew ?? 0} · 갱신 ${d.kickedRefresh ?? 0}브랜드 — 결과는 잠시 후 자동 반영`);
+    setTimeout(() => setToast(""), 4500);
     loadData();
   };
 
@@ -442,7 +448,23 @@ export default function AdminPage() {
             ))}
             {!runs.length && <EmptyRow cols={6} text="수집 로그 없음" />}
           </Table>
-          <p className="mt-3 text-[10px] text-[var(--muted)]">※ 스크래핑 키(SCRAPER_API_KEY) 설정 시 실제 수집됩니다. 정기 수집은 매일 자동(Vercel Cron)으로 실행됩니다.</p>
+          <p className="mt-3 text-[10px] text-[var(--muted)]">※ 비동기 수집(B안): cron이 Apify run을 시작하고, 완료 시 webhook(/api/ingest/apify)으로 결과가 적재됩니다. SCRAPER_API_KEY·INGEST_SECRET 설정 필요.</p>
+
+          {/* 브랜드별 수집 헬스보드 */}
+          <h2 className="mb-2 mt-6 text-[13px] font-bold">브랜드별 수집 현황 (상위 {brandHealth.length})</h2>
+          <Table head={["브랜드", "수집 영상", "인플루언서", "누적 조회", "마지막 수집", "추적/주기"]}>
+            {brandHealth.map((b) => (
+              <tr key={b.brand_name} className="border-b border-[var(--border)] last:border-0">
+                <td className="p-2 font-semibold">{b.brand_name}</td>
+                <td className="p-2 text-right">{b.videos.toLocaleString()}</td>
+                <td className="p-2 text-right">{b.influencers}</td>
+                <td className="p-2 text-right">{Number(b.total_views).toLocaleString()}</td>
+                <td className="p-2 text-[var(--muted)]">{dt(b.last_collected_at)}</td>
+                <td className="p-2 text-[10px]">{b.tracked ? `추적 · ${b.interval_hours ?? "—"}h` : "미추적"}</td>
+              </tr>
+            ))}
+            {!brandHealth.length && <EmptyRow cols={6} text="수집된 브랜드 없음" />}
+          </Table>
 
           {/* 브랜드별 수집 주기 관리 */}
           <div className="mt-6 mb-2 flex items-center gap-2">

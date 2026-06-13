@@ -1,10 +1,14 @@
 import { sql, ensureSchema } from "./db";
-import { collectBrand, scraperConfigured, type CollectedVideo } from "./collector";
+import { startApifyRun, scraperConfigured, type CollectedVideo } from "./collector";
 import { isOfficialHandle } from "@/data/ktrend/official";
 import { BRANDS } from "@/data/ktrend/brands";
 import { DEFAULT_CRAWL_RULES, type CrawlRules } from "./crawl-rules";
 
 const MAX_ATTEMPTS = 3; // 재시도 상한 — 초과 시 'failed'로 격리
+const INITIAL_LIMIT = 1000; // 신규 브랜드 1차 백필 깊이 (Apify 비동기라 60초 제한 무관)
+const REFRESH_LIMIT = 200; // 정기 증분 깊이
+const BACKFILL_DAYS = 365; // 신규 1차학습 기간
+const REFRESH_SINCE_DAYS = 30; // 증분 수집 기간
 
 async function getRules(): Promise<CrawlRules> {
   const r = await sql`SELECT value FROM admin_settings WHERE key='crawl_rules' LIMIT 1`;
@@ -92,6 +96,9 @@ export async function ingestVideos(brandName: string, vids: CollectedVideo[]): P
   await sql`INSERT INTO brand_tracking (brand_name, last_collected_at, updated_at)
             VALUES (${brandName}, now(), now())
             ON CONFLICT (brand_name) DO UPDATE SET last_collected_at=now(), updated_at=now()`;
+  // 비동기 수집 완료 → 신규 브랜드 요청을 active로 전환
+  await sql`UPDATE brand_requests SET status='active', collected=${c}, updated_at=now()
+            WHERE brand_name=${brandName} AND status IN ('collecting','pending')`;
   await sql`INSERT INTO collection_runs (kind, target, status, collected) VALUES ('ingest', ${brandName}, 'ok', ${c})`;
   return c;
 }
@@ -107,52 +114,60 @@ async function setCursor(idx: number) {
 
 export interface CollectSummary {
   configured: boolean;
-  pendingProcessed: number;
-  brandsRefreshed: number;
-  collected: number;
+  mode: "async" | "skipped";
+  kickedNew: number;
+  kickedRefresh: number;
+  reason?: string;
 }
 
-// 한 번의 수집 사이클 (서버리스 시간제한 고려해 소량 배치)
-export async function runCollection(opts: { maxPending?: number; maxRefresh?: number } = {}): Promise<CollectSummary> {
-  await ensureSchema();
-  const rules = await getRules();
-  const configured = scraperConfigured();
-  const maxPending = opts.maxPending ?? 2;
-  const maxRefresh = opts.maxRefresh ?? 3;
-  let collected = 0;
+// 수집 결과를 받을 webhook URL (Apify가 run 완료 시 호출 → /api/ingest/apify)
+function ingestWebhook(baseUrl?: string): string | undefined {
+  if (!baseUrl) return undefined;
+  const secret = process.env.INGEST_SECRET || process.env.CRON_SECRET;
+  return `${baseUrl}/api/ingest/apify${secret ? `?secret=${encodeURIComponent(secret)}` : ""}`;
+}
 
-  // 1) 신규 브랜드 요청 처리 (pending → active). failed는 자동 제외.
+// B안 비동기 수집 사이클: Apify run을 "시작"만 하고(빠름) 결과는 webhook(ingest)으로 받음.
+// → 서버리스 60초 제한 무관하게 브랜드당 수천 건 깊게 수집 가능.
+export async function runCollection(opts: { maxPending?: number; maxRefresh?: number; baseUrl?: string } = {}): Promise<CollectSummary> {
+  await ensureSchema();
+  const configured = scraperConfigured();
+  const webhook = ingestWebhook(opts.baseUrl);
+  const maxPending = opts.maxPending ?? 5;
+  const maxRefresh = opts.maxRefresh ?? 10;
+
+  if (!configured) return { configured, mode: "skipped", kickedNew: 0, kickedRefresh: 0, reason: "SCRAPER_API_KEY 미설정" };
+  if (!webhook) return { configured, mode: "skipped", kickedNew: 0, kickedRefresh: 0, reason: "수집 결과 수신 URL(baseUrl) 없음" };
+
+  let kickedNew = 0;
+  let kickedRefresh = 0;
+
+  // 1) 신규 브랜드: 1년치 깊은 백필 run 시작 (pending → collecting). 결과는 webhook이 적재 → active.
   const pending = await sql<{ id: number; brand_name: string; handle: string | null; hashtags: string | null; attempts: number }>`
     SELECT id, brand_name, handle, hashtags, attempts FROM brand_requests WHERE status='pending' ORDER BY created_at ASC LIMIT ${maxPending}`;
   for (const req of pending.rows) {
-    await sql`UPDATE brand_requests SET status='collecting', updated_at=now() WHERE id=${req.id}`;
     try {
-      // 신규 브랜드 1차학습: 최근 1년치 백필(이후엔 증분만 → 중복/비용 최소화)
-      const vids = await collectBrand({ brandName: req.brand_name, handle: req.handle, hashtags: req.hashtags, backfillDays: 365, limit: 60 });
-      const c = await upsertVideos(req.brand_name, vids, rules);
-      await syncDerived(req.brand_name); // 콘텐츠→브랜드통계·인플루언서 동시 갱신
-      collected += c;
-      await sql`UPDATE brand_requests SET status='active', collected=${c}, updated_at=now() WHERE id=${req.id}`;
-      // 이후 정기 추적 대상으로 등록
-      await sql`INSERT INTO brand_tracking (brand_name, hashtags, last_collected_at, updated_at)
-                VALUES (${req.brand_name}, ${req.hashtags}, now(), now())
-                ON CONFLICT (brand_name) DO UPDATE SET last_collected_at=now(), hashtags=COALESCE(EXCLUDED.hashtags, brand_tracking.hashtags), updated_at=now()`;
-      await sql`INSERT INTO collection_runs (kind, target, status, collected) VALUES ('new_brand', ${req.brand_name}, 'ok', ${c})`;
+      await startApifyRun(
+        { brandName: req.brand_name, handle: req.handle, hashtags: req.hashtags, backfillDays: BACKFILL_DAYS, limit: INITIAL_LIMIT },
+        webhook,
+      );
+      await sql`UPDATE brand_requests SET status='collecting', updated_at=now() WHERE id=${req.id}`;
+      await sql`INSERT INTO brand_tracking (brand_name, hashtags, updated_at)
+                VALUES (${req.brand_name}, ${req.hashtags}, now())
+                ON CONFLICT (brand_name) DO UPDATE SET hashtags=COALESCE(EXCLUDED.hashtags, brand_tracking.hashtags), updated_at=now()`;
+      await sql`INSERT INTO collection_runs (kind, target, status) VALUES ('kick_new', ${req.brand_name}, 'started')`;
+      kickedNew += 1;
     } catch (e) {
-      // 재시도 격리: N회 초과하면 'failed'로 (무한 pending 루프 방지)
       const next = (req.attempts ?? 0) + 1;
       const status = next >= MAX_ATTEMPTS ? "failed" : "pending";
       await sql`UPDATE brand_requests SET status=${status}, attempts=${next}, note=${String(e).slice(0, 200)}, updated_at=now() WHERE id=${req.id}`;
-      await sql`INSERT INTO collection_runs (kind, target, status, error) VALUES ('new_brand', ${req.brand_name}, 'error', ${String(e).slice(0, 200)})`;
-      if (status === "failed") await notifyFailure(`신규 브랜드 '${req.brand_name}' 수집 ${MAX_ATTEMPTS}회 실패 → 격리`);
+      await sql`INSERT INTO collection_runs (kind, target, status, error) VALUES ('kick_new', ${req.brand_name}, 'error', ${String(e).slice(0, 200)})`;
+      if (status === "failed") await notifyFailure(`신규 브랜드 '${req.brand_name}' 수집 시작 ${MAX_ATTEMPTS}회 실패 → 격리`);
     }
   }
 
-  // 2) 기존 브랜드 증분 갱신 — 브랜드별 주기(due) 기준
-  const since = new Date(Date.now() - 14 * 86_400_000).toISOString().slice(0, 10);
-  let refreshed = 0;
-
-  // 추적 대상 중 주기가 도래(due)한 브랜드 우선 선택
+  // 2) 정기 갱신: due 브랜드 증분 run 시작. 중복 kick 방지 위해 last_collected_at 선갱신.
+  const since = new Date(Date.now() - REFRESH_SINCE_DAYS * 86_400_000).toISOString().slice(0, 10);
   const due = await sql<{ brand_name: string; hashtags: string | null }>`
     SELECT brand_name, hashtags FROM brand_tracking
     WHERE tracked = true
@@ -174,21 +189,16 @@ export async function runCollection(opts: { maxPending?: number; maxRefresh?: nu
 
   for (const t of targets) {
     try {
-      // 비용 최소화: 증분 갱신 1회 수집량 축소(15)
-      const vids = await collectBrand({ brandName: t.name, hashtags: t.hashtags, sinceDate: since, limit: 15 });
-      const c = await upsertVideos(t.name, vids, rules);
-      if (c > 0) await syncDerived(t.name);
-      collected += c;
-      refreshed += 1;
-      // 추적 row 보장 + 마지막 수집 시각 갱신
+      await startApifyRun({ brandName: t.name, hashtags: t.hashtags, sinceDate: since, limit: REFRESH_LIMIT }, webhook);
       await sql`INSERT INTO brand_tracking (brand_name, last_collected_at, updated_at)
                 VALUES (${t.name}, now(), now())
                 ON CONFLICT (brand_name) DO UPDATE SET last_collected_at=now(), updated_at=now()`;
-      if (c > 0) await sql`INSERT INTO collection_runs (kind, target, status, collected) VALUES ('refresh', ${t.name}, 'ok', ${c})`;
+      await sql`INSERT INTO collection_runs (kind, target, status) VALUES ('kick_refresh', ${t.name}, 'started')`;
+      kickedRefresh += 1;
     } catch (e) {
-      await sql`INSERT INTO collection_runs (kind, target, status, error) VALUES ('refresh', ${t.name}, 'error', ${String(e).slice(0, 200)})`;
+      await sql`INSERT INTO collection_runs (kind, target, status, error) VALUES ('kick_refresh', ${t.name}, 'error', ${String(e).slice(0, 200)})`;
     }
   }
 
-  return { configured, pendingProcessed: pending.rows.length, brandsRefreshed: refreshed, collected };
+  return { configured, mode: "async", kickedNew, kickedRefresh };
 }
