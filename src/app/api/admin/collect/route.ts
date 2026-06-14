@@ -20,8 +20,8 @@ export async function POST(req: Request) {
   const host = req.headers.get("x-forwarded-host") ?? req.headers.get("host");
   const baseUrl = host ? `${proto}://${host}` : undefined;
   const summary = await runCollection({
-    maxPending: Number(process.env.COLLECT_MAX_PENDING ?? 8),
-    maxRefresh: Number(process.env.COLLECT_MAX_REFRESH ?? 10),
+    maxPending: Number(process.env.COLLECT_MAX_PENDING ?? 4),
+    maxRefresh: Number(process.env.COLLECT_MAX_REFRESH ?? 6),
     baseUrl,
   });
   return NextResponse.json({ ok: true, scraper: scraperConfigured(), ...summary });

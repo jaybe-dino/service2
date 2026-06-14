@@ -21,8 +21,8 @@ async function handle(req: Request) {
   const baseUrl = host ? `${proto}://${host}` : undefined;
   // 비동기 kick — 동시 실행/크레딧 절약 위해 배치 보수적(환경변수로 조절).
   const summary = await runCollection({
-    maxPending: Number(process.env.COLLECT_MAX_PENDING ?? 8),
-    maxRefresh: Number(process.env.COLLECT_MAX_REFRESH ?? 10),
+    maxPending: Number(process.env.COLLECT_MAX_PENDING ?? 4),
+    maxRefresh: Number(process.env.COLLECT_MAX_REFRESH ?? 6),
     baseUrl,
   });
   return NextResponse.json({ ok: true, ...summary });

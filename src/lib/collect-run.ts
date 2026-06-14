@@ -43,18 +43,43 @@ async function getBlocked(): Promise<{ handles: Set<string>; brands: Set<string>
 async function upsertVideos(brandName: string, vids: CollectedVideo[], rules: CrawlRules): Promise<number> {
   const blocked = await getBlocked();
   if (blocked.brands.has(brandName)) return 0; // 블락 브랜드는 적재하지 않음
-  let n = 0;
-  for (const v of vids) {
-    if (rules.excludeOfficialAccounts && isOfficialHandle(v.handle)) continue;
-    if (blocked.handles.has(v.handle)) continue; // 블락 인플루언서 제외
-    if (blocked.videos.has(v.videoId)) continue; // 블락 콘텐츠 제외
-    if (rules.minViews && v.views < rules.minViews) continue;
-    await sql`INSERT INTO videos (video_id, brand_name, handle, views, likes, comments, shares, is_ad, is_shop, posted_at, url, collected_at)
-      VALUES (${v.videoId}, ${brandName}, ${v.handle}, ${v.views}, ${v.likes}, ${v.comments}, ${v.shares}, ${v.isAd}, ${v.isShop}, ${v.date}, ${v.url}, now())
-      ON CONFLICT (video_id) DO UPDATE SET views=EXCLUDED.views, likes=EXCLUDED.likes, comments=EXCLUDED.comments, shares=EXCLUDED.shares, collected_at=now()`;
-    n += 1;
+
+  // 필터 + 배치 내 중복 video_id 제거
+  const seen = new Set<string>();
+  const rows = vids.filter((v) => {
+    if (!v.videoId || seen.has(v.videoId)) return false;
+    if (rules.excludeOfficialAccounts && isOfficialHandle(v.handle)) return false;
+    if (blocked.handles.has(v.handle)) return false;
+    if (blocked.videos.has(v.videoId)) return false;
+    if (rules.minViews && v.views < rules.minViews) return false;
+    seen.add(v.videoId);
+    return true;
+  });
+  if (!rows.length) return 0;
+
+  // 배치 INSERT (1건씩 → 타임아웃 방지). 100행씩 묶어서.
+  const COLS = 11;
+  const CHUNK = 100;
+  for (let i = 0; i < rows.length; i += CHUNK) {
+    const chunk = rows.slice(i, i + CHUNK);
+    const placeholders = chunk
+      .map((_, j) => {
+        const b = j * COLS;
+        return `($${b + 1},$${b + 2},$${b + 3},$${b + 4},$${b + 5},$${b + 6},$${b + 7},$${b + 8},$${b + 9},$${b + 10},$${b + 11})`;
+      })
+      .join(",");
+    const params: unknown[] = [];
+    for (const v of chunk) {
+      params.push(v.videoId, brandName, v.handle, v.views, v.likes, v.comments, v.shares, v.isAd, v.isShop, v.date, v.url);
+    }
+    await sql.query(
+      `INSERT INTO videos (video_id, brand_name, handle, views, likes, comments, shares, is_ad, is_shop, posted_at, url)
+       VALUES ${placeholders}
+       ON CONFLICT (video_id) DO UPDATE SET views=EXCLUDED.views, likes=EXCLUDED.likes, comments=EXCLUDED.comments, shares=EXCLUDED.shares, collected_at=now()`,
+      params,
+    );
   }
-  return n;
+  return rows.length;
 }
 
 // 콘텐츠 → 브랜드 통계 재계산 (수집된 videos 기준)
@@ -169,8 +194,8 @@ export async function runCollection(opts: { maxPending?: number; maxRefresh?: nu
 
   if (!configured) return { configured, mode: "skipped", polledDone: 0, ingested: 0, kickedNew: 0, kickedRefresh: 0, reason: "SCRAPER_API_KEY 미설정" };
 
-  // 0) 진행 중 run 결과 먼저 적재 (폴링)
-  const poll = await pollJobs(6);
+  // 0) 진행 중 run 결과 먼저 적재 (폴링) — 타임아웃 방지 위해 한 번에 소량만
+  const poll = await pollJobs(2);
 
   let kickedNew = 0;
   let kickedRefresh = 0;
