@@ -430,8 +430,8 @@ export default function AdminPage() {
             <button onClick={() => runCollect(true)} disabled={collecting} className="kt-btn kt-btn-outline ml-auto px-3 py-1.5 text-[11px] disabled:opacity-50">
               실패 재시도
             </button>
-            <button onClick={() => runCollect(false)} disabled={collecting} className="kt-btn kt-btn-primary px-3 py-1.5 text-[11px] disabled:opacity-50">
-              {collecting ? <Loader2 size={13} className="animate-spin" /> : <Play size={13} />} 지금 수집 실행
+            <button onClick={() => runCollect(false)} disabled={collecting} className="kt-btn kt-btn-primary px-3 py-1.5 text-[11px] disabled:opacity-60">
+              {collecting ? <><Loader2 size={13} className="animate-spin" /> 수집 중… (최대 1분)</> : <><Play size={13} /> 지금 수집 실행</>}
             </button>
             <span className="text-[10px] text-[var(--muted)]">수집 영상 {collectedCount.toLocaleString()}건 · 인플루언서 {creatorsCount.toLocaleString()}명</span>
           </div>
