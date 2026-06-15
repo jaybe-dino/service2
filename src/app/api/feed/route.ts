@@ -14,6 +14,17 @@ export async function GET() {
     const blockedHandles = block.rows.filter((b) => b.kind === "handle").map((b) => b.value);
     const blockedBrands = block.rows.filter((b) => b.kind === "brand").map((b) => b.value);
     const blockedVideos = block.rows.filter((b) => b.kind === "video").map((b) => b.value);
+    // A안: 브랜드별 실 커미션율 + 추정 GMV (있는 브랜드만)
+    const shop = await sql<{ brand_name: string; avg_commission: string | number | null; est_gmv: string | number | null; total_sold: string | number | null }>`
+      SELECT brand_name, avg_commission, est_gmv, total_sold FROM brand_shop_stats`;
+    const brandShop: Record<string, { commission: number | null; gmv: number; sold: number }> = {};
+    for (const s of shop.rows) {
+      if (s.brand_name) brandShop[s.brand_name.toLowerCase()] = {
+        commission: s.avg_commission != null ? Number(s.avg_commission) : null,
+        gmv: Number(s.est_gmv) || 0,
+        sold: Number(s.total_sold) || 0,
+      };
+    }
     // 최신 수집분 우선, 과도한 페이로드 방지 위해 상한. 블락 대상은 제외.
     const r = await sql<{
       video_id: string;
@@ -51,7 +62,7 @@ export async function GET() {
       v.url ?? "",
     ]);
 
-    return NextResponse.json({ configured: true, videos, blockedHandles, blockedBrands, blockedVideos });
+    return NextResponse.json({ configured: true, videos, blockedHandles, blockedBrands, blockedVideos, brandShop });
   } catch {
     // 수집 데이터가 아직 없거나 DB 일시 오류 → 정적 데이터만으로 동작하도록 빈 피드 반환
     return NextResponse.json({ configured: true, videos: [], blockedHandles: [], blockedBrands: [], blockedVideos: [] });

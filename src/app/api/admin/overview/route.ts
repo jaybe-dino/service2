@@ -45,6 +45,8 @@ export async function GET() {
     FROM brand_stats bs
     LEFT JOIN brand_tracking bt ON bt.brand_name = bs.brand_name
     ORDER BY bs.videos DESC LIMIT 100`;
+  // A안: 틱톡샵 상품 집계 (실 커미션율·추정 GMV)
+  const shopStats = await sql`SELECT brand_name, products, avg_commission, total_sold, est_gmv, updated_at FROM brand_shop_stats ORDER BY est_gmv DESC LIMIT 100`;
 
   const totals = await sql`
     SELECT
@@ -63,6 +65,7 @@ export async function GET() {
     collectedCount: collectedCount.rows[0]?.c ?? 0,
     creatorsCount: creatorsCount.rows[0]?.c ?? 0,
     brandHealth: brandHealth.rows,
+    shopStats: shopStats.rows,
     totals: totals.rows[0],
   });
 }

@@ -1,5 +1,9 @@
 import { sql, ensureSchema } from "./db";
-import { startApifyRun, fetchApifyRun, fetchApifyDataset, scraperConfigured, type CollectedVideo } from "./collector";
+import {
+  startApifyRun, fetchApifyRun, fetchApifyDataset, scraperConfigured,
+  startShopRun, fetchShopDataset, shopConfigured,
+  type CollectedVideo, type ShopProduct,
+} from "./collector";
 import { isOfficialHandle } from "@/data/ktrend/official";
 import { BRANDS } from "@/data/ktrend/brands";
 import { DEFAULT_CRAWL_RULES, type CrawlRules } from "./crawl-rules";
@@ -113,6 +117,50 @@ async function syncDerived(brandName: string) {
   await recomputeCreatorsForBrand(brandName);
 }
 
+// ── A안: 틱톡샵 상품 적재 + 브랜드 샵 통계(실 커미션율·추정 GMV) ──
+async function recomputeBrandShopStats(brandName: string) {
+  await sql`INSERT INTO brand_shop_stats (brand_name, products, avg_commission, total_sold, est_gmv, updated_at)
+    SELECT brand_name, count(*)::int, round(avg(commission_rate)::numeric, 1),
+           sum(COALESCE(sold_count,0))::bigint,
+           sum(COALESCE(price,0) * COALESCE(sold_count,0)), now()
+    FROM products WHERE brand_name=${brandName} GROUP BY brand_name
+    ON CONFLICT (brand_name) DO UPDATE SET
+      products=EXCLUDED.products, avg_commission=EXCLUDED.avg_commission,
+      total_sold=EXCLUDED.total_sold, est_gmv=EXCLUDED.est_gmv, updated_at=now()`;
+}
+
+export async function ingestProducts(brandName: string, products: ShopProduct[]): Promise<number> {
+  await ensureSchema();
+  const seen = new Set<string>();
+  const rows = products.filter((p) => p.productId && !seen.has(p.productId) && seen.add(p.productId));
+  if (rows.length) {
+    const COLS = 8;
+    const CHUNK = 100;
+    for (let i = 0; i < rows.length; i += CHUNK) {
+      const chunk = rows.slice(i, i + CHUNK);
+      const placeholders = chunk.map((_, j) => {
+        const b = j * COLS;
+        return `($${b + 1},$${b + 2},$${b + 3},$${b + 4},$${b + 5},$${b + 6},$${b + 7},$${b + 8})`;
+      }).join(",");
+      const params: unknown[] = [];
+      for (const p of chunk) {
+        // brand_name은 검색한 브랜드로 고정(우리 브랜드와 매핑 보장)
+        params.push(p.productId, brandName, p.title, p.price, p.currency, p.soldCount, p.commissionRate, p.url);
+      }
+      await sql.query(
+        `INSERT INTO products (product_id, brand_name, title, price, currency, sold_count, commission_rate, url)
+         VALUES ${placeholders}
+         ON CONFLICT (product_id) DO UPDATE SET brand_name=EXCLUDED.brand_name, price=EXCLUDED.price,
+           sold_count=EXCLUDED.sold_count, commission_rate=EXCLUDED.commission_rate, collected_at=now()`,
+        params,
+      );
+    }
+    await recomputeBrandShopStats(brandName);
+  }
+  await sql`INSERT INTO collection_runs (kind, target, status, collected) VALUES ('shop_ingest', ${brandName}, 'ok', ${rows.length})`;
+  return rows.length;
+}
+
 // B안 webhook 적재 공용 함수: dedup upsert → 통계/인플루언서 갱신 → 추적/로그 갱신
 export async function ingestVideos(brandName: string, vids: CollectedVideo[]): Promise<number> {
   await ensureSchema();
@@ -158,16 +206,22 @@ function ingestWebhook(baseUrl?: string): string | undefined {
 // 폴링(pull): 진행 중 run의 완료 여부를 직접 확인 → 끝났으면 dataset 가져와 적재.
 // (Apify→우리 webhook 인바운드가 막혀도 동작 — 아웃바운드만 사용)
 async function pollJobs(maxPoll: number): Promise<{ ingested: number; done: number }> {
-  const jobs = await sql<{ run_id: string; brand_name: string; since_date: string | null }>`
-    SELECT run_id, brand_name, since_date FROM collect_jobs WHERE status='running' ORDER BY created_at ASC LIMIT ${maxPoll}`;
+  const jobs = await sql<{ run_id: string; brand_name: string; since_date: string | null; kind: string }>`
+    SELECT run_id, brand_name, since_date, kind FROM collect_jobs WHERE status='running' ORDER BY created_at ASC LIMIT ${maxPoll}`;
   let ingested = 0;
   let done = 0;
   for (const j of jobs.rows) {
     try {
       const run = await fetchApifyRun(j.run_id);
       if (run.status === "SUCCEEDED" && run.datasetId) {
-        const vids = await fetchApifyDataset(run.datasetId, j.since_date);
-        const c = await ingestVideos(j.brand_name, vids);
+        let c = 0;
+        if (j.kind === "shop") {
+          const products = await fetchShopDataset(run.datasetId, j.brand_name);
+          c = await ingestProducts(j.brand_name, products);
+        } else {
+          const vids = await fetchApifyDataset(run.datasetId, j.since_date);
+          c = await ingestVideos(j.brand_name, vids);
+        }
         await sql`UPDATE collect_jobs SET status='done', collected=${c}, updated_at=now() WHERE run_id=${j.run_id}`;
         ingested += c;
         done += 1;
@@ -262,4 +316,37 @@ export async function runCollection(opts: { maxPending?: number; maxRefresh?: nu
   }
 
   return { configured, mode: "async", polledDone: poll.done, ingested: poll.ingested, kickedNew, kickedRefresh };
+}
+
+export interface ShopSummary { configured: boolean; mode: "async" | "skipped"; polledDone: number; ingested: number; kicked: number; reason?: string }
+
+// A안 틱톡샵 상품 수집 사이클: 완료분 적재(폴링) + 미수집 브랜드 N개 shop run 시작.
+export async function runShopCollection(opts: { maxShop?: number; baseUrl?: string } = {}): Promise<ShopSummary> {
+  await ensureSchema();
+  if (!shopConfigured()) return { configured: false, mode: "skipped", polledDone: 0, ingested: 0, kicked: 0, reason: "SHOP_ACTOR 미설정" };
+  const webhook = ingestWebhook(opts.baseUrl);
+  const maxShop = opts.maxShop ?? 3;
+
+  const poll = await pollJobs(2); // video/shop 공용 폴링
+
+  // 아직 샵 통계가 없는 추적 브랜드 우선, 없으면 오래된 순
+  const due = await sql<{ brand_name: string }>`
+    SELECT bt.brand_name FROM brand_tracking bt
+    LEFT JOIN brand_shop_stats bss ON bss.brand_name = bt.brand_name
+    WHERE bt.tracked = true
+    ORDER BY bss.updated_at ASC NULLS FIRST, bt.brand_name ASC
+    LIMIT ${maxShop}`;
+
+  let kicked = 0;
+  for (const b of due.rows) {
+    try {
+      const runId = await startShopRun(b.brand_name, webhook);
+      if (runId) await sql`INSERT INTO collect_jobs (run_id, brand_name, kind) VALUES (${runId}, ${b.brand_name}, 'shop') ON CONFLICT (run_id) DO NOTHING`;
+      await sql`INSERT INTO collection_runs (kind, target, status) VALUES ('kick_shop', ${b.brand_name}, 'started')`;
+      kicked += 1;
+    } catch (e) {
+      await sql`INSERT INTO collection_runs (kind, target, status, error) VALUES ('kick_shop', ${b.brand_name}, 'error', ${String(e).slice(0, 200)})`;
+    }
+  }
+  return { configured: true, mode: "async", polledDone: poll.done, ingested: poll.ingested, kicked };
 }

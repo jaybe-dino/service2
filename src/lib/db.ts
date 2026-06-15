@@ -217,6 +217,29 @@ export function ensureSchema(): Promise<void> {
         created_at timestamptz NOT NULL DEFAULT now(),
         updated_at timestamptz NOT NULL DEFAULT now()
       )`;
+      // 수집 종류: video(영상) | shop(틱톡샵 상품)
+      await sql`ALTER TABLE collect_jobs ADD COLUMN IF NOT EXISTS kind text NOT NULL DEFAULT 'video'`;
+      // 틱톡샵 상품 (A안: 실 커미션율 + 가격×판매수 매출 추정)
+      await sql`CREATE TABLE IF NOT EXISTS products (
+        product_id text PRIMARY KEY,
+        brand_name text,
+        title text,
+        price numeric,
+        currency text,
+        sold_count bigint DEFAULT 0,
+        commission_rate numeric,
+        url text,
+        collected_at timestamptz NOT NULL DEFAULT now()
+      )`;
+      // 브랜드별 틱톡샵 집계 (실 커미션율 평균 + 추정 GMV)
+      await sql`CREATE TABLE IF NOT EXISTS brand_shop_stats (
+        brand_name text PRIMARY KEY,
+        products int NOT NULL DEFAULT 0,
+        avg_commission numeric,
+        total_sold bigint NOT NULL DEFAULT 0,
+        est_gmv numeric NOT NULL DEFAULT 0,
+        updated_at timestamptz NOT NULL DEFAULT now()
+      )`;
       // 데모/관리자 계정 시드 (bcrypt("ktrend2026")) — 서버 세션 로그인 가능하도록
       const DEMO_HASH = "$2b$10$mLc7sBm3zK4a83l6/Tg9NOoDGLLYsfp4SXRfZcls4.LTw6Tsy/8Oy";
       await sql`INSERT INTO users (id, email, password_hash, name, brand, role, plan) VALUES

@@ -20,6 +20,7 @@ interface Inquiry { id: number; kind: string; user_email: string | null; payload
 interface BrandReq { id: number; brand_name: string; handle: string | null; source: string; status: string; collected: number; note: string | null; created_at: string; }
 interface Run { id: number; kind: string; target: string | null; status: string; collected: number; error: string | null; created_at: string; }
 interface BrandHealth { brand_name: string; videos: number; influencers: number; total_views: number; last_collected_at: string | null; tracked: boolean | null; interval_hours: number | null; }
+interface ShopStat { brand_name: string; products: number; avg_commission: string | number | null; total_sold: string | number | null; est_gmv: string | number | null; updated_at: string; }
 interface Track { brand_name: string; tracked: boolean; interval_hours: number; hashtags: string | null; last_collected_at: string | null; }
 
 const KIND_LABEL: Record<string, string> = {
@@ -48,6 +49,7 @@ export default function AdminPage() {
   const [brandReqs, setBrandReqs] = useState<BrandReq[]>([]);
   const [runs, setRuns] = useState<Run[]>([]);
   const [brandHealth, setBrandHealth] = useState<BrandHealth[]>([]);
+  const [shopStats, setShopStats] = useState<ShopStat[]>([]);
   const [collectedCount, setCollectedCount] = useState(0);
   const [creatorsCount, setCreatorsCount] = useState(0);
   const [newBrand, setNewBrand] = useState("");
@@ -90,6 +92,7 @@ export default function AdminPage() {
       setBrandReqs(r.brandRequests ?? []);
       setRuns(r.collectionRuns ?? []);
       setBrandHealth(r.brandHealth ?? []);
+      setShopStats(r.shopStats ?? []);
       setCollectedCount(r.collectedCount ?? 0);
       setCreatorsCount(r.creatorsCount ?? 0);
       setTotals(r.totals ?? null);
@@ -268,6 +271,23 @@ export default function AdminPage() {
     }
   };
 
+  const runShopCollect = async () => {
+    setCollecting(true);
+    const tnow = new Date().toLocaleTimeString("ko-KR");
+    try {
+      const r = await fetch("/api/admin/collect-shop", { method: "POST" });
+      const text = await r.text();
+      setCollecting(false);
+      setDebugLog((L) => [`[${tnow}] 샵수집 → HTTP ${r.status}: ${text.slice(0, 400)}`, ...L].slice(0, 20));
+      setToast(`샵 수집 실행 (HTTP ${r.status})`);
+      setTimeout(() => setToast(""), 4000);
+      loadData();
+    } catch (e) {
+      setCollecting(false);
+      setDebugLog((L) => [`[${tnow}] 샵수집 오류: ${String(e).slice(0, 200)}`, ...L].slice(0, 20));
+    }
+  };
+
   if (authed === null) {
     return <PageShell><div className="py-24 text-center text-[var(--muted)]"><Loader2 className="mx-auto animate-spin" /></div></PageShell>;
   }
@@ -427,7 +447,10 @@ export default function AdminPage() {
               <input value={newBrand} onChange={(e) => setNewBrand(e.target.value)} placeholder="브랜드명" className="rounded-md border border-[var(--border)] px-2 py-1.5 text-[11px]" />
               <button className="kt-btn kt-btn-outline px-3 py-1.5 text-[11px]">요청 추가</button>
             </form>
-            <button onClick={() => runCollect(true)} disabled={collecting} className="kt-btn kt-btn-outline ml-auto px-3 py-1.5 text-[11px] disabled:opacity-50">
+            <button onClick={runShopCollect} disabled={collecting} className="kt-btn kt-btn-outline ml-auto px-3 py-1.5 text-[11px] disabled:opacity-50">
+              🛍 틱톡샵 상품 수집
+            </button>
+            <button onClick={() => runCollect(true)} disabled={collecting} className="kt-btn kt-btn-outline px-3 py-1.5 text-[11px] disabled:opacity-50">
               실패 재시도
             </button>
             <button onClick={() => runCollect(false)} disabled={collecting} className="kt-btn kt-btn-primary px-3 py-1.5 text-[11px] disabled:opacity-60">
@@ -522,6 +545,22 @@ export default function AdminPage() {
               </tr>
             ))}
             {!brandHealth.length && <EmptyRow cols={6} text="수집된 브랜드 없음" />}
+          </Table>
+
+          {/* A안: 틱톡샵 상품 집계 (실 커미션율·추정 GMV) */}
+          <h2 className="mb-2 mt-6 text-[13px] font-bold">틱톡샵 상품 집계 ({shopStats.length}) <span className="text-[10px] font-normal text-[var(--muted)]">실 커미션율 · 가격×판매수 GMV</span></h2>
+          <Table head={["브랜드", "상품 수", "평균 커미션", "누적 판매수", "추정 GMV", "갱신"]}>
+            {shopStats.map((s) => (
+              <tr key={s.brand_name} className="border-b border-[var(--border)] last:border-0">
+                <td className="p-2 font-semibold">{s.brand_name}</td>
+                <td className="p-2 text-right">{s.products}</td>
+                <td className="p-2 text-right text-[var(--accent)]">{s.avg_commission != null ? `${Number(s.avg_commission)}%` : "—"}</td>
+                <td className="p-2 text-right">{Number(s.total_sold).toLocaleString()}</td>
+                <td className="p-2 text-right font-semibold">${Math.round(Number(s.est_gmv)).toLocaleString()}</td>
+                <td className="p-2 text-[var(--muted)]">{dt(s.updated_at)}</td>
+              </tr>
+            ))}
+            {!shopStats.length && <EmptyRow cols={6} text="틱톡샵 상품 미수집 (SHOP_ACTOR 설정 후 '틱톡샵 상품 수집')" />}
           </Table>
 
           {/* 브랜드별 수집 주기 관리 */}

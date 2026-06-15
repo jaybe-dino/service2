@@ -165,18 +165,29 @@ async function loadStatic(): Promise<Content[]> {
   return data.rows.map((r, i) => mapRow(r, i)).filter((c): c is Content => c !== null);
 }
 
-// 수집(DB) 피드 + 블락리스트 — 실패해도 정적 데이터로 동작하도록 폴백
-async function loadDb(): Promise<{ list: Content[]; blockedHandles: Set<string>; blockedBrands: Set<string>; blockedVideos: Set<string> }> {
-  const empty = { list: [] as Content[], blockedHandles: new Set<string>(), blockedBrands: new Set<string>(), blockedVideos: new Set<string>() };
+// 브랜드명(소문자) → 실 커미션율(%) (A안 틱톡샵 데이터)
+export type BrandCommission = Record<string, number>;
+
+// 수집(DB) 피드 + 블락리스트 + 샵 커미션 — 실패해도 정적 데이터로 동작하도록 폴백
+async function loadDb(): Promise<{ list: Content[]; blockedHandles: Set<string>; blockedBrands: Set<string>; blockedVideos: Set<string>; commission: BrandCommission }> {
+  const empty = { list: [] as Content[], blockedHandles: new Set<string>(), blockedBrands: new Set<string>(), blockedVideos: new Set<string>(), commission: {} as BrandCommission };
   try {
     const res = await fetch(`${BASE_PATH}/api/feed`, { cache: "no-store" });
     if (!res.ok) return empty;
-    const data = (await res.json()) as { videos?: DbRow[]; blockedHandles?: string[]; blockedBrands?: string[]; blockedVideos?: string[] };
+    const data = (await res.json()) as {
+      videos?: DbRow[]; blockedHandles?: string[]; blockedBrands?: string[]; blockedVideos?: string[];
+      brandShop?: Record<string, { commission: number | null }>;
+    };
+    const commission: BrandCommission = {};
+    for (const [name, s] of Object.entries(data.brandShop ?? {})) {
+      if (s && s.commission != null) commission[name] = s.commission;
+    }
     return {
       list: (data.videos ?? []).map((r) => mapDbRow(r)).filter((c): c is Content => c !== null),
       blockedHandles: new Set(data.blockedHandles ?? []),
       blockedBrands: new Set((data.blockedBrands ?? []).map((b) => b.toLowerCase())),
       blockedVideos: new Set(data.blockedVideos ?? []),
+      commission,
     };
   } catch {
     return empty;
@@ -189,7 +200,7 @@ function getStatic(): Promise<Content[]> {
   return staticCache;
 }
 
-type DbResult = { list: Content[]; blockedHandles: Set<string>; blockedBrands: Set<string>; blockedVideos: Set<string> };
+type DbResult = { list: Content[]; blockedHandles: Set<string>; blockedBrands: Set<string>; blockedVideos: Set<string>; commission: BrandCommission };
 
 // 정적+수집 병합 → 가시성 필터 → 신규 브랜드 통계 backfill
 function finalize(staticList: Content[], db: DbResult): Content[] {
@@ -217,6 +228,15 @@ function finalize(staticList: Content[], db: DbResult): Content[] {
     if (vid && db.blockedVideos.has(vid)) return false;
     return true;
   });
+
+  // A안: 틱톡샵 실 커미션율이 있는 브랜드는 콘텐츠 수수료율을 실측값으로 대체
+  if (Object.keys(db.commission).length) {
+    for (const c of visible) {
+      const name = (BRAND_MAP[c.brandId]?.name ?? "").toLowerCase();
+      const real = db.commission[name];
+      if (real != null) c.commissionRate = real;
+    }
+  }
 
   // 수집으로 새로 등록된 브랜드(db-*/m-*)의 통계를 실제 콘텐츠 기준으로 갱신
   const byBrand = new Map<string, Content[]>();
