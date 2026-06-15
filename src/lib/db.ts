@@ -110,6 +110,8 @@ export function ensureSchema(): Promise<void> {
         url text,
         collected_at timestamptz NOT NULL DEFAULT now()
       )`;
+      // 콘텐츠 타겟 국가 (현재 전량 US, 추후 확장) — 기존 테이블 보강
+      await sql`ALTER TABLE videos ADD COLUMN IF NOT EXISTS country text NOT NULL DEFAULT 'US'`;
       // 브랜드별 수집 주기/추적 관리
       await sql`CREATE TABLE IF NOT EXISTS brand_tracking (
         brand_name text PRIMARY KEY,

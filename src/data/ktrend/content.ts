@@ -30,6 +30,7 @@ export interface Content {
   hue: number;
   rand: number; // 세션 내 랜덤 정렬용
   tiktokUrl: string;
+  country: string; // 타겟 국가 코드 (현재 전량 US, 추후 확장)
 }
 
 interface RawVideos {
@@ -59,6 +60,7 @@ function buildContent(args: {
   date: string;
   tiktokUrl: string;
   hashSeed: string;
+  country?: string;
 }): Content {
   const { id, brand, handle, views, likes, comments, shares, isAd, isShop, date, tiktokUrl } = args;
   const engagementRate =
@@ -104,6 +106,7 @@ function buildContent(args: {
     hue: h % 360,
     rand: Math.random(),
     tiktokUrl,
+    country: args.country || "US",
   };
 }
 
@@ -127,17 +130,18 @@ function mapRow(r: RawVideos["rows"][number], i: number): Content | null {
   });
 }
 
-// DB(수집) 영상 컴팩트 행: [video_id, brand_name, handle, views, likes, comments, shares, is_ad, is_shop, posted_at, url]
-type DbRow = [string, string, string, number, number, number, number, number, number, string, string];
+// DB(수집) 영상 컴팩트 행: [video_id, brand, handle, views, likes, comments, shares, is_ad, is_shop, posted_at, url, country]
+type DbRow = [string, string, string, number, number, number, number, number, number, string, string, string];
 
 function mapDbRow(r: DbRow): Content | null {
-  const [videoId, brandName, handle, views, likes, comments, shares, ad, shop, date, url] = r;
+  const [videoId, brandName, handle, views, likes, comments, shares, ad, shop, date, url, country] = r;
   if (!handle || !brandName) return null;
   const brand = ensureBrandByName(brandName); // 정적 시드에 없으면 런타임 등록
   return buildContent({
     id: `db:${videoId}`,
     brand,
     handle,
+    country,
     views,
     likes,
     comments,

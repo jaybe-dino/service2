@@ -38,7 +38,8 @@ export async function GET() {
       is_shop: boolean;
       posted_at: string | null;
       url: string | null;
-    }>`SELECT video_id, brand_name, handle, views, likes, comments, shares, is_ad, is_shop, posted_at, url
+      country: string | null;
+    }>`SELECT video_id, brand_name, handle, views, likes, comments, shares, is_ad, is_shop, posted_at, url, country
        FROM videos
        WHERE handle IS NOT NULL AND brand_name IS NOT NULL
          AND handle NOT IN (SELECT value FROM blocklist WHERE kind='handle')
@@ -60,6 +61,7 @@ export async function GET() {
       v.is_shop ? 1 : 0,
       v.posted_at ?? "",
       v.url ?? "",
+      v.country ?? "US",
     ]);
 
     return NextResponse.json({ configured: true, videos, blockedHandles, blockedBrands, blockedVideos, brandShop });

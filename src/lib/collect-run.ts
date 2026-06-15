@@ -62,22 +62,23 @@ async function upsertVideos(brandName: string, vids: CollectedVideo[], rules: Cr
   if (!rows.length) return 0;
 
   // 배치 INSERT (1건씩 → 타임아웃 방지). 100행씩 묶어서.
-  const COLS = 11;
+  const country = process.env.COLLECT_COUNTRY || "US"; // 현재 전량 US
+  const COLS = 12;
   const CHUNK = 100;
   for (let i = 0; i < rows.length; i += CHUNK) {
     const chunk = rows.slice(i, i + CHUNK);
     const placeholders = chunk
       .map((_, j) => {
         const b = j * COLS;
-        return `($${b + 1},$${b + 2},$${b + 3},$${b + 4},$${b + 5},$${b + 6},$${b + 7},$${b + 8},$${b + 9},$${b + 10},$${b + 11})`;
+        return `($${b + 1},$${b + 2},$${b + 3},$${b + 4},$${b + 5},$${b + 6},$${b + 7},$${b + 8},$${b + 9},$${b + 10},$${b + 11},$${b + 12})`;
       })
       .join(",");
     const params: unknown[] = [];
     for (const v of chunk) {
-      params.push(v.videoId, brandName, v.handle, v.views, v.likes, v.comments, v.shares, v.isAd, v.isShop, v.date, v.url);
+      params.push(v.videoId, brandName, v.handle, v.views, v.likes, v.comments, v.shares, v.isAd, v.isShop, v.date, v.url, country);
     }
     await sql.query(
-      `INSERT INTO videos (video_id, brand_name, handle, views, likes, comments, shares, is_ad, is_shop, posted_at, url)
+      `INSERT INTO videos (video_id, brand_name, handle, views, likes, comments, shares, is_ad, is_shop, posted_at, url, country)
        VALUES ${placeholders}
        ON CONFLICT (video_id) DO UPDATE SET views=EXCLUDED.views, likes=EXCLUDED.likes, comments=EXCLUDED.comments, shares=EXCLUDED.shares, collected_at=now()`,
       params,

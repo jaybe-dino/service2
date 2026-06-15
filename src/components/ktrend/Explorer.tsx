@@ -9,6 +9,7 @@ import { BRANDS, BRAND_MAP, BRAND_AZ_KEYS } from "@/data/ktrend/brands";
 import {
   CATEGORIES,
   SUBCATEGORIES,
+  COUNTRIES,
   TIERS,
   GUEST_BRAND_LIMIT,
   BASIC_BRAND_LIMIT,
@@ -62,6 +63,7 @@ export default function Explorer() {
   const viewIds = useMemo(() => Object.keys(viewBrands), [viewBrands]);
 
   const [all, setAll] = useState<Content[] | null>(null);
+  const [country, setCountry] = useState("US"); // 현재 US 활성, 추후 확장
   const [az, setAz] = useState<string>("ALL");
   const [brandQuery, setBrandQuery] = useState("");
   const [selectedBrands, setSelectedBrands] = useState<Set<string>>(new Set());
@@ -124,6 +126,7 @@ export default function Explorer() {
   const filtered = useMemo(() => {
     if (!all) return [];
     const list = all.filter((c) => {
+      if (c.country !== country) return false; // 타겟 국가
       // 게이팅: 비Pro는 선택한 브랜드만. Pro·Advance는 좌측 필터 기준.
       if (gated) {
         if (!(c.brandId in viewBrands)) return false;
@@ -138,9 +141,9 @@ export default function Explorer() {
       return true;
     });
     return sortContent(list, sort);
-  }, [all, gated, viewBrands, selectedBrands, categories, subs, tiers, onlyShop, onlyAd, sort]);
+  }, [all, country, gated, viewBrands, selectedBrands, categories, subs, tiers, onlyShop, onlyAd, sort]);
 
-  useEffect(() => setVisible(PAGE), [viewBrands, selectedBrands, categories, subs, tiers, onlyShop, onlyAd, sort]);
+  useEffect(() => setVisible(PAGE), [country, viewBrands, selectedBrands, categories, subs, tiers, onlyShop, onlyAd, sort]);
 
   const activeCount =
     selectedBrands.size + categories.size + subs.size + tiers.size + (onlyShop ? 1 : 0) + (onlyAd ? 1 : 0);
@@ -377,6 +380,28 @@ export default function Explorer() {
 
       {/* ===== 우측 콘텐츠 리스팅 ===== */}
       <section>
+        {/* 타겟 국가 (현재 US 활성, 그 외 준비중) */}
+        <div className="kt-noscrollbar mb-3 flex items-center gap-1.5 overflow-x-auto">
+          <span className="shrink-0 text-[10px] font-semibold text-[var(--muted)]">국가</span>
+          {COUNTRIES.map((co) => (
+            <button
+              key={co.id}
+              onClick={() => co.active && setCountry(co.id)}
+              disabled={!co.active}
+              title={co.active ? "" : "준비 중"}
+              className={`shrink-0 rounded-full border px-2.5 py-1 text-[11px] font-semibold transition-colors ${
+                country === co.id
+                  ? "border-[var(--accent)] bg-[var(--accent)] text-white"
+                  : co.active
+                  ? "border-[var(--border)] text-[var(--muted)] hover:border-[var(--accent)]"
+                  : "cursor-not-allowed border-[var(--border)] text-[var(--muted)]/40"
+              }`}
+            >
+              {co.flag} {co.nameKo}{!co.active && " · 준비중"}
+            </button>
+          ))}
+        </div>
+
         <div className="mb-3 flex flex-wrap items-center gap-2">
           <button
             onClick={() => setShowFilters((v) => !v)}

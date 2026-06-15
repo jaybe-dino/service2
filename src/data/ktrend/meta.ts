@@ -27,6 +27,19 @@ export const CATEGORY_MAP: Record<CategoryId, Category> = Object.fromEntries(
   CATEGORIES.map((c) => [c.id, c]),
 ) as Record<CategoryId, Category>;
 
+// 타겟 국가 (현재 US만 활성, 추후 확장 예정)
+export interface Country { id: string; nameKo: string; flag: string; active: boolean }
+export const COUNTRIES: Country[] = [
+  { id: "US", nameKo: "미국", flag: "🇺🇸", active: true },
+  { id: "TH", nameKo: "태국", flag: "🇹🇭", active: false },
+  { id: "VN", nameKo: "베트남", flag: "🇻🇳", active: false },
+  { id: "PH", nameKo: "필리핀", flag: "🇵🇭", active: false },
+  { id: "MY", nameKo: "말레이시아", flag: "🇲🇾", active: false },
+  { id: "SG", nameKo: "싱가포르", flag: "🇸🇬", active: false },
+  { id: "ID", nameKo: "인도네시아", flag: "🇮🇩", active: false },
+];
+export const COUNTRY_MAP: Record<string, Country> = Object.fromEntries(COUNTRIES.map((c) => [c.id, c]));
+
 // 세부 카테고리 (뷰티 세분화) — 브랜드/콘텐츠에 매칭
 export type SubCategoryId =
   | "derma" | "skincare" | "suncare" | "cleansing" | "mask"
