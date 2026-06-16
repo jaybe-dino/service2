@@ -13,13 +13,19 @@ export async function GET() {
 
   const members = await sql`
     SELECT u.id, u.email, u.name, u.brand, u.role, u.plan, u.pro_until, u.created_at,
-           COALESCE(p.total, 0) AS paid_total, p.last_paid
+           COALESCE(p.total, 0) AS paid_total, p.last_paid,
+           pr.code AS promo_code,
+           sub.status AS sub_status,
+           COALESCE(iv.cnt, 0)::int AS invite_count
     FROM users u
     LEFT JOIN (
       SELECT o.user_id, SUM(pm.amount)::bigint AS total, MAX(pm.created_at) AS last_paid
       FROM orders o JOIN payments pm ON pm.order_id = o.order_id
       GROUP BY o.user_id
     ) p ON p.user_id = u.id
+    LEFT JOIN promo_redemptions pr ON pr.user_id = u.id
+    LEFT JOIN subscriptions sub ON sub.user_id = u.id
+    LEFT JOIN (SELECT inviter_email, COUNT(*) AS cnt FROM invites GROUP BY inviter_email) iv ON iv.inviter_email = u.email
     ORDER BY u.created_at DESC LIMIT 500`;
 
   const orders = await sql`

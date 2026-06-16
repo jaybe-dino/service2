@@ -11,6 +11,7 @@ import { DEFAULT_CRAWL_RULES, type CrawlRules } from "@/lib/crawl-rules";
 interface Member {
   id: string; email: string; name: string; brand: string | null; role: string | null;
   plan: string; pro_until: number; created_at: string; paid_total: number; last_paid: string | null;
+  promo_code?: string | null; sub_status?: string | null; invite_count?: number;
 }
 interface Order {
   order_id: string; user_id: string; plan: string; amount: number; status: string; created_at: string; paid: boolean;
@@ -30,6 +31,14 @@ const KIND_LABEL: Record<string, string> = {
 const won = (n: number) => "₩" + Number(n || 0).toLocaleString();
 const dt = (s: string | null) => (s ? s.slice(0, 16).replace("T", " ") : "—");
 const proState = (until: number) => (Number(until) > Date.now() ? `Pro ~${new Date(Number(until)).toISOString().slice(0, 10)}` : "—");
+const proSource = (m: { pro_until: number; sub_status?: string | null; promo_code?: string | null; invite_count?: number; paid_total?: number }) => {
+  if (Number(m.pro_until) <= Date.now()) return "—";
+  if (m.sub_status) return m.sub_status === "trial" ? "결제 체험(7일)" : `구독(${m.sub_status})`;
+  if (m.promo_code) return `프로모션(${m.promo_code})`;
+  if ((m.invite_count ?? 0) >= 3) return "동료 초대(7일)";
+  if ((m.paid_total ?? 0) > 0) return "결제";
+  return "수동/기타";
+};
 
 type Tab = "members" | "payments" | "inquiries" | "collect" | "influencers" | "brands" | "utm" | "rules";
 interface UtmRow { key: string; visits: number; signups: number }
@@ -384,7 +393,7 @@ export default function AdminPage() {
             </div>
           </div>
 
-          <Table head={["이메일", "이름", "브랜드", "플랜", "결제액", "최근결제", "Pro 상태", "가입일", "비번"]}>
+          <Table head={["이메일", "이름", "브랜드", "플랜", "결제액", "최근결제", "Pro 상태", "Pro 출처", "가입일", "비번"]}>
             {members.map((m) => (
               <tr key={m.id} className="border-b border-[var(--border)] last:border-0">
                 <td className="p-2 font-semibold">{m.email}</td>
@@ -394,11 +403,12 @@ export default function AdminPage() {
                 <td className="p-2 text-right">{won(m.paid_total)}</td>
                 <td className="p-2 text-[var(--muted)]">{dt(m.last_paid)}</td>
                 <td className="p-2">{proState(m.pro_until)}</td>
+                <td className="p-2 text-[10px]">{proSource(m)}</td>
                 <td className="p-2 text-[var(--muted)]">{dt(m.created_at)}</td>
                 <td className="p-2"><button onClick={() => resetPw(m.email)} className="text-[10px] font-semibold text-[var(--accent)] hover:underline">초기화</button></td>
               </tr>
             ))}
-            {!members.length && <EmptyRow cols={9} text="가입 회원 없음" />}
+            {!members.length && <EmptyRow cols={10} text="가입 회원 없음" />}
           </Table>
         </>
       )}
