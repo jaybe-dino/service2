@@ -238,14 +238,12 @@ export function PlanProvider({ children }: { children: ReactNode }) {
       }
       return { granted: false, invited: 0, required: 3, domainRejected: 0, error: "초대 처리 실패" };
     }
-    // 데모: 같은 도메인 3명 이상이면 Pro 7일
+    // 초대 보상(Pro) 폐지 — 보상 없이 처리
     const myDomain = user?.email.split("@")[1]?.toLowerCase() ?? "";
     const valid = Array.from(new Set(emails.map((e) => e.trim().toLowerCase()).filter((e) => /.+@.+\..+/.test(e) && e !== user?.email)));
     const same = valid.filter((e) => e.split("@")[1] === myDomain);
     const domainRejected = valid.length - same.length;
-    let granted = false;
-    if (same.length >= 3) { startTrial(7); granted = true; }
-    return { granted, invited: same.length, required: 3, domainRejected };
+    return { granted: false, invited: same.length, required: 3, domainRejected };
   };
 
   const startTrial = (days: number) => {

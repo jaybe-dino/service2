@@ -103,7 +103,7 @@ const JSON_LD = {
           name: "요금제는 어떻게 되나요?",
           acceptedAnswer: {
             "@type": "Answer",
-            text: "무료 Basic, 월 ₩89,000 Pro(7일 무료 체험 후 자동결제), 가격 문의형 Enterprise로 구성됩니다. Pro는 콘텐츠 열람 무제한과 인플루언서 컨택, 브랜드 리포트를 제공합니다.",
+            text: "무료 Basic, 월 ₩89,000 Pro(결제 즉시 이용·매월 자동결제), 월 ₩159,000 Advance로 구성됩니다. Pro는 콘텐츠 열람과 인플루언서 DB, 브랜드 리포트를 제공합니다.",
           },
         },
         {

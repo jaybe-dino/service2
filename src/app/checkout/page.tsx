@@ -70,7 +70,7 @@ export default function CheckoutPage() {
     <PageShell>
       <div className="mx-auto max-w-md">
         <h1 className="mb-1 text-[22px] font-black tracking-tight">Pro 구독 시작</h1>
-        <p className="mb-5 text-[12px] text-[var(--muted)]">카드 등록 후 <b className="text-[var(--accent)]">7일 무료 체험</b> → 이후 매월 자동결제 (언제든 해지)</p>
+        <p className="mb-5 text-[12px] text-[var(--muted)]">결제 즉시 이용 · <b className="text-[var(--accent)]">매월 ₩89,000 자동결제</b> (언제든 해지)</p>
 
         {isPro ? (
           <div className="kt-card p-6 text-center">
@@ -92,7 +92,7 @@ export default function CheckoutPage() {
             <div className="flex items-baseline justify-between">
               <div>
                 <div className="text-[16px] font-black">Pro</div>
-                <div className="text-[11px] text-[var(--muted)]">7일 무료 → 월간 구독 · 언제든 해지</div>
+                <div className="text-[11px] text-[var(--muted)]">월간 구독 · 언제든 해지</div>
               </div>
               <div className="text-right">
                 <div className="text-[24px] font-black text-[var(--accent)]">₩89,000</div>
@@ -100,7 +100,7 @@ export default function CheckoutPage() {
               </div>
             </div>
             <div className="mt-3 rounded-md bg-[var(--accent-light)] px-3 py-2 text-[11px] font-semibold text-[var(--accent)]">
-              지금 ₩0 — 7일 뒤 첫 결제 ₩89,000, 이후 매월 자동결제
+              카드 등록 즉시 ₩89,000 첫 결제 · 이후 매월 자동결제
             </div>
             <ul className="mt-4 space-y-1.5 text-[11px]">
               <li className="flex gap-1.5"><Check size={13} className="mt-0.5 text-[var(--accent)]" /> 열람권 무제한 (콘텐츠·이름)</li>
@@ -109,9 +109,9 @@ export default function CheckoutPage() {
             </ul>
             {msg && <p className="mt-3 rounded-md bg-amber-50 px-3 py-2 text-[11px] font-semibold text-amber-700">{msg}</p>}
             <button onClick={pay} disabled={busy} className="kt-btn kt-btn-primary mt-5 w-full py-2.5 text-[12px] disabled:opacity-50">
-              {busy ? <Loader2 size={14} className="animate-spin" /> : <CreditCard size={14} />} {busy ? "처리 중…" : "카드 등록하고 7일 무료 시작"}
+              {busy ? <Loader2 size={14} className="animate-spin" /> : <CreditCard size={14} />} {busy ? "처리 중…" : "₩89,000 결제하고 Pro 시작"}
             </button>
-            <p className="mt-2 text-center text-[9px] text-[var(--muted)]">카드 등록 시 7일 후 자동결제가 시작됩니다. 마이페이지에서 언제든 해지할 수 있습니다.</p>
+            <p className="mt-2 text-center text-[9px] text-[var(--muted)]">결제 즉시 Pro가 활성화되며 매월 자동결제됩니다. 마이페이지에서 언제든 해지할 수 있습니다.</p>
           </div>
         )}
       </div>

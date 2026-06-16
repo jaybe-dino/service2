@@ -5,8 +5,7 @@ import { getCurrentUser, publicUser } from "@/lib/auth";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-// 동료 3명(같은 브랜드 이메일 도메인) 초대 시 Pro 7일 오픈
-const TRIAL_DAYS = 7;
+// 동료 초대 보상(Pro 7일)은 폐지됨 — 초대 기록만 남기고 보상 없음.
 const REQUIRED = 3;
 
 export async function POST(req: Request) {
@@ -40,18 +39,13 @@ export async function POST(req: Request) {
     WHERE inviter_email=${me.email} AND brand_domain=${myDomain}`;
   const count = rows[0]?.c ?? 0;
 
-  let granted = false;
-  if (count >= REQUIRED && Number(me.pro_until) < Date.now()) {
-    const until = Date.now() + TRIAL_DAYS * 86_400_000;
-    await sql`UPDATE users SET pro_until=${until} WHERE id=${me.id}`;
-    granted = true;
-  }
+  // 보상(Pro 부여) 폐지: granted 항상 false
   const fresh = await getCurrentUser();
   return NextResponse.json({
     invited: count,
     required: REQUIRED,
     domainRejected: valid.length - sameDomain.length,
-    granted,
+    granted: false,
     user: fresh ? publicUser(fresh) : null,
   });
 }

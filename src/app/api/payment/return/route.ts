@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { sql, ensureSchema, isConfigured as dbConfigured } from "@/lib/db";
-import { approvePayment, registerBillingKey } from "@/lib/nicepay";
+import { approvePayment, registerBillingKey, chargeByBillingKey, buildOrderId, SERVICE_ORDER_PREFIX } from "@/lib/nicepay";
 import { PAY_PLANS } from "@/lib/payments";
 
 export const runtime = "nodejs";
@@ -35,19 +35,34 @@ export async function POST(req: Request) {
   }
   if (order.status === "paid") return go("success");
 
-  // ── 정기결제(구독): 빌링키 등록 → trialDays 무료 부여, 이후 cron이 자동청구 ──
+  // ── 정기결제(구독): 빌링키 등록 → 무료체험 없이 즉시 첫 결제 → 매월 자동청구 ──
   if (order.kind === "subscribe") {
     const bid = bidForm || (await registerBillingKey({ tid })).bid;
     if (!bid) {
       await sql`UPDATE orders SET status='failed' WHERE order_id=${orderId}`;
       return go("fail");
     }
-    const trialMs = (PAY_PLANS.pro.trialDays ?? 7) * 86_400_000;
-    const until = Date.now() + trialMs;
+    const amt = PAY_PLANS.pro.amount;
+    const periodMs = (PAY_PLANS.pro.periodDays ?? 30) * 86_400_000;
+    // 즉시 첫 결제 (무료체험 제거)
+    const chargeOrderId = buildOrderId(SERVICE_ORDER_PREFIX, "Pro");
+    await sql`INSERT INTO orders (order_id, user_id, plan, amount, goods_name, status, kind)
+              VALUES (${chargeOrderId}, ${order.user_id}, 'pro', ${amt}, ${PAY_PLANS.pro.goodsName}, 'created', 'subscribe')`;
+    const charge = await chargeByBillingKey({ bid, orderId: chargeOrderId, amount: amt, goodsName: PAY_PLANS.pro.goodsName });
+    if (!charge.ok) {
+      await sql`UPDATE orders SET status='failed' WHERE order_id=${chargeOrderId}`;
+      await sql`UPDATE orders SET status='failed' WHERE order_id=${orderId}`;
+      return go("fail");
+    }
+    if (charge.tid) {
+      await sql`INSERT INTO payments (payment_id, order_id, amount, raw) VALUES (${charge.tid}, ${chargeOrderId}, ${amt}, ${JSON.stringify(charge.raw)}::jsonb) ON CONFLICT (payment_id) DO NOTHING`;
+    }
+    await sql`UPDATE orders SET status='paid' WHERE order_id=${chargeOrderId}`;
+    const nextAt = Date.now() + periodMs;
     await sql`INSERT INTO subscriptions (user_id, bid, plan, amount, status, next_charge_at, updated_at)
-              VALUES (${order.user_id}, ${bid}, 'pro', ${PAY_PLANS.pro.amount}, 'trial', ${until}, now())
-              ON CONFLICT (user_id) DO UPDATE SET bid=EXCLUDED.bid, amount=EXCLUDED.amount, status='trial', next_charge_at=EXCLUDED.next_charge_at, failures=0, updated_at=now()`;
-    await sql`UPDATE users SET pro_until = GREATEST(pro_until, ${until}) WHERE id=${order.user_id}`;
+              VALUES (${order.user_id}, ${bid}, 'pro', ${amt}, 'active', ${nextAt}, now())
+              ON CONFLICT (user_id) DO UPDATE SET bid=EXCLUDED.bid, amount=EXCLUDED.amount, status='active', next_charge_at=EXCLUDED.next_charge_at, failures=0, updated_at=now()`;
+    await sql`UPDATE users SET pro_until = GREATEST(pro_until, ${Date.now()}) + ${periodMs} WHERE id=${order.user_id}`;
     await sql`UPDATE orders SET status='paid' WHERE order_id=${orderId}`;
     return go("success");
   }
