@@ -90,11 +90,11 @@ function Metric({ label, value, blur }: { label: string; value: string; blur?: b
 }
 
 export default function ContentCard({ content }: { content: Content }) {
-  const { user, isPro, isAdmin, openVideo, isVideoOpened } = usePlan();
+  const { user, isPro, isAdmin, plan, openVideo, isVideoOpened } = usePlan();
   const router = useRouter();
   const [adminBlocked, setAdminBlocked] = useState<null | string>(null);
-  const lockMetrics = !user && !isAdmin; // 비로그인: ROAS 실루엣
-  const lockRevenue = !isPro && !isAdmin; // 비로그인·Basic: 매출 실루엣 (Pro·Advance만 노출)
+  const isAdvance = plan === "enterprise" || isAdmin; // 매출·ROAS는 Advance(또는 어드민)만
+  const lockMoney = !isAdvance; // 비로그인·Basic·Pro 전부 매출/ROAS 가림
 
   const adminBlock = async (kind: "video" | "handle") => {
     const value = kind === "video" ? tiktokVideoId(content.tiktokUrl) ?? content.id : content.influencerId;
@@ -245,8 +245,8 @@ export default function ContentCard({ content }: { content: Content }) {
         {/* 2x2 성과 지표 — 매출·ROAS는 비로그인 시 실루엣 처리 */}
         <div className="mt-0.5 grid grid-cols-2 gap-1.5">
           <Metric label="수수료율" value={`${content.commissionRate}%`} />
-          <Metric label="ROAS" value={`${content.estRoasX}x`} blur={lockMetrics} />
-          <Metric label="매출" value={fmtUSD(content.estRevenueUSD)} blur={lockRevenue} />
+          <Metric label="ROAS" value={`${content.estRoasX}x`} blur={lockMoney} />
+          <Metric label="매출" value={fmtUSD(content.estRevenueUSD)} blur={lockMoney} />
           <Metric label="참여율" value={`${content.engagementRate}%`} />
         </div>
 
