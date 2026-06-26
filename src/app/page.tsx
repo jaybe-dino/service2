@@ -2,12 +2,12 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { ArrowRight, BarChart3, Bell, Contact, TrendingUp } from "lucide-react";
+import { ArrowRight, BarChart3, Bell, Contact, TrendingUp, Check, ShoppingBag } from "lucide-react";
 import PageShell from "@/components/ktrend/PageShell";
 import ContentCard from "@/components/ktrend/ContentCard";
 import HeroBackground from "@/components/ktrend/HeroBackground";
 import { usePlan } from "@/components/ktrend/PlanContext";
-import { CATEGORIES } from "@/data/ktrend/meta";
+import { CATEGORIES, ONBOARDING, MALL_TRACKS, MALL_TRACK_MAP } from "@/data/ktrend/meta";
 import { BRANDS } from "@/data/ktrend/brands";
 import { loadContentStaged, randomSample, fmtCompact, type Content } from "@/data/ktrend/content";
 
@@ -71,6 +71,69 @@ export default function Home() {
           )}
         </div>
       </section>
+
+      {/* 틱톡샵 몰 입점 — 메인: Ready / Live Focus (각각 선택 입점) */}
+      {ONBOARDING.enabled && (
+        <section className="border-b border-[var(--border)] bg-white">
+          <div className="mx-auto max-w-[1480px] px-4 py-14">
+            <div className="text-center">
+              <span className="kt-badge-brand mx-auto inline-flex items-center gap-1">
+                <ShoppingBag size={12} /> TikTok Shop 입점
+              </span>
+              <h2 className="mt-3 text-[22px] font-black">틱톡샵, 글로벅과 함께 입점하세요</h2>
+              <p className="mt-2 text-[13px] text-[var(--muted)]">브랜드 목표에 맞는 트랙을 선택하면 바로 입점 신청이 시작됩니다.</p>
+            </div>
+
+            <div className="mx-auto mt-8 grid max-w-3xl gap-4 sm:grid-cols-2">
+              {MALL_TRACKS.filter((t) => t.flow === "subscribe").map((t) => (
+                <div
+                  key={t.id}
+                  className={`flex flex-col overflow-hidden rounded-2xl border bg-white ${
+                    t.highlight ? "border-pink-200 shadow-md" : "border-[var(--border)]"
+                  }`}
+                >
+                  {t.highlight && <div className="h-1 w-full bg-pink-500" />}
+                  <div className="px-5 pt-5">
+                    <div className="flex items-center justify-between">
+                      <div className="text-[18px] font-black tracking-tight">{t.name}</div>
+                      {t.highlight && <span className="rounded-full bg-pink-50 px-2 py-0.5 text-[10px] font-bold text-pink-600">추천</span>}
+                    </div>
+                    <div className="mt-1 text-[12px] text-[var(--muted)]">{t.tagline}</div>
+                    <div className="mt-3 flex items-end gap-1">
+                      <span className="text-[24px] font-black text-pink-500">{t.priceLabel}</span>
+                      <span className="mb-1 text-[12px] font-semibold text-[var(--muted)]">/월</span>
+                    </div>
+                    <div className="text-[12px] text-[var(--muted)]">+ {t.commissionLabel}</div>
+                  </div>
+                  <ul className="mt-4 flex-1 space-y-1.5 border-t border-[var(--border)] px-5 py-4">
+                    {t.features.map((f) => (
+                      <li key={f} className="flex gap-1.5 text-[12px]"><Check size={14} className="mt-0.5 shrink-0 text-pink-500" /> {f}</li>
+                    ))}
+                  </ul>
+                  <div className="px-5 pb-5">
+                    <Link
+                      href={`${ONBOARDING.path}?track=${t.id}`}
+                      className={`block w-full rounded-lg py-2.5 text-center text-[12px] font-bold transition-colors ${
+                        t.highlight ? "bg-pink-500 text-white hover:bg-pink-600" : "border border-[var(--fg)] text-[var(--fg)] hover:bg-slate-50"
+                      }`}
+                    >
+                      {t.name}으로 입점
+                    </Link>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="mt-6 text-center text-[12px] text-[var(--muted)]">
+              메가 스케일업이 필요하다면{" "}
+              <Link href={`${ONBOARDING.path}?track=onboarding`} className="font-semibold text-[var(--accent)] hover:underline">
+                {MALL_TRACK_MAP.onboarding.name} ({MALL_TRACK_MAP.onboarding.priceLabel}/월)
+              </Link>
+              {" "}· <Link href={ONBOARDING.path} className="font-semibold text-[var(--accent)] hover:underline">전체 트랙 비교</Link>
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* 지금 뜨는 콘텐츠 (랜덤) */}
       <section className="mx-auto max-w-[1480px] px-4 py-12">

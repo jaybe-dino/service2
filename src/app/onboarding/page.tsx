@@ -53,6 +53,15 @@ export default function OnboardingPage() {
     if (!ONBOARDING.enabled) router.replace("/explorer");
   }, [router]);
 
+  // 홈 등에서 ?track=ready|live|onboarding 로 들어오면 해당 트랙 선택 + 폼으로 스크롤
+  useEffect(() => {
+    const t = new URLSearchParams(window.location.search).get("track");
+    if (t === "ready" || t === "live" || t === "onboarding") {
+      setSelected(t);
+      setTimeout(() => formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 120);
+    }
+  }, []);
+
   useEffect(() => {
     if (user) {
       setBrand((b) => b || user.brand || user.company || "");
