@@ -5,29 +5,37 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { CheckCircle2, XCircle, Clock, ExternalLink, Loader2 } from "lucide-react";
 import PageShell from "@/components/ktrend/PageShell";
-import { ONBOARDING } from "@/data/ktrend/meta";
+import { ONBOARDING, MALL_TRACK_MAP, type MallTrackId } from "@/data/ktrend/meta";
 
 function DoneInner() {
   const params = useSearchParams();
   const status = params.get("status") ?? "success";
+  const trackId = (params.get("track") as MallTrackId) || null;
+  const track = trackId ? MALL_TRACK_MAP[trackId] : null;
   const ok = status === "success" || status === "pending";
+  // apply 플로우(Onboarding Track)만 외부 신청 페이지로 자동 이동
+  const forward = ok && track?.flow === "apply";
   const [count, setCount] = useState(4);
 
   useEffect(() => {
-    if (!ok) return;
+    if (!forward) return;
     const t = setInterval(() => setCount((c) => Math.max(0, c - 1)), 1000);
     const go = setTimeout(() => { window.location.href = ONBOARDING.applyUrl; }, 4000);
     return () => { clearInterval(t); clearTimeout(go); };
-  }, [ok]);
+  }, [forward]);
 
   return (
     <div className="mx-auto max-w-md py-10 text-center">
       {status === "success" ? (
         <>
           <CheckCircle2 className="mx-auto text-emerald-500" size={44} />
-          <h1 className="mt-3 text-[22px] font-black">온보딩 신청이 접수되었습니다</h1>
+          <h1 className="mt-3 text-[22px] font-black">
+            {track ? `${track.name} 입점 신청이 완료되었습니다` : "입점 신청이 완료되었습니다"}
+          </h1>
           <p className="mt-2 text-[13px] text-[var(--muted)]">
-            결제가 완료되었습니다. 잠시 후 입점 신청 페이지로 이동합니다.
+            {forward
+              ? "결제가 완료되었습니다. 잠시 후 입점 신청 페이지로 이동합니다."
+              : "결제가 완료되어 입점 신청이 접수되었습니다. 담당 매니저가 연락드려 다음 절차를 안내합니다."}
           </p>
         </>
       ) : status === "pending" ? (
@@ -35,7 +43,7 @@ function DoneInner() {
           <Clock className="mx-auto text-[var(--accent)]" size={44} />
           <h1 className="mt-3 text-[22px] font-black">신청이 접수되었습니다</h1>
           <p className="mt-2 text-[13px] text-[var(--muted)]">
-            담당 매니저가 결제·입점 절차를 안내드립니다. 입점 신청 페이지로 이동합니다.
+            담당 매니저가 결제·입점 절차를 안내드립니다.{forward ? " 입점 신청 페이지로 이동합니다." : ""}
           </p>
         </>
       ) : (
@@ -50,18 +58,20 @@ function DoneInner() {
 
       <div className="mt-6 flex flex-col items-center gap-2">
         {ok ? (
-          <>
-            <a href={ONBOARDING.applyUrl} className="kt-btn kt-btn-primary px-5 py-2.5 text-[12px]">
-              <ExternalLink size={14} /> 입점 신청 페이지로 이동 {count > 0 ? `(${count})` : ""}
-            </a>
-            <p className="inline-flex items-center gap-1 text-[10px] text-[var(--muted)]">
-              <Loader2 size={11} className="animate-spin" /> 자동 이동 중…
-            </p>
-          </>
+          forward ? (
+            <>
+              <a href={ONBOARDING.applyUrl} className="kt-btn kt-btn-primary px-5 py-2.5 text-[12px]">
+                <ExternalLink size={14} /> 입점 신청 페이지로 이동 {count > 0 ? `(${count})` : ""}
+              </a>
+              <p className="inline-flex items-center gap-1 text-[10px] text-[var(--muted)]">
+                <Loader2 size={11} className="animate-spin" /> 자동 이동 중…
+              </p>
+            </>
+          ) : (
+            <Link href="/mypage" className="kt-btn kt-btn-primary px-5 py-2.5 text-[12px]">마이페이지에서 구독 확인</Link>
+          )
         ) : (
-          <Link href={ONBOARDING.path} className="kt-btn kt-btn-primary px-5 py-2.5 text-[12px]">
-            다시 신청하기
-          </Link>
+          <Link href={ONBOARDING.path} className="kt-btn kt-btn-primary px-5 py-2.5 text-[12px]">다시 신청하기</Link>
         )}
         <Link href="/explorer" className="kt-btn kt-btn-outline px-5 py-2 text-[11px]">서비스로 돌아가기</Link>
       </div>

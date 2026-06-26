@@ -42,9 +42,10 @@ const proSource = (m: { pro_until: number; sub_status?: string | null; promo_cod
 
 interface OnbApp {
   id: string; user_id: string; name: string | null; brand: string | null; contact: string | null;
-  email: string | null; category: string | null; note: string | null; status: string;
+  email: string | null; category: string | null; note: string | null; track: string | null; status: string;
   order_id: string | null; created_ms: number; updated_ms: number;
 }
+const TRACK_LABEL: Record<string, string> = { ready: "Ready", live: "Live Focus", onboarding: "Onboarding" };
 type Tab = "members" | "payments" | "inquiries" | "onboarding" | "collect" | "influencers" | "brands" | "utm" | "rules";
 interface UtmRow { key: string; visits: number; signups: number }
 interface UtmRecent { kind: string; source: string | null; medium: string | null; campaign: string | null; content: string | null; user_email: string | null; created_at: string }
@@ -419,7 +420,7 @@ export default function AdminPage() {
             <span className="text-emerald-600">결제완료 {onbApps.filter((a) => a.status === "paid").length}건</span>
             <span className="text-amber-600">미결제 {onbApps.filter((a) => a.status !== "paid").length}건</span>
           </div>
-          <Table head={["상태", "브랜드", "담당자", "연락처", "이메일", "카테고리", "요청사항", "신청시각"]}>
+          <Table head={["상태", "트랙", "브랜드", "담당자", "연락처", "이메일", "카테고리", "요청사항", "신청시각"]}>
             {onbApps.map((a) => (
               <tr key={a.id} className="border-b border-[var(--border)] last:border-0 align-top">
                 <td className="p-2">
@@ -427,6 +428,7 @@ export default function AdminPage() {
                     {a.status === "paid" ? "결제완료" : "접수"}
                   </span>
                 </td>
+                <td className="p-2">{a.track ? <span className="kt-badge-brand">{TRACK_LABEL[a.track] ?? a.track}</span> : "—"}</td>
                 <td className="p-2 font-semibold">{a.brand ?? "—"}</td>
                 <td className="p-2">{a.name ?? "—"}</td>
                 <td className="p-2">{a.contact ?? "—"}</td>
@@ -436,7 +438,7 @@ export default function AdminPage() {
                 <td className="p-2 text-[var(--muted)]">{dt(new Date(Number(a.created_ms)).toISOString())}</td>
               </tr>
             ))}
-            {!onbApps.length && <EmptyRow cols={8} text="온보딩 신청 없음" />}
+            {!onbApps.length && <EmptyRow cols={9} text="온보딩 신청 없음" />}
           </Table>
         </>
       )}

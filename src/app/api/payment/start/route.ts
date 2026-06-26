@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { sql, ensureSchema, isConfigured as dbConfigured } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
 import { isConfigured as payConfigured, clientKey, buildOrderId, SERVICE_ORDER_PREFIX } from "@/lib/nicepay";
-import { PAY_PLANS } from "@/lib/payments";
+import { PAY_PLANS, isMallPlan } from "@/lib/payments";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -15,9 +15,9 @@ export async function POST(req: Request) {
   const body = await req.json().catch(() => ({}));
   const planKey = String(body?.plan ?? "pro");
   // 기본: 정기결제(구독) — 카드 등록 후 trialDays 무료, 이후 자동청구
-  // 온보딩 트랙은 단건 결제(once)이며 별도 kind로 기록 → 결제 후 apply.tpartners 로 이동
+  // 몰 입점 트랙(ready/live/onboarding)은 빌링키 기반 월 구독이며 kind='mall'로 기록.
   let mode = body?.mode === "once" ? "once" : "subscribe";
-  if (planKey === "onboarding") mode = "onboarding";
+  if (isMallPlan(planKey)) mode = "mall";
   const price = PAY_PLANS[planKey];
   if (!price) return NextResponse.json({ ok: false, error: "결제 불가 플랜" }, { status: 400 });
 
@@ -27,8 +27,8 @@ export async function POST(req: Request) {
 
   await ensureSchema();
   const orderId = buildOrderId(SERVICE_ORDER_PREFIX, price.planInitial);
-  // 구독 등록 인증은 금액 0(빌키 발급용), 단건은 정상 금액
-  const authAmount = mode === "subscribe" ? 0 : price.amount;
+  // 구독/몰 입점 등록 인증은 금액 0(빌키 발급용), 단건은 정상 금액
+  const authAmount = mode === "subscribe" || mode === "mall" ? 0 : price.amount;
   await sql`INSERT INTO orders (order_id, user_id, plan, amount, goods_name, status, kind)
             VALUES (${orderId}, ${me.id}, ${planKey}, ${authAmount}, ${price.goodsName}, 'created', ${mode})`;
 

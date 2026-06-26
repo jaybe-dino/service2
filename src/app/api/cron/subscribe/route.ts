@@ -49,7 +49,35 @@ async function handle(req: Request) {
       failed += 1;
     }
   }
-  return NextResponse.json({ ok: true, due: due.rows.length, charged, failed });
+  // ── 몰 입점 트랙 정기결제 (Pro와 분리, pro_until 미반영) ──
+  const mallDue = await sql<{ user_id: string; track: string; bid: string; amount: number; failures: number }>`
+    SELECT user_id, track, bid, amount, failures FROM mall_subscriptions
+    WHERE bid IS NOT NULL AND status IN ('active') AND next_charge_at <= ${now}
+    ORDER BY next_charge_at ASC LIMIT 20`;
+  let mallCharged = 0;
+  let mallFailed = 0;
+  for (const s of mallDue.rows) {
+    const plan = PAY_PLANS[s.track] ?? PAY_PLANS.ready;
+    const period = (plan.periodDays ?? 30) * 86_400_000;
+    const orderId = buildOrderId(SERVICE_ORDER_PREFIX, plan.planInitial);
+    await sql`INSERT INTO orders (order_id, user_id, plan, amount, goods_name, status, kind)
+              VALUES (${orderId}, ${s.user_id}, ${s.track}, ${s.amount}, ${plan.goodsName}, 'created', 'mall')`;
+    const r = await chargeByBillingKey({ bid: s.bid, orderId, amount: s.amount, goodsName: plan.goodsName });
+    if (r.ok && r.tid) {
+      await sql`INSERT INTO payments (payment_id, order_id, amount, raw) VALUES (${r.tid}, ${orderId}, ${s.amount}, ${JSON.stringify(r.raw)}::jsonb) ON CONFLICT (payment_id) DO NOTHING`;
+      await sql`UPDATE orders SET status='paid' WHERE order_id=${orderId}`;
+      await sql`UPDATE mall_subscriptions SET status='active', failures=0, next_charge_at=${now + period}, updated_at=now() WHERE user_id=${s.user_id}`;
+      mallCharged += 1;
+    } else {
+      await sql`UPDATE orders SET status='failed' WHERE order_id=${orderId}`;
+      const f = (s.failures ?? 0) + 1;
+      const status = f >= BILLING_FAILURE_THRESHOLD ? "past_due" : "active";
+      await sql`UPDATE mall_subscriptions SET failures=${f}, status=${status}, next_charge_at=${now + 86_400_000}, updated_at=now() WHERE user_id=${s.user_id}`;
+      mallFailed += 1;
+    }
+  }
+
+  return NextResponse.json({ ok: true, due: due.rows.length, charged, failed, mallDue: mallDue.rows.length, mallCharged, mallFailed });
 }
 
 export async function GET(req: Request) { return handle(req); }

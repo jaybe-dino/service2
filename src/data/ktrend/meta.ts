@@ -48,12 +48,57 @@ export const ONBOARDING = {
   enabled: true,
   navLabel: "틱톡샵 입점",
   path: "/onboarding",
-  // 온보딩 트랙 단건 결제 금액 (VAT 포함)
-  fee: 3_000_000,
-  feeLabel: "₩3,000,000",
-  // 결제 완료 후 이동할 외부 신청 페이지 (환경변수로 오버라이드 가능)
+  // Onboarding Track 결제 완료 후 이동할 외부 신청 페이지 (환경변수로 오버라이드 가능)
   applyUrl: process.env.NEXT_PUBLIC_ONBOARDING_APPLY_URL || "https://apply.tpartners.live",
 } as const;
+
+// 글로벅 몰 입점 트랙 — 메인은 Ready / Live Focus (사이트 내 구독 결제),
+// Onboarding Track은 결제 후 apply.tpartners 로 이동.
+export type MallTrackId = "ready" | "live" | "onboarding";
+export interface MallTrack {
+  id: MallTrackId;
+  name: string;
+  tagline: string;
+  price: number;
+  priceLabel: string;
+  commissionLabel: string;
+  features: string[];
+  highlight: boolean;             // Live Focus = 추천(상단 핑크 라인)
+  dark: boolean;                  // Onboarding = 다크 헤더
+  flow: "subscribe" | "apply";    // subscribe=사이트 내 구독 / apply=결제 후 apply.tpartners
+}
+
+export const MALL_TRACKS: MallTrack[] = [
+  {
+    id: "ready", name: "Ready Track", tagline: "초기 국가 파일럿 런칭",
+    price: 150_000, priceLabel: "₩150,000", commissionLabel: "판매 수수료 15%",
+    features: ["벤더 매칭 및 제안 (비독점)", "어필리에이트 캠페인 운영", "제품 상세페이지 번역 지원", "최대 2개 제품 등록 가능"],
+    highlight: false, dark: false, flow: "subscribe",
+  },
+  {
+    id: "live", name: "Live Focus Track", tagline: "자체 브랜드 채널 운영 목표",
+    price: 490_000, priceLabel: "₩490,000", commissionLabel: "판매 수수료 10%",
+    features: ["무가 라이브 커머스 지원 (월 4회)", "유가 시딩 캠페인 운영", "무가 시딩 캠페인 20개~", "최대 5개 제품 등록 가능"],
+    highlight: true, dark: false, flow: "subscribe",
+  },
+  {
+    id: "onboarding", name: "Onboarding Track", tagline: "메가 스케일업 & 채널 독립",
+    price: 3_000_000, priceLabel: "₩3,000,000", commissionLabel: "판매 수수료 10%",
+    features: ["GMV 달성 캠페인 운영 대행", "브랜드 자체 채널 온보딩 지원", "메가셀럽 및 대형 캠페인 제안", "제품 수량 제한 없이 등록 가능"],
+    highlight: false, dark: true, flow: "apply",
+  },
+];
+
+export const MALL_TRACK_MAP: Record<MallTrackId, MallTrack> =
+  Object.fromEntries(MALL_TRACKS.map((t) => [t.id, t])) as Record<MallTrackId, MallTrack>;
+
+// 모든 트랙 공통 제공 혜택
+export const MALL_COMMON_BENEFITS = [
+  "틱톡샵 입점 @Glovek",
+  "Glovek 플랫폼 이용권",
+  "물류/CS 대행 (물류비 별도)",
+  "인플루언서 제품 노출 지원",
+];
 
 // 세부 카테고리 (뷰티 세분화) — 브랜드/콘텐츠에 매칭
 export type SubCategoryId =

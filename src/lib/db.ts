@@ -257,6 +257,20 @@ export function ensureSchema(): Promise<void> {
         created_at timestamptz NOT NULL DEFAULT now(),
         updated_at timestamptz NOT NULL DEFAULT now()
       )`;
+      // 선택한 입점 트랙(ready/live/onboarding)
+      await sql`ALTER TABLE onboarding_applications ADD COLUMN IF NOT EXISTS track text`;
+      // 몰 입점 정기결제 구독 (Pro SaaS 구독과 분리) — 브랜드당 1개 트랙
+      await sql`CREATE TABLE IF NOT EXISTS mall_subscriptions (
+        user_id text PRIMARY KEY,
+        track text NOT NULL,
+        bid text,
+        amount integer NOT NULL DEFAULT 0,
+        status text NOT NULL DEFAULT 'active',
+        next_charge_at bigint NOT NULL DEFAULT 0,
+        failures int NOT NULL DEFAULT 0,
+        created_at timestamptz NOT NULL DEFAULT now(),
+        updated_at timestamptz NOT NULL DEFAULT now()
+      )`;
       // 데모/관리자 계정 시드 (bcrypt("ktrend2026")) — 서버 세션 로그인 가능하도록
       const DEMO_HASH = "$2b$10$mLc7sBm3zK4a83l6/Tg9NOoDGLLYsfp4SXRfZcls4.LTw6Tsy/8Oy";
       await sql`INSERT INTO users (id, email, password_hash, name, brand, role, plan) VALUES

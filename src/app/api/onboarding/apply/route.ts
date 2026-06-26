@@ -19,6 +19,8 @@ export async function POST(req: Request) {
   const email = String(body?.email ?? me.email).trim().slice(0, 200);
   const category = String(body?.category ?? "").trim().slice(0, 120);
   const note = String(body?.note ?? "").trim().slice(0, 2000);
+  const track = ["ready", "live", "onboarding"].includes(String(body?.track))
+    ? String(body?.track) : null;
 
   if (!brand || !contact) {
     return NextResponse.json({ ok: false, error: "브랜드명과 연락처는 필수입니다." }, { status: 400 });
@@ -27,11 +29,12 @@ export async function POST(req: Request) {
   await ensureSchema();
   // 사용자당 가장 최근 신청 1건을 갱신, 없으면 새로 생성
   const id = `onb_${me.id}`;
-  await sql`INSERT INTO onboarding_applications (id, user_id, name, brand, contact, email, category, note, status, updated_at)
-            VALUES (${id}, ${me.id}, ${name}, ${brand}, ${contact}, ${email}, ${category}, ${note}, 'submitted', now())
+  await sql`INSERT INTO onboarding_applications (id, user_id, name, brand, contact, email, category, note, track, status, updated_at)
+            VALUES (${id}, ${me.id}, ${name}, ${brand}, ${contact}, ${email}, ${category}, ${note}, ${track}, 'submitted', now())
             ON CONFLICT (id) DO UPDATE SET
               name=EXCLUDED.name, brand=EXCLUDED.brand, contact=EXCLUDED.contact,
               email=EXCLUDED.email, category=EXCLUDED.category, note=EXCLUDED.note,
+              track=COALESCE(EXCLUDED.track, onboarding_applications.track),
               status=CASE WHEN onboarding_applications.status='paid' THEN 'paid' ELSE 'submitted' END,
               updated_at=now()`;
 
@@ -44,7 +47,7 @@ export async function GET() {
   if (!(await isAdminAuthed())) return NextResponse.json({ ok: false, error: "권한 없음" }, { status: 403 });
   await ensureSchema();
   const { rows } = await sql`
-    SELECT id, user_id, name, brand, contact, email, category, note, status, order_id,
+    SELECT id, user_id, name, brand, contact, email, category, note, track, status, order_id,
            extract(epoch from created_at)*1000 AS created_ms,
            extract(epoch from updated_at)*1000 AS updated_ms
     FROM onboarding_applications ORDER BY updated_at DESC LIMIT 500`;
