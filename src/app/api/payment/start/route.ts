@@ -15,7 +15,9 @@ export async function POST(req: Request) {
   const body = await req.json().catch(() => ({}));
   const planKey = String(body?.plan ?? "pro");
   // 기본: 정기결제(구독) — 카드 등록 후 trialDays 무료, 이후 자동청구
-  const mode = body?.mode === "once" ? "once" : "subscribe";
+  // 온보딩 트랙은 단건 결제(once)이며 별도 kind로 기록 → 결제 후 apply.tpartners 로 이동
+  let mode = body?.mode === "once" ? "once" : "subscribe";
+  if (planKey === "onboarding") mode = "onboarding";
   const price = PAY_PLANS[planKey];
   if (!price) return NextResponse.json({ ok: false, error: "결제 불가 플랜" }, { status: 400 });
 

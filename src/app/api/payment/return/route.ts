@@ -67,6 +67,25 @@ export async function POST(req: Request) {
     return go("success");
   }
 
+  // ── 틱톡샵 온보딩 트랙(단건 ₩3,000,000) — 승인 후 apply.tpartners 로 이동, Pro 권한 부여 X ──
+  if (order.kind === "onboarding") {
+    if (Number(order.amount) !== amount) {
+      await sql`UPDATE orders SET status='failed' WHERE order_id=${orderId}`;
+      return NextResponse.redirect(`${base}/onboarding/done?status=fail`, 303);
+    }
+    const result = await approvePayment({ tid, amount });
+    if (!result.ok) {
+      await sql`UPDATE orders SET status='failed' WHERE order_id=${orderId}`;
+      return NextResponse.redirect(`${base}/onboarding/done?status=fail`, 303);
+    }
+    await sql`INSERT INTO payments (payment_id, order_id, amount, raw)
+              VALUES (${tid}, ${orderId}, ${amount}, ${JSON.stringify(result.raw)}::jsonb)
+              ON CONFLICT (payment_id) DO NOTHING`;
+    await sql`UPDATE orders SET status='paid' WHERE order_id=${orderId}`;
+    await sql`UPDATE onboarding_applications SET status='paid', order_id=${orderId}, updated_at=now() WHERE user_id=${order.user_id} AND (order_id=${orderId} OR order_id IS NULL)`;
+    return NextResponse.redirect(`${base}/onboarding/done?status=success`, 303);
+  }
+
   // ── 단건 결제 ──
   if (Number(order.amount) !== amount) {
     await sql`UPDATE orders SET status='failed' WHERE order_id=${orderId}`;

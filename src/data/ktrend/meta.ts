@@ -40,6 +40,21 @@ export const COUNTRIES: Country[] = [
 ];
 export const COUNTRY_MAP: Record<string, Country> = Object.fromEntries(COUNTRIES.map((c) => [c.id, c]));
 
+// ---------------------------------------------------------------------------
+// 틱톡샵 온보딩 트랙 (롤백 가능 — ONBOARDING.enabled=false 로 끄면 탭/페이지 전부 숨김)
+// 흐름: 회원가입 → 최소 정보 입력 → 기본 결제(₩3,000,000) → apply.tpartners 로 이동
+// ---------------------------------------------------------------------------
+export const ONBOARDING = {
+  enabled: true,
+  navLabel: "틱톡샵 입점",
+  path: "/onboarding",
+  // 온보딩 트랙 단건 결제 금액 (VAT 포함)
+  fee: 3_000_000,
+  feeLabel: "₩3,000,000",
+  // 결제 완료 후 이동할 외부 신청 페이지 (환경변수로 오버라이드 가능)
+  applyUrl: process.env.NEXT_PUBLIC_ONBOARDING_APPLY_URL || "https://apply.tpartners.kr",
+} as const;
+
 // 세부 카테고리 (뷰티 세분화) — 브랜드/콘텐츠에 매칭
 export type SubCategoryId =
   | "derma" | "skincare" | "suncare" | "cleansing" | "mask"

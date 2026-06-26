@@ -3,10 +3,11 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LogIn, LogOut, Bookmark, Menu, X } from "lucide-react";
+import { LogIn, LogOut, Bookmark, Menu, X, ShoppingBag } from "lucide-react";
 import { usePlan } from "./PlanContext";
 import OnlineCount from "./OnlineCount";
 import type { PlanId } from "@/data/ktrend/meta";
+import { ONBOARDING } from "@/data/ktrend/meta";
 
 const NAV: { href: string; label: string; title?: string; desc?: string }[] = [
   { href: "/explorer", label: "콘텐츠 레퍼런스", title: "콘텐츠", desc: "성과있는 콘텐츠를 카테고리와 브랜드별로 찾아보세요" },
@@ -67,6 +68,18 @@ export default function SiteHeader() {
         </nav>
 
         <div className="ml-auto flex items-center gap-2">
+          {/* 틱톡샵 온보딩 트랙 (롤백 가능: ONBOARDING.enabled=false) */}
+          {ONBOARDING.enabled && (
+            <Link
+              href={ONBOARDING.path}
+              className={`hidden items-center gap-1.5 rounded-full px-3 py-1.5 text-[11px] font-bold text-white shadow-sm transition-opacity hover:opacity-90 sm:inline-flex ${
+                pathname?.startsWith(ONBOARDING.path) ? "ring-2 ring-violet-300" : ""
+              }`}
+              style={{ background: "linear-gradient(90deg,#7C3AED,#1A56DB)" }}
+            >
+              <ShoppingBag size={13} /> {ONBOARDING.navLabel}
+            </Link>
+          )}
           {/* TEST1: 동시 접속자 (롤백 시 이 줄 제거) */}
           <OnlineCount />
           {user && !isPro && (
@@ -142,6 +155,19 @@ export default function SiteHeader() {
                 </Link>
               );
             })}
+
+            {/* 틱톡샵 온보딩 (모바일) */}
+            {ONBOARDING.enabled && (
+              <Link
+                href={ONBOARDING.path}
+                onClick={() => setMenuOpen(false)}
+                className="mt-1 flex items-center gap-2 rounded-lg px-3 py-2.5 text-white"
+                style={{ background: "linear-gradient(90deg,#7C3AED,#1A56DB)" }}
+              >
+                <ShoppingBag size={15} />
+                <span className="text-[13px] font-bold">{ONBOARDING.navLabel}</span>
+              </Link>
+            )}
 
             {/* 모바일 인증 버튼 */}
             <div className="mt-2 flex gap-2 border-t border-[var(--border)] pt-2">

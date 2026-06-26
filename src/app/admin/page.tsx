@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ShieldCheck, Users, CreditCard, UserSquare2, Tag, SlidersHorizontal, Loader2, LogOut, Gift, Inbox, Database, Play, Link2 as LinkIcon } from "lucide-react";
+import { ShieldCheck, Users, CreditCard, UserSquare2, Tag, SlidersHorizontal, Loader2, LogOut, Gift, Inbox, Database, Play, Link2 as LinkIcon, ShoppingBag } from "lucide-react";
 import PageShell from "@/components/ktrend/PageShell";
 import { INFLUENCERS, contactFor } from "@/data/ktrend/influencers";
 import { BRANDS } from "@/data/ktrend/brands";
@@ -40,7 +40,12 @@ const proSource = (m: { pro_until: number; sub_status?: string | null; promo_cod
   return "수동/기타";
 };
 
-type Tab = "members" | "payments" | "inquiries" | "collect" | "influencers" | "brands" | "utm" | "rules";
+interface OnbApp {
+  id: string; user_id: string; name: string | null; brand: string | null; contact: string | null;
+  email: string | null; category: string | null; note: string | null; status: string;
+  order_id: string | null; created_ms: number; updated_ms: number;
+}
+type Tab = "members" | "payments" | "inquiries" | "onboarding" | "collect" | "influencers" | "brands" | "utm" | "rules";
 interface UtmRow { key: string; visits: number; signups: number }
 interface UtmRecent { kind: string; source: string | null; medium: string | null; campaign: string | null; content: string | null; user_email: string | null; created_at: string }
 
@@ -66,6 +71,7 @@ export default function AdminPage() {
   const [debugLog, setDebugLog] = useState<string[]>([]);
   const [lastCollect, setLastCollect] = useState<{ at: string; ok: boolean; scraper?: boolean; mode?: string; reason?: string; ingested?: number; polledDone?: number; kickedNew?: number; kickedRefresh?: number } | null>(null);
   const [tracking, setTracking] = useState<Track[]>([]);
+  const [onbApps, setOnbApps] = useState<OnbApp[]>([]);
   const [blocks, setBlocks] = useState<{ kind: string; value: string; reason: string | null }[]>([]);
   const [blockVal, setBlockVal] = useState("");
   const [blockKind, setBlockKind] = useState<"handle" | "brand">("handle");
@@ -103,6 +109,8 @@ export default function AdminPage() {
       setTotals(r.totals ?? null);
       if (r.crawlRules) setRules({ ...DEFAULT_CRAWL_RULES, ...r.crawlRules });
     }
+    const onb = await fetch("/api/onboarding/apply", { cache: "no-store" }).then((x) => x.json()).catch(() => null);
+    if (onb?.ok) setOnbApps(onb.items ?? []);
   };
   useEffect(() => { if (authed) loadData(); }, [authed]);
 
@@ -300,6 +308,7 @@ export default function AdminPage() {
     { id: "members", label: "회원·결제", icon: <Users size={13} /> },
     { id: "payments", label: "결제현황", icon: <CreditCard size={13} /> },
     { id: "inquiries", label: "문의·제안", icon: <Inbox size={13} /> },
+    { id: "onboarding", label: "틱톡샵 온보딩", icon: <ShoppingBag size={13} /> },
     { id: "collect", label: "브랜드 수집", icon: <Database size={13} /> },
     { id: "influencers", label: "인플루언서", icon: <UserSquare2 size={13} /> },
     { id: "brands", label: "브랜드", icon: <Tag size={13} /> },
@@ -400,6 +409,36 @@ export default function AdminPage() {
           })}
           {!inquiries.length && <EmptyRow cols={6} text="문의·제안 없음" />}
         </Table>
+      )}
+
+      {tab === "onboarding" && (
+        <>
+          <div className="mb-3 flex flex-wrap items-center gap-3 kt-card p-3 text-[11px]">
+            <span className="flex items-center gap-1.5 font-bold"><ShoppingBag size={13} className="text-[var(--accent)]" /> 틱톡샵 온보딩 신청</span>
+            <span className="text-[var(--muted)]">총 {onbApps.length}건</span>
+            <span className="text-emerald-600">결제완료 {onbApps.filter((a) => a.status === "paid").length}건</span>
+            <span className="text-amber-600">미결제 {onbApps.filter((a) => a.status !== "paid").length}건</span>
+          </div>
+          <Table head={["상태", "브랜드", "담당자", "연락처", "이메일", "카테고리", "요청사항", "신청시각"]}>
+            {onbApps.map((a) => (
+              <tr key={a.id} className="border-b border-[var(--border)] last:border-0 align-top">
+                <td className="p-2">
+                  <span className={a.status === "paid" ? "rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-700" : "rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-bold text-amber-700"}>
+                    {a.status === "paid" ? "결제완료" : "접수"}
+                  </span>
+                </td>
+                <td className="p-2 font-semibold">{a.brand ?? "—"}</td>
+                <td className="p-2">{a.name ?? "—"}</td>
+                <td className="p-2">{a.contact ?? "—"}</td>
+                <td className="p-2 text-[10px]">{a.email ?? "—"}</td>
+                <td className="p-2 text-[10px]">{a.category ?? "—"}</td>
+                <td className="p-2 text-[10px] text-[var(--muted)] max-w-[220px]">{a.note ?? ""}</td>
+                <td className="p-2 text-[var(--muted)]">{dt(new Date(Number(a.created_ms)).toISOString())}</td>
+              </tr>
+            ))}
+            {!onbApps.length && <EmptyRow cols={8} text="온보딩 신청 없음" />}
+          </Table>
+        </>
       )}
 
       {tab === "collect" && (

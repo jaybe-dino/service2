@@ -4,7 +4,7 @@ const SITE_URL = "https://glovek.space";
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const now = new Date();
-  const routes = ["", "/explorer", "/influencers", "/reports", "/plans", "/signup", "/login", "/terms", "/privacy"];
+  const routes = ["", "/explorer", "/influencers", "/reports", "/plans", "/onboarding", "/signup", "/login", "/terms", "/privacy"];
   return routes.map((path) => ({
     url: `${SITE_URL}${path}`,
     lastModified: now,
