@@ -52,7 +52,7 @@ export const ONBOARDING = {
   fee: 3_000_000,
   feeLabel: "₩3,000,000",
   // 결제 완료 후 이동할 외부 신청 페이지 (환경변수로 오버라이드 가능)
-  applyUrl: process.env.NEXT_PUBLIC_ONBOARDING_APPLY_URL || "https://apply.tpartners.kr",
+  applyUrl: process.env.NEXT_PUBLIC_ONBOARDING_APPLY_URL || "https://apply.tpartners.live",
 } as const;
 
 // 세부 카테고리 (뷰티 세분화) — 브랜드/콘텐츠에 매칭
