@@ -42,10 +42,11 @@ const proSource = (m: { pro_until: number; sub_status?: string | null; promo_cod
 
 interface OnbApp {
   id: string; user_id: string; name: string | null; brand: string | null; contact: string | null;
-  email: string | null; category: string | null; note: string | null; track: string | null; status: string;
-  order_id: string | null; created_ms: number; updated_ms: number;
+  email: string | null; track: string | null; grade: string | null; recommended_track: string | null;
+  countries: string | null; term: string | null; amount: number | null; phase: string | null;
+  referral_code: string | null; status: string; order_id: string | null; created_ms: number; updated_ms: number;
 }
-const TRACK_LABEL: Record<string, string> = { ready: "Ready", live: "Live Focus", onboarding: "Onboarding" };
+const TRACK_LABEL: Record<string, string> = { ready: "Start", live: "Live Focus", onboarding: "Onboarding" };
 type Tab = "members" | "payments" | "inquiries" | "onboarding" | "collect" | "influencers" | "brands" | "utm" | "rules";
 interface UtmRow { key: string; visits: number; signups: number }
 interface UtmRecent { kind: string; source: string | null; medium: string | null; campaign: string | null; content: string | null; user_email: string | null; created_at: string }
@@ -418,27 +419,29 @@ export default function AdminPage() {
             <span className="flex items-center gap-1.5 font-bold"><ShoppingBag size={13} className="text-[var(--accent)]" /> 틱톡샵 온보딩 신청</span>
             <span className="text-[var(--muted)]">총 {onbApps.length}건</span>
             <span className="text-emerald-600">결제완료 {onbApps.filter((a) => a.status === "paid").length}건</span>
-            <span className="text-amber-600">미결제 {onbApps.filter((a) => a.status !== "paid").length}건</span>
+            <span className="text-amber-600">진행중 {onbApps.filter((a) => a.status !== "paid").length}건</span>
           </div>
-          <Table head={["상태", "트랙", "브랜드", "담당자", "연락처", "이메일", "카테고리", "요청사항", "신청시각"]}>
+          <Table head={["상태", "트랙", "등급", "브랜드", "담당자", "연락처", "진출국가", "약정", "월청구", "추천인", "신청시각"]}>
             {onbApps.map((a) => (
               <tr key={a.id} className="border-b border-[var(--border)] last:border-0 align-top">
                 <td className="p-2">
                   <span className={a.status === "paid" ? "rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-700" : "rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-bold text-amber-700"}>
-                    {a.status === "paid" ? "결제완료" : "접수"}
+                    {a.status === "paid" ? "결제완료" : a.phase ?? "접수"}
                   </span>
                 </td>
                 <td className="p-2">{a.track ? <span className="kt-badge-brand">{TRACK_LABEL[a.track] ?? a.track}</span> : "—"}</td>
+                <td className="p-2 font-bold">{a.grade ?? "—"}</td>
                 <td className="p-2 font-semibold">{a.brand ?? "—"}</td>
                 <td className="p-2">{a.name ?? "—"}</td>
-                <td className="p-2">{a.contact ?? "—"}</td>
-                <td className="p-2 text-[10px]">{a.email ?? "—"}</td>
-                <td className="p-2 text-[10px]">{a.category ?? "—"}</td>
-                <td className="p-2 text-[10px] text-[var(--muted)] max-w-[220px]">{a.note ?? ""}</td>
+                <td className="p-2 text-[10px]">{a.contact ?? "—"}</td>
+                <td className="p-2 text-[10px]">{a.countries ?? "—"}</td>
+                <td className="p-2 text-[10px]">{a.term === "6month" ? "6개월" : a.term === "monthly" ? "월" : "—"}</td>
+                <td className="p-2 text-[10px] font-semibold">{a.amount ? won(a.amount) : "—"}</td>
+                <td className="p-2 text-[10px]">{a.referral_code ? <span className="kt-badge-brand">{a.referral_code}</span> : "—"}</td>
                 <td className="p-2 text-[var(--muted)]">{dt(new Date(Number(a.created_ms)).toISOString())}</td>
               </tr>
             ))}
-            {!onbApps.length && <EmptyRow cols={9} text="온보딩 신청 없음" />}
+            {!onbApps.length && <EmptyRow cols={11} text="온보딩 신청 없음" />}
           </Table>
         </>
       )}

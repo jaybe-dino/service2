@@ -70,7 +70,7 @@ export interface MallTrack {
 
 export const MALL_TRACKS: MallTrack[] = [
   {
-    id: "ready", name: "Ready Track", tagline: "초기 국가 파일럿 런칭",
+    id: "ready", name: "Start Track", tagline: "초기 국가 파일럿 런칭",
     price: 150_000, priceLabel: "₩150,000", commissionLabel: "판매 수수료 15%",
     features: ["벤더 매칭 및 제안 (비독점)", "어필리에이트 캠페인 운영", "제품 상세페이지 번역 지원", "최대 2개 제품 등록 가능"],
     highlight: false, dark: false, flow: "subscribe",

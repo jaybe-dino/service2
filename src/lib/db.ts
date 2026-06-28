@@ -63,8 +63,10 @@ export function ensureSchema(): Promise<void> {
         status text NOT NULL DEFAULT 'created',
         created_at timestamptz NOT NULL DEFAULT now()
       )`;
-      // 결제 종류: once(단건) | subscribe(정기/빌링키 등록)
+      // 결제 종류: once(단건) | subscribe(정기/빌링키 등록) | mall(몰 입점 구독)
       await sql`ALTER TABLE orders ADD COLUMN IF NOT EXISTS kind text NOT NULL DEFAULT 'once'`;
+      // 몰 입점: 빌링키 등록 후 실제 월 청구 금액(다국가/약정 할인 반영). 인증금액(amount)=0과 별개.
+      await sql`ALTER TABLE orders ADD COLUMN IF NOT EXISTS charge_amount integer`;
       // payment_id(tid) UNIQUE = 멱등성. raw 7년 보관(audit).
       await sql`CREATE TABLE IF NOT EXISTS payments (
         payment_id text PRIMARY KEY,
@@ -259,6 +261,16 @@ export function ensureSchema(): Promise<void> {
       )`;
       // 선택한 입점 트랙(ready/live/onboarding)
       await sql`ALTER TABLE onboarding_applications ADD COLUMN IF NOT EXISTS track text`;
+      // 5-PHASE 온보딩 상세 (자가체크·등급·국가·약정·요금·상세정보 전체 페이로드)
+      await sql`ALTER TABLE onboarding_applications ADD COLUMN IF NOT EXISTS grade text`;
+      await sql`ALTER TABLE onboarding_applications ADD COLUMN IF NOT EXISTS recommended_track text`;
+      await sql`ALTER TABLE onboarding_applications ADD COLUMN IF NOT EXISTS countries text`;
+      await sql`ALTER TABLE onboarding_applications ADD COLUMN IF NOT EXISTS term text`;
+      await sql`ALTER TABLE onboarding_applications ADD COLUMN IF NOT EXISTS amount integer`;
+      await sql`ALTER TABLE onboarding_applications ADD COLUMN IF NOT EXISTS phase text NOT NULL DEFAULT 'self_check'`;
+      await sql`ALTER TABLE onboarding_applications ADD COLUMN IF NOT EXISTS referral_code text`;
+      await sql`ALTER TABLE onboarding_applications ADD COLUMN IF NOT EXISTS dino_linked boolean NOT NULL DEFAULT false`;
+      await sql`ALTER TABLE onboarding_applications ADD COLUMN IF NOT EXISTS payload jsonb`;
       // 몰 입점 정기결제 구독 (Pro SaaS 구독과 분리) — 브랜드당 1개 트랙
       await sql`CREATE TABLE IF NOT EXISTS mall_subscriptions (
         user_id text PRIMARY KEY,
