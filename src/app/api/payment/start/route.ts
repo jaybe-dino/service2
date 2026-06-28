@@ -40,8 +40,9 @@ export async function POST(req: Request) {
 
   await ensureSchema();
   const orderId = buildOrderId(SERVICE_ORDER_PREFIX, price.planInitial);
-  // 구독/몰 입점 등록 인증은 금액 0(빌키 발급용), 단건은 정상 금액. 실제 청구액은 charge_amount.
-  const authAmount = mode === "subscribe" || mode === "mall" ? 0 : price.amount;
+  // 결제창에는 항상 실제 금액을 전달한다(0원 창은 NICEpay P013 오류).
+  // 첫 회차를 결제창에서 승인 → 그 거래(tid)로 빌링키를 발급해 다음 달부터 자동청구.
+  const authAmount = mode === "mall" ? chargeAmount : price.amount;
   await sql`INSERT INTO orders (order_id, user_id, plan, amount, charge_amount, goods_name, status, kind)
             VALUES (${orderId}, ${me.id}, ${planKey}, ${authAmount}, ${chargeAmount}, ${price.goodsName}, 'created', ${mode})`;
 

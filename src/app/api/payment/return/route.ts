@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { sql, ensureSchema, isConfigured as dbConfigured } from "@/lib/db";
-import { approvePayment, registerBillingKey, chargeByBillingKey, buildOrderId, SERVICE_ORDER_PREFIX } from "@/lib/nicepay";
+import { approvePayment, registerBillingKey } from "@/lib/nicepay";
 import { PAY_PLANS } from "@/lib/payments";
 import type { MallTrackId } from "@/data/ktrend/meta";
 
@@ -36,35 +36,30 @@ export async function POST(req: Request) {
   }
   if (order.status === "paid") return go("success");
 
-  // ── 정기결제(구독): 빌링키 등록 → 무료체험 없이 즉시 첫 결제 → 매월 자동청구 ──
+  // ── 정기결제(구독): 결제창에서 첫 달 실결제 승인 → 그 거래로 빌링키 발급 → 다음 달부터 자동청구 ──
   if (order.kind === "subscribe") {
-    const bid = bidForm || (await registerBillingKey({ tid })).bid;
-    if (!bid) {
-      await sql`UPDATE orders SET status='failed' WHERE order_id=${orderId}`;
-      return go("fail");
-    }
     const amt = PAY_PLANS.pro.amount;
     const periodMs = (PAY_PLANS.pro.periodDays ?? 30) * 86_400_000;
-    // 즉시 첫 결제 (무료체험 제거)
-    const chargeOrderId = buildOrderId(SERVICE_ORDER_PREFIX, "Pro");
-    await sql`INSERT INTO orders (order_id, user_id, plan, amount, goods_name, status, kind)
-              VALUES (${chargeOrderId}, ${order.user_id}, 'pro', ${amt}, ${PAY_PLANS.pro.goodsName}, 'created', 'subscribe')`;
-    const charge = await chargeByBillingKey({ bid, orderId: chargeOrderId, amount: amt, goodsName: PAY_PLANS.pro.goodsName });
-    if (!charge.ok) {
-      await sql`UPDATE orders SET status='failed' WHERE order_id=${chargeOrderId}`;
+    if (Number(amount) !== amt) {
       await sql`UPDATE orders SET status='failed' WHERE order_id=${orderId}`;
       return go("fail");
     }
-    if (charge.tid) {
-      await sql`INSERT INTO payments (payment_id, order_id, amount, raw) VALUES (${charge.tid}, ${chargeOrderId}, ${amt}, ${JSON.stringify(charge.raw)}::jsonb) ON CONFLICT (payment_id) DO NOTHING`;
+    // 1) 첫 달 결제 승인(캡처)
+    const ap = await approvePayment({ tid, amount: amt });
+    if (!ap.ok) {
+      await sql`UPDATE orders SET status='failed' WHERE order_id=${orderId}`;
+      return go("fail");
     }
-    await sql`UPDATE orders SET status='paid' WHERE order_id=${chargeOrderId}`;
+    await sql`INSERT INTO payments (payment_id, order_id, amount, raw)
+              VALUES (${tid}, ${orderId}, ${amt}, ${JSON.stringify(ap.raw)}::jsonb) ON CONFLICT (payment_id) DO NOTHING`;
+    await sql`UPDATE orders SET status='paid' WHERE order_id=${orderId}`;
+    // 2) 빌링키 발급(다음 달부터 자동청구용) — 실패해도 첫 달 이용은 보장
+    const bid = bidForm || ap.bid || (await registerBillingKey({ tid })).bid || null;
     const nextAt = Date.now() + periodMs;
     await sql`INSERT INTO subscriptions (user_id, bid, plan, amount, status, next_charge_at, updated_at)
               VALUES (${order.user_id}, ${bid}, 'pro', ${amt}, 'active', ${nextAt}, now())
               ON CONFLICT (user_id) DO UPDATE SET bid=EXCLUDED.bid, amount=EXCLUDED.amount, status='active', next_charge_at=EXCLUDED.next_charge_at, failures=0, updated_at=now()`;
     await sql`UPDATE users SET pro_until = GREATEST(pro_until, ${Date.now()}) + ${periodMs} WHERE id=${order.user_id}`;
-    await sql`UPDATE orders SET status='paid' WHERE order_id=${orderId}`;
     return go("success");
   }
 
@@ -73,32 +68,25 @@ export async function POST(req: Request) {
   if (order.kind === "mall") {
     const track = (order.plan as MallTrackId) || "ready";
     const fail = () => NextResponse.redirect(`${base}/onboarding?payfail=1`, 303);
-    const bid = bidForm || (await registerBillingKey({ tid })).bid;
-    if (!bid) { await sql`UPDATE orders SET status='failed' WHERE order_id=${orderId}`; return fail(); }
     const plan = PAY_PLANS[track] ?? PAY_PLANS.ready;
     // 다국가/약정 반영 월 청구액 (start에서 산출해 둔 charge_amount)
     const amt = Number(order.charge_amount) || plan.amount;
     const periodMs = (plan.periodDays ?? 30) * 86_400_000;
-    const chargeOrderId = buildOrderId(SERVICE_ORDER_PREFIX, plan.planInitial);
-    await sql`INSERT INTO orders (order_id, user_id, plan, amount, charge_amount, goods_name, status, kind)
-              VALUES (${chargeOrderId}, ${order.user_id}, ${track}, ${amt}, ${amt}, ${plan.goodsName}, 'created', 'mall')`;
-    const charge = await chargeByBillingKey({ bid, orderId: chargeOrderId, amount: amt, goodsName: plan.goodsName });
-    if (!charge.ok) {
-      await sql`UPDATE orders SET status='failed' WHERE order_id=${chargeOrderId}`;
-      await sql`UPDATE orders SET status='failed' WHERE order_id=${orderId}`;
-      return fail();
-    }
-    if (charge.tid) {
-      await sql`INSERT INTO payments (payment_id, order_id, amount, raw) VALUES (${charge.tid}, ${chargeOrderId}, ${amt}, ${JSON.stringify(charge.raw)}::jsonb) ON CONFLICT (payment_id) DO NOTHING`;
-    }
-    await sql`UPDATE orders SET status='paid' WHERE order_id=${chargeOrderId}`;
+    if (Number(amount) !== amt) { await sql`UPDATE orders SET status='failed' WHERE order_id=${orderId}`; return fail(); }
+    // 1) 첫 달 결제 승인(캡처)
+    const ap = await approvePayment({ tid, amount: amt });
+    if (!ap.ok) { await sql`UPDATE orders SET status='failed' WHERE order_id=${orderId}`; return fail(); }
+    await sql`INSERT INTO payments (payment_id, order_id, amount, raw)
+              VALUES (${tid}, ${orderId}, ${amt}, ${JSON.stringify(ap.raw)}::jsonb) ON CONFLICT (payment_id) DO NOTHING`;
+    await sql`UPDATE orders SET status='paid' WHERE order_id=${orderId}`;
+    // 2) 빌링키 발급(다음 달부터 자동청구용) — 실패해도 첫 달 입점은 보장
+    const bid = bidForm || ap.bid || (await registerBillingKey({ tid })).bid || null;
     const nextAt = Date.now() + periodMs;
     await sql`INSERT INTO mall_subscriptions (user_id, track, bid, amount, status, next_charge_at, updated_at)
               VALUES (${order.user_id}, ${track}, ${bid}, ${amt}, 'active', ${nextAt}, now())
               ON CONFLICT (user_id) DO UPDATE SET track=EXCLUDED.track, bid=EXCLUDED.bid, amount=EXCLUDED.amount, status='active', next_charge_at=EXCLUDED.next_charge_at, failures=0, updated_at=now()`;
-    // 결제 완료 → 신청을 paid로, 디노 물류 연동 플래그 ON. PHASE 4(정보입력)는 사이트에서 이어서.
+    // 결제 완료 → 신청 paid, 디노 물류 연동 플래그 ON. PHASE 4(정보입력)는 사이트에서 이어서.
     await sql`UPDATE onboarding_applications SET status='paid', track=${track}, phase='details', dino_linked=true, order_id=${orderId}, updated_at=now() WHERE user_id=${order.user_id}`;
-    await sql`UPDATE orders SET status='paid' WHERE order_id=${orderId}`;
     return NextResponse.redirect(`${base}/onboarding?paid=1`, 303);
   }
 

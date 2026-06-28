@@ -206,7 +206,7 @@ function OnboardingInner() {
             <ShoppingBag size={12} /> TikTok Shop 입점 신청
           </div>
           <h1 className="mt-2 text-[22px] font-black leading-tight">자가체크 → 트랙 선택 → 결제 → 정보입력까지 한 번에</h1>
-          <Link href="/tts/Qna" className="mt-3 inline-flex items-center gap-1 rounded-full bg-white/15 px-3 py-1 text-[11px] font-bold hover:bg-white/25">
+          <Link href="/tts/qna" className="mt-3 inline-flex items-center gap-1 rounded-full bg-white/15 px-3 py-1 text-[11px] font-bold hover:bg-white/25">
             자주 묻는 질문 (QnA 100선) <ArrowRight size={12} />
           </Link>
         </div>
