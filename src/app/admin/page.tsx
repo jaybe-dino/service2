@@ -1,11 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ShieldCheck, Users, CreditCard, UserSquare2, Tag, SlidersHorizontal, Loader2, LogOut, Gift, Inbox, Database, Play, Link2 as LinkIcon, ShoppingBag } from "lucide-react";
+import { ShieldCheck, Users, CreditCard, UserSquare2, Tag, SlidersHorizontal, Loader2, LogOut, Gift, Inbox, Database, Play, Link2 as LinkIcon, ShoppingBag, X } from "lucide-react";
 import PageShell from "@/components/ktrend/PageShell";
 import { INFLUENCERS, contactFor } from "@/data/ktrend/influencers";
 import { BRANDS } from "@/data/ktrend/brands";
 import { TIERS } from "@/data/ktrend/meta";
+import { SELF_CHECK_QUESTIONS, ONB_COUNTRY_MAP, COMMON_CERT } from "@/lib/onboarding";
 import { DEFAULT_CRAWL_RULES, type CrawlRules } from "@/lib/crawl-rules";
 
 interface Member {
@@ -40,11 +41,20 @@ const proSource = (m: { pro_until: number; sub_status?: string | null; promo_cod
   return "수동/기타";
 };
 
+interface OnbProduct { nameKo?: string; nameEn?: string; cat?: string; price?: string; cost?: string; netWeight?: string; netUnit?: string; packWeight?: string; w?: string; h?: string; d?: string; desc?: string }
+interface OnbPayload {
+  checks?: Record<string, boolean>; yes?: number; countries?: string[]; certs?: Record<string, string>; referral?: string;
+  details?: {
+    brandKo?: string; brandEn?: string; bizNo?: string; repName?: string; managerName?: string; contact?: string; email?: string;
+    meetingType?: string; meetingSlots?: string[]; products?: OnbProduct[]; settlement?: { bank?: string; acct?: string; holder?: string }; note?: string;
+  };
+}
 interface OnbApp {
   id: string; user_id: string; name: string | null; brand: string | null; contact: string | null;
   email: string | null; track: string | null; grade: string | null; recommended_track: string | null;
   countries: string | null; term: string | null; amount: number | null; phase: string | null;
-  referral_code: string | null; status: string; order_id: string | null; created_ms: number; updated_ms: number;
+  referral_code: string | null; status: string; order_id: string | null; payload: OnbPayload | null;
+  created_ms: number; updated_ms: number;
 }
 const TRACK_LABEL: Record<string, string> = { ready: "Start", live: "Live Focus", onboarding: "Onboarding" };
 interface Referrer { code: string; login_id: string; name: string | null; created_ms: number; signups: number }
@@ -75,6 +85,7 @@ export default function AdminPage() {
   const [lastCollect, setLastCollect] = useState<{ at: string; ok: boolean; scraper?: boolean; mode?: string; reason?: string; ingested?: number; polledDone?: number; kickedNew?: number; kickedRefresh?: number } | null>(null);
   const [tracking, setTracking] = useState<Track[]>([]);
   const [onbApps, setOnbApps] = useState<OnbApp[]>([]);
+  const [onbDetail, setOnbDetail] = useState<OnbApp | null>(null);
   const [referrers, setReferrers] = useState<Referrer[]>([]);
   const [refName, setRefName] = useState("");
   const [newRef, setNewRef] = useState<{ code: string; loginId: string; password: string; name: string } | null>(null);
@@ -436,12 +447,14 @@ export default function AdminPage() {
             <span className="text-emerald-600">결제완료 {onbApps.filter((a) => a.status === "paid").length}건</span>
             <span className="text-amber-600">진행중 {onbApps.filter((a) => a.status !== "paid").length}건</span>
           </div>
-          <Table head={["상태", "트랙", "등급", "브랜드", "담당자", "연락처", "진출국가", "약정", "월청구", "추천인", "신청시각"]}>
-            {onbApps.map((a) => (
+          <Table head={["상태", "트랙", "등급", "브랜드", "담당자", "연락처", "진출국가", "약정", "월청구", "추천인", "신청시각", "자료"]}>
+            {onbApps.map((a) => {
+              const hasDocs = !!a.payload?.details;
+              return (
               <tr key={a.id} className="border-b border-[var(--border)] last:border-0 align-top">
                 <td className="p-2">
-                  <span className={a.status === "paid" ? "rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-700" : "rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-bold text-amber-700"}>
-                    {a.status === "paid" ? "결제완료" : a.phase ?? "접수"}
+                  <span className={a.status === "paid" || a.status === "details_submitted" ? "rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-700" : "rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-bold text-amber-700"}>
+                    {a.status === "details_submitted" ? "신청완료" : a.status === "paid" ? "결제완료" : a.phase ?? "접수"}
                   </span>
                 </td>
                 <td className="p-2">{a.track ? <span className="kt-badge-brand">{TRACK_LABEL[a.track] ?? a.track}</span> : "—"}</td>
@@ -454,9 +467,14 @@ export default function AdminPage() {
                 <td className="p-2 text-[10px] font-semibold">{a.amount ? won(a.amount) : "—"}</td>
                 <td className="p-2 text-[10px]">{a.referral_code ? <span className="kt-badge-brand">{a.referral_code}</span> : "—"}</td>
                 <td className="p-2 text-[var(--muted)]">{dt(new Date(Number(a.created_ms)).toISOString())}</td>
+                <td className="p-2">
+                  <button onClick={() => setOnbDetail(a)} className="rounded-md border border-[var(--border)] px-2 py-1 text-[10px] font-semibold text-[var(--accent)] hover:bg-[var(--accent-light)]">
+                    {hasDocs ? "상세보기" : "현황"}
+                  </button>
+                </td>
               </tr>
-            ))}
-            {!onbApps.length && <EmptyRow cols={11} text="온보딩 신청 없음" />}
+            );})}
+            {!onbApps.length && <EmptyRow cols={12} text="온보딩 신청 없음" />}
           </Table>
         </>
       )}
@@ -821,8 +839,120 @@ export default function AdminPage() {
           <p className="mt-2 text-[10px] text-[var(--muted)]">※ 규칙 저장까지 지원합니다. 실제 수집 워커(cron) 연동 시 이 값이 파이프라인에 적용됩니다.</p>
         </div>
       )}
+
+      {onbDetail && <OnbDetailModal a={onbDetail} onClose={() => setOnbDetail(null)} />}
     </PageShell>
   );
+}
+
+function OnbDetailModal({ a, onClose }: { a: OnbApp; onClose: () => void }) {
+  const p = a.payload ?? {};
+  const det = p.details;
+  const cs = (a.countries ?? "").split(",").filter(Boolean);
+  const won2 = (n: string | number | undefined) => (n ? "₩" + Number(n).toLocaleString() : "—");
+  return (
+    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/45 p-4" onClick={onClose}>
+      <div className="my-6 w-full max-w-2xl rounded-xl bg-white p-5 text-[var(--fg)] shadow-2xl" onClick={(e) => e.stopPropagation()}>
+        <div className="mb-3 flex items-center justify-between">
+          <h3 className="flex items-center gap-2 text-[15px] font-black">
+            틱톡샵 입점 신청 상세
+            <span className="kt-badge-brand">{TRACK_LABEL[a.track ?? ""] ?? a.track ?? "—"}</span>
+            {a.grade && <span className="rounded-full bg-[var(--accent)] px-2 py-0.5 text-[10px] font-bold text-white">예비 {a.grade}등급</span>}
+          </h3>
+          <button onClick={onClose} className="text-[var(--muted)] hover:text-[var(--fg)]"><X size={18} /></button>
+        </div>
+
+        <div className="space-y-4 text-[12px]">
+          {/* 결제·신청 요약 */}
+          <Section title="신청·결제">
+            <KV k="상태" v={a.status === "details_submitted" ? "신청완료" : a.status === "paid" ? "결제완료(정보입력 대기)" : a.status} />
+            <KV k="진출 국가" v={cs.map((c) => ONB_COUNTRY_MAP[c]?.nameKo ?? c).join(", ") || "—"} />
+            <KV k="약정" v={a.term === "6month" ? "6개월 약정" : a.term === "monthly" ? "월 구독" : "—"} />
+            <KV k="결제액" v={a.amount ? won(a.amount) : "—"} />
+            <KV k="추천인 코드" v={a.referral_code ?? "—"} />
+            <KV k="주문번호" v={a.order_id ?? "—"} />
+          </Section>
+
+          {/* 자가체크 */}
+          <Section title={`자가체크 (Y ${p.yes ?? 0}/5)`}>
+            {SELF_CHECK_QUESTIONS.map((q) => (
+              <div key={q.id} className="flex items-start gap-2">
+                <span className={`mt-0.5 shrink-0 rounded px-1.5 py-0.5 text-[10px] font-bold ${p.checks?.[q.id] ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-400"}`}>{p.checks?.[q.id] ? "Y" : "N"}</span>
+                <span className="text-[11px] leading-snug text-[var(--muted)]">{q.label}</span>
+              </div>
+            ))}
+          </Section>
+
+          {/* 인증 현황 */}
+          <Section title="국가별 인증 현황">
+            {cs.flatMap((c) => (ONB_COUNTRY_MAP[c]?.certs ?? []).map((cert) => (
+              <KV key={cert.id} k={`${ONB_COUNTRY_MAP[c].flag} ${ONB_COUNTRY_MAP[c].nameKo} · ${cert.label}`} v={p.certs?.[cert.id] ?? "—"} />
+            )))}
+            <KV k={`🌐 ${COMMON_CERT.label}`} v={p.certs?.[COMMON_CERT.id] ?? "—"} />
+            {!cs.length && <p className="text-[var(--muted)]">—</p>}
+          </Section>
+
+          {det ? (
+            <>
+              {/* 브랜드 정보 */}
+              <Section title="브랜드 기본 정보">
+                <KV k="브랜드명(국문)" v={det.brandKo ?? "—"} />
+                <KV k="브랜드명(영문)" v={det.brandEn ?? "—"} />
+                <KV k="사업자등록번호" v={det.bizNo ?? "—"} />
+                <KV k="대표자명" v={det.repName ?? "—"} />
+                <KV k="담당자명" v={det.managerName ?? "—"} />
+                <KV k="연락처" v={det.contact ?? "—"} />
+                <KV k="이메일" v={det.email ?? "—"} />
+                <KV k="미팅 선호" v={`${det.meetingType ?? "—"}${det.meetingSlots?.length ? ` · ${det.meetingSlots.join(", ")}` : ""}`} />
+              </Section>
+
+              {/* 제품 */}
+              <Section title={`등록 제품 (${det.products?.length ?? 0})`}>
+                {(det.products ?? []).map((pr, i) => (
+                  <div key={i} className="rounded-lg border border-[var(--border)] p-2.5">
+                    <div className="text-[12px] font-bold">{i + 1}. {pr.nameKo || pr.nameEn || "(제품명 미입력)"} {pr.nameEn && pr.nameKo ? <span className="text-[10px] font-normal text-[var(--muted)]">/ {pr.nameEn}</span> : null}</div>
+                    <div className="mt-1 grid grid-cols-2 gap-x-3 gap-y-0.5 text-[10px] text-[var(--muted)]">
+                      <span>카테고리: {pr.cat ?? "—"}</span>
+                      <span>소비자가: {won2(pr.price)}</span>
+                      <span>원가: {won2(pr.cost)}</span>
+                      <span>포장 후 무게: {pr.packWeight ? `${pr.packWeight}g` : "—"}</span>
+                      {(pr.w || pr.h || pr.d) && <span>사이즈: {pr.w || "?"}×{pr.h || "?"}×{pr.d || "?"}mm</span>}
+                    </div>
+                    {pr.desc && <p className="mt-1 text-[10px] leading-relaxed text-[var(--muted)]">{pr.desc}</p>}
+                  </div>
+                ))}
+                {!det.products?.length && <p className="text-[var(--muted)]">—</p>}
+              </Section>
+
+              {/* 정산 계좌 */}
+              <Section title="정산 계좌">
+                <KV k="은행" v={det.settlement?.bank ?? "—"} />
+                <KV k="계좌번호" v={det.settlement?.acct ?? "—"} />
+                <KV k="예금주" v={det.settlement?.holder ?? "—"} />
+              </Section>
+
+              {det.note && <Section title="요청사항"><p className="text-[11px] leading-relaxed text-[var(--muted)]">{det.note}</p></Section>}
+            </>
+          ) : (
+            <div className="rounded-lg bg-amber-50 px-3 py-2 text-[11px] text-amber-700">아직 상세 정보(브랜드·제품·정산)는 제출되지 않았습니다.</div>
+          )}
+          <p className="text-[10px] text-[var(--muted)]">※ 사업자등록증·제품 사진 등 파일은 1:1 미팅/이메일로 별도 수령합니다.</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div className="rounded-lg border border-[var(--border)] p-3">
+      <div className="mb-2 text-[12px] font-black text-[var(--accent)]">{title}</div>
+      <div className="space-y-1">{children}</div>
+    </div>
+  );
+}
+function KV({ k, v }: { k: string; v: string }) {
+  return <div className="flex gap-2"><span className="shrink-0 text-[var(--muted)]">{k}</span><span className="ml-auto text-right font-semibold">{v}</span></div>;
 }
 
 function Table({ head, children }: { head: string[]; children: React.ReactNode }) {
