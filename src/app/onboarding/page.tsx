@@ -9,7 +9,7 @@ import {
 } from "lucide-react";
 import PageShell from "@/components/ktrend/PageShell";
 import { usePlan } from "@/components/ktrend/PlanContext";
-import { ONBOARDING, MALL_TRACKS, MALL_TRACK_MAP, type MallTrackId } from "@/data/ktrend/meta";
+import { ONBOARDING, MALL_TRACKS, MALL_TRACK_MAP, PAY_TEST_MODE, type MallTrackId } from "@/data/ktrend/meta";
 import {
   SELF_CHECK_QUESTIONS, ONB_COUNTRIES, ONB_COUNTRY_MAP, COMMON_CERT,
   gradeFromChecks, missingCerts, computeQuote, ONB_TIMELINE,
@@ -222,6 +222,7 @@ function OnboardingInner() {
           ))}
         </div>
 
+        {PAY_TEST_MODE && <p className="mt-4 rounded-md bg-amber-50 px-3 py-2 text-[11px] font-bold text-amber-700">⚠️ 결제 테스트 모드 — 모든 트랙 결제 금액이 ₩1,000으로 청구됩니다.</p>}
         {msg && <p className="mt-4 rounded-md bg-amber-50 px-3 py-2 text-[12px] font-semibold text-amber-700">{msg}</p>}
 
         {/* ───────── PHASE 1 ───────── */}

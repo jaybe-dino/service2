@@ -52,6 +52,12 @@ export const ONBOARDING = {
   applyUrl: process.env.NEXT_PUBLIC_ONBOARDING_APPLY_URL || "https://apply.tpartners.live",
 } as const;
 
+// ⚠️ 결제 테스트 모드 — true면 모든 결제 금액(Pro·몰 입점 트랙)을 ₩1,000으로 강제한다.
+// 실제 결제 테스트가 끝나면 반드시 false로 되돌릴 것. (운영 금액은 그대로 보존)
+export const PAY_TEST_MODE = true;
+export const testPrice = (real: number): number => (PAY_TEST_MODE ? 1000 : real);
+const wonLabel = (n: number): string => "₩" + n.toLocaleString();
+
 // 글로벅 몰 입점 트랙 — 메인은 Ready / Live Focus (사이트 내 구독 결제),
 // Onboarding Track은 결제 후 apply.tpartners 로 이동.
 export type MallTrackId = "ready" | "live" | "onboarding";
@@ -71,19 +77,19 @@ export interface MallTrack {
 export const MALL_TRACKS: MallTrack[] = [
   {
     id: "ready", name: "Start Track", tagline: "초기 국가 파일럿 런칭",
-    price: 150_000, priceLabel: "₩150,000", commissionLabel: "판매 수수료 15%",
+    price: testPrice(150_000), priceLabel: wonLabel(testPrice(150_000)), commissionLabel: "판매 수수료 15%",
     features: ["벤더 매칭 및 제안 (비독점)", "어필리에이트 캠페인 운영", "제품 상세페이지 번역 지원", "최대 2개 제품 등록 가능"],
     highlight: false, dark: false, flow: "subscribe",
   },
   {
     id: "live", name: "Live Focus Track", tagline: "자체 브랜드 채널 운영 목표",
-    price: 490_000, priceLabel: "₩490,000", commissionLabel: "판매 수수료 10%",
+    price: testPrice(490_000), priceLabel: wonLabel(testPrice(490_000)), commissionLabel: "판매 수수료 10%",
     features: ["무가 라이브 커머스 지원 (월 4회)", "유가 시딩 캠페인 운영", "무가 시딩 캠페인 20개~", "최대 5개 제품 등록 가능"],
     highlight: true, dark: false, flow: "subscribe",
   },
   {
     id: "onboarding", name: "Onboarding Track", tagline: "메가 스케일업 & 채널 독립",
-    price: 3_000_000, priceLabel: "₩3,000,000", commissionLabel: "판매 수수료 10%",
+    price: testPrice(3_000_000), priceLabel: wonLabel(testPrice(3_000_000)), commissionLabel: "판매 수수료 10%",
     features: ["GMV 달성 캠페인 운영 대행", "브랜드 자체 채널 온보딩 지원", "메가셀럽 및 대형 캠페인 제안", "제품 수량 제한 없이 등록 가능"],
     highlight: false, dark: true, flow: "apply",
   },
@@ -185,7 +191,7 @@ export const PLANS: Plan[] = [
   {
     id: "pro",
     name: "Pro",
-    price: "₩89,000",
+    price: wonLabel(testPrice(89_000)),
     priceNote: "/ 월",
     tagline: "마케터를 위한 풀 액세스",
     popular: true,
