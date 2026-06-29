@@ -44,11 +44,17 @@ export async function POST(req: Request) {
     periodDays = q.months * 30;
   }
 
+  // 🧪 라이브 결제 테스트: 비밀 토큰(URL ?test=)이 서버 환경변수와 일치하면 결제 금액을 1/10000로 축소.
+  //    토큰 미설정/불일치면 무시(정상 금액). 회원가입 등 다른 로직은 영향 없음. 최소 결제액 100원 보정.
+  const testTok = String(body?.test ?? "");
+  const testMode = !!process.env.PAY_TEST_TOKEN && testTok === process.env.PAY_TEST_TOKEN;
+  if (testMode) chargeAmount = Math.max(100, Math.round(chargeAmount / 10000));
+
   await ensureSchema();
   const orderId = buildOrderId(SERVICE_ORDER_PREFIX, price.planInitial);
-  // 결제창에는 항상 실제 금액을 전달한다(0원 창은 NICEpay P013 오류).
+  // 결제창에는 항상 실제 청구 금액을 전달한다(0원 창은 NICEpay P013 오류).
   // 첫 회차를 결제창에서 승인 → 그 거래(tid)로 빌링키를 발급해 다음 회차부터 자동청구.
-  const authAmount = mode === "mall" ? chargeAmount : price.amount;
+  const authAmount = chargeAmount;
   await sql`INSERT INTO orders (order_id, user_id, plan, amount, charge_amount, period_days, goods_name, status, kind)
             VALUES (${orderId}, ${me.id}, ${planKey}, ${authAmount}, ${chargeAmount}, ${periodDays}, ${price.goodsName}, 'created', ${mode})`;
 
@@ -72,5 +78,6 @@ export async function POST(req: Request) {
     goodsName: price.goodsName,
     returnUrl,
     trialDays: price.trialDays,
+    testCharge: testMode,
   });
 }

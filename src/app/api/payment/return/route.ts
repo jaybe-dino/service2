@@ -38,8 +38,9 @@ export async function POST(req: Request) {
 
   // ── 정기결제(구독): 결제창에서 첫 달 실결제 승인 → 그 거래로 빌링키 발급 → 다음 달부터 자동청구 ──
   if (order.kind === "subscribe") {
-    const amt = PAY_PLANS.pro.amount;
-    const periodMs = (PAY_PLANS.pro.periodDays ?? 30) * 86_400_000;
+    // 테스트 토큰 적용분 등 실제 청구액은 order.charge_amount 기준
+    const amt = Number(order.charge_amount) || PAY_PLANS.pro.amount;
+    const periodMs = (Number(order.period_days) || PAY_PLANS.pro.periodDays || 30) * 86_400_000;
     if (Number(amount) !== amt) {
       await sql`UPDATE orders SET status='failed' WHERE order_id=${orderId}`;
       return go("fail");

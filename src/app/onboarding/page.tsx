@@ -63,6 +63,7 @@ function OnboardingInner() {
   const [track, setTrack] = useState<MallTrackId | null>(null);
   const [confirmTrack, setConfirmTrack] = useState<MallTrackId | null>(null);
   const [inquiryOpen, setInquiryOpen] = useState(false);
+  const [testTok, setTestTok] = useState(""); // 🧪 라이브 결제 테스트 토큰(URL ?test=)
   const [payCountries, setPayCountries] = useState<string[]>([]);
   const [term, setTerm] = useState<SubTerm>("monthly");
 
@@ -87,6 +88,11 @@ function OnboardingInner() {
     const ref = sp.get("ref");
     if (ref) { try { localStorage.setItem("onb.ref", ref); } catch {} setReferral(ref); }
     else { try { const r = localStorage.getItem("onb.ref"); if (r) setReferral(r); } catch {} }
+
+    // 🧪 결제 테스트 토큰 캡처(URL ?test= → 세션 유지)
+    const tk = sp.get("test");
+    if (tk) { try { sessionStorage.setItem("pay.test", tk); } catch {} setTestTok(tk); }
+    else { try { const s = sessionStorage.getItem("pay.test"); if (s) setTestTok(s); } catch {} }
 
     const paid = sp.get("paid");
     const payfail = sp.get("payfail");
@@ -167,7 +173,7 @@ function OnboardingInner() {
     setBusy(true); setMsg("");
     try {
       const res = await fetch("/api/payment/start", { method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ plan: track, countries: payCountries, term }) });
+        body: JSON.stringify({ plan: track, countries: payCountries, term, test: testTok }) });
       const data = await res.json();
       if (!res.ok || !data.ok) {
         setBusy(false);
@@ -232,6 +238,7 @@ function OnboardingInner() {
         </div>
 
         {PAY_TEST_MODE && <p className="mt-4 rounded-md bg-amber-50 px-3 py-2 text-[11px] font-bold text-amber-700">⚠️ 결제 테스트 모드 — 모든 트랙 결제 금액이 ₩1,000으로 청구됩니다.</p>}
+        {!PAY_TEST_MODE && testTok && <p className="mt-4 rounded-md bg-amber-50 px-3 py-2 text-[11px] font-bold text-amber-700">🧪 결제 테스트 링크 — 결제 금액이 1/10000(최소 ₩100)로 청구됩니다. (토큰이 올바를 때만 적용)</p>}
         {msg && <p className="mt-4 rounded-md bg-amber-50 px-3 py-2 text-[12px] font-semibold text-amber-700">{msg}</p>}
 
         {/* ───────── PHASE 1 ───────── */}
