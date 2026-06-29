@@ -54,7 +54,7 @@ export const ONBOARDING = {
 
 // ⚠️ 결제 테스트 모드 — true면 모든 결제 금액(Pro·몰 입점 트랙)을 ₩1,000으로 강제한다.
 // 실제 결제 테스트가 끝나면 반드시 false로 되돌릴 것. (운영 금액은 그대로 보존)
-export const PAY_TEST_MODE = true;
+export const PAY_TEST_MODE = false;
 export const testPrice = (real: number): number => (PAY_TEST_MODE ? 1000 : real);
 const wonLabel = (n: number): string => "₩" + n.toLocaleString();
 

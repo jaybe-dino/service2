@@ -69,6 +69,7 @@ interface PlanState {
 
 const PlanContext = createContext<PlanState | null>(null);
 const STORAGE_KEY = "ktrend.auth.accountId";
+const USER_KEY = "ktrend.auth.user"; // 로그인 사용자 스냅샷(실유저 포함) — 새로고침 시 깜빡임 방지
 const QUOTA_KEY = "ktrend.quota";
 const TRIAL_KEY = "ktrend.proUntil";
 
@@ -129,10 +130,12 @@ export function PlanProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     try {
-      const id = localStorage.getItem(STORAGE_KEY);
-      if (id) {
-        const acc = findById(id);
-        if (acc) setUser(acc); // 초기 표시용 (서버모드면 아래 apiMe가 덮어씀)
+      // 1) 실유저 스냅샷 우선 복원 (서버모드면 아래 apiMe가 진실값으로 덮어씀)
+      const snap = localStorage.getItem(USER_KEY);
+      if (snap) { try { setUser(JSON.parse(snap) as Account); } catch { /* ignore */ } }
+      else {
+        const id = localStorage.getItem(STORAGE_KEY);
+        if (id) { const acc = findById(id); if (acc) setUser(acc); }
       }
       const pu = Number(localStorage.getItem(TRIAL_KEY) || 0);
       if (pu) setProUntil(pu);
@@ -147,7 +150,9 @@ export function PlanProvider({ children }: { children: ReactNode }) {
       if (configured) {
         // 서버모드에선 서버 세션이 진실의 원천 (클라이언트 전용 데모 복원 무시)
         if (su) {
-          setUser(mapApiUser(su));
+          const acc = mapApiUser(su);
+          setUser(acc);
+          persistUser(acc); // 스냅샷 갱신
           setProUntil(su.proUntil);
         } else {
           setUser(null);
@@ -166,8 +171,13 @@ export function PlanProvider({ children }: { children: ReactNode }) {
 
   const persistUser = (acc: Account | null) => {
     try {
-      if (acc) localStorage.setItem(STORAGE_KEY, acc.id);
-      else localStorage.removeItem(STORAGE_KEY);
+      if (acc) {
+        localStorage.setItem(STORAGE_KEY, acc.id);
+        localStorage.setItem(USER_KEY, JSON.stringify(acc));
+      } else {
+        localStorage.removeItem(STORAGE_KEY);
+        localStorage.removeItem(USER_KEY);
+      }
     } catch { /* ignore */ }
   };
 

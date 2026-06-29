@@ -95,8 +95,9 @@ function OnboardingInner() {
       const app = r?.application;
       if (!app) return;
       // 신청서 복원
+      const cs = app.countries ? String(app.countries).split(",").filter(Boolean) : [];
       if (app.track) setTrack(app.track);
-      if (app.countries) { const cs = String(app.countries).split(",").filter(Boolean); setCountries(cs); setPayCountries(cs); }
+      if (cs.length) { setCountries(cs); setPayCountries(cs); }
       if (app.grade && app.recommended_track) setGradeInfo(gradeFromChecks(Number(app.payload?.yes ?? 0)));
       if (app.payload?.certs) setCerts(app.payload.certs);
       if (app.payload?.checks) setChecks(app.payload.checks);
@@ -110,8 +111,13 @@ function OnboardingInner() {
         if (Array.isArray(det.meetingSlots)) setSlots(det.meetingSlots);
         if (Array.isArray(det.products) && det.products.length) setProducts(det.products);
       }
-      // 결제 완료 → PHASE 4로 이동
-      if (paid || app.status === "paid" || app.phase === "details" || app.phase === "completed") {
+      // 이미 정보 제출 완료 → 완료/현황 화면 (다시 폼 띄우지 않음)
+      if (app.phase === "completed" || app.status === "details_submitted") {
+        setCompleted({ track: app.track, countries: cs, grade: app.grade ?? "-", email: det?.email ?? "",
+          missing: missingCerts(cs, app.payload?.certs ?? {}) });
+        setStep(4); scrollTop();
+      } else if (paid || app.status === "paid" || app.phase === "details") {
+        // 결제 완료, 정보입력 미완 → PHASE 4
         setStep(3); scrollTop();
       }
     })();
