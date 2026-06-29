@@ -127,7 +127,7 @@ export default function Home() {
             <div className="mt-6 text-center text-[12px] text-[var(--muted)]">
               메가 스케일업이 필요하다면{" "}
               <Link href={`${ONBOARDING.path}?track=onboarding`} className="font-semibold text-[var(--accent)] hover:underline">
-                {MALL_TRACK_MAP.onboarding.name} ({MALL_TRACK_MAP.onboarding.priceLabel}/월)
+                {MALL_TRACK_MAP.onboarding.name} ({MALL_TRACK_MAP.onboarding.priceLabel})
               </Link>
               {" "}· <Link href={ONBOARDING.path} className="font-semibold text-[var(--accent)] hover:underline">전체 트랙 비교</Link>
             </div>

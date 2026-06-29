@@ -8,6 +8,7 @@ import {
   Plus, Trash2, AlertTriangle, PartyPopper, Star,
 } from "lucide-react";
 import PageShell from "@/components/ktrend/PageShell";
+import InquiryModal from "@/components/ktrend/InquiryModal";
 import { usePlan } from "@/components/ktrend/PlanContext";
 import { ONBOARDING, MALL_TRACKS, MALL_TRACK_MAP, PAY_TEST_MODE, type MallTrackId } from "@/data/ktrend/meta";
 import {
@@ -61,6 +62,7 @@ function OnboardingInner() {
   // PHASE 2/3
   const [track, setTrack] = useState<MallTrackId | null>(null);
   const [confirmTrack, setConfirmTrack] = useState<MallTrackId | null>(null);
+  const [inquiryOpen, setInquiryOpen] = useState(false);
   const [payCountries, setPayCountries] = useState<string[]>([]);
   const [term, setTerm] = useState<SubTerm>("monthly");
 
@@ -151,6 +153,7 @@ function OnboardingInner() {
 
   // ── PHASE 2 → 트랙 확정 ──
   const chooseTrack = (id: MallTrackId) => {
+    if (MALL_TRACK_MAP[id].inquiry) { setTrack(id); setInquiryOpen(true); return; } // 금액 문의 트랙
     if (gradeInfo && id !== gradeInfo.recommended) { setConfirmTrack(id); return; }
     setTrack(id); goStep(2);
   };
@@ -329,7 +332,10 @@ function OnboardingInner() {
                       <div className={`mt-0.5 text-[11px] ${t.dark ? "text-white/70" : "text-[var(--muted)]"}`}>{t.tagline}</div>
                     </div>
                     <div className="border-t border-[var(--border)] px-5 py-3">
-                      <div className="flex items-end gap-1"><span className="text-[22px] font-black text-pink-500">{t.priceLabel}</span><span className="mb-1 text-[11px] text-[var(--muted)]">/월</span></div>
+                      <div className="flex items-end gap-1">
+                        <span className="text-[22px] font-black text-pink-500">{t.priceLabel}</span>
+                        {!t.inquiry && <span className="mb-1 text-[11px] text-[var(--muted)]">/월</span>}
+                      </div>
                       <div className="text-[11px] text-[var(--muted)]">+ {t.commissionLabel}</div>
                     </div>
                     <ul className="flex-1 space-y-1.5 border-t border-[var(--border)] px-5 py-3">
@@ -337,7 +343,7 @@ function OnboardingInner() {
                     </ul>
                     <div className="px-5 pb-5">
                       <button onClick={() => chooseTrack(t.id)} className={`w-full rounded-lg py-2.5 text-[12px] font-bold ${rec ? "bg-pink-500 text-white hover:bg-pink-600" : "border border-[var(--fg)] text-[var(--fg)] hover:bg-slate-50"}`}>
-                        이 트랙 선택
+                        {t.inquiry ? "금액 문의하기" : "이 트랙 선택"}
                       </button>
                     </div>
                   </div>
@@ -527,6 +533,15 @@ function OnboardingInner() {
           <p className="mt-4 text-center text-[11px] text-[var(--muted)]">불러오는 중…</p>
         )}
       </div>
+
+      {/* Onboarding Track 금액 문의 모달 */}
+      {inquiryOpen && (
+        <InquiryModal
+          kind="tiktokshop"
+          context={`Onboarding Track 금액 문의${gradeInfo ? ` · 예비 ${gradeInfo.grade}등급` : ""}${payCountries.length ? ` · 진출국가 ${payCountries.join(",")}` : ""}`}
+          onClose={() => setInquiryOpen(false)}
+        />
+      )}
 
       {/* 비추천 트랙 확인 모달 */}
       {confirmTrack && gradeInfo && (

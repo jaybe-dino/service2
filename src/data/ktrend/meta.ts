@@ -72,6 +72,7 @@ export interface MallTrack {
   highlight: boolean;             // Live Focus = 추천(상단 핑크 라인)
   dark: boolean;                  // Onboarding = 다크 헤더
   flow: "subscribe" | "apply";    // subscribe=사이트 내 구독 / apply=결제 후 apply.tpartners
+  inquiry?: boolean;              // true면 금액 미표시·결제 없이 '가격 문의'로 처리
 }
 
 export const MALL_TRACKS: MallTrack[] = [
@@ -89,9 +90,9 @@ export const MALL_TRACKS: MallTrack[] = [
   },
   {
     id: "onboarding", name: "Onboarding Track", tagline: "메가 스케일업 & 채널 독립",
-    price: testPrice(3_000_000), priceLabel: wonLabel(testPrice(3_000_000)), commissionLabel: "판매 수수료 10%",
+    price: testPrice(3_000_000), priceLabel: "가격 문의", commissionLabel: "판매 수수료 10%",
     features: ["GMV 달성 캠페인 운영 대행", "브랜드 자체 채널 온보딩 지원", "메가셀럽 및 대형 캠페인 제안", "제품 수량 제한 없이 등록 가능"],
-    highlight: false, dark: true, flow: "apply",
+    highlight: false, dark: true, flow: "apply", inquiry: true,
   },
 ];
 
