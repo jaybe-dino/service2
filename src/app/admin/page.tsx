@@ -59,7 +59,7 @@ interface OnbApp {
   created_ms: number; updated_ms: number;
 }
 const TRACK_LABEL: Record<string, string> = { ready: "Start", live: "Live Focus", onboarding: "Onboarding" };
-interface Referrer { code: string; login_id: string; name: string | null; created_ms: number; signups: number }
+interface Referrer { code: string; login_id: string; name: string | null; created_ms: number; signups: number; paid_users: number; revenue: number; rate: number; commission: number }
 type Tab = "members" | "payments" | "inquiries" | "onboarding" | "referrers" | "collect" | "influencers" | "brands" | "utm" | "rules";
 interface UtmRow { key: string; visits: number; signups: number }
 interface UtmRecent { kind: string; source: string | null; medium: string | null; campaign: string | null; content: string | null; user_email: string | null; created_at: string }
@@ -90,7 +90,9 @@ export default function AdminPage() {
   const [onbDetail, setOnbDetail] = useState<OnbApp | null>(null);
   const [referrers, setReferrers] = useState<Referrer[]>([]);
   const [refName, setRefName] = useState("");
-  const [newRef, setNewRef] = useState<{ code: string; loginId: string; password: string; name: string } | null>(null);
+  const [refLoginId, setRefLoginId] = useState("");
+  const [refPw, setRefPw] = useState("");
+  const [newRef, setNewRef] = useState<{ code: string; loginId: string; name: string } | null>(null);
   const [blocks, setBlocks] = useState<{ kind: string; value: string; reason: string | null }[]>([]);
   const [blockVal, setBlockVal] = useState("");
   const [blockKind, setBlockKind] = useState<"handle" | "brand">("handle");
@@ -136,10 +138,17 @@ export default function AdminPage() {
 
   const createReferrer = async (e: React.FormEvent) => {
     e.preventDefault();
-    const r = await fetch("/api/admin/referrers", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: refName }) });
+    const r = await fetch("/api/admin/referrers", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: refName, loginId: refLoginId, password: refPw }) });
     const d = await r.json().catch(() => ({}));
-    if (r.ok && d.ok) { setNewRef(d); setRefName(""); setToast(`추천인 생성: ${d.code}`); loadData(); }
+    if (r.ok && d.ok) { setNewRef(d); setRefName(""); setRefLoginId(""); setRefPw(""); setToast(`추천인 생성: ${d.code}`); loadData(); }
     else setToast(d.error ?? "생성 실패");
+  };
+  const changeRefPw = async (code: string) => {
+    const pw = prompt("새 비밀번호를 입력하세요 (4자 이상)");
+    if (!pw) return;
+    const r = await fetch("/api/admin/referrers", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ code, password: pw }) });
+    const d = await r.json().catch(() => ({}));
+    setToast(r.ok && d.ok ? `비밀번호 변경됨: ${code}` : (d.error ?? "변경 실패"));
   };
   useEffect(() => { if (authed) loadData(); }, [authed]);
 
@@ -483,36 +492,46 @@ export default function AdminPage() {
 
       {tab === "referrers" && (
         <>
-          <form onSubmit={createReferrer} className="mb-3 flex flex-wrap items-center gap-2 kt-card p-3">
+          <form onSubmit={createReferrer} className="mb-3 flex flex-wrap items-end gap-2 kt-card p-3">
             <span className="flex items-center gap-1.5 text-[11px] font-bold"><Gift size={13} className="text-[var(--accent)]" /> 추천인 생성</span>
-            <input value={refName} onChange={(e) => setRefName(e.target.value)} placeholder="추천인 이름/메모" className="rounded-md border border-[var(--border)] px-2 py-1.5 text-[11px]" />
-            <button className="kt-btn kt-btn-primary px-3 py-1.5 text-[11px]">코드·계정 발급</button>
-            <span className="text-[10px] text-[var(--muted)]">아이디·비밀번호·코드가 자동 생성됩니다. 비밀번호는 생성 직후 1회만 표시됩니다.</span>
+            <label className="flex flex-col gap-0.5"><span className="text-[9px] text-[var(--muted)]">이름</span>
+              <input value={refName} onChange={(e) => setRefName(e.target.value)} placeholder="추천인 이름" className="rounded-md border border-[var(--border)] px-2 py-1.5 text-[11px]" /></label>
+            <label className="flex flex-col gap-0.5"><span className="text-[9px] text-[var(--muted)]">아이디</span>
+              <input value={refLoginId} onChange={(e) => setRefLoginId(e.target.value)} placeholder="로그인 아이디" className="rounded-md border border-[var(--border)] px-2 py-1.5 text-[11px]" /></label>
+            <label className="flex flex-col gap-0.5"><span className="text-[9px] text-[var(--muted)]">비밀번호</span>
+              <input value={refPw} onChange={(e) => setRefPw(e.target.value)} placeholder="비밀번호(4자+)" className="rounded-md border border-[var(--border)] px-2 py-1.5 text-[11px]" /></label>
+            <button className="kt-btn kt-btn-primary px-3 py-1.5 text-[11px]">생성</button>
+            <span className="text-[10px] text-[var(--muted)]">추천 코드는 자동 발급됩니다.</span>
           </form>
           {newRef && (
             <div className="mb-3 rounded-lg border border-emerald-300 bg-emerald-50 p-3 text-[12px]">
-              <div className="font-bold text-emerald-700">발급 완료 — 추천인에게 아래 정보를 전달하세요 (비밀번호는 다시 볼 수 없습니다)</div>
+              <div className="font-bold text-emerald-700">발급 완료 — 추천인에게 아래 정보를 전달하세요</div>
               <div className="mt-1.5 grid gap-1 sm:grid-cols-2">
                 <div>이름: <b>{newRef.name}</b></div>
                 <div>추천 코드: <b>{newRef.code}</b></div>
                 <div>로그인 ID: <b>{newRef.loginId}</b></div>
-                <div>비밀번호: <b>{newRef.password}</b></div>
                 <div className="sm:col-span-2">로그인 페이지: <b>glovek.space/partner</b> · 추천 링크: <b>glovek.space/signup?ref={newRef.code}</b></div>
               </div>
               <button onClick={() => setNewRef(null)} className="mt-2 text-[10px] font-semibold text-emerald-700 hover:underline">닫기</button>
             </div>
           )}
-          <Table head={["추천 코드", "로그인 ID", "이름", "추천 가입자", "생성일"]}>
+          <div className="mb-2 rounded-md bg-slate-50 px-3 py-2 text-[10px] text-[var(--muted)]">수수료 정책: 결제 전환 10명 → 결제금액의 10% · 20명 → 20% · 30명 이상 → 30%</div>
+          <Table head={["추천 코드", "로그인 ID", "이름", "가입자", "결제자", "발생 매출", "수수료율", "지급 수수료", "비번", "생성일"]}>
             {referrers.map((r) => (
               <tr key={r.code} className="border-b border-[var(--border)] last:border-0">
                 <td className="p-2 font-bold">{r.code}</td>
                 <td className="p-2">{r.login_id}</td>
                 <td className="p-2">{r.name ?? "—"}</td>
-                <td className="p-2 font-semibold">{Number(r.signups)}명</td>
+                <td className="p-2">{Number(r.signups)}명</td>
+                <td className="p-2 font-semibold">{Number(r.paid_users)}명</td>
+                <td className="p-2">{won(Number(r.revenue))}</td>
+                <td className="p-2 font-bold text-[var(--accent)]">{Math.round(Number(r.rate) * 100)}%</td>
+                <td className="p-2 font-bold text-emerald-600">{won(Number(r.commission))}</td>
+                <td className="p-2"><button onClick={() => changeRefPw(r.code)} className="text-[10px] font-semibold text-[var(--accent)] hover:underline">변경</button></td>
                 <td className="p-2 text-[var(--muted)]">{dt(new Date(Number(r.created_ms)).toISOString())}</td>
               </tr>
             ))}
-            {!referrers.length && <EmptyRow cols={5} text="생성된 추천인 없음" />}
+            {!referrers.length && <EmptyRow cols={10} text="생성된 추천인 없음" />}
           </Table>
         </>
       )}

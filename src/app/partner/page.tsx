@@ -9,6 +9,7 @@ interface Signup {
   created_ms: number; onb_status: string | null; onb_track: string | null; onb_amount: number | null;
 }
 interface Referrer { code: string; name: string | null }
+interface Commission { paidCount: number; revenue: number; rate: number; amount: number }
 const TRACK: Record<string, string> = { ready: "Start", live: "Live Focus", onboarding: "Onboarding" };
 const won = (n: number | null) => (n ? "₩" + Number(n).toLocaleString() : "—");
 const dt = (ms: number) => new Date(Number(ms)).toISOString().slice(0, 10);
@@ -17,6 +18,7 @@ export default function PartnerPage() {
   const [ready, setReady] = useState(false);
   const [ref, setRef] = useState<Referrer | null>(null);
   const [signups, setSignups] = useState<Signup[]>([]);
+  const [comm, setComm] = useState<Commission | null>(null);
   const [loginId, setLoginId] = useState("");
   const [password, setPassword] = useState("");
   const [err, setErr] = useState("");
@@ -25,8 +27,8 @@ export default function PartnerPage() {
 
   const load = async () => {
     const r = await fetch("/api/ref/me", { cache: "no-store" }).then((x) => x.json()).catch(() => null);
-    if (r?.ok && r.referrer) { setRef(r.referrer); setSignups(r.signups ?? []); }
-    else { setRef(null); setSignups([]); }
+    if (r?.ok && r.referrer) { setRef(r.referrer); setSignups(r.signups ?? []); setComm(r.commission ?? null); }
+    else { setRef(null); setSignups([]); setComm(null); }
     setReady(true);
   };
   useEffect(() => { load(); }, []);
@@ -97,6 +99,18 @@ export default function PartnerPage() {
             </div>
           </button>
         </div>
+
+        {/* 수수료 현황 */}
+        {comm && (
+          <div className="mt-3 flex flex-wrap items-center gap-x-6 gap-y-1 rounded-xl bg-[#0b0b0c] px-5 py-4 text-white">
+            <span className="text-[12px] font-black text-pink-400">예상 수수료</span>
+            <span className="text-[12px]">결제 전환 <b>{comm.paidCount}명</b></span>
+            <span className="text-[12px]">발생 매출 <b>{won(comm.revenue)}</b></span>
+            <span className="text-[12px]">수수료율 <b className="text-pink-300">{Math.round(comm.rate * 100)}%</b></span>
+            <span className="ml-auto text-[18px] font-black text-pink-300">{won(comm.amount)}</span>
+          </div>
+        )}
+        <p className="mt-1.5 text-[10px] text-[var(--muted)]">수수료 정책: 결제 전환 10명 → 10% · 20명 → 20% · 30명 이상 → 30% (결제금액 기준). 실제 지급은 정산 정책에 따릅니다.</p>
 
         <div className="mt-5 overflow-x-auto rounded-xl border border-[var(--border)] bg-white">
           <table className="w-full text-[12px]">

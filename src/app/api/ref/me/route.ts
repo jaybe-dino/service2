@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { sql, ensureSchema, isConfigured as dbConfigured } from "@/lib/db";
 import { getRefCode } from "@/lib/ref-auth";
+import { commissionRate, commissionAmount } from "@/lib/referral";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -21,5 +22,11 @@ export async function GET() {
     LEFT JOIN onboarding_applications oa ON oa.user_id = u.id
     WHERE u.referred_by = ${code}
     ORDER BY u.created_at DESC LIMIT 1000`;
-  return NextResponse.json({ ok: true, referrer: r.rows[0], signups: rows });
+  const paid = rows.filter((s) => s.onb_status === "paid");
+  const paidCount = paid.length;
+  const revenue = paid.reduce((n, s) => n + (Number(s.onb_amount) || 0), 0);
+  return NextResponse.json({
+    ok: true, referrer: r.rows[0], signups: rows,
+    commission: { paidCount, revenue, rate: commissionRate(paidCount), amount: commissionAmount(revenue, paidCount) },
+  });
 }
