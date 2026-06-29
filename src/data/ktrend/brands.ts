@@ -3,6 +3,7 @@
 import raw from "./real-brands.json";
 import collectMaster from "./collect-brands.json";
 import type { CategoryId, SubCategoryId } from "./meta";
+import { classifyBrandAttrs, type BrandAttrs } from "./brand-attrs";
 
 export interface Brand {
   id: string;
@@ -10,6 +11,7 @@ export interface Brand {
   az: string; // A-Z 퀵 탭 키
   category: CategoryId;
   subCategory: SubCategoryId; // 세부 카테고리
+  attrs: BrandAttrs; // 필터 속성(제품 카테고리·규모·포지셔닝·번들) — 시트/AI 분류
   rank: number;
   videos: number;
   influencers: number;
@@ -63,10 +65,10 @@ function azKey(name: string): string {
   return /^[A-Za-z]/.test(name) ? name[0].toUpperCase() : "#";
 }
 
-const seedBrands: Brand[] = (raw as Omit<Brand, "subCategory">[])
+const seedBrands: Brand[] = (raw as Omit<Brand, "subCategory" | "attrs">[])
   .slice()
   .sort((a, b) => a.rank - b.rank)
-  .map((b) => ({ ...b, subCategory: SUB_BY_NAME[b.name] ?? subFallback(b.category) }));
+  .map((b) => ({ ...b, subCategory: SUB_BY_NAME[b.name] ?? subFallback(b.category), attrs: classifyBrandAttrs(b.name, b.category) }));
 
 // 확장 마스터의 신규 브랜드(서비스 미수록분)를 디렉터리에 합류.
 // 콘텐츠 통계는 0에서 시작 → 수집 1차학습 후 loadContent가 실수치로 갱신.
@@ -87,6 +89,7 @@ const extraBrands: Brand[] = (collectMaster as MasterRow[])
     az: azKey(m.name),
     category: m.category,
     subCategory: m.subCategory,
+    attrs: classifyBrandAttrs(m.name, m.category),
     rank: 1000 + i,
     videos: 0,
     influencers: 0,
@@ -126,6 +129,7 @@ export function ensureBrandByName(name: string): Brand {
     az,
     category,
     subCategory,
+    attrs: classifyBrandAttrs(name, category),
     rank: 1000 + dynSeq,
     videos: 0,
     influencers: 0,
