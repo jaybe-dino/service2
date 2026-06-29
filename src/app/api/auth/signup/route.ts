@@ -15,6 +15,7 @@ export async function POST(req: Request) {
   const password = body?.password ?? "";
   const brand = (body?.brand ?? "").trim();
   const role = (body?.role ?? "").trim();
+  const code = String(body?.code ?? "").trim().toUpperCase().slice(0, 60);
 
   if (!name || !email || !password || !brand) {
     return NextResponse.json({ error: "필수 항목(이름·이메일·비밀번호·브랜드)을 입력하세요." }, { status: 400 });
@@ -24,10 +25,16 @@ export async function POST(req: Request) {
   if (exists.rows.length) {
     return NextResponse.json({ error: "이미 가입된 이메일입니다." }, { status: 409 });
   }
+  // 추천인 코드: 유효한 코드일 때만 어트리뷰션 저장
+  let referredBy: string | null = null;
+  if (code) {
+    const ref = await sql`SELECT code FROM referrers WHERE code=${code} LIMIT 1`;
+    referredBy = ref.rows.length ? code : null;
+  }
   const id = crypto.randomUUID();
   const password_hash = await hashPassword(password);
-  await sql`INSERT INTO users (id, email, password_hash, name, brand, role, plan)
-            VALUES (${id}, ${email}, ${password_hash}, ${name}, ${brand}, ${role}, 'basic')`;
+  await sql`INSERT INTO users (id, email, password_hash, name, brand, role, plan, referred_by)
+            VALUES (${id}, ${email}, ${password_hash}, ${name}, ${brand}, ${role}, 'basic', ${referredBy})`;
 
   // UTM 유입 출처 연결 (가입 어트리뷰션)
   const utm = (body?.utm ?? {}) as Record<string, string | undefined>;

@@ -47,7 +47,8 @@ interface OnbApp {
   referral_code: string | null; status: string; order_id: string | null; created_ms: number; updated_ms: number;
 }
 const TRACK_LABEL: Record<string, string> = { ready: "Start", live: "Live Focus", onboarding: "Onboarding" };
-type Tab = "members" | "payments" | "inquiries" | "onboarding" | "collect" | "influencers" | "brands" | "utm" | "rules";
+interface Referrer { code: string; login_id: string; name: string | null; created_ms: number; signups: number }
+type Tab = "members" | "payments" | "inquiries" | "onboarding" | "referrers" | "collect" | "influencers" | "brands" | "utm" | "rules";
 interface UtmRow { key: string; visits: number; signups: number }
 interface UtmRecent { kind: string; source: string | null; medium: string | null; campaign: string | null; content: string | null; user_email: string | null; created_at: string }
 
@@ -74,6 +75,9 @@ export default function AdminPage() {
   const [lastCollect, setLastCollect] = useState<{ at: string; ok: boolean; scraper?: boolean; mode?: string; reason?: string; ingested?: number; polledDone?: number; kickedNew?: number; kickedRefresh?: number } | null>(null);
   const [tracking, setTracking] = useState<Track[]>([]);
   const [onbApps, setOnbApps] = useState<OnbApp[]>([]);
+  const [referrers, setReferrers] = useState<Referrer[]>([]);
+  const [refName, setRefName] = useState("");
+  const [newRef, setNewRef] = useState<{ code: string; loginId: string; password: string; name: string } | null>(null);
   const [blocks, setBlocks] = useState<{ kind: string; value: string; reason: string | null }[]>([]);
   const [blockVal, setBlockVal] = useState("");
   const [blockKind, setBlockKind] = useState<"handle" | "brand">("handle");
@@ -113,6 +117,16 @@ export default function AdminPage() {
     }
     const onb = await fetch("/api/onboarding/apply", { cache: "no-store" }).then((x) => x.json()).catch(() => null);
     if (onb?.ok) setOnbApps(onb.items ?? []);
+    const refs = await fetch("/api/admin/referrers", { cache: "no-store" }).then((x) => x.json()).catch(() => null);
+    if (refs?.ok) setReferrers(refs.items ?? []);
+  };
+
+  const createReferrer = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const r = await fetch("/api/admin/referrers", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: refName }) });
+    const d = await r.json().catch(() => ({}));
+    if (r.ok && d.ok) { setNewRef(d); setRefName(""); setToast(`추천인 생성: ${d.code}`); loadData(); }
+    else setToast(d.error ?? "생성 실패");
   };
   useEffect(() => { if (authed) loadData(); }, [authed]);
 
@@ -311,6 +325,7 @@ export default function AdminPage() {
     { id: "payments", label: "결제현황", icon: <CreditCard size={13} /> },
     { id: "inquiries", label: "문의·제안", icon: <Inbox size={13} /> },
     { id: "onboarding", label: "틱톡샵 온보딩", icon: <ShoppingBag size={13} /> },
+    { id: "referrers", label: "추천인", icon: <Gift size={13} /> },
     { id: "collect", label: "브랜드 수집", icon: <Database size={13} /> },
     { id: "influencers", label: "인플루언서", icon: <UserSquare2 size={13} /> },
     { id: "brands", label: "브랜드", icon: <Tag size={13} /> },
@@ -442,6 +457,42 @@ export default function AdminPage() {
               </tr>
             ))}
             {!onbApps.length && <EmptyRow cols={11} text="온보딩 신청 없음" />}
+          </Table>
+        </>
+      )}
+
+      {tab === "referrers" && (
+        <>
+          <form onSubmit={createReferrer} className="mb-3 flex flex-wrap items-center gap-2 kt-card p-3">
+            <span className="flex items-center gap-1.5 text-[11px] font-bold"><Gift size={13} className="text-[var(--accent)]" /> 추천인 생성</span>
+            <input value={refName} onChange={(e) => setRefName(e.target.value)} placeholder="추천인 이름/메모" className="rounded-md border border-[var(--border)] px-2 py-1.5 text-[11px]" />
+            <button className="kt-btn kt-btn-primary px-3 py-1.5 text-[11px]">코드·계정 발급</button>
+            <span className="text-[10px] text-[var(--muted)]">아이디·비밀번호·코드가 자동 생성됩니다. 비밀번호는 생성 직후 1회만 표시됩니다.</span>
+          </form>
+          {newRef && (
+            <div className="mb-3 rounded-lg border border-emerald-300 bg-emerald-50 p-3 text-[12px]">
+              <div className="font-bold text-emerald-700">발급 완료 — 추천인에게 아래 정보를 전달하세요 (비밀번호는 다시 볼 수 없습니다)</div>
+              <div className="mt-1.5 grid gap-1 sm:grid-cols-2">
+                <div>이름: <b>{newRef.name}</b></div>
+                <div>추천 코드: <b>{newRef.code}</b></div>
+                <div>로그인 ID: <b>{newRef.loginId}</b></div>
+                <div>비밀번호: <b>{newRef.password}</b></div>
+                <div className="sm:col-span-2">로그인 페이지: <b>glovek.space/partner</b> · 추천 링크: <b>glovek.space/signup?ref={newRef.code}</b></div>
+              </div>
+              <button onClick={() => setNewRef(null)} className="mt-2 text-[10px] font-semibold text-emerald-700 hover:underline">닫기</button>
+            </div>
+          )}
+          <Table head={["추천 코드", "로그인 ID", "이름", "추천 가입자", "생성일"]}>
+            {referrers.map((r) => (
+              <tr key={r.code} className="border-b border-[var(--border)] last:border-0">
+                <td className="p-2 font-bold">{r.code}</td>
+                <td className="p-2">{r.login_id}</td>
+                <td className="p-2">{r.name ?? "—"}</td>
+                <td className="p-2 font-semibold">{Number(r.signups)}명</td>
+                <td className="p-2 text-[var(--muted)]">{dt(new Date(Number(r.created_ms)).toISOString())}</td>
+              </tr>
+            ))}
+            {!referrers.length && <EmptyRow cols={5} text="생성된 추천인 없음" />}
           </Table>
         </>
       )}

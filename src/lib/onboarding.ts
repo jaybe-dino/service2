@@ -66,23 +66,31 @@ export function missingCerts(countries: string[], certAnswers: Record<string, st
 
 // ── PHASE 3: 동적 요금 계산 ──
 export type SubTerm = "monthly" | "6month";
+export const TERM_MONTHS: Record<SubTerm, number> = { monthly: 1, "6month": 6 };
+// 다국가 동시 진출 할인: 2개국 10% / 3~4개국 15% / 5개국 20%
 export function multiCountryDiscount(n: number): number {
-  if (n >= 5) return 0.15;
-  if (n >= 3) return 0.10;
-  if (n === 2) return 0.05;
+  if (n >= 5) return 0.20;
+  if (n >= 3) return 0.15;
+  if (n === 2) return 0.10;
   return 0;
 }
+// 약정 할인: 6개월 약정 20% (월 구독 0%)
 export function termDiscount(term: SubTerm): number {
-  return term === "6month" ? 0.10 : 0;
+  return term === "6month" ? 0.20 : 0;
 }
 
 export interface Quote {
   trackId: MallTrackId; unitPrice: number; countryCount: number;
-  base: number; multiRate: number; multiDiscount: number;
+  base: number;                  // 월 기본료 = 트랙료 × 국가수
+  multiRate: number; multiDiscount: number;
   termRate: number; termDiscountAmount: number;
-  final: number; vat: number;
+  monthly: number;               // 할인 적용 월 환산액
+  months: number;                // 1(월구독) | 6(6개월 약정)
+  payable: number;               // 이번에 결제할 금액 (월: monthly, 6개월: monthly×6 합계)
+  vat: number;                   // payable의 10%
 }
-// 최종 월 납부액 = 트랙료 × 국가수 × (1-다국가할인) × (1-약정할인). VAT 별도(10%).
+// 월 환산액 = 트랙료 × 국가수 × (1-다국가할인) × (1-약정할인).
+// 6개월 약정은 6개월 합계(월환산 × 6)를 한 번에 결제. VAT 별도(10%).
 export function computeQuote(trackId: MallTrackId, countryCount: number, term: SubTerm): Quote {
   const unitPrice = MALL_TRACK_MAP[trackId]?.price ?? 0;
   const n = Math.max(1, countryCount);
@@ -90,11 +98,13 @@ export function computeQuote(trackId: MallTrackId, countryCount: number, term: S
   const multiRate = multiCountryDiscount(n);
   const termRate = termDiscount(term);
   const afterMulti = base * (1 - multiRate);
-  const final = Math.round(afterMulti * (1 - termRate));
+  const monthly = Math.round(afterMulti * (1 - termRate));
+  const months = TERM_MONTHS[term];
+  const payable = monthly * months;
   const multiDiscount = Math.round(base * multiRate);
   const termDiscountAmount = Math.round(afterMulti * termRate);
-  const vat = Math.round(final * 0.1);
-  return { trackId, unitPrice, countryCount: n, base, multiRate, multiDiscount, termRate, termDiscountAmount, final, vat };
+  const vat = Math.round(payable * 0.1);
+  return { trackId, unitPrice, countryCount: n, base, multiRate, multiDiscount, termRate, termDiscountAmount, monthly, months, payable, vat };
 }
 
 // ── 온보딩 전체 타임라인 (완료 화면 안내용) ──

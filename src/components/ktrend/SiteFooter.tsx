@@ -37,6 +37,7 @@ export default function SiteFooter() {
               <li><Link href="/signup" className="hover:text-[var(--accent)]">회원가입</Link></li>
               <li><Link href="/terms" className="hover:text-[var(--accent)]">이용약관</Link></li>
               <li><Link href="/privacy" className="hover:text-[var(--accent)]">개인정보처리방침</Link></li>
+              <li><Link href="/partner" className="hover:text-[var(--accent)]">추천인 로그인</Link></li>
             </ul>
           </div>
         </div>

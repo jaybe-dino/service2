@@ -27,8 +27,8 @@ export async function POST(req: Request) {
   const authResultCode = String(form.get("authResultCode") ?? form.get("resultCode") ?? "");
 
   await ensureSchema();
-  const { rows } = await sql`SELECT user_id, amount, charge_amount, status, kind, plan FROM orders WHERE order_id=${orderId} LIMIT 1`;
-  const order = rows[0] as { user_id: string; amount: number; charge_amount: number | null; status: string; kind: string; plan: string } | undefined;
+  const { rows } = await sql`SELECT user_id, amount, charge_amount, period_days, status, kind, plan FROM orders WHERE order_id=${orderId} LIMIT 1`;
+  const order = rows[0] as { user_id: string; amount: number; charge_amount: number | null; period_days: number | null; status: string; kind: string; plan: string } | undefined;
 
   if (!order || (authResultCode && authResultCode !== "0000")) {
     if (order) await sql`UPDATE orders SET status='failed' WHERE order_id=${orderId}`;
@@ -69,9 +69,9 @@ export async function POST(req: Request) {
     const track = (order.plan as MallTrackId) || "ready";
     const fail = () => NextResponse.redirect(`${base}/onboarding?payfail=1`, 303);
     const plan = PAY_PLANS[track] ?? PAY_PLANS.ready;
-    // 다국가/약정 반영 월 청구액 (start에서 산출해 둔 charge_amount)
+    // 다국가/약정 반영 결제액 (start에서 산출해 둔 charge_amount). 6개월 약정은 합계+180일 주기.
     const amt = Number(order.charge_amount) || plan.amount;
-    const periodMs = (plan.periodDays ?? 30) * 86_400_000;
+    const periodMs = (Number(order.period_days) || plan.periodDays || 30) * 86_400_000;
     if (Number(amount) !== amt) { await sql`UPDATE orders SET status='failed' WHERE order_id=${orderId}`; return fail(); }
     // 1) 첫 달 결제 승인(캡처)
     const ap = await approvePayment({ tid, amount: amt });

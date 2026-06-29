@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Check, UserPlus, ArrowRight } from "lucide-react";
 import PageShell from "@/components/ktrend/PageShell";
@@ -9,12 +9,21 @@ import { getStoredUtm } from "@/lib/utm";
 
 export default function SignupPage() {
   const { user, signup } = usePlan();
-  const [form, setForm] = useState({ name: "", email: "", password: "", brand: "", role: "" });
+  const [form, setForm] = useState({ name: "", email: "", password: "", brand: "", role: "", code: "" });
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState(false);
 
   const set = (k: keyof typeof form, v: string) => setForm((f) => ({ ...f, [k]: v }));
+
+  // 추천인 코드 자동 채움 (?ref= 또는 온보딩에서 저장한 코드)
+  useEffect(() => {
+    const ref = new URLSearchParams(window.location.search).get("ref");
+    let stored = "";
+    try { stored = localStorage.getItem("onb.ref") || ""; } catch {}
+    const c = (ref || stored || "").toUpperCase();
+    if (c) setForm((f) => (f.code ? f : { ...f, code: c }));
+  }, []);
 
   const submitSignup = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -53,6 +62,7 @@ export default function SignupPage() {
             <Field label="비밀번호 *" type="password" value={form.password} onChange={(v) => set("password", v)} placeholder="********" />
             <Field label="담당 브랜드 *" value={form.brand} onChange={(v) => set("brand", v)} placeholder="예: Anua" />
             <Field label="직무" value={form.role} onChange={(v) => set("role", v)} placeholder="예: 글로벌 마케팅 매니저" />
+            <Field label="추천인 코드 (선택)" value={form.code} onChange={(v) => set("code", v.toUpperCase())} placeholder="예: GLV-ABC123" />
             {err && <p className="text-[11px] font-semibold text-rose-600">{err}</p>}
             <p className="text-[10px] leading-relaxed text-[var(--muted)]">
               가입 시 <Link href="/terms" className="font-semibold text-[var(--accent)] hover:underline">이용약관</Link> 및{" "}

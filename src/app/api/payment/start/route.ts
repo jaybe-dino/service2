@@ -27,24 +27,26 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, configured: false, error: "결제 모듈(NICEpay 키)이 아직 설정되지 않았습니다." });
   }
 
-  // 몰 입점: 진출 국가 수 + 약정 방식으로 월 청구액 서버 권위 계산 (클라이언트 값 신뢰 X)
+  // 몰 입점: 진출 국가 수 + 약정 방식으로 결제액 서버 권위 계산 (클라이언트 값 신뢰 X)
+  // 6개월 약정은 6개월 합계를 한 번에 결제하고 다음 청구는 180일 후.
   let chargeAmount = price.amount;
   let term: SubTerm = "monthly";
-  let countryCount = 1;
+  let periodDays = price.periodDays ?? 30;
   if (mode === "mall") {
     term = body?.term === "6month" ? "6month" : "monthly";
     const countries: string[] = Array.isArray(body?.countries) ? body.countries : [];
-    countryCount = Math.max(1, countries.length);
-    chargeAmount = computeQuote(planKey as MallTrackId, countryCount, term).final;
+    const q = computeQuote(planKey as MallTrackId, Math.max(1, countries.length), term);
+    chargeAmount = q.payable;
+    periodDays = q.months * 30;
   }
 
   await ensureSchema();
   const orderId = buildOrderId(SERVICE_ORDER_PREFIX, price.planInitial);
   // 결제창에는 항상 실제 금액을 전달한다(0원 창은 NICEpay P013 오류).
-  // 첫 회차를 결제창에서 승인 → 그 거래(tid)로 빌링키를 발급해 다음 달부터 자동청구.
+  // 첫 회차를 결제창에서 승인 → 그 거래(tid)로 빌링키를 발급해 다음 회차부터 자동청구.
   const authAmount = mode === "mall" ? chargeAmount : price.amount;
-  await sql`INSERT INTO orders (order_id, user_id, plan, amount, charge_amount, goods_name, status, kind)
-            VALUES (${orderId}, ${me.id}, ${planKey}, ${authAmount}, ${chargeAmount}, ${price.goodsName}, 'created', ${mode})`;
+  await sql`INSERT INTO orders (order_id, user_id, plan, amount, charge_amount, period_days, goods_name, status, kind)
+            VALUES (${orderId}, ${me.id}, ${planKey}, ${authAmount}, ${chargeAmount}, ${periodDays}, ${price.goodsName}, 'created', ${mode})`;
 
   // 몰 입점 신청서에 약정/금액 동기화
   if (mode === "mall") {

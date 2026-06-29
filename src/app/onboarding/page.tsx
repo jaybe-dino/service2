@@ -364,7 +364,7 @@ function OnboardingInner() {
                 <h2 className="text-[15px] font-black">구독 방식</h2>
                 <div className="mt-3 space-y-2">
                   <TermOption active={term === "monthly"} onClick={() => setTerm("monthly")} title="월 구독" desc="언제든 해지 가능 (해지 신청 후 익월 중단)" />
-                  <TermOption active={term === "6month"} onClick={() => setTerm("6month")} title="6개월 약정" desc="월 구독료 10% 추가 할인 · 중도 해지 시 잔여 기간의 30% 위약금" />
+                  <TermOption active={term === "6month"} onClick={() => setTerm("6month")} title="6개월 약정" desc="20% 할인 · 6개월 합계 일시 결제 · 중도 해지 시 잔여 기간의 30% 위약금" />
                 </div>
               </div>
             </div>
@@ -378,23 +378,27 @@ function OnboardingInner() {
                 </div>
                 {quote && (
                   <div className="mt-3 space-y-1.5 text-[12px]">
-                    <Row l={`기본료 ${won(quote.unitPrice)} × ${quote.countryCount}개국`} v={won(quote.base)} />
+                    <Row l={`기본료 ${won(quote.unitPrice)} × ${quote.countryCount}개국`} v={`${won(quote.base)}/월`} />
                     {quote.multiRate > 0 && <Row l={`다국가 할인 (${Math.round(quote.multiRate * 100)}%)`} v={`- ${won(quote.multiDiscount)}`} minus />}
-                    {quote.termRate > 0 && <Row l={`약정 할인 (${Math.round(quote.termRate * 100)}%)`} v={`- ${won(quote.termDiscountAmount)}`} minus />}
+                    {quote.termRate > 0 && <Row l={`6개월 약정 할인 (${Math.round(quote.termRate * 100)}%)`} v={`- ${won(quote.termDiscountAmount)}/월`} minus />}
+                    <Row l="할인 적용 월 환산액" v={`${won(quote.monthly)}/월`} />
                     <div className="my-2 border-t border-[var(--border)]" />
                     <div className="flex items-end justify-between">
-                      <span className="text-[12px] font-bold">월 납부액</span>
-                      <span className="text-[22px] font-black text-[var(--accent)]">{won(quote.final)}</span>
+                      <span className="text-[12px] font-bold">{term === "6month" ? "6개월 합계 결제액" : "월 납부액"}</span>
+                      <span className="text-[22px] font-black text-[var(--accent)]">{won(quote.payable)}</span>
                     </div>
+                    {term === "6month" && <div className="text-right text-[10px] text-[var(--muted)]">월 환산 {won(quote.monthly)} × 6개월</div>}
                     <div className="text-right text-[10px] text-[var(--muted)]">VAT 별도 (+{won(quote.vat)})</div>
                   </div>
                 )}
                 {!user && <p className="mt-3 rounded-md bg-amber-50 px-3 py-2 text-[11px] font-semibold text-amber-700">결제하려면 로그인이 필요합니다.</p>}
                 <button onClick={pay} disabled={busy || !payCountries.length} className="kt-btn kt-btn-primary mt-4 w-full py-2.5 text-[12px] disabled:opacity-50">
                   {busy ? <Loader2 size={14} className="animate-spin" /> : !user ? <Lock size={14} /> : <CreditCard size={14} />}
-                  {busy ? "결제 진행 중…" : !user ? "로그인하고 결제" : `${quote ? won(quote.final) : ""} 결제하고 입점`}
+                  {busy ? "결제 진행 중…" : !user ? "로그인하고 결제" : `${quote ? won(quote.payable) : ""} 결제하고 입점`}
                 </button>
-                <p className="mt-2 text-center text-[9px] text-[var(--muted)]">카드 등록 즉시 첫 달 결제 · 매월 자동결제. 결제 후 상세 정보를 입력합니다.</p>
+                <p className="mt-2 text-center text-[9px] text-[var(--muted)]">
+                  {term === "6month" ? "6개월 합계 일시 결제 · 이후 6개월마다 자동결제." : "카드 등록 즉시 첫 달 결제 · 매월 자동결제."} 결제 후 상세 정보를 입력합니다.
+                </p>
               </div>
             </div>
           </div>

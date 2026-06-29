@@ -65,8 +65,10 @@ export function ensureSchema(): Promise<void> {
       )`;
       // 결제 종류: once(단건) | subscribe(정기/빌링키 등록) | mall(몰 입점 구독)
       await sql`ALTER TABLE orders ADD COLUMN IF NOT EXISTS kind text NOT NULL DEFAULT 'once'`;
-      // 몰 입점: 빌링키 등록 후 실제 월 청구 금액(다국가/약정 할인 반영). 인증금액(amount)=0과 별개.
+      // 몰 입점: 빌링키 등록 후 실제 청구 금액(다국가/약정 할인 반영).
       await sql`ALTER TABLE orders ADD COLUMN IF NOT EXISTS charge_amount integer`;
+      // 다음 자동청구까지 기간(일). 월구독 30, 6개월 약정 180.
+      await sql`ALTER TABLE orders ADD COLUMN IF NOT EXISTS period_days integer NOT NULL DEFAULT 30`;
       // payment_id(tid) UNIQUE = 멱등성. raw 7년 보관(audit).
       await sql`CREATE TABLE IF NOT EXISTS payments (
         payment_id text PRIMARY KEY,
@@ -283,6 +285,16 @@ export function ensureSchema(): Promise<void> {
         created_at timestamptz NOT NULL DEFAULT now(),
         updated_at timestamptz NOT NULL DEFAULT now()
       )`;
+      // 추천인(파트너): 어드민이 생성, 추천인 본인이 로그인해 자신의 추천 가입자 확인
+      await sql`CREATE TABLE IF NOT EXISTS referrers (
+        code text PRIMARY KEY,
+        login_id text UNIQUE NOT NULL,
+        password_hash text NOT NULL,
+        name text,
+        created_at timestamptz NOT NULL DEFAULT now()
+      )`;
+      // 가입 시 입력한 추천인 코드
+      await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS referred_by text`;
       // 데모/관리자 계정 시드 (bcrypt("ktrend2026")) — 서버 세션 로그인 가능하도록
       const DEMO_HASH = "$2b$10$mLc7sBm3zK4a83l6/Tg9NOoDGLLYsfp4SXRfZcls4.LTw6Tsy/8Oy";
       await sql`INSERT INTO users (id, email, password_hash, name, brand, role, plan) VALUES
