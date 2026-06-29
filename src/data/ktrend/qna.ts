@@ -89,7 +89,7 @@ export const QNA_SECTIONS: QnaSection[] = [
       {
         "n": 16,
         "q": "3가지 구독 플랜의 요금과 판매 수수료를 정리해 주세요.",
-        "a": "Start Track은 월 150,000원 + 판매 수수료 15%, Live Focus Track은 월 490,000원 + 판매 수수료 10%, Onboarding Track은 월 3,000,000원 + 판매 수수료 10%입니다. 모든 플랜은 VAT 별도이며, 6개월 약정 시 월 구독료 10% 추가 할인이 적용됩니다."
+        "a": "Start Track은 월 150,000원 + 판매 수수료 15%, Live Focus Track은 월 490,000원 + 판매 수수료 10%이며, Onboarding Track은 별도 협의(가격 문의) + 판매 수수료 10%입니다. 모든 플랜은 VAT 별도이며, 6개월 약정 시 20% 추가 할인이 적용됩니다."
       },
       {
         "n": 17,

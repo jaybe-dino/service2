@@ -4,7 +4,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { isConfigured as payConfigured, clientKey, buildOrderId, SERVICE_ORDER_PREFIX } from "@/lib/nicepay";
 import { PAY_PLANS, isMallPlan } from "@/lib/payments";
 import { computeQuote, type SubTerm } from "@/lib/onboarding";
-import type { MallTrackId } from "@/data/ktrend/meta";
+import { MALL_TRACK_MAP, type MallTrackId } from "@/data/ktrend/meta";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -22,6 +22,10 @@ export async function POST(req: Request) {
   if (isMallPlan(planKey)) mode = "mall";
   const price = PAY_PLANS[planKey];
   if (!price) return NextResponse.json({ ok: false, error: "결제 불가 플랜" }, { status: 400 });
+  // 가격 문의(별도 협의) 트랙은 온사이트 결제 불가 — 문의로만 진행
+  if (isMallPlan(planKey) && MALL_TRACK_MAP[planKey as MallTrackId]?.inquiry) {
+    return NextResponse.json({ ok: false, error: "해당 트랙은 가격 문의 후 진행됩니다." }, { status: 400 });
+  }
 
   if (!payConfigured()) {
     return NextResponse.json({ ok: false, configured: false, error: "결제 모듈(NICEpay 키)이 아직 설정되지 않았습니다." });
