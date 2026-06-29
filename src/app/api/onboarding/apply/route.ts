@@ -62,6 +62,7 @@ export async function POST(req: Request) {
       meetingSlots: Array.isArray(body?.meetingSlots) ? body.meetingSlots.slice(0, 6) : [],
       products: Array.isArray(body?.products) ? body.products.slice(0, 30) : [],
       settlement: body?.settlement ?? {},
+      bizRegFile: body?.bizRegFile ?? null, // {id, filename}
       note: String(body?.note ?? "").trim().slice(0, 2000),
     };
     const payload = { ...base, details };

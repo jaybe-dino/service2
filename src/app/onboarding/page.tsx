@@ -37,11 +37,24 @@ function loadSdk(): Promise<void> {
   });
 }
 
+interface UploadedFile { id: string; filename: string }
 interface Product {
   nameKo: string; nameEn: string; cat: string; price: string; cost: string;
   netWeight: string; netUnit: string; packWeight: string; w: string; h: string; d: string; desc: string;
+  cert?: UploadedFile | null; // 제품 인증서류(선택)
 }
-const emptyProduct = (): Product => ({ nameKo: "", nameEn: "", cat: PRODUCT_CATS[0], price: "", cost: "", netWeight: "", netUnit: "g", packWeight: "", w: "", h: "", d: "", desc: "" });
+const emptyProduct = (): Product => ({ nameKo: "", nameEn: "", cat: PRODUCT_CATS[0], price: "", cost: "", netWeight: "", netUnit: "g", packWeight: "", w: "", h: "", d: "", desc: "", cert: null });
+
+async function uploadOnbFile(file: File, kind: string, productIndex?: number): Promise<UploadedFile | null> {
+  const fd = new FormData();
+  fd.append("file", file);
+  fd.append("kind", kind);
+  if (productIndex != null) fd.append("productIndex", String(productIndex));
+  const r = await fetch("/api/onboarding/upload", { method: "POST", body: fd });
+  const d = await r.json().catch(() => ({}));
+  if (!r.ok || !d.ok) { alert(d?.error ?? "업로드 실패"); return null; }
+  return { id: d.id, filename: d.filename };
+}
 
 function OnboardingInner() {
   const { user, ready } = usePlan();
@@ -75,6 +88,8 @@ function OnboardingInner() {
   });
   const [slots, setSlots] = useState<string[]>([]);
   const [products, setProducts] = useState<Product[]>([emptyProduct()]);
+  const [bizRegFile, setBizRegFile] = useState<UploadedFile | null>(null);
+  const [uploading, setUploading] = useState<string | null>(null); // 'biz' | `p${idx}`
   const [completed, setCompleted] = useState<{ track: MallTrackId; countries: string[]; grade: string; email: string; missing: { id: string; label: string }[] } | null>(null);
 
   const scrollTop = () => setTimeout(() => topRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 60);
@@ -118,6 +133,7 @@ function OnboardingInner() {
           bank: det.settlement?.bank ?? BANKS[0], acct: det.settlement?.acct ?? "", holder: det.settlement?.holder ?? "" }));
         if (Array.isArray(det.meetingSlots)) setSlots(det.meetingSlots);
         if (Array.isArray(det.products) && det.products.length) setProducts(det.products);
+        if (det.bizRegFile) setBizRegFile(det.bizRegFile);
       }
       // 이미 정보 제출 완료 → 완료/현황 화면 (다시 폼 띄우지 않음)
       if (app.phase === "completed" || app.status === "details_submitted") {
@@ -201,7 +217,7 @@ function OnboardingInner() {
         body: JSON.stringify({ stage: "details", brand: d.brandKo, brandEn: d.brandEn, bizNo: d.bizNo,
           repName: d.repName, managerName: d.managerName, contact: d.contact, email: d.email,
           meetingType: d.meetingType, meetingSlots: slots, products: products.slice(0, productLimit(track)),
-          settlement: { bank: d.bank, acct: d.acct, holder: d.holder }, note: d.note }) });
+          settlement: { bank: d.bank, acct: d.acct, holder: d.holder }, bizRegFile, note: d.note }) });
       const data = await res.json();
       if (!res.ok || !data.ok) { setBusy(false); setMsg(data?.error ?? "제출에 실패했습니다."); return; }
       setCompleted({ track, countries: payCountries, grade: gradeInfo?.grade ?? "-", email: d.email,
@@ -451,7 +467,16 @@ function OnboardingInner() {
                   })}
                 </div>
               </div>
-              <p className="mt-3 text-[10px] text-[var(--muted)]">※ 사업자등록증·제품 사진은 1:1 미팅 시 제출하거나 담당자 이메일로 전달해 주세요.</p>
+              <div className="mt-3">
+                <FileField
+                  label="사업자등록증 (PDF·JPG·PNG · 최대 4MB · 선택)"
+                  value={bizRegFile}
+                  busy={uploading === "biz"}
+                  onPick={async (f) => { setUploading("biz"); const u = await uploadOnbFile(f, "biz_reg"); if (u) setBizRegFile(u); setUploading(null); }}
+                  onClear={() => setBizRegFile(null)}
+                />
+              </div>
+              <p className="mt-2 text-[10px] text-[var(--muted)]">※ 큰 파일이나 추가 서류는 1:1 미팅 시 제출하거나 담당자 이메일로 전달해 주세요.</p>
             </div>
 
             <div className="kt-card p-6">
@@ -477,6 +502,15 @@ function OnboardingInner() {
                     <textarea value={p.desc} onChange={(e) => setProducts((ps) => ps.map((x, i) => i === idx ? { ...x, desc: e.target.value } : x))}
                       rows={2} placeholder="제품 상세 설명 (성분·효능·사용법)"
                       className="mt-3 w-full rounded-lg border border-[var(--border)] px-3 py-2 text-[12px]" />
+                    <div className="mt-2">
+                      <FileField
+                        label="인증서류 (PDF·JPG·PNG · 최대 4MB · 선택)"
+                        value={p.cert ?? null}
+                        busy={uploading === `p${idx}`}
+                        onPick={async (f) => { setUploading(`p${idx}`); const u = await uploadOnbFile(f, "product_cert", idx); if (u) setProducts((ps) => ps.map((x, i) => i === idx ? { ...x, cert: u } : x)); setUploading(null); }}
+                        onClear={() => setProducts((ps) => ps.map((x, i) => i === idx ? { ...x, cert: null } : x))}
+                      />
+                    </div>
                   </div>
                 ))}
               </div>
@@ -601,6 +635,29 @@ function Field({ label, value, onChange, placeholder }: { label: string; value: 
       <span className="mb-1 block text-[11px] font-semibold text-[var(--muted)]">{label}</span>
       <input value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} className="w-full rounded-lg border border-[var(--border)] px-3 py-2 text-[12px] text-[var(--fg)]" />
     </label>
+  );
+}
+
+function FileField({ label, value, busy, onPick, onClear }: { label: string; value: UploadedFile | null; busy: boolean; onPick: (f: File) => void; onClear: () => void }) {
+  return (
+    <div>
+      <span className="mb-1 block text-[11px] font-semibold text-[var(--muted)]">{label}</span>
+      {value ? (
+        <div className="flex items-center gap-2 rounded-lg border border-[var(--border)] bg-slate-50 px-3 py-2 text-[12px]">
+          <a href={`/api/onboarding/file/${value.id}`} target="_blank" rel="noreferrer" className="truncate font-semibold text-[var(--accent)] hover:underline">{value.filename}</a>
+          <button type="button" onClick={onClear} className="ml-auto shrink-0 text-[11px] font-semibold text-rose-500 hover:underline">삭제</button>
+        </div>
+      ) : (
+        <input
+          type="file"
+          accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png"
+          disabled={busy}
+          onChange={(e) => { const f = e.target.files?.[0]; if (f) onPick(f); e.currentTarget.value = ""; }}
+          className="w-full rounded-lg border border-[var(--border)] px-3 py-2 text-[11px] file:mr-2 file:rounded file:border-0 file:bg-[var(--accent-light)] file:px-2 file:py-1 file:text-[11px] file:font-semibold file:text-[var(--accent)] disabled:opacity-50"
+        />
+      )}
+      {busy && <span className="mt-1 inline-flex items-center gap-1 text-[10px] text-[var(--muted)]"><Loader2 size={11} className="animate-spin" /> 업로드 중…</span>}
+    </div>
   );
 }
 

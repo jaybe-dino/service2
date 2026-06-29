@@ -41,12 +41,14 @@ const proSource = (m: { pro_until: number; sub_status?: string | null; promo_cod
   return "수동/기타";
 };
 
-interface OnbProduct { nameKo?: string; nameEn?: string; cat?: string; price?: string; cost?: string; netWeight?: string; netUnit?: string; packWeight?: string; w?: string; h?: string; d?: string; desc?: string }
+interface OnbFile { id: string; filename: string }
+interface OnbProduct { nameKo?: string; nameEn?: string; cat?: string; price?: string; cost?: string; netWeight?: string; netUnit?: string; packWeight?: string; w?: string; h?: string; d?: string; desc?: string; cert?: OnbFile | null }
 interface OnbPayload {
   checks?: Record<string, boolean>; yes?: number; countries?: string[]; certs?: Record<string, string>; referral?: string;
   details?: {
     brandKo?: string; brandEn?: string; bizNo?: string; repName?: string; managerName?: string; contact?: string; email?: string;
-    meetingType?: string; meetingSlots?: string[]; products?: OnbProduct[]; settlement?: { bank?: string; acct?: string; holder?: string }; note?: string;
+    meetingType?: string; meetingSlots?: string[]; products?: OnbProduct[]; settlement?: { bank?: string; acct?: string; holder?: string };
+    bizRegFile?: OnbFile | null; note?: string;
   };
 }
 interface OnbApp {
@@ -904,6 +906,12 @@ function OnbDetailModal({ a, onClose }: { a: OnbApp; onClose: () => void }) {
                 <KV k="연락처" v={det.contact ?? "—"} />
                 <KV k="이메일" v={det.email ?? "—"} />
                 <KV k="미팅 선호" v={`${det.meetingType ?? "—"}${det.meetingSlots?.length ? ` · ${det.meetingSlots.join(", ")}` : ""}`} />
+                <div className="flex gap-2">
+                  <span className="shrink-0 text-[var(--muted)]">사업자등록증</span>
+                  <span className="ml-auto text-right font-semibold">
+                    {det.bizRegFile ? <a href={`/api/onboarding/file/${det.bizRegFile.id}`} target="_blank" rel="noreferrer" className="text-[var(--accent)] hover:underline">{det.bizRegFile.filename} ↓</a> : "—"}
+                  </span>
+                </div>
               </Section>
 
               {/* 제품 */}
@@ -919,6 +927,7 @@ function OnbDetailModal({ a, onClose }: { a: OnbApp; onClose: () => void }) {
                       {(pr.w || pr.h || pr.d) && <span>사이즈: {pr.w || "?"}×{pr.h || "?"}×{pr.d || "?"}mm</span>}
                     </div>
                     {pr.desc && <p className="mt-1 text-[10px] leading-relaxed text-[var(--muted)]">{pr.desc}</p>}
+                    {pr.cert && <p className="mt-1 text-[10px]">인증서류: <a href={`/api/onboarding/file/${pr.cert.id}`} target="_blank" rel="noreferrer" className="font-semibold text-[var(--accent)] hover:underline">{pr.cert.filename} ↓</a></p>}
                   </div>
                 ))}
                 {!det.products?.length && <p className="text-[var(--muted)]">—</p>}

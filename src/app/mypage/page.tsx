@@ -3,14 +3,16 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { User, Crown, Ticket, Bookmark, LogOut, CreditCard, Building2, Mail, Briefcase, LogIn, Send, Loader2, ShoppingBag } from "lucide-react";
+import { User, Crown, Ticket, Bookmark, LogOut, CreditCard, Building2, Mail, Briefcase, LogIn, Send, Loader2, ShoppingBag, Package } from "lucide-react";
 import PageShell from "@/components/ktrend/PageShell";
 import { usePlan } from "@/components/ktrend/PlanContext";
 import { useBookmarks } from "@/components/ktrend/BookmarkContext";
 
 interface Sub { plan: string; amount: number; status: string; next_charge_at: number }
 interface Proposal { id: number; handle: string | null; message: string | null; budget: string | null; status: string; response: string | null; created_at: string }
-interface OnbApp { track: string | null; grade: string | null; countries: string | null; term: string | null; amount: number | null; phase: string | null; status: string; dino_linked: boolean; payload: { details?: { bizNo?: string; products?: { nameKo?: string; nameEn?: string }[]; settlement?: { bank?: string; acct?: string } } } | null }
+interface OnbFile { id: string; filename: string }
+interface OnbProduct { nameKo?: string; nameEn?: string; cat?: string; price?: string; cert?: OnbFile | null }
+interface OnbApp { track: string | null; grade: string | null; countries: string | null; term: string | null; amount: number | null; phase: string | null; status: string; dino_linked: boolean; payload: { details?: { bizNo?: string; repName?: string; managerName?: string; contact?: string; email?: string; products?: OnbProduct[]; settlement?: { bank?: string; acct?: string; holder?: string }; bizRegFile?: OnbFile | null } } | null }
 interface MallSub { track: string; amount: number; status: string; next_charge_at: number }
 interface MallOrder { order_id: string; plan: string; charge_amount: number | null; amount: number; status: string; created_ms: number }
 const TRACK_LABEL: Record<string, string> = { ready: "Start Track", live: "Live Focus Track", onboarding: "Onboarding Track" };
@@ -156,7 +158,9 @@ export default function MyPage() {
           const st = ONB_STATUS[a.status] ?? { label: a.status, cls: "bg-slate-100 text-slate-500" };
           const acct = det?.settlement?.acct ?? "";
           const acctMask = acct ? `${det?.settlement?.bank ?? ""} ****${acct.slice(-4)}` : "—";
+          const products = det?.products ?? [];
           return (
+            <>
             <div className="mt-4 kt-card p-5">
               <h2 className="mb-3 flex flex-wrap items-center gap-2 text-[13px] font-bold">
                 <ShoppingBag size={14} className="text-[var(--accent)]" /> 틱톡샵 입점 관리
@@ -181,7 +185,9 @@ export default function MyPage() {
                   <div className="mt-1.5 grid gap-1 text-[var(--muted)] sm:grid-cols-2">
                     <div>사업자등록번호: <b className="text-[var(--fg)]">{det.bizNo || "—"}</b></div>
                     <div>정산 계좌: <b className="text-[var(--fg)]">{acctMask}</b></div>
-                    <div className="sm:col-span-2">등록 제품 ({det.products?.length ?? 0}): <b className="text-[var(--fg)]">{(det.products ?? []).map((p) => p.nameKo || p.nameEn).filter(Boolean).join(", ") || "—"}</b></div>
+                    <div className="sm:col-span-2">사업자등록증: {det.bizRegFile
+                      ? <a href={`/api/onboarding/file/${det.bizRegFile.id}`} target="_blank" rel="noreferrer" className="font-semibold text-[var(--accent)] hover:underline">{det.bizRegFile.filename} ↓</a>
+                      : <b className="text-[var(--fg)]">미제출</b>}</div>
                   </div>
                   <p className="mt-1.5 text-[10px]">※ 정보 수정이 필요하면 담당 매니저 또는 partners@glovek.space로 요청해 주세요.</p>
                 </div>
@@ -221,6 +227,29 @@ export default function MyPage() {
               )}
               <p className="mt-2 text-[10px] text-[var(--muted)]">파트별 추가 결제·옵션이 필요한 경우 담당 매니저를 통해 안내드리며, 결제 시 위 내역에 함께 표시됩니다.</p>
             </div>
+
+            {/* 등록 제품 관리 */}
+            {products.length > 0 && (
+              <div className="mt-4 kt-card p-5">
+                <h2 className="mb-3 flex items-center gap-1.5 text-[13px] font-bold"><Package size={14} className="text-[var(--accent)]" /> 등록 제품 관리 <span className="text-[11px] font-semibold text-[var(--muted)]">({products.length})</span></h2>
+                <div className="space-y-2">
+                  {products.map((pr, i) => (
+                    <div key={i} className="flex flex-wrap items-center gap-2 rounded-lg border border-[var(--border)] p-3 text-[12px]">
+                      <span className="font-bold">{i + 1}. {pr.nameKo || pr.nameEn || "(제품명 미입력)"}</span>
+                      {pr.cat && <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-[var(--muted)]">{pr.cat}</span>}
+                      {pr.price && <span className="text-[11px] text-[var(--muted)]">소비자가 {wonF(Number(pr.price))}</span>}
+                      <span className="ml-auto text-[11px]">
+                        {pr.cert
+                          ? <a href={`/api/onboarding/file/${pr.cert.id}`} target="_blank" rel="noreferrer" className="font-semibold text-[var(--accent)] hover:underline">인증서류 ↓</a>
+                          : <span className="text-[var(--muted)]">인증서류 없음</span>}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+                <p className="mt-2 text-[10px] text-[var(--muted)]">※ 제품 추가·수정 또는 인증서류 교체가 필요하면 담당 매니저 또는 partners@glovek.space로 요청해 주세요.</p>
+              </div>
+            )}
+            </>
           );
         })()}
 

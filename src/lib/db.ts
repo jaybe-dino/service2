@@ -273,6 +273,18 @@ export function ensureSchema(): Promise<void> {
       await sql`ALTER TABLE onboarding_applications ADD COLUMN IF NOT EXISTS referral_code text`;
       await sql`ALTER TABLE onboarding_applications ADD COLUMN IF NOT EXISTS dino_linked boolean NOT NULL DEFAULT false`;
       await sql`ALTER TABLE onboarding_applications ADD COLUMN IF NOT EXISTS payload jsonb`;
+      // 온보딩 제출 파일(사업자등록증·제품 인증서류) — base64 저장. kind: biz_reg | product_cert
+      await sql`CREATE TABLE IF NOT EXISTS onboarding_files (
+        id text PRIMARY KEY,
+        user_id text NOT NULL,
+        kind text NOT NULL,
+        product_index int,
+        filename text,
+        mime text,
+        size int,
+        data text,
+        created_at timestamptz NOT NULL DEFAULT now()
+      )`;
       // 몰 입점 정기결제 구독 (Pro SaaS 구독과 분리) — 브랜드당 1개 트랙
       await sql`CREATE TABLE IF NOT EXISTS mall_subscriptions (
         user_id text PRIMARY KEY,
