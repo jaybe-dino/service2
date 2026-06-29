@@ -238,7 +238,6 @@ function OnboardingInner() {
         </div>
 
         {PAY_TEST_MODE && <p className="mt-4 rounded-md bg-amber-50 px-3 py-2 text-[11px] font-bold text-amber-700">⚠️ 결제 테스트 모드 — 모든 트랙 결제 금액이 ₩1,000으로 청구됩니다.</p>}
-        {!PAY_TEST_MODE && testTok && <p className="mt-4 rounded-md bg-amber-50 px-3 py-2 text-[11px] font-bold text-amber-700">🧪 결제 테스트 링크 — 결제 금액이 1/10000(최소 ₩100)로 청구됩니다. (토큰이 올바를 때만 적용)</p>}
         {msg && <p className="mt-4 rounded-md bg-amber-50 px-3 py-2 text-[12px] font-semibold text-amber-700">{msg}</p>}
 
         {/* ───────── PHASE 1 ───────── */}

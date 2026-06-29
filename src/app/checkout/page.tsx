@@ -83,7 +83,6 @@ export default function CheckoutPage() {
         <h1 className="mb-1 text-[22px] font-black tracking-tight">Pro 구독 시작</h1>
         <p className="mb-5 text-[12px] text-[var(--muted)]">결제 즉시 이용 · <b className="text-[var(--accent)]">매월 {wonFmt(PRO_AMT)} 자동결제</b> (언제든 해지)</p>
         {PAY_TEST_MODE && <p className="mb-4 rounded-md bg-amber-50 px-3 py-2 text-[11px] font-bold text-amber-700">⚠️ 결제 테스트 모드: 실제 청구 금액은 {wonFmt(PRO_AMT)} 입니다.</p>}
-        {!PAY_TEST_MODE && testTok && <p className="mb-4 rounded-md bg-amber-50 px-3 py-2 text-[11px] font-bold text-amber-700">🧪 결제 테스트 링크 — 결제 금액이 1/10000(최소 ₩100)로 청구됩니다. (토큰이 올바를 때만 적용)</p>}
 
         {isPro ? (
           <div className="kt-card p-6 text-center">
