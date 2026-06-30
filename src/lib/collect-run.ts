@@ -10,8 +10,38 @@ import { DEFAULT_CRAWL_RULES, type CrawlRules } from "./crawl-rules";
 
 const MAX_ATTEMPTS = 3; // 재시도 상한 — 초과 시 'failed'로 격리
 // 수집 깊이/배치 — 환경변수로 조절. 기본값은 Apify 월 상한 $100 기준(하드 상한이 안전망).
-const INITIAL_LIMIT = Number(process.env.COLLECT_INITIAL_LIMIT ?? 500); // 신규 1차 백필 깊이
-const REFRESH_LIMIT = Number(process.env.COLLECT_REFRESH_LIMIT ?? 100); // 정기 증분 깊이
+// 수집 강도 — admin_settings(key='collect_tuning')로 어드민에서 실시간 조정. env는 폴백 기본값.
+export interface CollectTuning {
+  initialLimit: number; // 신규 1차 백필 깊이(브랜드당 영상 수)
+  refreshLimit: number; // 정기 증분 깊이
+  maxPending: number;   // 한 번 실행 시 신규 시작 개수
+  maxRefresh: number;   // 한 번 실행 시 갱신 시작 개수
+  maxPoll: number;      // 한 번 실행 시 결과 적재(회수) 개수
+}
+export const DEFAULT_TUNING: CollectTuning = {
+  initialLimit: Number(process.env.COLLECT_INITIAL_LIMIT ?? 500),
+  refreshLimit: Number(process.env.COLLECT_REFRESH_LIMIT ?? 100),
+  maxPending: Number(process.env.COLLECT_MAX_PENDING ?? 4),
+  maxRefresh: Number(process.env.COLLECT_MAX_REFRESH ?? 6),
+  maxPoll: Number(process.env.COLLECT_MAX_POLL ?? 2),
+};
+const clampPos = (n: unknown, def: number, max: number) => {
+  const v = Math.round(Number(n));
+  return Number.isFinite(v) && v > 0 ? Math.min(v, max) : def;
+};
+export async function getCollectTuning(): Promise<CollectTuning> {
+  try {
+    const r = await sql`SELECT value FROM admin_settings WHERE key='collect_tuning' LIMIT 1`;
+    const v = (r.rows[0]?.value ?? {}) as Partial<CollectTuning>;
+    return {
+      initialLimit: clampPos(v.initialLimit, DEFAULT_TUNING.initialLimit, 1000),
+      refreshLimit: clampPos(v.refreshLimit, DEFAULT_TUNING.refreshLimit, 500),
+      maxPending: clampPos(v.maxPending, DEFAULT_TUNING.maxPending, 100),
+      maxRefresh: clampPos(v.maxRefresh, DEFAULT_TUNING.maxRefresh, 100),
+      maxPoll: clampPos(v.maxPoll, DEFAULT_TUNING.maxPoll, 12), // 60초 제한 고려 상한
+    };
+  } catch { return DEFAULT_TUNING; }
+}
 const BACKFILL_DAYS = Number(process.env.COLLECT_BACKFILL_DAYS ?? 365); // 신규 1차학습 기간
 const REFRESH_SINCE_DAYS = 30; // 증분 수집 기간
 
@@ -244,9 +274,11 @@ export async function runCollection(opts: { maxPending?: number; maxRefresh?: nu
   await ensureSchema();
   const configured = scraperConfigured();
   const webhook = ingestWebhook(opts.baseUrl);
-  const maxPending = opts.maxPending ?? 5;
-  const maxRefresh = opts.maxRefresh ?? 10;
-  const maxPoll = opts.maxPoll ?? 2;
+  // 수집 강도: admin_settings(DB) 우선, 없으면 env/기본값. opts로 강제 지정 시 그 값 우선.
+  const tuning = await getCollectTuning();
+  const maxPending = opts.maxPending ?? tuning.maxPending;
+  const maxRefresh = opts.maxRefresh ?? tuning.maxRefresh;
+  const maxPoll = opts.maxPoll ?? tuning.maxPoll;
 
   if (!configured) return { configured, mode: "skipped", polledDone: 0, ingested: 0, kickedNew: 0, kickedRefresh: 0, reason: "SCRAPER_API_KEY 미설정" };
 
@@ -263,7 +295,7 @@ export async function runCollection(opts: { maxPending?: number; maxRefresh?: nu
   for (const req of pending.rows) {
     try {
       const runId = await startApifyRun(
-        { brandName: req.brand_name, handle: req.handle, hashtags: req.hashtags, backfillDays: BACKFILL_DAYS, limit: INITIAL_LIMIT },
+        { brandName: req.brand_name, handle: req.handle, hashtags: req.hashtags, backfillDays: BACKFILL_DAYS, limit: tuning.initialLimit },
         webhook,
       );
       if (runId) await sql`INSERT INTO collect_jobs (run_id, brand_name, since_date) VALUES (${runId}, ${req.brand_name}, ${backfillSince}) ON CONFLICT (run_id) DO NOTHING`;
@@ -305,7 +337,7 @@ export async function runCollection(opts: { maxPending?: number; maxRefresh?: nu
 
   for (const t of targets) {
     try {
-      const runId = await startApifyRun({ brandName: t.name, hashtags: t.hashtags, sinceDate: since, limit: REFRESH_LIMIT }, webhook);
+      const runId = await startApifyRun({ brandName: t.name, hashtags: t.hashtags, sinceDate: since, limit: tuning.refreshLimit }, webhook);
       if (runId) await sql`INSERT INTO collect_jobs (run_id, brand_name, since_date) VALUES (${runId}, ${t.name}, ${since}) ON CONFLICT (run_id) DO NOTHING`;
       await sql`INSERT INTO brand_tracking (brand_name, last_collected_at, updated_at)
                 VALUES (${t.name}, now(), now())

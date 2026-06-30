@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ShieldCheck, Users, CreditCard, UserSquare2, Tag, SlidersHorizontal, Loader2, LogOut, Gift, Inbox, Database, Play, Link2 as LinkIcon, ShoppingBag, X } from "lucide-react";
 import PageShell from "@/components/ktrend/PageShell";
 import { INFLUENCERS, contactFor } from "@/data/ktrend/influencers";
@@ -101,6 +101,8 @@ export default function AdminPage() {
   const [linkUtm, setLinkUtm] = useState({ source: "", medium: "", campaign: "", content: "", term: "" });
   const [totals, setTotals] = useState<Totals | null>(null);
   const [rules, setRules] = useState<CrawlRules>(DEFAULT_CRAWL_RULES);
+  const [tuning, setTuning] = useState<{ initialLimit: number; refreshLimit: number; maxPending: number; maxRefresh: number; maxPoll: number } | null>(null);
+  const loadedTabs = useRef<Set<string>>(new Set());
   const [loadingData, setLoadingData] = useState(false);
   const [grantEmail, setGrantEmail] = useState("");
   const [grantDays, setGrantDays] = useState(30);
@@ -113,6 +115,7 @@ export default function AdminPage() {
   };
   useEffect(() => { checkSession(); }, []);
 
+  // 핵심(overview)만 진입 시 로드. 탭별 부가 데이터는 해당 탭 진입 시 지연 로드(로드 시간 단축).
   const loadData = async () => {
     setLoadingData(true);
     const r = await fetch("/api/admin/overview", { cache: "no-store" }).then((x) => x.json()).catch(() => null);
@@ -130,17 +133,46 @@ export default function AdminPage() {
       setTotals(r.totals ?? null);
       if (r.crawlRules) setRules({ ...DEFAULT_CRAWL_RULES, ...r.crawlRules });
     }
+  };
+  const loadOnb = async () => {
     const onb = await fetch("/api/onboarding/apply", { cache: "no-store" }).then((x) => x.json()).catch(() => null);
     if (onb?.ok) setOnbApps(onb.items ?? []);
+  };
+  const loadReferrers = async () => {
     const refs = await fetch("/api/admin/referrers", { cache: "no-store" }).then((x) => x.json()).catch(() => null);
     if (refs?.ok) setReferrers(refs.items ?? []);
+  };
+  const loadTuning = async () => {
+    const t = await fetch("/api/admin/collect-tuning", { cache: "no-store" }).then((x) => x.json()).catch(() => null);
+    if (t?.ok) setTuning(t.tuning);
+  };
+  // 탭 진입 시 1회 지연 로드
+  useEffect(() => {
+    if (!authed) return;
+    const k = (key: string, fn: () => void) => { if (!loadedTabs.current.has(key)) { loadedTabs.current.add(key); fn(); } };
+    if (tab === "onboarding") k("onboarding", loadOnb);
+    if (tab === "referrers") k("referrers", loadReferrers);
+    if (tab === "collect") k("tuning", loadTuning);
+  }, [authed, tab]);
+  // 새로고침: overview + 현재 탭 부가데이터
+  const refresh = () => {
+    loadData();
+    if (tab === "onboarding") loadOnb();
+    if (tab === "referrers") loadReferrers();
+    if (tab === "collect") loadTuning();
+  };
+  const saveTuning = async () => {
+    if (!tuning) return;
+    const r = await fetch("/api/admin/collect-tuning", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(tuning) });
+    const d = await r.json().catch(() => ({}));
+    if (r.ok && d.ok) { setTuning(d.tuning); setToast("수집 강도 저장됨 (즉시 적용)"); } else setToast(d.error ?? "저장 실패");
   };
 
   const createReferrer = async (e: React.FormEvent) => {
     e.preventDefault();
     const r = await fetch("/api/admin/referrers", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: refName, loginId: refLoginId, password: refPw }) });
     const d = await r.json().catch(() => ({}));
-    if (r.ok && d.ok) { setNewRef(d); setRefName(""); setRefLoginId(""); setRefPw(""); setToast(`추천인 생성: ${d.code}`); loadData(); }
+    if (r.ok && d.ok) { setNewRef(d); setRefName(""); setRefLoginId(""); setRefPw(""); setToast(`추천인 생성: ${d.code}`); loadReferrers(); }
     else setToast(d.error ?? "생성 실패");
   };
   const changeRefPw = async (code: string) => {
@@ -378,7 +410,7 @@ export default function AdminPage() {
         {TABS.map((t) => (
           <button key={t.id} onClick={() => setTab(t.id)} className={`flex shrink-0 items-center gap-1.5 rounded-md px-3 py-1.5 text-[11px] font-semibold ${tab === t.id ? "bg-[var(--accent)] text-white" : "border border-[var(--border)] text-[var(--muted)]"}`}>{t.icon} {t.label}</button>
         ))}
-        <button onClick={loadData} className="ml-auto shrink-0 rounded-md border border-[var(--border)] px-3 py-1.5 text-[11px] text-[var(--muted)]">새로고침</button>
+        <button onClick={refresh} className="ml-auto shrink-0 rounded-md border border-[var(--border)] px-3 py-1.5 text-[11px] text-[var(--muted)]">새로고침</button>
       </div>
 
       {toast && <div className="mb-3 rounded-md bg-emerald-50 px-3 py-2 text-[11px] font-semibold text-emerald-700">{toast}</div>}
@@ -538,6 +570,35 @@ export default function AdminPage() {
 
       {tab === "collect" && (
         <>
+          {/* 수집 강도(얕고 넓게) — DB 저장, 즉시 적용 */}
+          {tuning && (
+            <div className="mb-3 kt-card p-3">
+              <div className="mb-2 flex flex-wrap items-center gap-2">
+                <span className="flex items-center gap-1.5 text-[11px] font-bold"><SlidersHorizontal size={13} className="text-[var(--accent)]" /> 수집 강도</span>
+                <button onClick={() => setTuning({ initialLimit: 150, refreshLimit: 60, maxPending: 15, maxRefresh: 40, maxPoll: 6 })} className="rounded-md border border-[var(--border)] px-2 py-1 text-[10px] font-semibold text-[var(--accent)]">얕고 넓게 프리셋</button>
+                <button onClick={() => setTuning({ initialLimit: 500, refreshLimit: 100, maxPending: 4, maxRefresh: 6, maxPoll: 2 })} className="rounded-md border border-[var(--border)] px-2 py-1 text-[10px] font-semibold text-[var(--muted)]">기본값</button>
+                <button onClick={saveTuning} className="kt-btn kt-btn-primary ml-auto px-3 py-1.5 text-[11px]">저장 (즉시 적용)</button>
+              </div>
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
+                {([
+                  ["initialLimit", "신규 깊이", "브랜드당 1차 수집 영상수"],
+                  ["refreshLimit", "갱신 깊이", "브랜드당 증분 영상수"],
+                  ["maxPending", "신규 시작/회", "한 번에 신규 브랜드"],
+                  ["maxRefresh", "갱신 시작/회", "한 번에 갱신 브랜드"],
+                  ["maxPoll", "적재/회(≤12)", "한 번에 회수할 run"],
+                ] as const).map(([key, label, hint]) => (
+                  <label key={key} className="block">
+                    <span className="block text-[10px] font-semibold text-[var(--muted)]">{label}</span>
+                    <input type="number" min={1} value={tuning[key]}
+                      onChange={(e) => setTuning((t) => t ? { ...t, [key]: Number(e.target.value) } : t)}
+                      className="mt-0.5 w-full rounded-md border border-[var(--border)] px-2 py-1.5 text-[12px]" />
+                    <span className="mt-0.5 block text-[9px] text-[var(--muted)]">{hint}</span>
+                  </label>
+                ))}
+              </div>
+              <p className="mt-2 text-[10px] text-[var(--muted)]">※ 403개 전체를 빠르게 채우려면 ‘얕고 넓게’로 시작 → Apify 사용량 보며 조정. 적재/회는 함수 60초 제한 때문에 12 이하 권장.</p>
+            </div>
+          )}
           <div className="mb-3 flex flex-wrap items-center gap-2 kt-card p-3">
             <span className="flex items-center gap-1.5 text-[11px] font-bold"><Database size={13} className="text-[var(--accent)]" /> 신규 브랜드 발굴 요청</span>
             <form onSubmit={addBrand} className="flex items-center gap-2">

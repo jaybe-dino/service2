@@ -19,13 +19,8 @@ async function handle(req: Request) {
   const proto = req.headers.get("x-forwarded-proto") ?? "https";
   const host = req.headers.get("x-forwarded-host") ?? req.headers.get("host");
   const baseUrl = host ? `${proto}://${host}` : undefined;
-  // 비동기 kick — 동시 실행/크레딧 절약 위해 배치 보수적(환경변수로 조절).
-  const summary = await runCollection({
-    maxPending: Number(process.env.COLLECT_MAX_PENDING ?? 4),
-    maxRefresh: Number(process.env.COLLECT_MAX_REFRESH ?? 6),
-    maxPoll: Number(process.env.COLLECT_MAX_POLL ?? 2),
-    baseUrl,
-  });
+  // 수집 강도는 admin_settings(어드민 UI)에서 관리 → runCollection이 DB 값 사용
+  const summary = await runCollection({ baseUrl });
   return NextResponse.json({ ok: true, ...summary });
 }
 
