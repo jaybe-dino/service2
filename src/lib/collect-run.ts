@@ -240,17 +240,18 @@ async function pollJobs(maxPoll: number): Promise<{ ingested: number; done: numb
 
 // B안 비동기 수집 사이클: Apify run을 "시작"만 하고(빠름) 결과는 webhook(ingest)으로 받음.
 // → 서버리스 60초 제한 무관하게 브랜드당 수천 건 깊게 수집 가능.
-export async function runCollection(opts: { maxPending?: number; maxRefresh?: number; baseUrl?: string } = {}): Promise<CollectSummary> {
+export async function runCollection(opts: { maxPending?: number; maxRefresh?: number; maxPoll?: number; baseUrl?: string } = {}): Promise<CollectSummary> {
   await ensureSchema();
   const configured = scraperConfigured();
   const webhook = ingestWebhook(opts.baseUrl);
   const maxPending = opts.maxPending ?? 5;
   const maxRefresh = opts.maxRefresh ?? 10;
+  const maxPoll = opts.maxPoll ?? 2;
 
   if (!configured) return { configured, mode: "skipped", polledDone: 0, ingested: 0, kickedNew: 0, kickedRefresh: 0, reason: "SCRAPER_API_KEY 미설정" };
 
-  // 0) 진행 중 run 결과 먼저 적재 (폴링) — 타임아웃 방지 위해 한 번에 소량만
-  const poll = await pollJobs(2);
+  // 0) 진행 중 run 결과 먼저 적재 (폴링) — 타임아웃 방지 위해 한 번에 maxPoll개만
+  const poll = await pollJobs(maxPoll);
 
   let kickedNew = 0;
   let kickedRefresh = 0;

@@ -22,6 +22,7 @@ export async function POST(req: Request) {
   const summary = await runCollection({
     maxPending: Number(process.env.COLLECT_MAX_PENDING ?? 4),
     maxRefresh: Number(process.env.COLLECT_MAX_REFRESH ?? 6),
+    maxPoll: Number(process.env.COLLECT_MAX_POLL ?? 2),
     baseUrl,
   });
   return NextResponse.json({ ok: true, scraper: scraperConfigured(), ...summary });
