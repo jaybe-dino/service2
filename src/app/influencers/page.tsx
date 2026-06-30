@@ -12,7 +12,7 @@ import { usePlan } from "@/components/ktrend/PlanContext";
 import { apiInquiry } from "@/lib/client-api";
 import { INFLUENCER_MAP } from "@/data/ktrend/influencers";
 import { BRAND_MAP } from "@/data/ktrend/brands";
-import { TIERS, tierOf, type InfluencerTier } from "@/data/ktrend/meta";
+import { TIERS, tierOf, COUNTRY_MAP, type InfluencerTier } from "@/data/ktrend/meta";
 import { fmtCompact, fmtUSD, loadContent, type Content } from "@/data/ktrend/content";
 
 const TIER_KEYS = Object.keys(TIERS) as InfluencerTier[];
@@ -26,12 +26,13 @@ const SORTS: { key: SortKey; label: string }[] = [
   { key: "roas", label: "비용대비 성과 순" },
 ];
 
-interface Inf { handle: string; tier: InfluencerTier; videos: number; totalViews: number; avgViews: number; revenue: number; avgRoas: number; brands: string[] }
+interface Inf { handle: string; tier: InfluencerTier; videos: number; totalViews: number; avgViews: number; revenue: number; avgRoas: number; brands: string[]; country: string }
 
 export default function InfluencersPage() {
   const { plan, isAdmin } = usePlan();
   const isAdvance = plan === "enterprise" || isAdmin; // 다중 제안은 Advance 전용
   const [tier, setTier] = useState<InfluencerTier | "ALL">("ALL");
+  const [country, setCountry] = useState<string>("ALL");
   const [sort, setSort] = useState<SortKey>("reviews");
   const [q, setQ] = useState("");
   const [propose, setPropose] = useState<string | null>(null);
@@ -60,32 +61,44 @@ export default function InfluencersPage() {
   // 병합된 콘텐츠(정적+수집)에서 인플루언서 집계 → 콘텐츠 수와 매칭
   const influencers = useMemo<Inf[]>(() => {
     if (!content) return [];
-    const map = new Map<string, { handle: string; videos: number; totalViews: number; revenue: number; roasSum: number; brands: Set<string> }>();
+    const map = new Map<string, { handle: string; videos: number; totalViews: number; revenue: number; roasSum: number; brands: Set<string>; countries: Record<string, number> }>();
     for (const c of content) {
-      const e = map.get(c.influencerId) ?? { handle: c.influencerId, videos: 0, totalViews: 0, revenue: 0, roasSum: 0, brands: new Set<string>() };
+      const e = map.get(c.influencerId) ?? { handle: c.influencerId, videos: 0, totalViews: 0, revenue: 0, roasSum: 0, brands: new Set<string>(), countries: {} };
       e.videos += 1;
       e.totalViews += c.views;
       e.revenue += c.estRevenueUSD;
       e.roasSum += c.estRoasX;
       const bn = BRAND_MAP[c.brandId]?.name;
       if (bn) e.brands.add(bn);
+      const cc = c.country || "US";
+      e.countries[cc] = (e.countries[cc] ?? 0) + 1; // 콘텐츠 국가 카운트 → 주력 국가 산출
       map.set(c.influencerId, e);
     }
     return [...map.values()].map((e) => {
       const avgViews = Math.round(e.totalViews / e.videos);
+      // 주력 국가 = 콘텐츠가 가장 많은 국가
+      const country = Object.entries(e.countries).sort((a, b) => b[1] - a[1])[0]?.[0] ?? "US";
       return {
         handle: e.handle, videos: e.videos, totalViews: e.totalViews, avgViews,
         revenue: e.revenue, avgRoas: Math.round((e.roasSum / e.videos) * 10) / 10,
-        tier: INFLUENCER_MAP[e.handle]?.tier ?? tierOf(avgViews), brands: [...e.brands],
+        tier: INFLUENCER_MAP[e.handle]?.tier ?? tierOf(avgViews), brands: [...e.brands], country,
       };
     });
   }, [content]);
+
+  // 실제 수집된 국가만 필터 옵션으로 노출 (체크 표기)
+  const availableCountries = useMemo(() => {
+    const set = new Set<string>();
+    influencers.forEach((i) => set.add(i.country));
+    return [...set];
+  }, [influencers]);
 
   const rows = useMemo(() => {
     const query = q.trim().toLowerCase();
     const filtered = influencers.filter(
       (i) =>
         (tier === "ALL" || i.tier === tier) &&
+        (country === "ALL" || i.country === country) &&
         (!query ||
           i.handle.toLowerCase().includes(query) ||
           i.brands.some((b) => b.toLowerCase().includes(query))),
@@ -97,7 +110,7 @@ export default function InfluencersPage() {
       roas: (a, b) => b.avgRoas - a.avgRoas,
     };
     return [...filtered].sort(cmp[sort]);
-  }, [influencers, tier, q, sort]);
+  }, [influencers, tier, country, q, sort]);
 
   return (
     <PageShell>
@@ -141,6 +154,12 @@ export default function InfluencersPage() {
           value={tier}
           onChange={(k) => { setTier(k as InfluencerTier | "ALL"); setVisible(PAGE); }}
         />
+        <FilterPills
+          label="주력 국가"
+          options={[{ k: "ALL", v: "전체" }, ...availableCountries.map((c) => ({ k: c, v: `${COUNTRY_MAP[c]?.flag ?? ""} ${COUNTRY_MAP[c]?.nameKo ?? c}` }))]}
+          value={country}
+          onChange={(k) => { setCountry(k); setVisible(PAGE); }}
+        />
         <div className="relative ml-auto">
           <Search size={12} className="absolute left-2 top-1/2 -translate-y-1/2 text-[var(--muted)]" />
           <input
@@ -159,6 +178,7 @@ export default function InfluencersPage() {
               <th className="p-3">#</th>
               <th className="p-3">크리에이터</th>
               <th className="p-3">규모</th>
+              <th className="p-3">주력 국가</th>
               <th className="p-3 text-right">영상 수</th>
               <th className="p-3 text-right">평균 조회수</th>
               <th className="p-3 text-right">누적 조회수</th>
@@ -184,6 +204,9 @@ export default function InfluencersPage() {
                     <span className="rounded px-1.5 py-0.5 text-[9px] font-bold text-white" style={{ background: TIERS[inf.tier].color }}>
                       {TIERS[inf.tier].label}
                     </span>
+                  </td>
+                  <td className="p-3 whitespace-nowrap text-[10px]">
+                    {COUNTRY_MAP[inf.country]?.flag ?? "🌐"} {COUNTRY_MAP[inf.country]?.nameKo ?? inf.country}
                   </td>
                   <td className="p-3 text-right">{inf.videos}</td>
                   <td className="p-3 text-right">{fmtCompact(inf.avgViews)}</td>
