@@ -113,17 +113,20 @@ export default function PlansPage() {
       {/* 틱톡샵 온보딩은 별도 트랙 안내 배너 */}
       {ONBOARDING.enabled && (
         <div className="mx-auto mt-10 max-w-[1100px] px-4">
-          <div className="flex flex-col items-center gap-3 rounded-2xl bg-[#0b0b0c] px-6 py-6 text-center text-white sm:flex-row sm:text-left">
-            <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-white/10">
-              <ShoppingBag size={20} className="text-pink-400" />
+          <div className="flex flex-col items-start gap-5 rounded-2xl bg-gradient-to-r from-[#7C3AED] to-[#1A56DB] px-6 py-6 text-white shadow-lg sm:flex-row sm:items-center">
+            <span className="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-white/15">
+              <ShoppingBag size={22} className="text-white" />
             </span>
             <div className="flex-1">
-              <div className="text-[15px] font-black">틱톡샵 입점(온보딩)은 별도 트랙입니다</div>
-              <p className="mt-1 text-[12px] leading-relaxed text-white/75">
-                위 요금제는 콘텐츠·인플루언서·브랜드 분석 서비스 구독입니다. 글로벌 틱톡샵 멀티몰 입점·운영(Start / Live Focus / Onboarding 트랙)은 자가체크 → 트랙 선택 → 결제까지 별도 신청 페이지에서 진행됩니다.
+              <span className="inline-flex items-center rounded-full bg-white/15 px-2.5 py-0.5 text-[10px] font-bold tracking-wide">별도 트랙 안내</span>
+              <h3 className="mt-2 text-[17px] font-black leading-snug">틱톡샵 입점(온보딩)은 별도 트랙입니다</h3>
+              <p className="mt-2 text-[12.5px] leading-relaxed text-white/90">
+                위 요금제는 <b className="font-bold text-white">콘텐츠·인플루언서·브랜드 분석 서비스</b> 구독입니다.<br className="hidden sm:block" />
+                글로벌 틱톡샵 멀티몰 입점·운영(Start / Live Focus / Onboarding)은<br className="hidden sm:block" />
+                <b className="font-bold text-white">자가체크 → 트랙 선택 → 결제</b>까지 별도 신청 페이지에서 진행됩니다.
               </p>
             </div>
-            <Link href={ONBOARDING.path} className="inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-pink-500 px-5 py-2.5 text-[12px] font-bold text-white hover:bg-pink-600">
+            <Link href={ONBOARDING.path} className="inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-white px-5 py-2.5 text-[12px] font-black text-[#1A56DB] shadow-sm transition-colors hover:bg-white/90">
               틱톡샵 입점 신청 <ArrowRight size={14} />
             </Link>
           </div>
