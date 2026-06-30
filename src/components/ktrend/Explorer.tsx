@@ -478,7 +478,7 @@ export default function Explorer() {
         {!all ? (
           <div className="flex flex-col items-center justify-center gap-2 py-24 text-[var(--muted)]">
             <Loader2 className="animate-spin" />
-            <p className="text-[12px]">실제 틱톡 콘텐츠 11,703건을 불러오는 중…</p>
+            <p className="text-[12px]">실제 틱톡 콘텐츠를 불러오는 중…</p>
           </div>
         ) : filtered.length > 0 ? (
           <>
