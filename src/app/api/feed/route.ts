@@ -46,7 +46,7 @@ export async function GET() {
          AND brand_name NOT IN (SELECT value FROM blocklist WHERE kind='brand')
          AND video_id NOT IN (SELECT value FROM blocklist WHERE kind='video')
        ORDER BY collected_at DESC
-       LIMIT 5000`;
+       LIMIT ${Number(process.env.FEED_MAX ?? 12000)}`;
 
     // 컴팩트 배열로 직렬화 (loadContent의 DB 매퍼가 해석)
     const videos = r.rows.map((v) => [
