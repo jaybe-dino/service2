@@ -73,6 +73,7 @@ export interface MallTrack {
   dark: boolean;                  // Onboarding = 다크 헤더
   flow: "subscribe" | "apply";    // subscribe=사이트 내 구독 / apply=결제 후 apply.tpartners
   inquiry?: boolean;              // true면 금액 미표시·결제 없이 '가격 문의'로 처리
+  minTermNote?: string;           // 권장 최소 이용 기간 안내
 }
 
 export const MALL_TRACKS: MallTrack[] = [
@@ -80,13 +81,13 @@ export const MALL_TRACKS: MallTrack[] = [
     id: "ready", name: "Start Track", tagline: "초기 국가 파일럿 런칭",
     price: testPrice(150_000), priceLabel: wonLabel(testPrice(150_000)), commissionLabel: "판매 수수료 15%",
     features: ["벤더 매칭 및 제안 (비독점)", "어필리에이트 캠페인 운영", "제품 상세페이지 번역 지원", "최대 2개 제품 등록 가능"],
-    highlight: false, dark: false, flow: "subscribe",
+    highlight: false, dark: false, flow: "subscribe", minTermNote: "최소 3개월 이상 권장",
   },
   {
     id: "live", name: "Live Focus Track", tagline: "자체 브랜드 채널 운영 목표",
     price: testPrice(490_000), priceLabel: wonLabel(testPrice(490_000)), commissionLabel: "판매 수수료 10%",
     features: ["무가 라이브 커머스 지원 (월 4회)", "유가 시딩 캠페인 운영", "무가 시딩 캠페인 20개~", "최대 5개 제품 등록 가능"],
-    highlight: true, dark: false, flow: "subscribe",
+    highlight: true, dark: false, flow: "subscribe", minTermNote: "최소 6개월 권장",
   },
   {
     id: "onboarding", name: "Onboarding Track", tagline: "메가 스케일업 & 채널 독립",

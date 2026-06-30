@@ -359,6 +359,7 @@ function OnboardingInner() {
                         {!t.inquiry && <span className="mb-1 text-[11px] text-[var(--muted)]">/월</span>}
                       </div>
                       <div className="text-[11px] text-[var(--muted)]">+ {t.commissionLabel}</div>
+                      {t.minTermNote && <div className="mt-1 inline-block rounded bg-[var(--accent-light)] px-1.5 py-0.5 text-[10px] font-semibold text-[var(--accent)]">{t.minTermNote}</div>}
                     </div>
                     <ul className="flex-1 space-y-1.5 border-t border-[var(--border)] px-5 py-3">
                       {t.features.map((f) => <li key={f} className="flex gap-1.5 text-[11px]"><Check size={13} className="mt-0.5 shrink-0 text-pink-500" /> {f}</li>)}
