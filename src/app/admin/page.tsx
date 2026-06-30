@@ -575,7 +575,7 @@ export default function AdminPage() {
             <div className="mb-3 kt-card p-3">
               <div className="mb-2 flex flex-wrap items-center gap-2">
                 <span className="flex items-center gap-1.5 text-[11px] font-bold"><SlidersHorizontal size={13} className="text-[var(--accent)]" /> 수집 강도</span>
-                <button onClick={() => setTuning({ initialLimit: 150, refreshLimit: 60, maxPending: 15, maxRefresh: 40, maxPoll: 6 })} className="rounded-md border border-[var(--border)] px-2 py-1 text-[10px] font-semibold text-[var(--accent)]">얕고 넓게 프리셋</button>
+                <button onClick={() => setTuning({ initialLimit: 150, refreshLimit: 60, maxPending: 8, maxRefresh: 25, maxPoll: 6 })} className="rounded-md border border-[var(--border)] px-2 py-1 text-[10px] font-semibold text-[var(--accent)]">얕고 넓게 프리셋</button>
                 <button onClick={() => setTuning({ initialLimit: 500, refreshLimit: 100, maxPending: 4, maxRefresh: 6, maxPoll: 2 })} className="rounded-md border border-[var(--border)] px-2 py-1 text-[10px] font-semibold text-[var(--muted)]">기본값</button>
                 <button onClick={saveTuning} className="kt-btn kt-btn-primary ml-auto px-3 py-1.5 text-[11px]">저장 (즉시 적용)</button>
               </div>
@@ -584,7 +584,7 @@ export default function AdminPage() {
                   ["initialLimit", "신규 깊이", "브랜드당 1차 수집 영상수"],
                   ["refreshLimit", "갱신 깊이", "브랜드당 증분 영상수"],
                   ["maxPending", "신규 시작/회", "한 번에 신규 브랜드"],
-                  ["maxRefresh", "갱신 시작/회", "한 번에 갱신 브랜드"],
+                  ["maxRefresh", "갱신 시작/회(≤30)", "한 번에 갱신 브랜드"],
                   ["maxPoll", "적재/회(≤12)", "한 번에 회수할 run"],
                 ] as const).map(([key, label, hint]) => (
                   <label key={key} className="block">

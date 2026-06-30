@@ -282,6 +282,11 @@ export async function runCollection(opts: { maxPending?: number; maxRefresh?: nu
 
   if (!configured) return { configured, mode: "skipped", polledDone: 0, ingested: 0, kickedNew: 0, kickedRefresh: 0, reason: "SCRAPER_API_KEY 미설정" };
 
+  // 시간 예산: 함수 60초 제한 내에서 안전하게 멈추도록 (설정값이 커도 504 방지)
+  const startedAt = Date.now();
+  const TIME_BUDGET_MS = 45_000;
+  const outOfTime = () => Date.now() - startedAt > TIME_BUDGET_MS;
+
   // 0) 진행 중 run 결과 먼저 적재 (폴링) — 타임아웃 방지 위해 한 번에 maxPoll개만
   const poll = await pollJobs(maxPoll);
 
@@ -293,6 +298,7 @@ export async function runCollection(opts: { maxPending?: number; maxRefresh?: nu
   const pending = await sql<{ id: number; brand_name: string; handle: string | null; hashtags: string | null; attempts: number }>`
     SELECT id, brand_name, handle, hashtags, attempts FROM brand_requests WHERE status='pending' ORDER BY created_at ASC LIMIT ${maxPending}`;
   for (const req of pending.rows) {
+    if (outOfTime()) break;
     try {
       const runId = await startApifyRun(
         { brandName: req.brand_name, handle: req.handle, hashtags: req.hashtags, backfillDays: BACKFILL_DAYS, limit: tuning.initialLimit },
@@ -336,6 +342,7 @@ export async function runCollection(opts: { maxPending?: number; maxRefresh?: nu
   }
 
   for (const t of targets) {
+    if (outOfTime()) break;
     try {
       const runId = await startApifyRun({ brandName: t.name, hashtags: t.hashtags, sinceDate: since, limit: tuning.refreshLimit }, webhook);
       if (runId) await sql`INSERT INTO collect_jobs (run_id, brand_name, since_date) VALUES (${runId}, ${t.name}, ${since}) ON CONFLICT (run_id) DO NOTHING`;
