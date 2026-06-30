@@ -6,11 +6,14 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 60; // Vercel Hobby(무료) 한도. 소량 배치로 60초 내 완료.
 
-// Vercel Cron이 호출. CRON_SECRET 설정 시 Vercel이 Authorization: Bearer 로 전달.
+// Vercel Cron(Authorization: Bearer) 또는 외부 스케줄러(?key= / x-cron-key)로 호출 가능.
 function authorized(req: Request): boolean {
   const secret = process.env.CRON_SECRET;
   if (!secret) return true; // 시크릿 미설정이면 개방(개발용) — 운영은 반드시 설정 권장
-  return req.headers.get("authorization") === `Bearer ${secret}`;
+  if (req.headers.get("authorization") === `Bearer ${secret}`) return true;
+  if (req.headers.get("x-cron-key") === secret) return true;
+  try { if (new URL(req.url).searchParams.get("key") === secret) return true; } catch { /* ignore */ }
+  return false;
 }
 
 async function handle(req: Request) {
