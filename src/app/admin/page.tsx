@@ -83,6 +83,8 @@ export default function AdminPage() {
   const [creatorsCount, setCreatorsCount] = useState(0);
   const [newBrand, setNewBrand] = useState("");
   const [collecting, setCollecting] = useState(false);
+  const [autoRun, setAutoRun] = useState(false);
+  const [autoMin, setAutoMin] = useState(10);
   const [debugLog, setDebugLog] = useState<string[]>([]);
   const [lastCollect, setLastCollect] = useState<{ at: string; ok: boolean; scraper?: boolean; mode?: string; reason?: string; ingested?: number; polledDone?: number; kickedNew?: number; kickedRefresh?: number } | null>(null);
   const [tracking, setTracking] = useState<Track[]>([]);
@@ -304,6 +306,20 @@ export default function AdminPage() {
     setTimeout(() => setToast(""), 3500);
     loadTracking();
   };
+
+  // 자동 실행: 페이지가 열려 있는 동안 autoMin분마다 수집 실행 (외부 스케줄러 없이)
+  useEffect(() => {
+    try {
+      if (localStorage.getItem("admin.autoRun") === "1") setAutoRun(true);
+      const m = Number(localStorage.getItem("admin.autoMin")); if (m >= 3) setAutoMin(m);
+    } catch { /* ignore */ }
+  }, []);
+  useEffect(() => {
+    if (!authed || !autoRun) return;
+    const id = setInterval(() => { runCollect(false); }, Math.max(3, autoMin) * 60_000);
+    return () => clearInterval(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [authed, autoRun, autoMin]);
 
   const runCollect = async (retryFailed = false) => {
     setCollecting(true);
@@ -615,6 +631,25 @@ export default function AdminPage() {
               {collecting ? <><Loader2 size={13} className="animate-spin" /> 수집 중… (최대 1분)</> : <><Play size={13} /> 지금 수집 실행</>}
             </button>
             <span className="text-[10px] text-[var(--muted)]">수집 영상 {collectedCount.toLocaleString()}건 · 인플루언서 {creatorsCount.toLocaleString()}명</span>
+            {/* 자동 실행 토글 — 이 페이지가 열려 있는 동안 주기적으로 자동 수집 */}
+            <div className="flex w-full items-center gap-2 border-t border-[var(--border)] pt-2 text-[11px]">
+              <button
+                onClick={() => { const v = !autoRun; setAutoRun(v); try { localStorage.setItem("admin.autoRun", v ? "1" : "0"); } catch {} }}
+                className={`rounded-md px-3 py-1.5 font-bold ${autoRun ? "bg-emerald-500 text-white" : "border border-[var(--border)] text-[var(--muted)]"}`}
+              >
+                {autoRun ? "■ 자동 실행 중지" : "▶ 자동 실행 켜기"}
+              </button>
+              <select
+                value={autoMin}
+                onChange={(e) => { const m = Number(e.target.value); setAutoMin(m); try { localStorage.setItem("admin.autoMin", String(m)); } catch {} }}
+                className="rounded-md border border-[var(--border)] px-2 py-1.5 text-[11px]"
+              >
+                {[5, 10, 15, 30].map((m) => <option key={m} value={m}>{m}분마다</option>)}
+              </select>
+              <span className="text-[10px] text-[var(--muted)]">
+                {autoRun ? `이 페이지가 열려 있는 동안 ${autoMin}분마다 자동 수집합니다 (탭을 닫으면 멈춤).` : "켜두면 창을 열어둔 채로 자동 수집됩니다 (외부 스케줄러 불필요)."}
+              </span>
+            </div>
           </div>
 
           {/* 마지막 실행 결과 (상시 표기) */}
