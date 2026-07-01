@@ -33,11 +33,6 @@ export default function PlansPage() {
         <p className="mt-2 text-[13px] leading-relaxed text-[var(--muted)]">
           콘텐츠·인플루언서·브랜드 분석 SaaS 구독입니다.
         </p>
-        {ONBOARDING.enabled && (
-          <Link href="/plans/mall" className="mt-3 inline-flex items-center gap-1.5 rounded-full border border-[var(--border)] px-3 py-1.5 text-[11px] font-semibold text-[var(--accent)] hover:bg-[var(--accent-light)]">
-            <ShoppingBag size={12} /> 틱톡샵 멀티몰 입점 요금은 여기 <ArrowRight size={12} />
-          </Link>
-        )}
         <div className="mt-4 inline-flex items-center gap-1 rounded-full border border-[var(--border)] p-1 text-[11px] font-semibold">
           <button
             onClick={() => setAnnual(false)}

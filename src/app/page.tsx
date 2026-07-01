@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { ArrowRight, BarChart3, Bell, Contact, TrendingUp, Check, ShoppingBag } from "lucide-react";
+import { ArrowRight, BarChart3, Bell, Contact, TrendingUp, Check, ShoppingBag, ChevronLeft, ChevronRight } from "lucide-react";
 import PageShell from "@/components/ktrend/PageShell";
 import ContentCard from "@/components/ktrend/ContentCard";
 import HeroBackground from "@/components/ktrend/HeroBackground";
@@ -32,18 +32,28 @@ export default function Home() {
     });
   }, []);
 
-  // 홈에서만 3섹션 스크롤 스냅 활성화 (다른 페이지엔 영향 없음)
-  useEffect(() => {
-    document.documentElement.classList.add("snap-home");
-    return () => document.documentElement.classList.remove("snap-home");
-  }, []);
+  // 메인 전면 가로 슬라이드(캐러셀)
+  const carRef = useRef<HTMLDivElement>(null);
+  const [slide, setSlide] = useState(0);
+  const goSlide = (i: number) => {
+    const el = carRef.current; if (!el) return;
+    const idx = Math.max(0, Math.min(2, i));
+    el.scrollTo({ left: idx * el.clientWidth, behavior: "smooth" });
+  };
+  const onCarScroll = () => {
+    const el = carRef.current; if (!el) return;
+    setSlide(Math.round(el.scrollLeft / el.clientWidth));
+  };
 
   const totalViews = BRANDS.reduce((s, b) => s + b.totalViews, 0);
   const featured = BRANDS.slice(0, 6);
 
   return (
     <PageShell contained={false}>
-      <section className="snap-sec relative flex min-h-[calc(100svh-3.5rem)] flex-col justify-center overflow-hidden border-b border-[var(--border)] bg-gradient-to-b from-[var(--accent-light)]/60 to-white">
+      {/* 메인 전면 가로 슬라이드 (히어로 · 자가체크 · 틱톡샵 입점) */}
+      <div className="relative border-b border-[var(--border)]">
+        <div ref={carRef} onScroll={onCarScroll} className="kt-noscrollbar flex h-[calc(100svh-3.5rem)] snap-x snap-mandatory overflow-x-auto overflow-y-hidden">
+      <section className="relative flex h-full w-full shrink-0 snap-start flex-col justify-center overflow-y-auto overflow-x-hidden bg-gradient-to-b from-[var(--accent-light)]/60 to-white">
         <HeroBackground />
         <div className="relative z-10 mx-auto max-w-[1480px] px-4 py-16 text-center">
           <span className="kt-badge-brand mx-auto">실데이터 기반 · TikTok 중심</span>
@@ -81,7 +91,7 @@ export default function Home() {
 
       {/* P2 — 자가체크 (어느 트랙이 맞을까요) */}
       {ONBOARDING.enabled && (
-        <section className="snap-sec flex min-h-[calc(100svh-3.5rem)] flex-col justify-center border-b border-[var(--border)] bg-white">
+        <section className="flex h-full w-full shrink-0 snap-start flex-col justify-center overflow-y-auto bg-white">
           <div className="mx-auto w-full max-w-3xl px-4 text-center">
             <span className="kt-badge-brand mx-auto inline-flex items-center gap-1">
               <ShoppingBag size={12} /> TikTok Shop 입점
@@ -110,7 +120,7 @@ export default function Home() {
 
       {/* P3 — 틱톡샵 입점 트랙 (Start / Live Focus + 전체 비교) */}
       {ONBOARDING.enabled && (
-        <section className="snap-sec flex min-h-[calc(100svh-3.5rem)] flex-col justify-center border-b border-[var(--border)] bg-white">
+        <section className="flex h-full w-full shrink-0 snap-start flex-col justify-center overflow-y-auto bg-white">
           <div className="mx-auto w-full max-w-[1480px] px-4 py-10">
             <div className="text-center">
               <h2 className="text-[22px] font-black">틱톡샵, 글로벅과 함께 입점하세요</h2>
@@ -167,6 +177,26 @@ export default function Home() {
           </div>
         </section>
       )}
+        </div>
+
+        {/* 좌우 화살표 (데스크탑) */}
+        <button onClick={() => goSlide(slide - 1)} aria-label="이전"
+          className={`absolute left-3 top-1/2 z-20 hidden -translate-y-1/2 rounded-full border border-[var(--border)] bg-white/90 p-2 shadow-md hover:bg-white md:block ${slide === 0 ? "pointer-events-none opacity-0" : ""}`}>
+          <ChevronLeft size={20} />
+        </button>
+        <button onClick={() => goSlide(slide + 1)} aria-label="다음"
+          className={`absolute right-3 top-1/2 z-20 hidden -translate-y-1/2 rounded-full border border-[var(--border)] bg-white/90 p-2 shadow-md hover:bg-white md:block ${slide === 2 ? "pointer-events-none opacity-0" : ""}`}>
+          <ChevronRight size={20} />
+        </button>
+
+        {/* 하단 점 인디케이터 */}
+        <div className="absolute bottom-4 left-1/2 z-20 flex -translate-x-1/2 gap-2">
+          {[0, 1, 2].map((i) => (
+            <button key={i} onClick={() => goSlide(i)} aria-label={`슬라이드 ${i + 1}`}
+              className={`h-2 rounded-full transition-all ${slide === i ? "w-6 bg-[var(--accent)]" : "w-2 bg-[var(--border)]"}`} />
+          ))}
+        </div>
+      </div>
 
       {/* 지금 뜨는 콘텐츠 (랜덤) */}
       <section className="mx-auto max-w-[1480px] px-4 py-12">

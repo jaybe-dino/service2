@@ -148,7 +148,3 @@ body {
   from { transform: translateY(-50%); }
   to { transform: translateY(0); }
 }
-
-/* 홈 3섹션 스크롤 스냅 (히어로/자가체크/입점) — 하단 콘텐츠는 자유 스크롤(proximity) */
-html.snap-home { scroll-snap-type: y proximity; }
-.snap-sec { scroll-snap-align: start; }
