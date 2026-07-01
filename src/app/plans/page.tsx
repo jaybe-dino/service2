@@ -31,24 +31,10 @@ export default function PlansPage() {
     <PageShell>
       <div className="mb-6 text-center">
         <h1 className="text-[24px] font-black tracking-tight">요금제</h1>
-        <p className="mt-2 text-[13px] text-[var(--muted)]">
-          비즈니스 성장 단계에 맞춰 결합 가능한 SaaS 구독 + Add-on 모델.
+        <p className="mt-2 text-[13px] leading-relaxed text-[var(--muted)]">
+          <b className="text-[var(--fg)]">틱톡샵 멀티몰 입점</b>과 <b className="text-[var(--fg)]">Glovek 플랫폼 구독</b>은 서로 다른 상품입니다.<br className="hidden sm:block" />
+          아래에서 각각 확인하세요.
         </p>
-        {/* 월간/연간 토글 */}
-        <div className="mt-4 inline-flex items-center gap-1 rounded-full border border-[var(--border)] p-1 text-[11px] font-semibold">
-          <button
-            onClick={() => setAnnual(false)}
-            className={`rounded-full px-3 py-1 ${!annual ? "bg-[var(--accent)] text-white" : "text-[var(--muted)]"}`}
-          >
-            월간
-          </button>
-          <button
-            onClick={() => setAnnual(true)}
-            className={`flex items-center gap-1 rounded-full px-3 py-1 ${annual ? "bg-[var(--accent)] text-white" : "text-[var(--muted)]"}`}
-          >
-            연간 <span className={`rounded-full px-1.5 py-0.5 text-[8px] ${annual ? "bg-white/25" : "bg-emerald-100 text-emerald-700"}`}>20% OFF</span>
-          </button>
-        </div>
       </div>
 
       {/* 틱톡샵 멀티몰 입점 트랙 단가표 + 등급 추천 */}
@@ -94,9 +80,32 @@ export default function PlansPage() {
           </div>
           <div className="border-t border-[var(--border)] px-5 py-3 text-[11px] leading-relaxed text-[var(--muted)]">
             등급은 자가체크(해외 판매 경험 5개 지표)로 산정됩니다 · <b className="text-[var(--fg)]">C</b> 입문 → Start · <b className="text-[var(--fg)]">B</b> 진출 계획 → Live Focus · <b className="text-[var(--fg)]">A·S</b> 성장·스케일업 → Onboarding
+            <div className="mt-1.5 font-semibold text-[var(--fg)]">※ 입점 트랙은 월 단위 요금이며, 아래 플랫폼 구독의 월간/연간 할인은 적용되지 않습니다.</div>
           </div>
         </div>
       )}
+
+      {/* Glovek 플랫폼 구독 (SaaS) 섹션 헤더 + 월간/연간 토글 */}
+      <div className="mb-4 flex flex-col items-center gap-3 border-t border-[var(--border)] pt-8 text-center">
+        <div>
+          <h2 className="text-[18px] font-black">Glovek 플랫폼 구독</h2>
+          <p className="mt-1 text-[12px] text-[var(--muted)]">콘텐츠·인플루언서·브랜드 분석 SaaS (틱톡샵 입점과 별개)</p>
+        </div>
+        <div className="inline-flex items-center gap-1 rounded-full border border-[var(--border)] p-1 text-[11px] font-semibold">
+          <button
+            onClick={() => setAnnual(false)}
+            className={`rounded-full px-3 py-1 ${!annual ? "bg-[var(--accent)] text-white" : "text-[var(--muted)]"}`}
+          >
+            월간
+          </button>
+          <button
+            onClick={() => setAnnual(true)}
+            className={`flex items-center gap-1 rounded-full px-3 py-1 ${annual ? "bg-[var(--accent)] text-white" : "text-[var(--muted)]"}`}
+          >
+            연간 <span className={`rounded-full px-1.5 py-0.5 text-[8px] ${annual ? "bg-white/25" : "bg-emerald-100 text-emerald-700"}`}>20% OFF</span>
+          </button>
+        </div>
+      </div>
 
       {/* 플랜 카드 */}
       <div className="grid gap-4 md:grid-cols-3">
