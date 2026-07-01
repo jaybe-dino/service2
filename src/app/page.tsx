@@ -32,12 +32,13 @@ export default function Home() {
     });
   }, []);
 
-  // 메인 전면 가로 슬라이드(캐러셀)
+  // 메인 전면 가로 슬라이드(캐러셀) — 온보딩 비활성 시 히어로 1장만
+  const slideCount = ONBOARDING.enabled ? 3 : 1;
   const carRef = useRef<HTMLDivElement>(null);
   const [slide, setSlide] = useState(0);
   const goSlide = (i: number) => {
     const el = carRef.current; if (!el) return;
-    const idx = Math.max(0, Math.min(2, i));
+    const idx = Math.max(0, Math.min(slideCount - 1, i));
     el.scrollTo({ left: idx * el.clientWidth, behavior: "smooth" });
   };
   const onCarScroll = () => {
@@ -179,23 +180,27 @@ export default function Home() {
       )}
         </div>
 
-        {/* 좌우 화살표 (데스크탑) */}
-        <button onClick={() => goSlide(slide - 1)} aria-label="이전"
-          className={`absolute left-3 top-1/2 z-20 hidden -translate-y-1/2 rounded-full border border-[var(--border)] bg-white/90 p-2 shadow-md hover:bg-white md:block ${slide === 0 ? "pointer-events-none opacity-0" : ""}`}>
-          <ChevronLeft size={20} />
-        </button>
-        <button onClick={() => goSlide(slide + 1)} aria-label="다음"
-          className={`absolute right-3 top-1/2 z-20 hidden -translate-y-1/2 rounded-full border border-[var(--border)] bg-white/90 p-2 shadow-md hover:bg-white md:block ${slide === 2 ? "pointer-events-none opacity-0" : ""}`}>
-          <ChevronRight size={20} />
-        </button>
+        {/* 좌우 화살표 (데스크탑) — 슬라이드 2장 이상일 때만 */}
+        {slideCount > 1 && (
+          <>
+            <button onClick={() => goSlide(slide - 1)} aria-label="이전"
+              className={`absolute left-3 top-1/2 z-20 hidden -translate-y-1/2 rounded-full border border-[var(--border)] bg-white/90 p-2 shadow-md hover:bg-white md:block ${slide <= 0 ? "pointer-events-none opacity-0" : ""}`}>
+              <ChevronLeft size={20} />
+            </button>
+            <button onClick={() => goSlide(slide + 1)} aria-label="다음"
+              className={`absolute right-3 top-1/2 z-20 hidden -translate-y-1/2 rounded-full border border-[var(--border)] bg-white/90 p-2 shadow-md hover:bg-white md:block ${slide >= slideCount - 1 ? "pointer-events-none opacity-0" : ""}`}>
+              <ChevronRight size={20} />
+            </button>
 
-        {/* 하단 점 인디케이터 */}
-        <div className="absolute bottom-4 left-1/2 z-20 flex -translate-x-1/2 gap-2">
-          {[0, 1, 2].map((i) => (
-            <button key={i} onClick={() => goSlide(i)} aria-label={`슬라이드 ${i + 1}`}
-              className={`h-2 rounded-full transition-all ${slide === i ? "w-6 bg-[var(--accent)]" : "w-2 bg-[var(--border)]"}`} />
-          ))}
-        </div>
+            {/* 하단 점 인디케이터 */}
+            <div className="absolute bottom-4 left-1/2 z-20 flex -translate-x-1/2 gap-2">
+              {Array.from({ length: slideCount }, (_, i) => i).map((i) => (
+                <button key={i} onClick={() => goSlide(i)} aria-label={`슬라이드 ${i + 1}`}
+                  className={`h-2 rounded-full transition-all ${slide === i ? "w-6 bg-[var(--accent)]" : "w-2 bg-[var(--border)]"}`} />
+              ))}
+            </div>
+          </>
+        )}
       </div>
 
       {/* 지금 뜨는 콘텐츠 (랜덤) */}
