@@ -8,6 +8,7 @@ import ContentCard from "@/components/ktrend/ContentCard";
 import HeroBackground from "@/components/ktrend/HeroBackground";
 import { usePlan } from "@/components/ktrend/PlanContext";
 import { CATEGORIES, ONBOARDING, MALL_TRACKS, MALL_TRACK_MAP } from "@/data/ktrend/meta";
+import { GRADE_GUIDE } from "@/lib/onboarding";
 import { BRANDS } from "@/data/ktrend/brands";
 import { loadContentStaged, randomSample, fmtCompact, type Content } from "@/data/ktrend/content";
 
@@ -83,6 +84,27 @@ export default function Home() {
               <h2 className="mt-3 text-[22px] font-black">틱톡샵, 글로벅과 함께 입점하세요</h2>
               <p className="mt-2 text-[13px] text-[var(--muted)]">브랜드 목표에 맞는 트랙을 선택하면 바로 입점 신청이 시작됩니다.</p>
             </div>
+
+            {/* 온보딩 자가체크 배너 (온보딩 등급 진단과 매칭) */}
+            <Link
+              href={ONBOARDING.path}
+              className="mx-auto mt-6 block max-w-3xl rounded-2xl bg-gradient-to-r from-[#7C3AED] to-[#1A56DB] p-5 text-white shadow-md transition-opacity hover:opacity-95"
+            >
+              <div className="flex flex-col items-center gap-4 text-center sm:flex-row sm:text-left">
+                <div className="flex-1">
+                  <div className="text-[15px] font-black">우리 브랜드는 어느 트랙이 맞을까요?</div>
+                  <p className="mt-1 text-[12px] leading-relaxed text-white/85">1분 자가체크로 예비 등급과 추천 트랙을 바로 확인하세요.</p>
+                </div>
+                <div className="flex shrink-0 gap-1.5">
+                  {[...GRADE_GUIDE].reverse().map((g) => (
+                    <span key={g.grade} className="grid h-8 w-8 place-items-center rounded-lg bg-white/15 text-[13px] font-black">{g.grade}</span>
+                  ))}
+                </div>
+                <span className="inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-white px-4 py-2.5 text-[12px] font-black text-[#1A56DB]">
+                  자가체크 시작 <ArrowRight size={14} />
+                </span>
+              </div>
+            </Link>
 
             <div className="mx-auto mt-8 grid max-w-3xl gap-4 sm:grid-cols-2">
               {MALL_TRACKS.filter((t) => t.flow === "subscribe").map((t) => (
