@@ -5,7 +5,8 @@ import Link from "next/link";
 import { Check, Star, ShoppingBag, ArrowRight } from "lucide-react";
 import PageShell from "@/components/ktrend/PageShell";
 import { usePlan } from "@/components/ktrend/PlanContext";
-import { PLANS, ONBOARDING } from "@/data/ktrend/meta";
+import { PLANS, ONBOARDING, MALL_TRACKS } from "@/data/ktrend/meta";
+import { GRADE_GUIDE } from "@/lib/onboarding";
 
 const ANNUAL_OFF = 0.2; // 연간 결제 20% 할인 (2개월+ 무료)
 
@@ -49,6 +50,53 @@ export default function PlansPage() {
           </button>
         </div>
       </div>
+
+      {/* 틱톡샵 멀티몰 입점 트랙 단가표 + 등급 추천 */}
+      {ONBOARDING.enabled && (
+        <div className="mb-8 overflow-hidden rounded-2xl border border-[var(--border)]">
+          <div className="flex flex-wrap items-center justify-between gap-2 bg-gradient-to-r from-[#7C3AED] to-[#1A56DB] px-5 py-4 text-white">
+            <div>
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-2 py-0.5 text-[10px] font-bold"><ShoppingBag size={11} /> 틱톡샵 멀티몰 입점</span>
+              <h2 className="mt-1 text-[16px] font-black">트랙별 단가 &amp; 추천 등급</h2>
+            </div>
+            <Link href={ONBOARDING.path} className="inline-flex items-center gap-1.5 rounded-lg bg-white px-4 py-2 text-[11px] font-black text-[#1A56DB] hover:bg-white/90">
+              자가체크하고 추천받기 <ArrowRight size={13} />
+            </Link>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[560px] text-[12px]">
+              <thead>
+                <tr className="border-b border-[var(--border)] bg-slate-50 text-left text-[10px] uppercase text-[var(--muted)]">
+                  <th className="p-3">트랙</th><th className="p-3">월 구독료</th><th className="p-3">판매 수수료</th><th className="p-3">추천 등급</th><th className="p-3">적합 브랜드</th>
+                </tr>
+              </thead>
+              <tbody>
+                {MALL_TRACKS.map((t) => {
+                  const grades = GRADE_GUIDE.filter((g) => g.recommended === t.id);
+                  return (
+                    <tr key={t.id} className="border-b border-[var(--border)] last:border-0">
+                      <td className="p-3 font-bold">{t.name}{t.highlight && <span className="ml-1 rounded-full bg-pink-50 px-1.5 py-0.5 text-[9px] font-bold text-pink-600">추천</span>}</td>
+                      <td className="p-3 font-black text-pink-500">{t.priceLabel}{!t.inquiry && <span className="text-[10px] font-normal text-[var(--muted)]">/월</span>}</td>
+                      <td className="p-3">{t.commissionLabel.replace("판매 수수료 ", "")}</td>
+                      <td className="p-3">
+                        <span className="inline-flex gap-1">
+                          {grades.map((g) => (
+                            <span key={g.grade} className="grid h-5 w-5 place-items-center rounded text-[10px] font-black text-white" style={{ background: g.color }}>{g.grade}</span>
+                          ))}
+                        </span>
+                      </td>
+                      <td className="p-3 text-[11px] text-[var(--muted)]">{t.tagline}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+          <div className="border-t border-[var(--border)] px-5 py-3 text-[11px] leading-relaxed text-[var(--muted)]">
+            등급은 자가체크(해외 판매 경험 5개 지표)로 산정됩니다 · <b className="text-[var(--fg)]">C</b> 입문 → Start · <b className="text-[var(--fg)]">B</b> 진출 계획 → Live Focus · <b className="text-[var(--fg)]">A·S</b> 성장·스케일업 → Onboarding
+          </div>
+        </div>
+      )}
 
       {/* 플랜 카드 */}
       <div className="grid gap-4 md:grid-cols-3">

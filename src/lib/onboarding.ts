@@ -48,6 +48,14 @@ export function gradeFromChecks(yesCount: number): GradeInfo {
   return { grade: "C", label: "C등급 (입문 단계)", recommended: "ready" };
 }
 
+// 등급별 가이드 (자가체크 스케일·요금표 추천에 공용)
+export const GRADE_GUIDE: { grade: Grade; short: string; yCount: string; recommended: MallTrackId; note: string; color: string }[] = [
+  { grade: "C", short: "입문", yCount: "0~1개", recommended: "ready", note: "저비용으로 초기 국가 파일럿부터", color: "#64748b" },
+  { grade: "B", short: "진출 계획", yCount: "2~3개", recommended: "live", note: "라이브·시딩으로 채널 성장", color: "#0E9F6E" },
+  { grade: "A", short: "성장 가속", yCount: "4개", recommended: "onboarding", note: "대형 캠페인으로 빠른 확장", color: "#1A56DB" },
+  { grade: "S", short: "즉시 스케일업", yCount: "5개", recommended: "onboarding", note: "메가 스케일업·채널 독립 준비 완료", color: "#7C3AED" },
+];
+
 // 인증 응답에서 미비 항목(없음/모름/불가) 도출 → PHASE 5 가이드 발송 대상
 export function missingCerts(countries: string[], certAnswers: Record<string, string>): { id: string; label: string }[] {
   const out: { id: string; label: string }[] = [];

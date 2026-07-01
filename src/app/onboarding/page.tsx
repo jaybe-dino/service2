@@ -13,7 +13,7 @@ import { usePlan } from "@/components/ktrend/PlanContext";
 import { ONBOARDING, MALL_TRACKS, MALL_TRACK_MAP, PAY_TEST_MODE, type MallTrackId } from "@/data/ktrend/meta";
 import {
   SELF_CHECK_QUESTIONS, ONB_COUNTRIES, ONB_COUNTRY_MAP, COMMON_CERT,
-  gradeFromChecks, missingCerts, computeQuote, ONB_TIMELINE,
+  gradeFromChecks, missingCerts, computeQuote, ONB_TIMELINE, GRADE_GUIDE,
   type SubTerm, type GradeInfo,
 } from "@/lib/onboarding";
 
@@ -166,6 +166,7 @@ function OnboardingInner() {
     setTrack((t) => t ?? g.recommended);
     setPayCountries(countries);
     setMsg("");
+    scrollTop(); // 결과를 별도 화면처럼 상단부터 보여줌
     // 서버 저장(로그인 시)
     if (user) {
       await fetch("/api/onboarding/apply", { method: "POST", headers: { "Content-Type": "application/json" },
@@ -256,8 +257,8 @@ function OnboardingInner() {
         {PAY_TEST_MODE && <p className="mt-4 rounded-md bg-amber-50 px-3 py-2 text-[11px] font-bold text-amber-700">⚠️ 결제 테스트 모드 — 모든 트랙 결제 금액이 ₩1,000으로 청구됩니다.</p>}
         {msg && <p className="mt-4 rounded-md bg-amber-50 px-3 py-2 text-[12px] font-semibold text-amber-700">{msg}</p>}
 
-        {/* ───────── PHASE 1 ───────── */}
-        {step === 0 && (
+        {/* ───────── PHASE 1: 자가체크 폼 (결과 나오기 전) ───────── */}
+        {step === 0 && !gradeInfo && (
           <div className="mt-5 space-y-5">
             <div className="kt-card p-6">
               <h2 className="text-[15px] font-black">먼저 우리 브랜드의 현황을 체크해보세요</h2>
@@ -305,34 +306,87 @@ function OnboardingInner() {
               )}
             </div>
 
-            {/* 결과 */}
-            {gradeInfo && (
-              <div className="kt-card border-[var(--accent)] p-6">
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="rounded-full bg-[var(--accent)] px-3 py-1 text-[12px] font-black text-white">예비 {gradeInfo.label}</span>
-                  <span className="inline-flex items-center gap-1 rounded-full bg-pink-50 px-3 py-1 text-[12px] font-bold text-pink-600">
-                    <Star size={12} /> 추천 트랙: {MALL_TRACK_MAP[gradeInfo.recommended].name}
-                  </span>
-                </div>
-                {missingCerts(countries, certs).length > 0 && (
-                  <div className="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-[11px] text-amber-700">
-                    <b>인증 미비:</b> {missingCerts(countries, certs).map((m) => m.label).join(", ")} → 신청 완료 후 맞춤 가이드를 보내드립니다.
-                  </div>
-                )}
-                <button onClick={() => goStep(1)} className="kt-btn kt-btn-primary mt-4 px-5 py-2.5 text-[12px]">
-                  트랙 선택하러 가기 <ArrowRight size={14} />
-                </button>
+            {/* 실시간 미리보기 + 결과 확인 */}
+            <div className="space-y-2">
+              <div className="flex flex-wrap items-center justify-center gap-2 rounded-lg bg-[var(--accent-light)] px-3 py-2 text-[12px]">
+                <span className="text-[var(--muted)]">지금까지 <b className="text-[var(--fg)]">{yesCount}/5</b> 선택 →</span>
+                <span className="rounded-md px-2 py-0.5 font-black text-white" style={{ background: GRADE_GUIDE.find((g) => g.grade === gradeFromChecks(yesCount).grade)?.color }}>
+                  예상 {gradeFromChecks(yesCount).grade}등급
+                </span>
+                <span className="text-[var(--muted)]">· 추천 {MALL_TRACK_MAP[gradeFromChecks(yesCount).recommended].name}</span>
               </div>
-            )}
-
-            {!gradeInfo && (
               <button onClick={seeResult} disabled={!countries.length}
                 className="kt-btn kt-btn-primary w-full py-3 text-[13px] disabled:opacity-50">
                 결과 확인하기 <ArrowRight size={15} />
               </button>
-            )}
+              {!countries.length && <p className="text-center text-[10px] text-[var(--muted)]">진출 국가를 1개 이상 선택하면 결과를 볼 수 있어요.</p>}
+            </div>
           </div>
         )}
+
+        {/* ───────── PHASE 1 결과 — 별도 화면(크게) ───────── */}
+        {step === 0 && gradeInfo && (() => {
+          const g = GRADE_GUIDE.find((x) => x.grade === gradeInfo.grade)!;
+          const rec = MALL_TRACK_MAP[gradeInfo.recommended];
+          const missing = missingCerts(countries, certs);
+          return (
+            <div className="mt-6">
+              <div className="rounded-2xl border-2 border-[var(--accent)] bg-white p-7 text-center">
+                <div className="text-[12px] font-semibold text-[var(--muted)]">자가체크 결과 · 우리 브랜드의 예비 등급</div>
+                {/* 큰 등급 배지 */}
+                <div className="mx-auto mt-3 grid h-28 w-28 place-items-center rounded-3xl text-[56px] font-black leading-none text-white shadow-lg"
+                  style={{ background: g.color }}>
+                  {gradeInfo.grade}
+                </div>
+                <h2 className="mt-4 text-[22px] font-black">우리 브랜드는 지금 &lsquo;{g.short}&rsquo; 단계예요</h2>
+                <p className="mx-auto mt-2 max-w-md text-[13px] leading-relaxed text-[var(--muted)]">
+                  5개 항목 중 <b className="text-[var(--fg)]">{yesCount}개</b>에 해당해 <b style={{ color: g.color }}>{gradeInfo.grade}등급</b>으로 진단됐어요.
+                  이 단계에는 아래 트랙이 가장 잘 맞아요. 부담 없이 시작해서 성장하면 언제든 상위 트랙으로 올릴 수 있어요.
+                </p>
+
+                {/* 큰 C → B → A → S 스케일 */}
+                <div className="mx-auto mt-6 flex max-w-lg items-stretch gap-2">
+                  {GRADE_GUIDE.map((x) => {
+                    const on = x.grade === gradeInfo.grade;
+                    return (
+                      <div key={x.grade} className={`flex-1 rounded-xl border-2 py-3 ${on ? "text-white" : "border-transparent bg-slate-50 text-[var(--muted)]"}`}
+                        style={on ? { background: x.color, borderColor: x.color } : {}}>
+                        <div className="text-[20px] font-black leading-none">{x.grade}</div>
+                        <div className="mt-1 text-[10px] font-semibold">{x.short}</div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* 추천 트랙 큰 카드 */}
+                <div className="mx-auto mt-6 max-w-md rounded-2xl bg-pink-50 p-5 text-left">
+                  <div className="flex items-center gap-1.5 text-[11px] font-bold text-pink-600"><Star size={13} /> 추천 트랙</div>
+                  <div className="mt-1 flex items-end justify-between">
+                    <span className="text-[20px] font-black">{rec.name}</span>
+                    <span className="text-[15px] font-black text-pink-500">{rec.priceLabel}{!rec.inquiry && <span className="text-[11px] font-normal text-[var(--muted)]">/월</span>}</span>
+                  </div>
+                  <p className="mt-1.5 text-[12px] leading-relaxed text-[var(--muted)]">{rec.tagline} — {g.note}</p>
+                </div>
+
+                {missing.length > 0 && (
+                  <div className="mx-auto mt-4 max-w-md rounded-xl bg-amber-50 px-4 py-3 text-left text-[11px] leading-relaxed text-amber-700">
+                    아직 준비되지 않은 인증이 있어요. 걱정 마세요 — 신청 완료 후 <b>항목별 맞춤 가이드</b>를 보내드립니다.<br />
+                    <span className="text-amber-600">{missing.map((m) => m.label).join(", ")}</span>
+                  </div>
+                )}
+
+                <div className="mx-auto mt-6 flex max-w-md flex-col gap-2 sm:flex-row">
+                  <button onClick={() => { setGradeInfo(null); scrollTop(); }} className="kt-btn kt-btn-outline flex-1 py-2.5 text-[12px]">
+                    <ArrowLeft size={14} /> 다시 체크하기
+                  </button>
+                  <button onClick={() => goStep(1)} className="kt-btn kt-btn-primary flex-1 py-2.5 text-[12px]">
+                    이 트랙으로 신청 진행 <ArrowRight size={14} />
+                  </button>
+                </div>
+              </div>
+            </div>
+          );
+        })()}
 
         {/* ───────── PHASE 2 ───────── */}
         {step === 1 && (
