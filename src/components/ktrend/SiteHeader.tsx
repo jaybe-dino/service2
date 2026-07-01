@@ -9,11 +9,14 @@ import OnlineCount from "./OnlineCount";
 import type { PlanId } from "@/data/ktrend/meta";
 import { ONBOARDING } from "@/data/ktrend/meta";
 
-const NAV: { href: string; label: string; title?: string; desc?: string }[] = [
+const NAV: { href: string; label: string; title?: string; desc?: string; sub?: { href: string; label: string; desc?: string }[] }[] = [
   { href: "/explorer", label: "콘텐츠 레퍼런스", title: "콘텐츠", desc: "성과있는 콘텐츠를 카테고리와 브랜드별로 찾아보세요" },
   { href: "/influencers", label: "인플루언서", title: "인플루언서", desc: "인플루언서별로 성과 케이스를 찾아보세요" },
   { href: "/reports", label: "브랜드", title: "브랜드", desc: "타 브랜드는 어떻게 성장했는지 찾아보세요" },
-  { href: "/plans", label: "요금제" },
+  { href: "/plans", label: "요금제", sub: [
+    { href: "/plans", label: "Glovek 플랫폼 구독", desc: "콘텐츠·인플루언서·브랜드 분석 SaaS" },
+    { href: "/plans/mall", label: "틱톡샵 멀티몰 입점", desc: "Start · Live Focus · Onboarding 트랙" },
+  ] },
 ];
 
 const PLAN_LABEL: Record<PlanId, string> = {
@@ -35,7 +38,7 @@ export default function SiteHeader() {
   return (
     <header className="sticky top-0 z-40 border-b border-[var(--border)] bg-white/90 backdrop-blur">
       <div className="mx-auto flex h-14 max-w-[1480px] items-center gap-6 px-4">
-        <Link href="/explorer" className="flex items-center gap-2">
+        <Link href="/" className="flex items-center gap-2">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/brand/glovek-logo.svg" alt="Glovek" className="h-6 w-auto" />
         </Link>
@@ -60,6 +63,18 @@ export default function SiteHeader() {
                   <div className="pointer-events-none absolute left-1/2 top-full z-50 mt-1.5 hidden w-60 -translate-x-1/2 rounded-lg border border-[var(--border)] bg-white p-3 text-left shadow-xl group-hover:block">
                     <div className="text-[12px] font-bold text-[var(--fg)]">{item.title}</div>
                     <div className="mt-1 text-[11px] leading-relaxed text-[var(--muted)]">{item.desc}</div>
+                  </div>
+                )}
+                {item.sub && (
+                  <div className="absolute left-1/2 top-full z-50 hidden w-64 -translate-x-1/2 pt-2 group-hover:block">
+                    <div className="rounded-lg border border-[var(--border)] bg-white p-2 text-left shadow-xl">
+                      {item.sub.map((s) => (
+                        <Link key={s.href + s.label} href={s.href} className="block rounded-md px-3 py-2 hover:bg-slate-50">
+                          <div className="text-[12px] font-bold text-[var(--fg)]">{s.label}</div>
+                          {s.desc && <div className="mt-0.5 text-[11px] text-[var(--muted)]">{s.desc}</div>}
+                        </Link>
+                      ))}
+                    </div>
                   </div>
                 )}
               </div>

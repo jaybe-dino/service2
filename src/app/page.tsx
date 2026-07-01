@@ -32,12 +32,18 @@ export default function Home() {
     });
   }, []);
 
+  // 홈에서만 3섹션 스크롤 스냅 활성화 (다른 페이지엔 영향 없음)
+  useEffect(() => {
+    document.documentElement.classList.add("snap-home");
+    return () => document.documentElement.classList.remove("snap-home");
+  }, []);
+
   const totalViews = BRANDS.reduce((s, b) => s + b.totalViews, 0);
   const featured = BRANDS.slice(0, 6);
 
   return (
     <PageShell contained={false}>
-      <section className="relative overflow-hidden border-b border-[var(--border)] bg-gradient-to-b from-[var(--accent-light)]/60 to-white">
+      <section className="snap-sec relative flex min-h-[calc(100svh-3.5rem)] flex-col justify-center overflow-hidden border-b border-[var(--border)] bg-gradient-to-b from-[var(--accent-light)]/60 to-white">
         <HeroBackground />
         <div className="relative z-10 mx-auto max-w-[1480px] px-4 py-16 text-center">
           <span className="kt-badge-brand mx-auto">실데이터 기반 · TikTok 중심</span>
@@ -73,38 +79,43 @@ export default function Home() {
         </div>
       </section>
 
-      {/* 틱톡샵 몰 입점 — 메인: Ready / Live Focus (각각 선택 입점) */}
+      {/* P2 — 자가체크 (어느 트랙이 맞을까요) */}
       {ONBOARDING.enabled && (
-        <section className="border-b border-[var(--border)] bg-white">
-          <div className="mx-auto max-w-[1480px] px-4 py-14">
-            <div className="text-center">
-              <span className="kt-badge-brand mx-auto inline-flex items-center gap-1">
-                <ShoppingBag size={12} /> TikTok Shop 입점
-              </span>
-              <h2 className="mt-3 text-[22px] font-black">틱톡샵, 글로벅과 함께 입점하세요</h2>
-              <p className="mt-2 text-[13px] text-[var(--muted)]">브랜드 목표에 맞는 트랙을 선택하면 바로 입점 신청이 시작됩니다.</p>
-            </div>
-
-            {/* 온보딩 자가체크 배너 (온보딩 등급 진단과 매칭) */}
+        <section className="snap-sec flex min-h-[calc(100svh-3.5rem)] flex-col justify-center border-b border-[var(--border)] bg-white">
+          <div className="mx-auto w-full max-w-3xl px-4 text-center">
+            <span className="kt-badge-brand mx-auto inline-flex items-center gap-1">
+              <ShoppingBag size={12} /> TikTok Shop 입점
+            </span>
+            <h2 className="mt-3 text-[26px] font-black leading-tight md:text-[32px]">우리 브랜드는<br />어느 트랙이 맞을까요?</h2>
+            <p className="mt-3 text-[14px] text-[var(--muted)]">1분 자가체크로 예비 등급(S·A·B·C)과 추천 트랙을 바로 확인하세요.</p>
             <Link
               href={ONBOARDING.path}
-              className="mx-auto mt-6 block max-w-3xl rounded-2xl bg-gradient-to-r from-[#7C3AED] to-[#1A56DB] p-5 text-white shadow-md transition-opacity hover:opacity-95"
+              className="mx-auto mt-7 block rounded-2xl bg-gradient-to-r from-[#7C3AED] to-[#1A56DB] p-5 text-white shadow-md transition-opacity hover:opacity-95"
             >
-              <div className="flex flex-col items-center gap-4 text-center sm:flex-row sm:text-left">
-                <div className="flex-1">
-                  <div className="text-[15px] font-black">우리 브랜드는 어느 트랙이 맞을까요?</div>
-                  <p className="mt-1 text-[12px] leading-relaxed text-white/85">1분 자가체크로 예비 등급과 추천 트랙을 바로 확인하세요.</p>
-                </div>
+              <div className="flex flex-col items-center gap-4 sm:flex-row">
                 <div className="flex shrink-0 gap-1.5">
                   {[...GRADE_GUIDE].reverse().map((g) => (
-                    <span key={g.grade} className="grid h-8 w-8 place-items-center rounded-lg bg-white/15 text-[13px] font-black">{g.grade}</span>
+                    <span key={g.grade} className="grid h-10 w-10 place-items-center rounded-lg bg-white/15 text-[16px] font-black">{g.grade}</span>
                   ))}
                 </div>
-                <span className="inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-white px-4 py-2.5 text-[12px] font-black text-[#1A56DB]">
-                  자가체크 시작 <ArrowRight size={14} />
+                <span className="flex-1 text-[13px] font-semibold text-white/90 sm:text-left">등급에 딱 맞는 트랙을 추천해드려요.</span>
+                <span className="inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-white px-5 py-2.5 text-[13px] font-black text-[#1A56DB]">
+                  자가체크 시작 <ArrowRight size={15} />
                 </span>
               </div>
             </Link>
+          </div>
+        </section>
+      )}
+
+      {/* P3 — 틱톡샵 입점 트랙 (Start / Live Focus + 전체 비교) */}
+      {ONBOARDING.enabled && (
+        <section className="snap-sec flex min-h-[calc(100svh-3.5rem)] flex-col justify-center border-b border-[var(--border)] bg-white">
+          <div className="mx-auto w-full max-w-[1480px] px-4 py-10">
+            <div className="text-center">
+              <h2 className="text-[22px] font-black">틱톡샵, 글로벅과 함께 입점하세요</h2>
+              <p className="mt-2 text-[13px] text-[var(--muted)]">브랜드 목표에 맞는 트랙을 선택하면 바로 입점 신청이 시작됩니다.</p>
+            </div>
 
             <div className="mx-auto mt-8 grid max-w-3xl gap-4 sm:grid-cols-2">
               {MALL_TRACKS.filter((t) => t.flow === "subscribe").map((t) => (

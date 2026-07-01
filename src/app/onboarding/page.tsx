@@ -417,7 +417,7 @@ function OnboardingInner() {
                     <ArrowLeft size={14} /> 다시 체크하기
                   </button>
                   <button onClick={() => goStep(1)} className="kt-btn kt-btn-primary flex-1 py-2.5 text-[12px]">
-                    이 트랙으로 신청 진행 <ArrowRight size={14} />
+                    틱톡샵 입점 트랙 선택 <ArrowRight size={14} />
                   </button>
                 </div>
               </div>
@@ -437,8 +437,9 @@ function OnboardingInner() {
             <div className="grid gap-4 md:grid-cols-3">
               {MALL_TRACKS.map((t) => {
                 const rec = gradeInfo?.recommended === t.id;
+                const dim = !!gradeInfo && !rec; // 추천 외 트랙은 회색(비강조)
                 return (
-                  <div key={t.id} className={`relative flex flex-col overflow-hidden rounded-2xl border bg-white ${rec ? "border-pink-300 shadow-lg ring-2 ring-pink-200" : "border-[var(--border)]"}`}>
+                  <div key={t.id} className={`relative flex flex-col overflow-hidden rounded-2xl border bg-white transition ${rec ? "border-pink-300 shadow-lg ring-2 ring-pink-200" : "border-[var(--border)]"} ${dim ? "opacity-75 grayscale hover:opacity-100 hover:grayscale-0" : ""}`}>
                     {rec && <div className="bg-pink-500 py-1 text-center text-[10px] font-black text-white">★ 추천 트랙</div>}
                     <div className={`px-5 pt-5 pb-3 ${t.dark ? "bg-[#0b0b0c] text-white" : ""}`}>
                       <div className="text-[17px] font-black">{t.name}</div>
