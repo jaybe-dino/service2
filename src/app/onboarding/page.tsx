@@ -330,14 +330,16 @@ function OnboardingInner() {
               </div>
             )}
 
-            {/* 실시간 미리보기 */}
-            <div className="flex flex-wrap items-center justify-center gap-2 rounded-lg bg-[var(--accent-light)] px-3 py-2 text-[12px]">
-              <span className="text-[var(--muted)]">지금까지 <b className="text-[var(--fg)]">{yesCount}/5</b> 선택 →</span>
-              <span className="rounded-md px-2 py-0.5 font-black text-white" style={{ background: GRADE_GUIDE.find((g) => g.grade === gradeFromChecks(yesCount).grade)?.color }}>
-                예상 {gradeFromChecks(yesCount).grade}등급
-              </span>
-              <span className="text-[var(--muted)]">· 추천 {MALL_TRACK_MAP[gradeFromChecks(yesCount).recommended].name}</span>
-            </div>
+            {/* 예상 등급 미리보기 — 마지막 단계에서만 노출 */}
+            {p1 === 2 && (
+              <div className="flex flex-wrap items-center justify-center gap-2 rounded-lg bg-[var(--accent-light)] px-3 py-2 text-[12px]">
+                <span className="text-[var(--muted)]">지금까지 <b className="text-[var(--fg)]">{yesCount}/5</b> 선택 →</span>
+                <span className="rounded-md px-2 py-0.5 font-black text-white" style={{ background: GRADE_GUIDE.find((g) => g.grade === gradeFromChecks(yesCount).grade)?.color }}>
+                  예상 {gradeFromChecks(yesCount).grade}등급
+                </span>
+                <span className="text-[var(--muted)]">· 추천 {MALL_TRACK_MAP[gradeFromChecks(yesCount).recommended].name}</span>
+              </div>
+            )}
 
             {/* 이전 / 다음 · 결과 확인 */}
             <div className="flex gap-2">
