@@ -65,7 +65,8 @@ function OnboardingInner() {
   const [busy, setBusy] = useState(false);
   const topRef = useRef<HTMLDivElement>(null);
 
-  // PHASE 1
+  // PHASE 1 (자가체크 서브 스텝: 0 판매경험 · 1 진출국가 · 2 인증현황)
+  const [p1, setP1] = useState(0);
   const [checks, setChecks] = useState<Record<string, boolean>>({});
   const [countries, setCountries] = useState<string[]>([]);
   const [certs, setCerts] = useState<Record<string, string>>({});
@@ -257,44 +258,67 @@ function OnboardingInner() {
         {PAY_TEST_MODE && <p className="mt-4 rounded-md bg-amber-50 px-3 py-2 text-[11px] font-bold text-amber-700">⚠️ 결제 테스트 모드 — 모든 트랙 결제 금액이 ₩1,000으로 청구됩니다.</p>}
         {msg && <p className="mt-4 rounded-md bg-amber-50 px-3 py-2 text-[12px] font-semibold text-amber-700">{msg}</p>}
 
-        {/* ───────── PHASE 1: 자가체크 폼 (결과 나오기 전) ───────── */}
+        {/* ───────── PHASE 1: 자가체크 (3단계 페이징) ───────── */}
         {step === 0 && !gradeInfo && (
-          <div className="mt-5 space-y-5">
-            <div className="kt-card p-6">
-              <h2 className="text-[15px] font-black">먼저 우리 브랜드의 현황을 체크해보세요</h2>
-              <p className="mt-1 text-[12px] text-[var(--muted)]">해당하는 항목을 선택하면 예비 등급과 추천 트랙을 바로 알려드립니다.</p>
-              <div className="mt-4 space-y-2">
-                {SELF_CHECK_QUESTIONS.map((q, i) => {
-                  const on = !!checks[q.id];
-                  return (
-                    <button key={q.id} onClick={() => setChecks((c) => ({ ...c, [q.id]: !on }))}
-                      className={`flex w-full items-center gap-3 rounded-xl border px-4 py-3 text-left transition-colors ${
-                        on ? "border-[var(--accent)] bg-[var(--accent-light)]" : "border-[var(--border)] hover:bg-slate-50"}`}>
-                      <span className={`grid h-6 w-6 shrink-0 place-items-center rounded-full text-[11px] font-bold ${on ? "bg-[var(--accent)] text-white" : "bg-slate-100 text-slate-500"}`}>
-                        {on ? <Check size={13} /> : i + 1}
-                      </span>
-                      <span className="text-[12px] leading-snug">{q.label}</span>
-                      <span className={`ml-auto shrink-0 rounded-md px-2 py-0.5 text-[10px] font-bold ${on ? "bg-[var(--accent)] text-white" : "bg-slate-100 text-slate-400"}`}>{on ? "Y" : "N"}</span>
-                    </button>
-                  );
-                })}
-              </div>
+          <div className="mt-5 space-y-4">
+            {/* 서브 진행 표시 */}
+            <div className="flex items-center gap-1.5">
+              {["판매 경험", "진출 국가", "인증 현황"].map((label, i) => (
+                <div key={label} className={`flex-1 rounded-full px-2 py-1 text-center text-[10px] font-bold ${
+                  i === p1 ? "bg-[var(--accent)] text-white" : i < p1 ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-400"}`}>
+                  {i + 1}. {label}
+                </div>
+              ))}
             </div>
 
-            <div className="kt-card p-6">
-              <h2 className="text-[15px] font-black">진출 희망 국가 & 인증 현황</h2>
-              <div className="mt-3 flex flex-wrap gap-2">
-                {ONB_COUNTRIES.map((c) => {
-                  const on = countries.includes(c.id);
-                  return (
-                    <button key={c.id} onClick={() => setCountries((cs) => on ? cs.filter((x) => x !== c.id) : [...cs, c.id])}
-                      className={`rounded-full border px-3 py-1.5 text-[12px] font-semibold ${on ? "border-[var(--accent)] bg-[var(--accent-light)] text-[var(--accent)]" : "border-[var(--border)] text-[var(--muted)]"}`}>
-                      {c.flag} {c.nameKo}
-                    </button>
-                  );
-                })}
+            {/* 1단계: 판매 경험 5대 지표 */}
+            {p1 === 0 && (
+              <div className="kt-card p-6">
+                <h2 className="text-[15px] font-black">해외 판매 경험을 체크해주세요</h2>
+                <p className="mt-1 text-[12px] text-[var(--muted)]">해당하는 항목을 선택하세요. 많이 해당할수록 상위 등급으로 진단됩니다.</p>
+                <div className="mt-4 space-y-2">
+                  {SELF_CHECK_QUESTIONS.map((q, i) => {
+                    const on = !!checks[q.id];
+                    return (
+                      <button key={q.id} onClick={() => setChecks((c) => ({ ...c, [q.id]: !on }))}
+                        className={`flex w-full items-center gap-3 rounded-xl border px-4 py-3 text-left transition-colors ${
+                          on ? "border-[var(--accent)] bg-[var(--accent-light)]" : "border-[var(--border)] hover:bg-slate-50"}`}>
+                        <span className={`grid h-6 w-6 shrink-0 place-items-center rounded-full text-[11px] font-bold ${on ? "bg-[var(--accent)] text-white" : "bg-slate-100 text-slate-500"}`}>
+                          {on ? <Check size={13} /> : i + 1}
+                        </span>
+                        <span className="text-[12px] leading-snug">{q.label}</span>
+                        <span className={`ml-auto shrink-0 rounded-md px-2 py-0.5 text-[10px] font-bold ${on ? "bg-[var(--accent)] text-white" : "bg-slate-100 text-slate-400"}`}>{on ? "Y" : "N"}</span>
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
-              {countries.length > 0 && (
+            )}
+
+            {/* 2단계: 진출 희망 국가 */}
+            {p1 === 1 && (
+              <div className="kt-card p-6">
+                <h2 className="text-[15px] font-black">진출 희망 국가를 선택해주세요</h2>
+                <p className="mt-1 text-[12px] text-[var(--muted)]">1개 이상 선택하면 다음 단계로 넘어갈 수 있어요.</p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {ONB_COUNTRIES.map((c) => {
+                    const on = countries.includes(c.id);
+                    return (
+                      <button key={c.id} onClick={() => setCountries((cs) => on ? cs.filter((x) => x !== c.id) : [...cs, c.id])}
+                        className={`rounded-full border px-3 py-1.5 text-[12px] font-semibold ${on ? "border-[var(--accent)] bg-[var(--accent-light)] text-[var(--accent)]" : "border-[var(--border)] text-[var(--muted)]"}`}>
+                        {c.flag} {c.nameKo}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* 3단계: 국가별 인증 현황 */}
+            {p1 === 2 && (
+              <div className="kt-card p-6">
+                <h2 className="text-[15px] font-black">선택한 국가의 인증 현황</h2>
+                <p className="mt-1 text-[12px] text-[var(--muted)]">아직 준비 안 된 항목은 &lsquo;없음/모름&rsquo;으로 두셔도 됩니다. 신청 후 맞춤 가이드를 드려요.</p>
                 <div className="mt-4 space-y-3">
                   {countries.flatMap((cid) => ONB_COUNTRY_MAP[cid]?.certs.map((cert) => ({ cid, cert })) ?? []).map(({ cid, cert }) => (
                     <CertRow key={cert.id} flag={ONB_COUNTRY_MAP[cid].flag} nameKo={ONB_COUNTRY_MAP[cid].nameKo}
@@ -303,23 +327,36 @@ function OnboardingInner() {
                   <CertRow flag="🌐" nameKo="전 국가 공통" cert={COMMON_CERT} value={certs[COMMON_CERT.id]}
                     onChange={(v) => setCerts((s) => ({ ...s, [COMMON_CERT.id]: v }))} />
                 </div>
-              )}
+              </div>
+            )}
+
+            {/* 실시간 미리보기 */}
+            <div className="flex flex-wrap items-center justify-center gap-2 rounded-lg bg-[var(--accent-light)] px-3 py-2 text-[12px]">
+              <span className="text-[var(--muted)]">지금까지 <b className="text-[var(--fg)]">{yesCount}/5</b> 선택 →</span>
+              <span className="rounded-md px-2 py-0.5 font-black text-white" style={{ background: GRADE_GUIDE.find((g) => g.grade === gradeFromChecks(yesCount).grade)?.color }}>
+                예상 {gradeFromChecks(yesCount).grade}등급
+              </span>
+              <span className="text-[var(--muted)]">· 추천 {MALL_TRACK_MAP[gradeFromChecks(yesCount).recommended].name}</span>
             </div>
 
-            {/* 실시간 미리보기 + 결과 확인 */}
-            <div className="space-y-2">
-              <div className="flex flex-wrap items-center justify-center gap-2 rounded-lg bg-[var(--accent-light)] px-3 py-2 text-[12px]">
-                <span className="text-[var(--muted)]">지금까지 <b className="text-[var(--fg)]">{yesCount}/5</b> 선택 →</span>
-                <span className="rounded-md px-2 py-0.5 font-black text-white" style={{ background: GRADE_GUIDE.find((g) => g.grade === gradeFromChecks(yesCount).grade)?.color }}>
-                  예상 {gradeFromChecks(yesCount).grade}등급
-                </span>
-                <span className="text-[var(--muted)]">· 추천 {MALL_TRACK_MAP[gradeFromChecks(yesCount).recommended].name}</span>
-              </div>
-              <button onClick={seeResult} disabled={!countries.length}
-                className="kt-btn kt-btn-primary w-full py-3 text-[13px] disabled:opacity-50">
-                결과 확인하기 <ArrowRight size={15} />
-              </button>
-              {!countries.length && <p className="text-center text-[10px] text-[var(--muted)]">진출 국가를 1개 이상 선택하면 결과를 볼 수 있어요.</p>}
+            {/* 이전 / 다음 · 결과 확인 */}
+            <div className="flex gap-2">
+              {p1 > 0 && (
+                <button onClick={() => { setP1(p1 - 1); scrollTop(); }} className="kt-btn kt-btn-outline flex-1 py-3 text-[13px]">
+                  <ArrowLeft size={15} /> 이전
+                </button>
+              )}
+              {p1 < 2 ? (
+                <button onClick={() => { if (p1 === 1 && !countries.length) { setMsg("진출 국가를 1개 이상 선택해 주세요."); return; } setMsg(""); setP1(p1 + 1); scrollTop(); }}
+                  className="kt-btn kt-btn-primary flex-[2] py-3 text-[13px] disabled:opacity-50" disabled={p1 === 1 && !countries.length}>
+                  다음 <ArrowRight size={15} />
+                </button>
+              ) : (
+                <button onClick={seeResult} disabled={!countries.length}
+                  className="kt-btn kt-btn-primary flex-[2] py-3 text-[13px] disabled:opacity-50">
+                  결과 확인하기 <ArrowRight size={15} />
+                </button>
+              )}
             </div>
           </div>
         )}
@@ -376,7 +413,7 @@ function OnboardingInner() {
                 )}
 
                 <div className="mx-auto mt-6 flex max-w-md flex-col gap-2 sm:flex-row">
-                  <button onClick={() => { setGradeInfo(null); scrollTop(); }} className="kt-btn kt-btn-outline flex-1 py-2.5 text-[12px]">
+                  <button onClick={() => { setGradeInfo(null); setP1(0); scrollTop(); }} className="kt-btn kt-btn-outline flex-1 py-2.5 text-[12px]">
                     <ArrowLeft size={14} /> 다시 체크하기
                   </button>
                   <button onClick={() => goStep(1)} className="kt-btn kt-btn-primary flex-1 py-2.5 text-[12px]">
