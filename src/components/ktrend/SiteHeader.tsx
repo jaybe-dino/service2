@@ -157,6 +157,23 @@ export default function SiteHeader() {
           <nav className="mx-auto max-w-[1480px] px-3 py-2">
             {NAV.map((item) => {
               const active = pathname?.startsWith(item.href);
+              // 서브메뉴(요금제)는 모바일에서 하위 항목을 펼쳐 노출
+              if (item.sub) {
+                return (
+                  <div key={item.href} className="px-3 py-2">
+                    <div className="text-[13px] font-bold text-[var(--fg)]">{item.label}</div>
+                    <div className="mt-1 space-y-1">
+                      {item.sub.map((s) => (
+                        <Link key={s.href + s.label} href={s.href} onClick={() => setMenuOpen(false)}
+                          className="block rounded-md border border-[var(--border)] px-3 py-2 hover:bg-slate-50">
+                          <div className="text-[12px] font-semibold text-[var(--fg)]">{s.label}</div>
+                          {s.desc && <div className="mt-0.5 text-[11px] text-[var(--muted)]">{s.desc}</div>}
+                        </Link>
+                      ))}
+                    </div>
+                  </div>
+                );
+              }
               return (
                 <Link
                   key={item.href}
