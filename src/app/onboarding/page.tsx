@@ -60,7 +60,7 @@ function OnboardingInner() {
   const { user, ready } = usePlan();
   const router = useRouter();
 
-  const [step, setStep] = useState(0);
+  const [step, setStep] = useState(1); // 진입 시 트랙 선택부터 (자가진단은 별도 버튼)
   const [msg, setMsg] = useState("");
   const [busy, setBusy] = useState(false);
   const topRef = useRef<HTMLDivElement>(null);
@@ -243,17 +243,26 @@ function OnboardingInner() {
             자주 묻는 질문 (QnA 100선) <ArrowRight size={12} />
           </Link>
         </div>
-        <div className="mt-4 flex items-center gap-1 overflow-x-auto pb-1">
-          {STEPS.map((s, i) => (
-            <div key={s} className="flex shrink-0 items-center">
-              <div className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[11px] font-bold ${
-                i === step ? "bg-[var(--accent)] text-white" : i < step ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-400"}`}>
-                {i < step ? <Check size={12} /> : <span>{i + 1}</span>} {s}
-              </div>
-              {i < STEPS.length - 1 && <div className="mx-0.5 h-px w-4 bg-slate-200" />}
-            </div>
-          ))}
-        </div>
+        {step === 0 ? (
+          <div className="mt-4 inline-flex items-center gap-1.5 rounded-full bg-[var(--accent-light)] px-3 py-1.5 text-[12px] font-bold text-[var(--accent)]">
+            🔎 자가진단 — 우리 브랜드에 맞는 트랙 찾기
+          </div>
+        ) : (
+          <div className="mt-4 flex items-center gap-1 overflow-x-auto pb-1">
+            {STEPS.slice(1).map((s, i) => {
+              const st = i + 1; // 실제 step 값 (트랙선택=1 …)
+              return (
+                <div key={s} className="flex shrink-0 items-center">
+                  <div className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[11px] font-bold ${
+                    st === step ? "bg-[var(--accent)] text-white" : st < step ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-400"}`}>
+                    {st < step ? <Check size={12} /> : <span>{st}</span>} {s}
+                  </div>
+                  {i < STEPS.length - 2 && <div className="mx-0.5 h-px w-4 bg-slate-200" />}
+                </div>
+              );
+            })}
+          </div>
+        )}
 
         {PAY_TEST_MODE && <p className="mt-4 rounded-md bg-amber-50 px-3 py-2 text-[11px] font-bold text-amber-700">⚠️ 결제 테스트 모드 — 모든 트랙 결제 금액이 ₩1,000으로 청구됩니다.</p>}
         {msg && <p className="mt-4 rounded-md bg-amber-50 px-3 py-2 text-[12px] font-semibold text-amber-700">{msg}</p>}
@@ -261,6 +270,9 @@ function OnboardingInner() {
         {/* ───────── PHASE 1: 자가체크 (3단계 페이징) ───────── */}
         {step === 0 && !gradeInfo && (
           <div className="mt-5 space-y-4">
+            <button onClick={() => goStep(1)} className="inline-flex items-center gap-1 text-[12px] font-semibold text-[var(--muted)] hover:text-[var(--fg)]">
+              <ArrowLeft size={14} /> 트랙 목록으로
+            </button>
             {/* 서브 진행 표시 */}
             <div className="flex items-center gap-1.5">
               {["판매 경험", "진출 국가", "인증 현황"].map((label, i) => (
@@ -430,11 +442,22 @@ function OnboardingInner() {
         {/* ───────── PHASE 2 ───────── */}
         {step === 1 && (
           <div className="mt-5">
-            {gradeInfo && (
+            {gradeInfo ? (
               <div className="mb-4 flex flex-wrap items-center gap-2 text-[12px]">
                 <span className="rounded-full bg-[var(--accent)] px-3 py-1 font-bold text-white">예비 {gradeInfo.label}</span>
                 <span className="text-[var(--muted)]">추천 트랙은 <b className="text-pink-600">{MALL_TRACK_MAP[gradeInfo.recommended].name}</b> 입니다. 자유롭게 선택하세요.</span>
+                <button onClick={() => { setGradeInfo(null); setP1(0); goStep(0); }} className="ml-auto text-[11px] font-semibold text-[var(--accent)] hover:underline">자가진단 다시 하기</button>
               </div>
+            ) : (
+              <button onClick={() => { setP1(0); goStep(0); }}
+                className="mb-4 flex w-full items-center gap-3 rounded-xl border border-[var(--accent)] bg-[var(--accent-light)] px-4 py-3 text-left transition-colors hover:bg-[var(--accent-light)]/70">
+                <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-[var(--accent)] text-white">🔎</span>
+                <span className="flex-1">
+                  <span className="block text-[13px] font-bold text-[var(--fg)]">어느 트랙이 맞을지 모르겠다면? 1분 자가진단</span>
+                  <span className="block text-[11px] text-[var(--muted)]">예비 등급(S·A·B·C)과 추천 트랙을 진단해드려요.</span>
+                </span>
+                <ArrowRight size={16} className="shrink-0 text-[var(--accent)]" />
+              </button>
             )}
             <div className="grid gap-4 md:grid-cols-3">
               {MALL_TRACKS.map((t) => {
@@ -467,7 +490,6 @@ function OnboardingInner() {
                 );
               })}
             </div>
-            <button onClick={() => goStep(0)} className="mt-5 inline-flex items-center gap-1 text-[12px] font-semibold text-[var(--muted)] hover:text-[var(--fg)]"><ArrowLeft size={14} /> 자가체크로 돌아가기</button>
           </div>
         )}
 
