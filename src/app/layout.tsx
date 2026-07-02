@@ -19,7 +19,7 @@ export const metadata: Metadata = {
   description: DESC,
   applicationName: "Glovek",
   keywords: [
-    "Glovek", "글로벅", "틱톡 K뷰티", "K-beauty TikTok", "틱톡샵 온보딩",
+    "Glovek", "글로벡", "틱톡 K뷰티", "K-beauty TikTok", "틱톡샵 온보딩",
     "인플루언서 마케팅", "틱톡 콘텐츠 분석", "K뷰티 인플루언서", "TikTok Shop",
     "뷰티 브랜드 마케팅", "콘텐츠 레퍼런스", "어필리에이트 크리에이터",
   ],

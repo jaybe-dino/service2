@@ -58,7 +58,7 @@ export const PAY_TEST_MODE = false;
 export const testPrice = (real: number): number => (PAY_TEST_MODE ? 1000 : real);
 const wonLabel = (n: number): string => "₩" + n.toLocaleString();
 
-// 글로벅 몰 입점 트랙 — 메인은 Ready / Live Focus (사이트 내 구독 결제),
+// GloveK 몰 입점 트랙 — 메인은 Ready / Live Focus (사이트 내 구독 결제),
 // Onboarding Track은 결제 후 apply.tpartners 로 이동.
 export type MallTrackId = "ready" | "live" | "onboarding";
 export interface MallTrack {

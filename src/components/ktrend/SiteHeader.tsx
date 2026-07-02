@@ -17,6 +17,7 @@ const NAV: { href: string; label: string; title?: string; desc?: string; sub?: {
     { href: "/plans", label: "Glovek 플랫폼 구독", desc: "콘텐츠·인플루언서·브랜드 분석 SaaS" },
     { href: "/plans/mall", label: "틱톡샵 멀티몰 입점", desc: "Start · Live Focus · Onboarding 트랙" },
   ] },
+  { href: "/tts/qna", label: "FAQ", title: "FAQ", desc: "틱톡샵 입점·서비스 자주 묻는 질문(QnA)" },
 ];
 
 const PLAN_LABEL: Record<PlanId, string> = {

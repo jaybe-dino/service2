@@ -32,12 +32,14 @@ export default function Home() {
     });
   }, []);
 
-  // 메인 전면 가로 슬라이드(캐러셀) — 온보딩 비활성 시 히어로 1장만
-  const slideCount = ONBOARDING.enabled ? 3 : 1;
+  // 메인 전면 가로 슬라이드(캐러셀) — 히어로 + (온보딩) 입점 슬라이드
+  const slideCount = ONBOARDING.enabled ? 2 : 1;
   const carRef = useRef<HTMLDivElement>(null);
+  const pausedUntil = useRef(0); // 사용자 조작 시 자동넘김 일시정지 (timestamp)
   const [slide, setSlide] = useState(0);
   const goSlide = (i: number) => {
     const el = carRef.current; if (!el) return;
+    pausedUntil.current = Date.now() + 12000; // 수동 이동 후 12초 자동넘김 정지
     const idx = Math.max(0, Math.min(slideCount - 1, i));
     el.scrollTo({ left: idx * el.clientWidth, behavior: "smooth" });
   };
@@ -45,6 +47,17 @@ export default function Home() {
     const el = carRef.current; if (!el) return;
     setSlide(Math.round(el.scrollLeft / el.clientWidth));
   };
+  // 자동 넘김 (6초, 사용자 조작·호버 시 일시정지)
+  useEffect(() => {
+    if (slideCount <= 1) return;
+    const id = setInterval(() => {
+      if (Date.now() < pausedUntil.current) return;
+      const el = carRef.current; if (!el) return;
+      const cur = Math.round(el.scrollLeft / el.clientWidth);
+      el.scrollTo({ left: ((cur + 1) % slideCount) * el.clientWidth, behavior: "smooth" });
+    }, 6000);
+    return () => clearInterval(id);
+  }, [slideCount]);
 
   const totalViews = BRANDS.reduce((s, b) => s + b.totalViews, 0);
   const featured = BRANDS.slice(0, 6);
@@ -53,7 +66,11 @@ export default function Home() {
     <PageShell contained={false}>
       {/* 메인 전면 가로 슬라이드 (히어로 · 자가체크 · 틱톡샵 입점) */}
       <div className="relative border-b border-[var(--border)]">
-        <div ref={carRef} onScroll={onCarScroll} className="kt-noscrollbar flex h-[calc(100svh-3.5rem)] snap-x snap-mandatory overflow-x-auto overflow-y-hidden">
+        <div ref={carRef} onScroll={onCarScroll}
+          onMouseEnter={() => { pausedUntil.current = Date.now() + 3_600_000; }}
+          onMouseLeave={() => { pausedUntil.current = Date.now() + 3000; }}
+          onTouchStart={() => { pausedUntil.current = Date.now() + 12000; }}
+          className="kt-noscrollbar flex h-[calc(100svh-3.5rem)] snap-x snap-mandatory overflow-x-auto overflow-y-hidden">
       <section className="relative flex h-full w-full shrink-0 snap-start flex-col justify-center overflow-y-auto overflow-x-hidden bg-gradient-to-b from-[var(--accent-light)]/60 to-white">
         <HeroBackground />
         <div className="relative z-10 mx-auto max-w-[1480px] px-4 py-16 text-center">
@@ -90,45 +107,36 @@ export default function Home() {
         </div>
       </section>
 
-      {/* P2 — 자가체크 (어느 트랙이 맞을까요) */}
+      {/* P2 — 자가체크 + 틱톡샵 입점 트랙 (병합) */}
       {ONBOARDING.enabled && (
         <section className="flex h-full w-full shrink-0 snap-start flex-col justify-center overflow-y-auto bg-white">
-          <div className="mx-auto w-full max-w-3xl px-4 text-center">
+          <div className="mx-auto w-full max-w-[1480px] px-4 py-8 text-center">
             <span className="kt-badge-brand mx-auto inline-flex items-center gap-1">
               <ShoppingBag size={12} /> TikTok Shop 입점
             </span>
-            <h2 className="mt-3 text-[26px] font-black leading-tight md:text-[32px]">우리 브랜드는<br />어느 트랙이 맞을까요?</h2>
-            <p className="mt-3 text-[14px] text-[var(--muted)]">1분 자가체크로 예비 등급(S·A·B·C)과 추천 트랙을 바로 확인하세요.</p>
+            <h2 className="mt-3 text-[24px] font-black leading-tight md:text-[32px]">
+              브랜드 자가체크하고 맞춤 트랙에 맞춰<br />GloveK와 함께 입점하세요!
+            </h2>
+
+            {/* 자가체크 CTA */}
             <Link
               href={ONBOARDING.path}
-              className="mx-auto mt-7 block rounded-2xl bg-gradient-to-r from-[#7C3AED] to-[#1A56DB] p-5 text-white shadow-md transition-opacity hover:opacity-95"
+              className="mx-auto mt-5 block max-w-2xl rounded-2xl bg-gradient-to-r from-[#7C3AED] to-[#1A56DB] p-4 text-white shadow-md transition-opacity hover:opacity-95"
             >
-              <div className="flex flex-col items-center gap-4 sm:flex-row">
+              <div className="flex flex-col items-center gap-3 sm:flex-row">
                 <div className="flex shrink-0 gap-1.5">
                   {[...GRADE_GUIDE].reverse().map((g) => (
-                    <span key={g.grade} className="grid h-10 w-10 place-items-center rounded-lg bg-white/15 text-[16px] font-black">{g.grade}</span>
+                    <span key={g.grade} className="grid h-9 w-9 place-items-center rounded-lg bg-white/15 text-[15px] font-black">{g.grade}</span>
                   ))}
                 </div>
-                <span className="flex-1 text-[13px] font-semibold text-white/90 sm:text-left">등급에 딱 맞는 트랙을 추천해드려요.</span>
+                <span className="flex-1 text-[13px] font-semibold text-white/90 sm:text-left">1분 자가체크로 예비 등급(S·A·B·C)과 추천 트랙 확인</span>
                 <span className="inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-white px-5 py-2.5 text-[13px] font-black text-[#1A56DB]">
                   자가체크 시작 <ArrowRight size={15} />
                 </span>
               </div>
             </Link>
-          </div>
-        </section>
-      )}
 
-      {/* P3 — 틱톡샵 입점 트랙 (Start / Live Focus + 전체 비교) */}
-      {ONBOARDING.enabled && (
-        <section className="flex h-full w-full shrink-0 snap-start flex-col justify-center overflow-y-auto bg-white">
-          <div className="mx-auto w-full max-w-[1480px] px-4 py-10">
-            <div className="text-center">
-              <h2 className="text-[22px] font-black">틱톡샵, 글로벅과 함께 입점하세요</h2>
-              <p className="mt-2 text-[13px] text-[var(--muted)]">브랜드 목표에 맞는 트랙을 선택하면 바로 입점 신청이 시작됩니다.</p>
-            </div>
-
-            <div className="mx-auto mt-8 grid max-w-3xl gap-4 sm:grid-cols-2">
+            <div className="mx-auto mt-6 grid max-w-3xl gap-4 text-left sm:grid-cols-2">
               {MALL_TRACKS.filter((t) => t.flow === "subscribe").map((t) => (
                 <div
                   key={t.id}
