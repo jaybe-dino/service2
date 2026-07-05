@@ -307,6 +307,26 @@ export function ensureSchema(): Promise<void> {
       )`;
       // 가입 시 입력한 추천인 코드
       await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS referred_by text`;
+      // Remake Studio(프로토타입) — 업로드 제품 이미지(외부 영상모델이 가져갈 공개 URL) + 생성 잡 추적
+      await sql`CREATE TABLE IF NOT EXISTS remake_assets (
+        id text PRIMARY KEY,
+        mime text,
+        data text,
+        created_at timestamptz NOT NULL DEFAULT now()
+      )`;
+      await sql`CREATE TABLE IF NOT EXISTS remake_jobs (
+        id text PRIMARY KEY,
+        provider text NOT NULL DEFAULT 'mock',
+        request_id text,
+        template_id text,
+        variation int NOT NULL DEFAULT 0,
+        score int NOT NULL DEFAULT 0,
+        status text NOT NULL DEFAULT 'queued',
+        video_url text,
+        error text,
+        created_at timestamptz NOT NULL DEFAULT now(),
+        updated_at timestamptz NOT NULL DEFAULT now()
+      )`;
       // 데모/관리자 계정 시드 (bcrypt("ktrend2026")) — 서버 세션 로그인 가능하도록
       const DEMO_HASH = "$2b$10$mLc7sBm3zK4a83l6/Tg9NOoDGLLYsfp4SXRfZcls4.LTw6Tsy/8Oy";
       await sql`INSERT INTO users (id, email, password_hash, name, brand, role, plan) VALUES

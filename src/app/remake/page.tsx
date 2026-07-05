@@ -13,7 +13,7 @@ import {
 const STEPS = ["템플릿 선택", "제품 등록", "생성 옵션", "생성", "결과"];
 const ROLE_KO: Record<string, string> = { hook: "훅", apply: "발림", result: "결과", cta: "CTA", detail: "디테일" };
 
-interface Variation { v: number; score: ReturnType<typeof mockViralScore> }
+interface Variation { v: number; score: ReturnType<typeof mockViralScore>; videoUrl?: string | null; status?: string }
 
 export default function RemakeStudioPage() {
   const [step, setStep] = useState(0);
@@ -36,9 +36,15 @@ export default function RemakeStudioPage() {
   // 생성
   const [genScene, setGenScene] = useState(0);
   const [results, setResults] = useState<Variation[]>([]);
+  const [mode, setMode] = useState<"mock" | "higgsfield">("mock");
+  const [genErr, setGenErr] = useState<string | null>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pollRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  useEffect(() => () => { if (timerRef.current) clearTimeout(timerRef.current); }, []);
+  useEffect(() => () => {
+    if (timerRef.current) clearTimeout(timerRef.current);
+    if (pollRef.current) clearTimeout(pollRef.current);
+  }, []);
 
   const tmpl = tid ? REMAKE_TEMPLATE_MAP[tid] : null;
   const templates = REMAKE_TEMPLATES.filter((t) => cat === "all" || t.category === cat);
@@ -53,29 +59,73 @@ export default function RemakeStudioPage() {
     });
   };
 
-  const startGen = () => {
+  const finish = (t: RemakeTemplate, jobs: { variation: number; videoUrl?: string | null; status?: string }[]) => {
+    const vars: Variation[] = jobs
+      .map((j) => ({ v: j.variation, score: mockViralScore(t.id, j.variation), videoUrl: j.videoUrl ?? null, status: j.status }))
+      .sort((a, b) => b.score.total - a.score.total);
+    setResults(vars);
+    if (timerRef.current) clearTimeout(timerRef.current);
+    setGenScene(t.scenes.length);
+    timerRef.current = setTimeout(() => setStep(4), 500);
+  };
+
+  const startGen = async () => {
     if (!tmpl) return;
-    setStep(3); setGenScene(0); setResults([]);
-    const scenes = tmpl.scenes;
+    const t = tmpl;
+    setGenErr(null); setStep(3); setGenScene(0); setResults([]);
+    if (timerRef.current) clearTimeout(timerRef.current);
+    if (pollRef.current) clearTimeout(pollRef.current);
+
+    // 시각적 진행 애니메이션 (실제 진행은 아래 폴링이 관장)
     let i = 0;
-    const tick = () => {
-      i += 1;
+    const anim = () => {
+      i = Math.min(i + 1, t.scenes.length);
       setGenScene(i);
-      if (i < scenes.length) timerRef.current = setTimeout(tick, 950);
-      else {
-        const vars: Variation[] = [0, 1, 2, 3]
-          .map((v) => ({ v, score: mockViralScore(tmpl.id, v) }))
-          .sort((a, b) => b.score.total - a.score.total);
-        setResults(vars);
-        timerRef.current = setTimeout(() => setStep(4), 700);
-      }
+      if (i < t.scenes.length) timerRef.current = setTimeout(anim, 900);
     };
-    timerRef.current = setTimeout(tick, 950);
+    timerRef.current = setTimeout(anim, 900);
+
+    try {
+      const res = await fetch("/api/remake/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          templateId: t.id,
+          image: images[0] || null,
+          product: { pname, benefit, concern, url },
+          options: { lang, length, aiPerson, brandColor },
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.jobs?.length) throw new Error(data.error || "생성 시작에 실패했습니다.");
+      setMode(data.mode === "higgsfield" ? "higgsfield" : "mock");
+      const ids: string[] = data.jobs.map((j: { id: string }) => j.id);
+
+      const poll = async () => {
+        try {
+          const r = await fetch(`/api/remake/status?ids=${ids.join(",")}`);
+          const d = await r.json();
+          const jobs: { variation: number; status: string; videoUrl?: string | null }[] = d.jobs || [];
+          const done = jobs.length > 0 && jobs.every((j) => ["completed", "failed", "nsfw"].includes(j.status));
+          if (done) finish(t, jobs);
+          else pollRef.current = setTimeout(poll, 2500);
+        } catch {
+          pollRef.current = setTimeout(poll, 3000);
+        }
+      };
+      pollRef.current = setTimeout(poll, 2500);
+    } catch (e) {
+      if (timerRef.current) clearTimeout(timerRef.current);
+      setGenErr(e instanceof Error ? e.message : String(e));
+      setStep(2);
+    }
   };
 
   const reset = () => {
+    if (timerRef.current) clearTimeout(timerRef.current);
+    if (pollRef.current) clearTimeout(pollRef.current);
     setStep(0); setTid(null); setImages([]); setPname(""); setBenefit(""); setConcern(""); setUrl("");
-    setResults([]); setGenScene(0);
+    setResults([]); setGenScene(0); setGenErr(null);
   };
 
   return (
@@ -113,7 +163,7 @@ export default function RemakeStudioPage() {
             <div>
               <b className="text-[var(--fg)]">검증된 바이럴 레퍼런스 구조로 제품 영상을 자동 생성</b>하는 기능의 프로토타입입니다.
               템플릿마다 <b>실제 성과 데이터</b>(조회수·참여율·ROAS)가 붙어 있어, 무엇이 터지는지 알고 제작합니다.
-              원본 영상은 저장하지 않고 <b>구조만</b> 재현합니다(저작권 안전). ※ 이 데모에서 영상 생성은 시뮬레이션이며 실제 모델(Veo/Kling 등) 연결은 후속 단계입니다.
+              원본 영상은 저장하지 않고 <b>구조만</b> 재현합니다(저작권 안전). ※ 서버에 <code>HF_CREDENTIALS</code>가 설정되면 <b>Higgsfield</b>로 실제 영상을 생성하고, 없으면 시뮬레이션으로 동작합니다.
             </div>
           </div>
         )}
@@ -245,9 +295,10 @@ export default function RemakeStudioPage() {
               <div className="mt-3 flex gap-2">
                 <button onClick={() => setStep(1)} className="rounded-lg border border-[var(--border)] px-5 py-2.5 text-[12px] font-bold text-[var(--muted)] hover:bg-white"><ArrowLeft size={14} className="mr-1 inline" /> 제품</button>
                 <button onClick={startGen} className="flex-1 rounded-lg bg-gradient-to-r from-[#7C3AED] to-[#FF5C8D] py-2.5 text-[12px] font-black text-white">
-                  <Wand2 size={14} className="mr-1 inline" /> 영상 생성 시작 (변형 4종)
+                  <Wand2 size={14} className="mr-1 inline" /> 영상 생성 시작
                 </button>
               </div>
+              {genErr && <p className="mt-2 rounded-lg bg-rose-50 px-3 py-2 text-center text-[11px] font-semibold text-rose-600">{genErr}</p>}
             </div>
             <TemplateSide tmpl={tmpl} />
           </div>
@@ -259,8 +310,8 @@ export default function RemakeStudioPage() {
             <div className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-gradient-to-br from-[#7C3AED] to-[#FF5C8D] text-white">
               <Loader2 size={26} className="animate-spin" />
             </div>
-            <h2 className="mt-4 text-[16px] font-black">장면별로 생성 중…</h2>
-            <p className="mt-1 text-[12px] text-[var(--muted)]">제품 레퍼런스를 모든 장면에 컨디셔닝해 일관성을 유지합니다.</p>
+            <h2 className="mt-4 text-[16px] font-black">영상 생성 중…</h2>
+            <p className="mt-1 text-[12px] text-[var(--muted)]">제품 레퍼런스를 컨디셔닝해 변형을 생성합니다. 실제 모델 연결 시 수십 초~수 분 걸릴 수 있습니다.</p>
             <div className="mt-5 space-y-2 text-left">
               {tmpl.scenes.map((sc, i) => {
                 const done = i < genScene; const active = i === genScene;
@@ -287,24 +338,42 @@ export default function RemakeStudioPage() {
           <div>
             <div className="mb-4 flex flex-wrap items-center gap-2">
               <h2 className="text-[18px] font-black">생성 결과 · 변형 {results.length}종</h2>
-              <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-bold text-emerald-700">QC 통과본만 노출</span>
+              {mode === "higgsfield" ? (
+                <span className="rounded-full bg-violet-50 px-2 py-0.5 text-[11px] font-bold text-violet-700">Higgsfield 실제 생성</span>
+              ) : (
+                <span className="rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-bold text-amber-700">시뮬레이션 (모델 미연결)</span>
+              )}
               <span className="text-[12px] text-[var(--muted)]">바이럴 예측 점수 상위부터 테스트하세요</span>
             </div>
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-              {results.map(({ v, score }, rank) => (
+              {results.map(({ v, score, videoUrl, status }, rank) => {
+                const failed = status === "failed" || status === "nsfw";
+                return (
                 <div key={v} className="overflow-hidden rounded-2xl border border-[var(--border)] bg-white">
                   <div className="relative aspect-[9/16]" style={{ background: tmpl.grad }}>
-                    {images[0] && (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={images[0]} alt="" className="absolute inset-0 h-full w-full object-cover opacity-90 mix-blend-multiply" />
+                    {videoUrl ? (
+                      <video src={videoUrl} controls loop playsInline className="absolute inset-0 h-full w-full bg-black object-cover" />
+                    ) : (
+                      <>
+                        {images[0] && (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={images[0]} alt="" className="absolute inset-0 h-full w-full object-cover opacity-90 mix-blend-multiply" />
+                        )}
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
+                        {failed ? (
+                          <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-lg bg-rose-600/90 px-3 py-1 text-[11px] font-bold text-white">생성 실패</span>
+                        ) : (
+                          <button className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full bg-white/90 p-3 text-[var(--accent)]"><Play size={20} fill="currentColor" /></button>
+                        )}
+                      </>
                     )}
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
-                    {rank === 0 && <span className="absolute left-2 top-2 rounded-full bg-[var(--accent)] px-2 py-0.5 text-[10px] font-black text-white">추천</span>}
-                    <span className="absolute right-2 top-2 rounded-full bg-white/85 px-2 py-0.5 text-[10px] font-bold">변형 {v + 1}</span>
-                    <button className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full bg-white/90 p-3 text-[var(--accent)]"><Play size={20} fill="currentColor" /></button>
-                    <div className="absolute bottom-2 left-2 right-2 text-white">
-                      <div className="flex items-center gap-1 text-[11px] font-bold"><Star size={12} fill="currentColor" className="text-amber-300" /> 바이럴 예측 {score.total}</div>
-                    </div>
+                    {rank === 0 && !failed && <span className="absolute left-2 top-2 z-10 rounded-full bg-[var(--accent)] px-2 py-0.5 text-[10px] font-black text-white">추천</span>}
+                    <span className="absolute right-2 top-2 z-10 rounded-full bg-white/85 px-2 py-0.5 text-[10px] font-bold">변형 {v + 1}</span>
+                    {!videoUrl && !failed && (
+                      <div className="absolute bottom-2 left-2 right-2 text-white">
+                        <div className="flex items-center gap-1 text-[11px] font-bold"><Star size={12} fill="currentColor" className="text-amber-300" /> 바이럴 예측 {score.total}</div>
+                      </div>
+                    )}
                   </div>
                   <div className="p-3 text-[11px]">
                     <div className="grid grid-cols-3 gap-1 text-center">
@@ -313,12 +382,17 @@ export default function RemakeStudioPage() {
                       <Metric l="적합" v={score.fit} />
                     </div>
                     <div className="mt-2 flex gap-1.5">
-                      <button onClick={() => alert("데모: 9:16 1080p 다운로드 (AI 라벨 포함 가이드)")} className="flex-1 rounded-lg bg-[var(--accent)] py-1.5 font-bold text-white"><Download size={12} className="mr-1 inline" />다운로드</button>
-                      <button onClick={() => startGen()} className="rounded-lg border border-[var(--border)] px-2 py-1.5 text-[var(--muted)]" title="장면 재생성"><RefreshCw size={13} /></button>
+                      {videoUrl ? (
+                        <a href={videoUrl} target="_blank" rel="noopener noreferrer" download className="flex-1 rounded-lg bg-[var(--accent)] py-1.5 text-center font-bold text-white"><Download size={12} className="mr-1 inline" />다운로드</a>
+                      ) : (
+                        <button onClick={() => alert(failed ? "이 변형은 생성에 실패했습니다. 다시 시도해 주세요." : "시뮬레이션 결과입니다. 실제 영상은 HF_CREDENTIALS 설정 후 생성됩니다.")} className="flex-1 rounded-lg bg-[var(--accent)] py-1.5 font-bold text-white disabled:opacity-50"><Download size={12} className="mr-1 inline" />다운로드</button>
+                      )}
+                      <button onClick={() => startGen()} className="rounded-lg border border-[var(--border)] px-2 py-1.5 text-[var(--muted)]" title="다시 생성"><RefreshCw size={13} /></button>
                     </div>
                   </div>
                 </div>
-              ))}
+                );
+              })}
             </div>
 
             <div className="mt-5 flex flex-col gap-2 rounded-xl bg-white p-4 text-[11px] text-[var(--muted)] sm:flex-row sm:items-center">
