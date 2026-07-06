@@ -17,6 +17,7 @@ const NAV: { href: string; label: string; title?: string; desc?: string; sub?: {
     { href: "/plans", label: "Glovek 플랫폼 구독", desc: "콘텐츠·인플루언서·브랜드 분석 SaaS" },
     { href: "/plans/mall", label: "틱톡샵 멀티몰 입점", desc: "Live Focus · Onboarding 트랙" },
   ] },
+  { href: "/guide", label: "가이드", title: "입점 가이드", desc: "틱톡샵 입점 자격·서류·수수료·등급 로드맵을 순서대로 안내" },
   { href: "/tts/qna", label: "FAQ", title: "FAQ", desc: "틱톡샵 입점·서비스 자주 묻는 질문(QnA)" },
 ];
 
