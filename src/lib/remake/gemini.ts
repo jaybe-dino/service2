@@ -146,13 +146,14 @@ async function fetchOmniStatus(ref: string): Promise<StatusResult> {
     const text = await res.text();
     const json = safeJson(text);
     if (!res.ok) return res.status >= 500 ? { status: "in_progress" } : { status: "failed", error: `status ${res.status}: ${text.slice(0, 150)}` };
+    const st = String(json?.status || "").toLowerCase(); // Interactions API: status = completed/failed/...
     const stateRaw = json?.state as { name?: string } | string | undefined;
     const state = String((typeof stateRaw === "object" ? stateRaw?.name : stateRaw) || "").toUpperCase();
-    if (state === "FAILED" || json?.error) return { status: "failed", error: `${state || "error"}: ${text.slice(0, 130)}` };
-    const done = json?.done === true || state === "ACTIVE" || state === "SUCCEEDED";
+    if (st === "failed" || st === "error" || state === "FAILED" || json?.error) return { status: "failed", error: `${st || state || "error"}: ${text.slice(0, 130)}` };
+    const done = st === "completed" || st === "succeeded" || json?.done === true || state === "ACTIVE" || state === "SUCCEEDED";
     const uri = extractOmniVideoUri(json);
     if (done && uri) return { status: "completed", videoUrl: `/api/remake/video?u=${encodeURIComponent(uri)}` };
-    if (done && !uri) return { status: "failed", error: `완료됐지만 영상 URI 없음: ${text.slice(0, 150)}` };
+    if (done && !uri) return { status: "failed", error: `완료됐지만 영상 URI 없음: ${text.slice(0, 160)}` };
     return { status: "in_progress" };
   }
   return { status: "failed", error: `status 404 (ref=${ref}; tried=${last})` };
@@ -171,17 +172,48 @@ function extractOmniRef(j: unknown): string | undefined {
   return typeof c === "string" ? c : undefined;
 }
 
+function withMediaAlt(u: string): string {
+  return /googleapis\.com\/.*\/files\//.test(u) && !/[?&]alt=/.test(u) ? `${u}${u.includes("?") ? "&" : "?"}alt=media` : u;
+}
+
 function extractOmniVideoUri(j: unknown): string | undefined {
   const o = (j || {}) as Record<string, unknown>;
   const str = (v: unknown) => (typeof v === "string" ? v : undefined);
   const ov = (o.output_video || o.outputVideo) as Record<string, unknown> | undefined;
-  const withMedia = (u?: string) => (u && /googleapis\.com\/.*\/files\//.test(u) && !/[?&]alt=/.test(u) ? `${u}${u.includes("?") ? "&" : "?"}alt=media` : u);
-  return (
+  const known =
     str(ov?.uri) ||
     str((o.video as Record<string, unknown> | undefined)?.uri) ||
-    withMedia(str(o.download_uri) || str(o.downloadUri) || str(o.uri)) ||
-    undefined
-  );
+    str(o.download_uri) || str(o.downloadUri) || str(o.uri);
+  if (known) return withMediaAlt(known);
+  // 응답 어디에 있든 영상 URL을 깊이 탐색 — 영상/파일/미디어 계열 우선.
+  const deep = deepFindUrl(o);
+  return deep ? withMediaAlt(deep) : undefined;
+}
+
+// 재귀 탐색: https URL 문자열 중 video/mp4/files/media 계열을 우선 반환, 없으면 첫 https URL.
+function deepFindUrl(root: unknown): string | undefined {
+  const stack: unknown[] = [root];
+  let fallback: string | undefined;
+  let seen = 0;
+  while (stack.length && seen < 5000) {
+    const cur = stack.pop();
+    seen++;
+    if (typeof cur === "string") {
+      if (/^https:\/\//.test(cur)) {
+        if (/(\.mp4|\/files\/|video|media|download|storage\.googleapis)/i.test(cur)) return cur;
+        if (!fallback) fallback = cur;
+      }
+      continue;
+    }
+    if (Array.isArray(cur)) { for (const x of cur) stack.push(x); continue; }
+    if (cur && typeof cur === "object") {
+      for (const [k, v] of Object.entries(cur as Record<string, unknown>)) {
+        if (typeof v === "string" && /^https:\/\//.test(v) && /(video|uri|url|file|media|download)/i.test(k)) return v;
+        stack.push(v);
+      }
+    }
+  }
+  return fallback;
 }
 
 // 결과 경로가 모델/버전에 따라 다를 수 있어 방어적으로 탐색.

@@ -41,7 +41,7 @@ export async function GET(req: Request) {
     try {
       const res = await fetch(url, { headers: { "x-goog-api-key": key } });
       const text = await res.text();
-      results.push({ path: base.replace(`${BASE}/`, ""), httpStatus: res.status, body: text.slice(0, 2000) });
+      results.push({ path: base.replace(`${BASE}/`, ""), httpStatus: res.status, body: text.slice(0, 30000) });
       if (res.ok) break; // 첫 성공 경로에서 응답 본문 확보
     } catch (e) {
       results.push({ path: base.replace(`${BASE}/`, ""), error: String(e).slice(0, 160) });
