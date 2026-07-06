@@ -56,6 +56,7 @@ export default function RemakeStudioPage() {
   const [results, setResults] = useState<Variation[]>([]);
   const [genInfo, setGenInfo] = useState<{ real: boolean; label: string; tier: Tier; sceneMode: boolean; similarity: number; fidelity: string }>({ real: false, label: "시뮬레이션", tier: "hd", sceneMode: false, similarity: 0, fidelity: "text" });
   const [genScenesMeta, setGenScenesMeta] = useState<{ time?: string; roleKo?: string }[]>([]);
+  const [genElapsed, setGenElapsed] = useState(0);
   const [genErr, setGenErr] = useState<string | null>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pollRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -203,15 +204,22 @@ export default function RemakeStudioPage() {
       const sim = scenesOn ? Math.min(96, 80 + Math.min(effPkg!.scenes.length, 5) * 3) : 66;
       setGenInfo({ real: data.mode !== "mock", label: data.provider || "시뮬레이션", tier: (data.tier as Tier) || genTier, sceneMode: scenesOn, similarity: sim, fidelity: data.fidelity || "text" });
       const ids: string[] = data.jobs.map((j: { id: string }) => j.id);
+      const startedAt = Date.now();
+      setGenElapsed(0);
+      const DEADLINE = 300_000; // 5분 초과 시 폴링 중단(무한 스핀 방지)
 
       const poll = async () => {
         try {
           const r = await fetch(`/api/remake/status?ids=${ids.join(",")}`);
           const d = await r.json();
           const jobs: { variation: number; status: string; videoUrl?: string | null; error?: string | null }[] = d.jobs || [];
+          setGenElapsed(Math.round((Date.now() - startedAt) / 1000));
           const done = jobs.length > 0 && jobs.every((j) => ["completed", "failed", "nsfw"].includes(j.status));
           if (done) finish(t, jobs, scenesOn);
-          else pollRef.current = setTimeout(poll, 2500);
+          else if (Date.now() - startedAt > DEADLINE) {
+            // 시간 초과 — 완료된 것만 보여주고 나머지는 '처리 중'으로 결과 화면 이동
+            finish(t, jobs.map((j) => (["completed", "failed", "nsfw"].includes(j.status) ? j : { ...j, status: "timeout", error: "아직 처리 중 — 잠시 후 다시 생성/확인" })), scenesOn);
+          } else pollRef.current = setTimeout(poll, 2500);
         } catch {
           pollRef.current = setTimeout(poll, 3000);
         }
@@ -495,7 +503,8 @@ export default function RemakeStudioPage() {
               <Loader2 size={26} className="animate-spin" />
             </div>
             <h2 className="mt-4 text-[16px] font-black">{sceneMode ? "장면별로 생성 중…" : "영상 생성 중…"}</h2>
-            <p className="mt-1 text-[12px] text-[var(--muted)]">{sceneMode ? "레퍼런스 각 화면을 1:1로 재현합니다(제품 일관 유지)." : "제품 레퍼런스를 컨디셔닝해 변형을 생성합니다."} 실제 모델 연결 시 수십 초~수 분 걸릴 수 있습니다.</p>
+            <p className="mt-1 text-[12px] text-[var(--muted)]">{sceneMode ? "레퍼런스 각 화면을 1:1로 재현합니다(제품 일관 유지)." : "제품 레퍼런스를 컨디셔닝해 변형을 생성합니다."} <b className="text-[var(--fg)]">영상 생성은 보통 30초~3분</b> 걸립니다.</p>
+            <p className="mt-1 text-[12px] font-bold text-[var(--accent)]">경과 {genElapsed}s · 처리 중…</p>
             <div className="mt-5 space-y-2 text-left">
               {tmpl.scenes.map((sc, i) => {
                 const done = i < genScene; const active = i === genScene;
@@ -539,7 +548,7 @@ export default function RemakeStudioPage() {
             </div>
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
               {results.map(({ v, score, videoUrl, status, error }, rank) => {
-                const failed = status === "failed" || status === "nsfw";
+                const failed = status === "failed" || status === "nsfw" || status === "timeout";
                 return (
                 <div key={v} className="overflow-hidden rounded-2xl border border-[var(--border)] bg-white">
                   <div className="relative aspect-[9/16]" style={{ background: tmpl.grad }}>
