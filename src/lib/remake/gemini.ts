@@ -28,6 +28,8 @@ export interface GeminiSubmitInput {
 }
 
 export async function submitImage2Video(i: GeminiSubmitInput): Promise<{ requestId: string }> {
+  // Omni Flash는 Interactions API(다른 규격), Veo류는 predictLongRunning.
+  if (/omni/i.test(i.model)) return submitOmni(i);
   const res = await fetch(`${BASE}/models/${i.model}:predictLongRunning`, {
     method: "POST",
     headers: { "content-type": "application/json", "x-goog-api-key": key() },
@@ -56,7 +58,9 @@ export async function submitImage2Video(i: GeminiSubmitInput): Promise<{ request
 export type JobStatus = "queued" | "in_progress" | "completed" | "failed" | "nsfw";
 export interface StatusResult { status: JobStatus; videoUrl?: string; error?: string }
 
-export async function fetchStatus(operationName: string): Promise<StatusResult> {
+export async function fetchStatus(requestId: string): Promise<StatusResult> {
+  if (requestId.startsWith("omni::")) return fetchOmniStatus(requestId.slice(6));
+  const operationName = requestId;
   let res: Response;
   try {
     res = await fetch(`${BASE}/${operationName}`, { headers: { "x-goog-api-key": key() } });
@@ -83,6 +87,77 @@ export async function fetchStatus(operationName: string): Promise<StatusResult> 
 
 function safeJson(t: string): Record<string, unknown> | null {
   try { return t ? JSON.parse(t) : {}; } catch { return null; }
+}
+
+// ── Omni Flash: Interactions API ──────────────────────────────────────────
+// 제출: POST /v1beta/interactions { model, input:[image,text], response_format:{delivery:"uri"} }
+// 비동기: output_video URI를 받아 파일 상태(state.name)가 ACTIVE 될 때까지 폴링.
+// ⚠️ 문서 접근 제한으로 응답 필드는 방어적으로 파싱 — 실제 응답과 다르면 이 두 함수만 조정.
+async function submitOmni(i: GeminiSubmitInput): Promise<{ requestId: string }> {
+  const res = await fetch(`${BASE}/interactions`, {
+    method: "POST",
+    headers: { "content-type": "application/json", "x-goog-api-key": key() },
+    body: JSON.stringify({
+      model: i.model,
+      input: [
+        { type: "image", data: i.imageBase64, mime_type: i.imageMime || "image/png" },
+        { type: "text", text: i.prompt },
+      ],
+      response_format: { delivery: "uri" },
+    }),
+  });
+  const text = await res.text();
+  const json = safeJson(text);
+  if (!res.ok) throw new Error(`omni submit ${res.status}: ${text.slice(0, 200)}`);
+  const ref = extractOmniRef(json);
+  if (!ref) throw new Error(`omni submit: 폴링 참조 없음 (${text.slice(0, 180)})`);
+  return { requestId: `omni::${ref}` };
+}
+
+async function fetchOmniStatus(ref: string): Promise<StatusResult> {
+  const url = ref.startsWith("http") ? ref : `${BASE}/${ref.replace(/^\//, "")}`;
+  let res: Response;
+  try {
+    res = await fetch(url, { headers: { "x-goog-api-key": key() } });
+  } catch (e) {
+    return { status: "in_progress", error: `network: ${String(e).slice(0, 120)}` };
+  }
+  const text = await res.text();
+  const json = safeJson(text);
+  if (!res.ok) return res.status >= 500 ? { status: "in_progress" } : { status: "failed", error: `status ${res.status}` };
+  const stateRaw = (json?.state as { name?: string } | string | undefined);
+  const state = String((typeof stateRaw === "object" ? stateRaw?.name : stateRaw) || "").toUpperCase();
+  if (state === "FAILED" || json?.error) return { status: "failed", error: state || "error" };
+  const done = json?.done === true || state === "ACTIVE" || state === "SUCCEEDED";
+  const uri = extractOmniVideoUri(json);
+  if (done && uri) return { status: "completed", videoUrl: `/api/remake/video?u=${encodeURIComponent(uri)}` };
+  if (done && !uri) return { status: "failed", error: "완료됐지만 영상 URI를 찾지 못함" };
+  return { status: "in_progress" };
+}
+
+function extractOmniRef(j: unknown): string | undefined {
+  const o = (j || {}) as Record<string, unknown>;
+  const ov = (o.output_video || o.outputVideo) as Record<string, unknown> | undefined;
+  const cands = [
+    ov?.uri, ov?.name,
+    (o.operation as Record<string, unknown> | undefined)?.name,
+    o.name, o.id,
+  ];
+  const c = cands.find((v) => typeof v === "string");
+  return typeof c === "string" ? c : undefined;
+}
+
+function extractOmniVideoUri(j: unknown): string | undefined {
+  const o = (j || {}) as Record<string, unknown>;
+  const str = (v: unknown) => (typeof v === "string" ? v : undefined);
+  const ov = (o.output_video || o.outputVideo) as Record<string, unknown> | undefined;
+  const withMedia = (u?: string) => (u && /googleapis\.com\/.*\/files\//.test(u) && !/[?&]alt=/.test(u) ? `${u}${u.includes("?") ? "&" : "?"}alt=media` : u);
+  return (
+    str(ov?.uri) ||
+    str((o.video as Record<string, unknown> | undefined)?.uri) ||
+    withMedia(str(o.download_uri) || str(o.downloadUri) || str(o.uri)) ||
+    undefined
+  );
 }
 
 // 결과 경로가 모델/버전에 따라 다를 수 있어 방어적으로 탐색.

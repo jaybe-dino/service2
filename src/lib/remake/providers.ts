@@ -37,11 +37,12 @@ const HF_MODEL: Record<Tier, string> = {
   hd: process.env.HF_MODEL || "dop",
   premium: process.env.HF_PREMIUM_MODEL || process.env.HF_MODEL || "dop",
 };
-// Gemini/Omni Flash: 정확한 모델 ID는 배포 시점 문서 기준으로 env 지정 권장.
+// Gemini 영상 모델. GEMINI_VIDEO_MODEL 하나만 지정하면 전 티어가 그걸 사용.
+// (Omni Flash = gemini-omni-flash-preview[Interactions API] / Veo = veo-3.1-generate-preview[predictLongRunning])
 const GM_MODEL: Record<Tier, string> = {
-  draft: process.env.GEMINI_DRAFT_MODEL || process.env.GEMINI_VIDEO_MODEL || "veo-3.0-fast-generate-preview",
-  hd: process.env.GEMINI_HD_MODEL || process.env.GEMINI_VIDEO_MODEL || "veo-3.0-generate-preview",
-  premium: process.env.GEMINI_VIDEO_MODEL || "gemini-omni-flash",
+  draft: process.env.GEMINI_DRAFT_MODEL || process.env.GEMINI_VIDEO_MODEL || "veo-3.1-generate-preview",
+  hd: process.env.GEMINI_HD_MODEL || process.env.GEMINI_VIDEO_MODEL || "veo-3.1-generate-preview",
+  premium: process.env.GEMINI_VIDEO_MODEL || "gemini-omni-flash-preview",
 };
 
 export const higgsfieldProvider: VideoProvider = {
