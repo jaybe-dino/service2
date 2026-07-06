@@ -205,14 +205,13 @@ const ROLE_KO: Record<string, string> = { hook: "훅", apply: "발림", result: 
 // 템플릿(큐레이션/레퍼런스 공용) + 제품 + 옵션 → 매우 상세한 생성 브리프.
 export function buildRemakePrompt(t: RemakeTemplate, product: PromptProduct = {}, opts: PromptOptions = {}): RemakePromptPackage {
   const length = opts.length ?? 30;
-  const lang = opts.lang ?? "영어(US)";
   const person = opts.aiPerson ?? true;
-  const color = opts.brandColor ?? "#FF5C8D";
   const pname = product.pname?.trim() || "제품";
   const benefit = product.benefit?.trim();
   const concern = product.concern?.trim();
 
-  // 시간 라인 구성
+  // 시간 라인 구성 — 영상모델이 글자를 렌더하면 깨지므로 "자막/온스크린 텍스트"는 지시하지 않는다.
+  // (자막·CTA 문구는 후처리에서 합성. 여기선 '깨끗한 원본 영상'만 묘사)
   let acc = 0;
   const total = t.scenes.reduce((s, x) => s + x.sec, 0) || 1;
   const scale = length / total; // 요청 길이에 맞춰 씬 시간 스케일
@@ -222,14 +221,14 @@ export function buildRemakePrompt(t: RemakeTemplate, product: PromptProduct = {}
     const end = Math.round(acc * scale);
     const action =
       s.role === "hook"
-        ? `첫 프레임부터 시선 고정: "${t.hookCopy}" 자막/음성 훅, ${person ? "AI 진행자 셀피" : "제품 단독"}`
+        ? `첫 1초 시선 고정. ${person ? "AI 진행자 셀피, 자연스러운 표정" : "제품 단독 히어로"} — 궁금증을 유발하는 무드(대사·자막은 후처리)`
         : s.role === "apply"
-        ? `${pname} ${s.productSlot === "in-use" ? "실사용 발림" : "노출"}${benefit ? `, ${benefit} 강조` : ""}`
+        ? `${pname} ${s.productSlot === "in-use" ? "실사용 발림(손·피부 클로즈업)" : "제품 노출"}${benefit ? `, ${benefit} 느낌 연출` : ""}`
         : s.role === "result"
-        ? `개선 결과 클로즈업${concern ? ` (${concern} 해소)` : ""}, 만족 리액션`
+        ? `개선 결과 클로즈업${concern ? ` (${concern} 해소 뉘앙스)` : ""}, 만족스러운 리액션`
         : s.role === "detail"
-        ? `핵심 디테일/포인트 컷, 텍스트 오버레이`
-        : `구매 유도 CTA + ${pname} 히어로샷, ${lang} 자막`;
+        ? `핵심 디테일/텍스처 포인트 컷`
+        : `${pname} 히어로샷 마무리, 손으로 제품 제시`;
     return { time: `${start}-${end}s`, roleKo: ROLE_KO[s.role] || s.role, shot: s.camera, action };
   });
 
@@ -237,27 +236,26 @@ export function buildRemakePrompt(t: RemakeTemplate, product: PromptProduct = {}
 
   const fullPrompt = [
     `[SHORT-FORM PRODUCT VIDEO BRIEF]`,
-    `Format: TikTok vertical 9:16, ${length}s, ${lang} on-screen captions`,
+    `Format: TikTok vertical 9:16, ${length}s. Clean footage only.`,
     `Category: ${t.categoryKo} · Hook archetype: ${t.hookType}`,
-    `Reference performance: ${t.perf.views} views · ${t.perf.engagement} engagement${t.perf.roas ? ` · est. ROAS ${t.perf.roas}` : ""}`,
     ``,
-    `HOOK LINE (0-2s): "${t.hookCopy}"`,
+    `HOOK INTENT (0-2s): 궁금증 유발(문구는 화면에 넣지 말 것 — 무드/연출로만 표현)`,
     ``,
     `SHOT LIST:`,
     shotList,
     ``,
     `PRODUCT: ${pname}${benefit ? ` — 핵심 효능 ${benefit}` : ""}${concern ? `, 타깃 고민 ${concern}` : ""}.`,
     `모든 컷에서 제품 정체성(라벨·컬러·형태) 일관 유지 — 업로드 제품 이미지를 레퍼런스로 컨디셔닝.`,
-    `VISUAL TONE: ${t.tone}. 브랜드 강조색 ${color} 를 자막/CTA 포인트로 사용.`,
+    `VISUAL TONE: ${t.tone}. 브랜드 무드에 맞는 따뜻한 액센트 컬러를 조명·소품으로만(코드/문구 아님).`,
     `TALENT: ${person ? "AI 생성 UGC 진행자(실존 인물 유사성 차단)" : "인물 없음 — 제품/손 중심 연출"}.`,
-    `SOUND: ${t.sound}. 훅 구간 비트 강조, 결과 구간 여백.`,
+    `SOUND: ${t.sound} 무드. (음원은 후처리)`,
     `PACING: 훅·전환 빠른 컷, 결과 홀드. 첫 1초 이탈 방지 최우선.`,
-    `TEXT OVERLAY: ${lang} 자막, 훅 문구 온스크린, 브랜드 컬러 액센트.`,
+    `‼ NO ON-SCREEN TEXT: 자막·문구·숫자·해시태그·hex 색상코드·로고·UI 요소를 화면에 절대 렌더하지 말 것. 글자 없는 깨끗한 실사 영상으로. (자막·CTA는 후처리 단계에서 합성)`,
     `WHY THIS WORKS: ${t.why}`,
   ].join("\n");
 
   const negative =
-    "실존 유명인 얼굴/유사성, 저작권 음원·로고, 과장·허위 효능 표현, 왜곡된 텍스트, 워터마크, 비현실적 피부 보정";
+    "any on-screen text, captions, subtitles, words, letters, numbers, hashtags, hex color codes (#...), gibberish typography, distorted lettering, logos, watermark, UI overlays, real celebrity likeness, copyrighted audio, exaggerated/false efficacy claims, unrealistic skin retouching";
 
   return {
     headline: `${t.name} 구조를 ${pname}에 적용한 ${length}초 생성 브리프`,

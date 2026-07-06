@@ -27,12 +27,13 @@ function buildPrompt(
     product.concern ? `targets ${product.concern}` : "",
     `mood matching hook "${t.hookCopy}"`,
     "clean, bright, high-conversion UGC aesthetic, vertical 9:16",
+    "no on-screen text, no captions, no letters or logos — clean footage only",
   ]
     .filter(Boolean)
     .join(", ");
 }
 
-const NEGATIVE = "real celebrity likeness, copyrighted audio or logos, exaggerated or false efficacy claims, distorted text, watermark";
+const NEGATIVE = "any on-screen text, captions, subtitles, words, letters, numbers, hashtags, hex color codes, gibberish typography, distorted lettering, logos, watermark, UI overlays, real celebrity likeness, copyrighted audio, exaggerated or false efficacy claims";
 
 export async function POST(req: Request) {
   if (!dbConfigured()) return NextResponse.json({ error: "DB 미설정" }, { status: 503 });
@@ -103,7 +104,8 @@ export async function POST(req: Request) {
 - role: ${s.roleKo || ""}
 - shot/camera: ${s.shot || cams[idx % cams.length]}
 - action: ${s.action || ""}
-Match the reference's framing, camera movement and pacing for THIS scene faithfully (high structure similarity). Keep the product identity (label, color, shape) consistent across scenes. Use distinct visuals/audio from any original clip. Vertical 9:16.`;
+Match the reference's framing, camera movement and pacing for THIS scene faithfully (high structure similarity). Keep the product identity (label, color, shape) consistent across scenes. Use distinct visuals/audio from any original clip. Vertical 9:16, photorealistic.
+‼ NO on-screen text of any kind — no captions, words, letters, numbers, hashtags, hex color codes, logos or UI. Clean footage only (captions are added later in post).`;
   }
 
   const jobs: { id: string; variation: number }[] = [];

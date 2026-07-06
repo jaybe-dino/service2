@@ -34,6 +34,7 @@ export default function RemakeStudioPage() {
   const [refCount, setRefCount] = useState(12); // 단계별 노출 개수(한 번에 다 렌더하지 않음)
   const refsTried = useRef(false);
   const [customTmpl, setCustomTmpl] = useState<RemakeTemplate | null>(null); // 콘텐츠에서 생성한 템플릿
+  const [refUrl, setRefUrl] = useState<string | null>(null); // 선택한 레퍼런스 원본 URL(비전 그라운딩용)
 
   // 제품
   const [images, setImages] = useState<string[]>([]);
@@ -91,12 +92,13 @@ export default function RemakeStudioPage() {
           product: { pname, benefit, concern },
           options: { lang, length, aiPerson, brandColor },
           isRef,
+          refTiktokUrl: isRef ? refUrl : undefined,
         }),
       });
       const d = await res.json();
       if (d.pkg) {
         setAiPkg(d.pkg);
-        setAiMsg(d.mode === "ai" ? "AI 정교화 완료" : `규칙 기반 (${d.warn || "AI 미설정"})`);
+        setAiMsg(d.mode === "ai" ? (d.grounded ? "AI 정교화 완료 (레퍼런스 영상 반영)" : "AI 정교화 완료") : `규칙 기반 (${d.warn || "AI 미설정"})`);
       } else {
         setAiMsg(d.error || "정교화에 실패했습니다.");
       }
@@ -125,6 +127,7 @@ export default function RemakeStudioPage() {
   const selectRef = (c: Content) => {
     setAiPkg(null); setAiMsg(null);
     setCustomTmpl(refToTemplate(c));
+    setRefUrl(c.tiktokUrl);
     setTid(`ref-${c.id}`);
     setStep(1);
   };
@@ -217,7 +220,7 @@ export default function RemakeStudioPage() {
   const reset = () => {
     if (timerRef.current) clearTimeout(timerRef.current);
     if (pollRef.current) clearTimeout(pollRef.current);
-    setStep(0); setTid(null); setCustomTmpl(null); setImages([]); setPname(""); setBenefit(""); setConcern(""); setUrl("");
+    setStep(0); setTid(null); setCustomTmpl(null); setRefUrl(null); setImages([]); setPname(""); setBenefit(""); setConcern(""); setUrl("");
     setResults([]); setGenScene(0); setGenErr(null); setAiPkg(null); setAiMsg(null);
   };
 
@@ -294,7 +297,7 @@ export default function RemakeStudioPage() {
             {srcMode === "templates" && (
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 {templates.map((t) => (
-                  <button key={t.id} onClick={() => { setAiPkg(null); setAiMsg(null); setCustomTmpl(null); setTid(t.id); setStep(1); }}
+                  <button key={t.id} onClick={() => { setAiPkg(null); setAiMsg(null); setCustomTmpl(null); setRefUrl(null); setTid(t.id); setStep(1); }}
                     className={`group overflow-hidden rounded-2xl border bg-white text-left transition hover:shadow-lg ${tid === t.id ? "border-[var(--accent)] ring-2 ring-[var(--accent)]" : "border-[var(--border)]"}`}>
                     <div className="relative h-40" style={{ background: t.grad }}>
                       <span className="absolute left-3 top-3 rounded-full bg-black/50 px-2 py-0.5 text-[10px] font-bold text-white">▶ {t.hookType}</span>
