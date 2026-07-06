@@ -10,7 +10,7 @@ import {
   type RemakeTemplate,
 } from "@/data/ktrend/remake-templates";
 import { refToTemplate, buildRemakePrompt, type RemakePromptPackage } from "@/data/ktrend/remake-refs";
-import { loadContent, sortContent, fmtCompact, type Content } from "@/data/ktrend/content";
+import { loadContentStaged, sortContent, fmtCompact, type Content } from "@/data/ktrend/content";
 
 const STEPS = ["템플릿 선택", "제품 등록", "생성 옵션", "생성", "결과"];
 const ROLE_KO: Record<string, string> = { hook: "훅", apply: "발림", result: "결과", cta: "CTA", detail: "디테일" };
@@ -26,6 +26,8 @@ export default function RemakeStudioPage() {
   const [srcMode, setSrcMode] = useState<"templates" | "refs">("templates");
   const [refs, setRefs] = useState<Content[]>([]);
   const [refsLoading, setRefsLoading] = useState(false);
+  const [refCount, setRefCount] = useState(12); // 단계별 노출 개수(한 번에 다 렌더하지 않음)
+  const refsTried = useRef(false);
   const [customTmpl, setCustomTmpl] = useState<RemakeTemplate | null>(null); // 콘텐츠에서 생성한 템플릿
 
   // 제품
@@ -58,28 +60,62 @@ export default function RemakeStudioPage() {
   const templates = REMAKE_TEMPLATES.filter((t) => cat === "all" || t.category === cat);
   const isRef = !!customTmpl;
 
-  // "아주 구체적인 프롬프트화" — 선택 템플릿/콘텐츠 + 제품 + 옵션으로 실시간 상세 프롬프트 생성
+  // "아주 구체적인 프롬프트화" — 선택 템플릿/콘텐츠 + 제품 + 옵션으로 실시간 상세 프롬프트 생성(규칙 기반)
   const promptPkg: RemakePromptPackage | null = useMemo(
     () => (tmpl ? buildRemakePrompt(tmpl, { pname, benefit, concern }, { lang, length, aiPerson, brandColor }) : null),
     [tmpl, pname, benefit, concern, lang, length, aiPerson, brandColor],
   );
+  // AI(Claude) 정교화 결과 — 있으면 이걸 사용, 없으면 규칙 기반 promptPkg 사용
+  const [aiPkg, setAiPkg] = useState<RemakePromptPackage | null>(null);
+  const [aiBusy, setAiBusy] = useState(false);
+  const [aiMsg, setAiMsg] = useState<string | null>(null);
+  const effPkg = aiPkg ?? promptPkg;
 
-  // 콘텐츠 레퍼런스 로드 (탭 최초 진입 시 1회)
+  const refinePrompt = async () => {
+    if (!tmpl) return;
+    setAiBusy(true); setAiMsg(null);
+    try {
+      const res = await fetch("/api/remake/prompt", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          template: tmpl,
+          product: { pname, benefit, concern },
+          options: { lang, length, aiPerson, brandColor },
+          isRef,
+        }),
+      });
+      const d = await res.json();
+      if (d.pkg) {
+        setAiPkg(d.pkg);
+        setAiMsg(d.mode === "ai" ? "AI 정교화 완료" : `규칙 기반 (${d.warn || "AI 미설정"})`);
+      } else {
+        setAiMsg(d.error || "정교화에 실패했습니다.");
+      }
+    } catch {
+      setAiMsg("요청에 실패했습니다.");
+    } finally {
+      setAiBusy(false);
+    }
+  };
+
+  // 콘텐츠 레퍼런스 로드 (탭 최초 진입 시 1회) — 단계별: 정적 데이터로 먼저 채우고 수집분 병합.
+  // 한 번에 다 들고오지 않도록 상위 60개만 유지하고, 화면에는 refCount만큼만 렌더.
   useEffect(() => {
-    if (srcMode !== "refs" || refs.length || refsLoading) return;
+    if (srcMode !== "refs" || refsTried.current) return;
+    refsTried.current = true;
     setRefsLoading(true);
-    loadContent()
-      .then((list) => {
-        const top = sortContent(list.filter((c) => c.tiktokUrl), "viral").slice(0, 60);
-        setRefs(top);
-      })
-      .catch(() => setRefs([]))
-      .finally(() => setRefsLoading(false));
-  }, [srcMode, refs.length, refsLoading]);
+    loadContentStaged((list) => {
+      const top = sortContent(list.filter((c) => c.tiktokUrl), "viral").slice(0, 60);
+      setRefs(top);
+      setRefsLoading(false);
+    });
+  }, [srcMode]);
 
   const refList = refs.filter((c) => cat === "all" || c.category === cat);
 
   const selectRef = (c: Content) => {
+    setAiPkg(null); setAiMsg(null);
     setCustomTmpl(refToTemplate(c));
     setTid(`ref-${c.id}`);
     setStep(1);
@@ -128,7 +164,7 @@ export default function RemakeStudioPage() {
         body: JSON.stringify({
           templateId: isRef ? undefined : t.id,
           scoreSeed: t.id,
-          promptBase: promptPkg?.fullPrompt,
+          promptBase: effPkg?.fullPrompt,
           image: images[0] || null,
           product: { pname, benefit, concern, url },
           options: { lang, length, aiPerson, brandColor },
@@ -163,7 +199,7 @@ export default function RemakeStudioPage() {
     if (timerRef.current) clearTimeout(timerRef.current);
     if (pollRef.current) clearTimeout(pollRef.current);
     setStep(0); setTid(null); setCustomTmpl(null); setImages([]); setPname(""); setBenefit(""); setConcern(""); setUrl("");
-    setResults([]); setGenScene(0); setGenErr(null);
+    setResults([]); setGenScene(0); setGenErr(null); setAiPkg(null); setAiMsg(null);
   };
 
   return (
@@ -229,7 +265,7 @@ export default function RemakeStudioPage() {
               </span>
               <div className="ml-auto flex gap-1.5">
                 {[["all", "전체"], ["skincare", "스킨케어"], ["makeup", "메이크업"], ["haircare", "헤어케어"]].map(([k, v]) => (
-                  <button key={k} onClick={() => setCat(k as typeof cat)}
+                  <button key={k} onClick={() => { setCat(k as typeof cat); setRefCount(12); }}
                     className={`rounded-full border px-3 py-1 text-[11px] font-semibold ${cat === k ? "border-[var(--accent)] bg-[var(--accent-light)] text-[var(--accent)]" : "border-[var(--border)] text-[var(--muted)]"}`}>{v}</button>
                 ))}
               </div>
@@ -239,7 +275,7 @@ export default function RemakeStudioPage() {
             {srcMode === "templates" && (
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 {templates.map((t) => (
-                  <button key={t.id} onClick={() => { setCustomTmpl(null); setTid(t.id); setStep(1); }}
+                  <button key={t.id} onClick={() => { setAiPkg(null); setAiMsg(null); setCustomTmpl(null); setTid(t.id); setStep(1); }}
                     className={`group overflow-hidden rounded-2xl border bg-white text-left transition hover:shadow-lg ${tid === t.id ? "border-[var(--accent)] ring-2 ring-[var(--accent)]" : "border-[var(--border)]"}`}>
                     <div className="relative h-40" style={{ background: t.grad }}>
                       <span className="absolute left-3 top-3 rounded-full bg-black/50 px-2 py-0.5 text-[10px] font-bold text-white">▶ {t.hookType}</span>
@@ -274,8 +310,9 @@ export default function RemakeStudioPage() {
                   표시할 콘텐츠가 없습니다. 수집 데이터가 준비되면 자동으로 노출됩니다.
                 </div>
               ) : (
+                <>
                 <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                  {refList.slice(0, 40).map((c) => (
+                  {refList.slice(0, refCount).map((c) => (
                     <button key={c.id} onClick={() => selectRef(c)}
                       className="group overflow-hidden rounded-2xl border border-[var(--border)] bg-white text-left transition hover:shadow-lg hover:border-[var(--accent)]">
                       <div className="relative aspect-[9/16]" style={{ background: `linear-gradient(135deg,hsl(${c.hue % 360},85%,72%),hsl(${(c.hue + 40) % 360},80%,64%))` }}>
@@ -298,6 +335,15 @@ export default function RemakeStudioPage() {
                     </button>
                   ))}
                 </div>
+                {refCount < refList.length && (
+                  <div className="mt-5 text-center">
+                    <button onClick={() => setRefCount((n) => n + 12)}
+                      className="rounded-lg border border-[var(--border)] bg-white px-6 py-2.5 text-[12px] font-bold text-[var(--muted)] hover:border-[var(--accent)] hover:text-[var(--accent)]">
+                      더 보기 ({refList.length - refCount}개)
+                    </button>
+                  </div>
+                )}
+                </>
               )
             )}
           </div>
@@ -349,7 +395,7 @@ export default function RemakeStudioPage() {
               {!images.length && <p className="mt-2 text-center text-[10px] text-[var(--muted)]">제품 이미지를 1장 이상 올리면 다음으로 넘어갈 수 있어요.</p>}
             </div>
 
-            <TemplateSide tmpl={tmpl} pkg={promptPkg} isRef={isRef} />
+            <TemplateSide tmpl={tmpl} pkg={effPkg} isRef={isRef} aiActive={!!aiPkg} aiBusy={aiBusy} aiMsg={aiMsg} onRefine={refinePrompt} />
           </div>
         )}
 
@@ -395,7 +441,7 @@ export default function RemakeStudioPage() {
               </div>
               {genErr && <p className="mt-2 rounded-lg bg-rose-50 px-3 py-2 text-center text-[11px] font-semibold text-rose-600">{genErr}</p>}
             </div>
-            <TemplateSide tmpl={tmpl} pkg={promptPkg} isRef={isRef} />
+            <TemplateSide tmpl={tmpl} pkg={effPkg} isRef={isRef} aiActive={!!aiPkg} aiBusy={aiBusy} aiMsg={aiMsg} onRefine={refinePrompt} />
           </div>
         )}
 
@@ -502,7 +548,10 @@ export default function RemakeStudioPage() {
   );
 }
 
-function TemplateSide({ tmpl, pkg, isRef }: { tmpl: RemakeTemplate; pkg: RemakePromptPackage | null; isRef: boolean }) {
+function TemplateSide({ tmpl, pkg, isRef, aiActive, aiBusy, aiMsg, onRefine }: {
+  tmpl: RemakeTemplate; pkg: RemakePromptPackage | null; isRef: boolean;
+  aiActive: boolean; aiBusy: boolean; aiMsg: string | null; onRefine: () => void;
+}) {
   return (
     <div className="space-y-3 md:col-span-2">
       <div className="overflow-hidden rounded-2xl border border-[var(--border)] bg-white">
@@ -528,13 +577,16 @@ function TemplateSide({ tmpl, pkg, isRef }: { tmpl: RemakeTemplate; pkg: RemakeP
           </div>
         </div>
       </div>
-      {pkg && <PromptPanel pkg={pkg} isRef={isRef} />}
+      {pkg && <PromptPanel pkg={pkg} aiActive={aiActive} aiBusy={aiBusy} aiMsg={aiMsg} onRefine={onRefine} />}
     </div>
   );
 }
 
 // "아주 구체적인 프롬프트화" 결과 — 선택 콘텐츠/템플릿 + 제품/옵션으로 만든 상세 생성 브리프
-function PromptPanel({ pkg, isRef }: { pkg: RemakePromptPackage; isRef: boolean }) {
+function PromptPanel({ pkg, aiActive, aiBusy, aiMsg, onRefine }: {
+  pkg: RemakePromptPackage;
+  aiActive: boolean; aiBusy: boolean; aiMsg: string | null; onRefine: () => void;
+}) {
   const [open, setOpen] = useState(true);
   const [copied, setCopied] = useState(false);
   const copy = () => {
@@ -547,13 +599,27 @@ function PromptPanel({ pkg, isRef }: { pkg: RemakePromptPackage; isRef: boolean 
     <div className="overflow-hidden rounded-2xl border border-violet-200 bg-white">
       <div className="flex items-center gap-2 border-b border-violet-100 bg-violet-50 px-4 py-2.5">
         <FileText size={14} className="text-violet-600" />
-        <span className="text-[12px] font-black text-violet-700">생성 프롬프트 {isRef ? "(콘텐츠 → 자동 변환)" : ""}</span>
+        <span className="text-[12px] font-black text-violet-700">생성 프롬프트</span>
+        {aiActive ? (
+          <span className="rounded-full bg-violet-600 px-2 py-0.5 text-[9px] font-black text-white">AI 생성</span>
+        ) : (
+          <span className="rounded-full bg-slate-200 px-2 py-0.5 text-[9px] font-bold text-slate-600">규칙 기반</span>
+        )}
         <button onClick={() => setOpen((v) => !v)} className="ml-auto inline-flex items-center gap-1 text-[11px] font-semibold text-violet-600">
           <Eye size={12} /> {open ? "접기" : "보기"}
         </button>
       </div>
       <div className="p-4 text-[11px]">
-        <div className="font-bold text-[var(--fg)]">{pkg.headline}</div>
+        <div className="flex items-start justify-between gap-2">
+          <div className="font-bold text-[var(--fg)]">{pkg.headline}</div>
+          <button onClick={onRefine} disabled={aiBusy}
+            className="inline-flex shrink-0 items-center gap-1 rounded-lg bg-gradient-to-r from-[#7C3AED] to-[#FF5C8D] px-2.5 py-1 text-[10px] font-black text-white disabled:opacity-60">
+            {aiBusy ? <Loader2 size={11} className="animate-spin" /> : <Sparkles size={11} />}
+            {aiActive ? "다시 정교화" : "AI로 정교화"}
+          </button>
+        </div>
+        {aiMsg && <div className="mt-1.5 text-[10px] font-semibold text-violet-600">{aiMsg}</div>}
+        {!aiActive && <p className="mt-1 text-[10px] leading-relaxed text-[var(--muted)]">규칙 기반 초안입니다. <b>AI로 정교화</b>하면 이 제품에 맞춰 더 구체적인 프롬프트로 다듬어집니다(서버에 <code>ANTHROPIC_API_KEY</code> 필요).</p>}
         {open && (
           <>
             <div className="mt-3 space-y-1">
