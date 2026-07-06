@@ -41,9 +41,16 @@ export async function fetchCoverFrame(tiktokUrl: string): Promise<Frame | null> 
 
 // 프레임 추출 서비스(배포형 워커) 호출 — REMAKE_FRAME_SERVICE_URL 설정 시.
 // 계약: POST { videoUrl, timestamps?:[초...], count?:N } → { frames:[{ b64|data, mime }|null] }
+// 스킴 누락 보정(https:// 자동 추가) + 끝 슬래시 제거.
+function normalizeSvc(u: string): string {
+  const t = u.trim().replace(/\/+$/, "");
+  return /^https?:\/\//.test(t) ? t : `https://${t}`;
+}
+
 async function callFrameService(payload: Record<string, unknown>, n: number): Promise<(Frame | null)[]> {
-  const svc = process.env.REMAKE_FRAME_SERVICE_URL;
-  if (!svc) return Array.from({ length: n }, () => null);
+  const raw = process.env.REMAKE_FRAME_SERVICE_URL;
+  if (!raw) return Array.from({ length: n }, () => null);
+  const svc = normalizeSvc(raw);
   try {
     const res = await fetchT(svc, {
       method: "POST",

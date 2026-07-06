@@ -8,12 +8,24 @@ export const maxDuration = 60;
 // 사용: /api/remake/frames-debug?url=<틱톡 영상 URL>
 export async function GET(req: Request) {
   const url = new URL(req.url).searchParams.get("url") || "";
-  const svc = process.env.REMAKE_FRAME_SERVICE_URL || "";
+  const rawSvc = process.env.REMAKE_FRAME_SERVICE_URL || "";
+  const svc = rawSvc ? (/^https?:\/\//.test(rawSvc.trim()) ? rawSvc.trim() : `https://${rawSvc.trim()}`).replace(/\/+$/, "") : "";
   const out: Record<string, unknown> = {
     frameServiceConfigured: Boolean(svc),
-    frameServiceUrl: svc ? svc.replace(/\/+$/, "") : null,
+    frameServiceUrl: svc || null,
     hasKey: Boolean(process.env.REMAKE_FRAME_SERVICE_KEY),
   };
+
+  // 0) 워커 헬스체크 — GET / 이 "frame-extract ok" 여야 워커. 아니면 잘못된 배포(전체 앱 등).
+  if (svc) {
+    try {
+      const h = await fetch(svc, { method: "GET" });
+      const body = (await h.text()).slice(0, 80);
+      out.workerHealth = { httpStatus: h.status, body, isWorker: body.includes("frame-extract ok") };
+    } catch (e) {
+      out.workerHealth = { error: String(e).slice(0, 140) };
+    }
+  }
 
   // 1) oEmbed 커버 프레임 확인
   if (url) {
