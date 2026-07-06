@@ -11,6 +11,7 @@ import {
 } from "@/data/ktrend/remake-templates";
 import { refToTemplate, buildRemakePrompt, type RemakePromptPackage } from "@/data/ktrend/remake-refs";
 import { predictViral } from "@/lib/remake/predict";
+import { useTikTokThumb } from "@/components/ktrend/useTikTokThumb";
 import { loadContentStaged, sortContent, fmtCompact, type Content } from "@/data/ktrend/content";
 
 type Tier = "draft" | "hd" | "premium";
@@ -320,26 +321,7 @@ export default function RemakeStudioPage() {
                 <>
                 <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                   {refList.slice(0, refCount).map((c) => (
-                    <button key={c.id} onClick={() => selectRef(c)}
-                      className="group overflow-hidden rounded-2xl border border-[var(--border)] bg-white text-left transition hover:shadow-lg hover:border-[var(--accent)]">
-                      <div className="relative aspect-[9/16]" style={{ background: `linear-gradient(135deg,hsl(${c.hue % 360},85%,72%),hsl(${(c.hue + 40) % 360},80%,64%))` }}>
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/55 to-transparent" />
-                        {c.isShop && <span className="absolute left-2 top-2 rounded-full bg-pink-500 px-2 py-0.5 text-[9px] font-black text-white">SHOP</span>}
-                        <span className="absolute right-2 top-2 rounded-full bg-white/85 px-2 py-0.5 text-[9px] font-bold">🔥 {c.viralScore}</span>
-                        <div className="absolute bottom-2 left-2 right-2 text-white">
-                          <div className="text-[12px] font-black drop-shadow">👁 {fmtCompact(c.views)}</div>
-                          <div className="text-[10px] font-bold drop-shadow">참여 {c.engagementRate.toFixed(1)}% · @{c.influencerId}</div>
-                        </div>
-                        <span className="absolute left-1/2 top-1/2 grid -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full bg-white/90 p-2.5 text-[var(--accent)] opacity-0 transition group-hover:opacity-100"><Wand2 size={16} /></span>
-                      </div>
-                      <div className="p-3">
-                        <div className="flex items-center gap-1.5">
-                          <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[9px] font-bold text-[var(--muted)]">{c.category === "skincare" ? "스킨케어" : c.category === "makeup" ? "메이크업" : "헤어케어"}</span>
-                          {c.isAd && <span className="rounded bg-amber-50 px-1.5 py-0.5 text-[9px] font-bold text-amber-700">AD</span>}
-                        </div>
-                        <div className="mt-2 inline-flex items-center gap-1 text-[11px] font-bold text-[var(--accent)]">이 콘텐츠로 프롬프트 생성 <ArrowRight size={12} className="transition-transform group-hover:translate-x-0.5" /></div>
-                      </div>
-                    </button>
+                    <RefCard key={c.id} c={c} onSelect={selectRef} />
                   ))}
                 </div>
                 {refCount < refList.length && (
@@ -571,6 +553,45 @@ export default function RemakeStudioPage() {
         )}
       </div>
     </div>
+  );
+}
+
+// 콘텐츠 레퍼런스 카드 — Explorer(콘텐츠 레퍼런스)와 동일하게 TikTok oEmbed 썸네일(지연 로드)+그라데이션 폴백
+function RefCard({ c, onSelect }: { c: Content; onSelect: (c: Content) => void }) {
+  const mediaRef = useRef<HTMLDivElement | null>(null);
+  const thumb = useTikTokThumb(c.tiktokUrl, mediaRef);
+  const [loaded, setLoaded] = useState(false);
+  const catKo = c.category === "skincare" ? "스킨케어" : c.category === "makeup" ? "메이크업" : "헤어케어";
+  return (
+    <button onClick={() => onSelect(c)}
+      className="group overflow-hidden rounded-2xl border border-[var(--border)] bg-white text-left transition hover:border-[var(--accent)] hover:shadow-lg">
+      <div ref={mediaRef} className="relative aspect-[9/16] overflow-hidden"
+        style={{ background: `linear-gradient(160deg, hsl(${c.hue} 65% 52%), hsl(${(c.hue + 50) % 360} 60% 38%))` }}>
+        {thumb && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={thumb} alt="" loading="lazy" draggable={false} referrerPolicy="no-referrer" onLoad={() => setLoaded(true)}
+            className={`pointer-events-none absolute inset-0 h-full w-full object-cover transition-opacity duration-300 ${loaded ? "opacity-100" : "opacity-0"}`} />
+        )}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/55 to-transparent" />
+        <div className="absolute left-2 top-2 flex items-center gap-1">
+          <span className="kt-badge-tiktok">TikTok</span>
+          {c.isShop && <span className="rounded bg-emerald-500 px-1.5 py-0.5 text-[8px] font-bold text-white">SHOP</span>}
+          {c.isAd && <span className="rounded bg-amber-400 px-1.5 py-0.5 text-[8px] font-bold text-black">#ad</span>}
+        </div>
+        <span className="absolute right-2 top-2 flex items-center gap-1 rounded bg-rose-500 px-1.5 py-0.5 text-[9px] font-bold text-white">🔥 {c.viralScore}</span>
+        <span className="absolute left-1/2 top-1/2 grid -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full bg-white/90 p-2.5 text-[var(--accent)] opacity-0 shadow-lg transition group-hover:opacity-100"><Wand2 size={16} /></span>
+        <div className="absolute inset-x-0 bottom-0 px-2 pb-1.5 pt-6 text-white">
+          <div className="text-[12px] font-black drop-shadow">👁 {fmtCompact(c.views)}</div>
+          <div className="text-[10px] font-bold drop-shadow">참여 {c.engagementRate.toFixed(1)}% · @{c.influencerId}</div>
+        </div>
+      </div>
+      <div className="p-3">
+        <div className="flex items-center gap-1.5">
+          <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[9px] font-bold text-[var(--muted)]">{catKo}</span>
+        </div>
+        <div className="mt-2 inline-flex items-center gap-1 text-[11px] font-bold text-[var(--accent)]">이 콘텐츠로 프롬프트 생성 <ArrowRight size={12} className="transition-transform group-hover:translate-x-0.5" /></div>
+      </div>
+    </button>
   );
 }
 

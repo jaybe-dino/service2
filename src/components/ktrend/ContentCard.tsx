@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Heart, MessageCircle, Play, Eye, Lock, LogIn, TrendingUp, Share2, Sparkles, Ban } from "lucide-react";
@@ -11,72 +11,7 @@ import { usePlan, CLICK_LIMIT } from "./PlanContext";
 import { BRAND_MAP } from "@/data/ktrend/brands";
 import { CATEGORY_MAP, SUBCATEGORY_MAP, TIERS } from "@/data/ktrend/meta";
 import { fmtCompact, fmtUSD, tiktokVideoId, type Content } from "@/data/ktrend/content";
-
-// --- TikTok oEmbed 썸네일: 뷰포트 진입 시 지연 로드 + 캐시 (실패 시 그라데이션 폴백) ---
-const thumbCache = new Map<string, string | null>();
-const thumbInflight = new Map<string, Promise<string | null>>();
-
-function fetchThumb(url: string): Promise<string | null> {
-  if (thumbCache.has(url)) return Promise.resolve(thumbCache.get(url) ?? null);
-  if (thumbInflight.has(url)) return thumbInflight.get(url)!;
-  try {
-    const cached = sessionStorage.getItem(`tt:${url}`);
-    if (cached !== null) {
-      const v = cached || null;
-      thumbCache.set(url, v);
-      return Promise.resolve(v);
-    }
-  } catch {
-    /* 무시 */
-  }
-  const p = fetch(`https://www.tiktok.com/oembed?url=${encodeURIComponent(url)}`)
-    .then((r) => (r.ok ? r.json() : null))
-    .then((j: { thumbnail_url?: string } | null) => {
-      const t = j?.thumbnail_url ?? null;
-      thumbCache.set(url, t);
-      try {
-        sessionStorage.setItem(`tt:${url}`, t ?? "");
-      } catch {
-        /* 무시 */
-      }
-      return t;
-    })
-    .catch(() => {
-      thumbCache.set(url, null);
-      return null;
-    })
-    .finally(() => thumbInflight.delete(url));
-  thumbInflight.set(url, p);
-  return p;
-}
-
-function useThumbnail(url: string, ref: React.RefObject<HTMLElement | null>): string | null {
-  const [thumb, setThumb] = useState<string | null>(() => thumbCache.get(url) ?? null);
-  useEffect(() => {
-    const cached = thumbCache.get(url);
-    if (cached) {
-      setThumb(cached);
-      return;
-    }
-    const el = ref.current;
-    if (!el || typeof IntersectionObserver === "undefined") {
-      fetchThumb(url).then(setThumb);
-      return;
-    }
-    const io = new IntersectionObserver(
-      (entries) => {
-        if (entries.some((e) => e.isIntersecting)) {
-          io.disconnect();
-          fetchThumb(url).then(setThumb);
-        }
-      },
-      { rootMargin: "300px" },
-    );
-    io.observe(el);
-    return () => io.disconnect();
-  }, [url, ref]);
-  return thumb;
-}
+import { useTikTokThumb } from "./useTikTokThumb";
 
 function Metric({ label, value, blur }: { label: string; value: string; blur?: boolean }) {
   return (
@@ -112,7 +47,7 @@ export default function ContentCard({ content }: { content: Content }) {
   const cat = SUBCATEGORY_MAP[content.subCategory] ?? CATEGORY_MAP[content.category];
 
   const mediaRef = useRef<HTMLDivElement | null>(null);
-  const thumb = useThumbnail(content.tiktokUrl, mediaRef);
+  const thumb = useTikTokThumb(content.tiktokUrl, mediaRef);
   const [loaded, setLoaded] = useState(false);
   const [blocked, setBlocked] = useState(false);
   const [showAnalysis, setShowAnalysis] = useState(false);
