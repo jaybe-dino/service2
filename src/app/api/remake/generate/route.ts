@@ -75,12 +75,6 @@ export async function POST(req: Request) {
     if (m) { imageMime = m[1]; imageBase64 = m[2]; }
   }
 
-  // 레퍼런스 실제 프레임(스타일 조건) — reference-to-video 지원 모델(Omni)에서 사용.
-  let refFrame: { b64: string; mime: string } | null = null;
-  if (typeof body.refTiktokUrl === "string" && /tiktok\.com/.test(body.refTiktokUrl)) {
-    refFrame = await fetchCoverFrame(body.refTiktokUrl);
-  }
-
   // 실제 생성은 (1) provider가 mock이 아니고 (2) 제품 이미지가 있을 때만.
   let imageUrl: string | null = null;
   const canReal = provider.id !== "mock" && Boolean(imageBase64);
@@ -100,20 +94,20 @@ export async function POST(req: Request) {
   const cams = ["subtle push-in", "slow orbit", "gentle handheld sway", "smooth tilt-up reveal"];
 
   // 장면별 정밀 모드: 레퍼런스 장면 그래프를 1:1로 재현(각 화면을 개별 생성).
-  // ⚠️ 비용 가드: 장면 모드도 클립 수 상한(REMAKE_MAX_SCENES, 기본 4)을 넘지 않도록 캡.
-  const maxScenes = Math.max(1, Math.min(6, Number(process.env.REMAKE_MAX_SCENES ?? 4)));
+  // ⚠️ 비용·타임아웃 가드: 클립 수 상한(REMAKE_MAX_SCENES, 기본 1). 여러 클립은 60초 초과 위험.
+  const maxScenes = Math.max(1, Math.min(6, Number(process.env.REMAKE_MAX_SCENES ?? 1)));
   const allScenes = Array.isArray(body.scenes) ? body.scenes : [];
   const scenes = allScenes.slice(0, maxScenes);
   const sceneMode = Boolean(body.sceneMode) && scenes.length > 0;
   const unitCount = sceneMode ? scenes.length : count;
 
-  // 최고 정밀: 장면별로 레퍼런스 영상의 실제 프레임을 추출(외부 워커)해 각 씬의 스타일 조건으로 사용.
-  // 서비스 미설정 시 커버 프레임(refFrame)로 폴백.
-  let sceneFrames: (Frame | null)[] = [];
-  if (sceneMode && typeof body.refTiktokUrl === "string" && /tiktok\.com/.test(body.refTiktokUrl)) {
-    const timestamps = scenes.map((s, idx) => midTime(s.time, idx));
-    sceneFrames = await fetchSceneFrames(body.refTiktokUrl, timestamps);
-  }
+  // 프레임 취득(병렬): 커버 프레임 + 장면별 실제 프레임(워커). 60초 안에 들도록 타임박스.
+  const hasRef = typeof body.refTiktokUrl === "string" && /tiktok\.com/.test(body.refTiktokUrl);
+  const timestamps = scenes.map((s, idx) => midTime(s.time, idx));
+  const [refFrame, sceneFrames] = await Promise.all([
+    hasRef ? fetchCoverFrame(body.refTiktokUrl as string) : Promise.resolve(null),
+    hasRef && sceneMode ? fetchSceneFrames(body.refTiktokUrl as string, timestamps) : Promise.resolve([] as (Frame | null)[]),
+  ]);
   const usedSceneFrames = sceneFrames.some(Boolean);
 
   // 장면별 프롬프트: 해당 장면의 타이밍·카메라·동작을 그대로 따르도록 지시(구조 유사도↑),

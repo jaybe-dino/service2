@@ -50,7 +50,7 @@ export async function editProductSwap(ref: Img, product: Img, extra = ""): Promi
           generationConfig: { responseModalities: ["IMAGE"] },
         }),
       },
-      35000,
+      22000,
     );
     if (!res.ok) return null;
     const json = (await res.json()) as {

@@ -24,12 +24,12 @@ export function midTime(t?: string, idx = 0): number {
 // 레퍼런스 대표 프레임(oEmbed 썸네일) → base64. 워커 없을 때 폴백.
 export async function fetchCoverFrame(tiktokUrl: string): Promise<Frame | null> {
   try {
-    const o = await fetchT(`https://www.tiktok.com/oembed?url=${encodeURIComponent(tiktokUrl)}`, {}, 8000);
+    const o = await fetchT(`https://www.tiktok.com/oembed?url=${encodeURIComponent(tiktokUrl)}`, {}, 6000);
     if (!o.ok) return null;
     const j = (await o.json()) as { thumbnail_url?: string };
     const thumb = j?.thumbnail_url;
     if (!thumb || !/^https:\/\//.test(thumb)) return null;
-    const img = await fetchT(thumb, {}, 8000);
+    const img = await fetchT(thumb, {}, 6000);
     if (!img.ok) return null;
     const mime = img.headers.get("content-type") || "image/jpeg";
     const buf = Buffer.from(await img.arrayBuffer());
@@ -59,7 +59,7 @@ async function callFrameService(payload: Record<string, unknown>, n: number): Pr
         ...(process.env.REMAKE_FRAME_SERVICE_KEY ? { authorization: `Bearer ${process.env.REMAKE_FRAME_SERVICE_KEY}` } : {}),
       },
       body: JSON.stringify(payload),
-    }, 28000);
+    }, 18000);
     if (!res.ok) return Array.from({ length: n }, () => null);
     const j = (await res.json()) as { frames?: { b64?: string; data?: string; mime?: string }[] };
     const frames = Array.isArray(j.frames) ? j.frames : [];
