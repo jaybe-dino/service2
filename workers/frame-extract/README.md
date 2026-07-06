@@ -30,7 +30,13 @@ gcloud run deploy remake-frame-extract \
   --set-env-vars FRAME_SERVICE_KEY=$KEY
 # 출력된 Service URL 을 REMAKE_FRAME_SERVICE_URL 로 사용
 ```
-> 대안: **Railway/Render** — GitHub 연결 → 이 폴더(`workers/frame-extract`)를 루트로 지정 → Dockerfile 자동 감지 → 배포. 환경변수 `FRAME_SERVICE_KEY` 설정.
+### Railway (클릭 배포) — 단계별
+1. railway.app → GitHub 로그인 → **New Project → Deploy from GitHub repo** → `jaybe-dino/service2` 선택
+2. 생성된 서비스 → **Settings → Root Directory** = `workers/frame-extract` (필수! 이 폴더의 Dockerfile을 빌드)
+3. **Variables** → `FRAME_SERVICE_KEY` = (랜덤 32자) 추가
+4. **Settings → Networking → Generate Domain** → 공개 URL 생성 (예: `https://xxx.up.railway.app`)
+   - `PORT`는 Railway가 자동 주입(서버가 사용) → 따로 설정 불필요
+5. 배포 후 그 URL을 브라우저로 열어 **"frame-extract ok"** 뜨면 성공
 
 - 컨테이너 env: `PORT`(기본 8080), `FRAME_SERVICE_KEY`(선택, 인증)
 
