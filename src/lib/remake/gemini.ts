@@ -105,7 +105,8 @@ async function submitOmni(i: GeminiSubmitInput): Promise<{ requestId: string }> 
   const res = await fetch(`${BASE}/interactions?key=${encodeURIComponent(key())}`, {
     method: "POST",
     headers: { "content-type": "application/json", "x-goog-api-key": key() },
-    body: JSON.stringify({ model: i.model, input, response_format: { delivery: "uri" } }),
+    // response_format.type 필수(오류로 확인). 영상 출력 + URI 전달.
+    body: JSON.stringify({ model: i.model, input, response_format: { type: "video", delivery: "uri" } }),
   });
   const text = await res.text();
   const json = safeJson(text);
