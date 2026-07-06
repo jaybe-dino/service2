@@ -152,7 +152,10 @@ export async function POST(req: Request) {
   const cams = ["subtle push-in", "slow orbit", "gentle handheld sway", "smooth tilt-up reveal"];
 
   // 장면별 정밀 모드: 레퍼런스 장면 그래프를 1:1로 재현(각 화면을 개별 생성).
-  const scenes = Array.isArray(body.scenes) ? body.scenes.slice(0, 6) : [];
+  // ⚠️ 비용 가드: 장면 모드도 클립 수 상한(REMAKE_MAX_SCENES, 기본 4)을 넘지 않도록 캡.
+  const maxScenes = Math.max(1, Math.min(6, Number(process.env.REMAKE_MAX_SCENES ?? 4)));
+  const allScenes = Array.isArray(body.scenes) ? body.scenes : [];
+  const scenes = allScenes.slice(0, maxScenes);
   const sceneMode = Boolean(body.sceneMode) && scenes.length > 0;
   const unitCount = sceneMode ? scenes.length : count;
 

@@ -449,6 +449,12 @@ export default function RemakeStudioPage() {
                         <div className="text-[10px] text-[var(--muted)]">서로 다른 안 N개 → 예측 상위 A컷 선택</div>
                       </button>
                     </div>
+                    {sceneMode && (
+                      <p className="mt-1.5 rounded-lg bg-amber-50 px-2 py-1.5 text-[10px] leading-relaxed text-amber-700">
+                        ⚠️ 장면별 정밀은 <b>장면 수만큼 클립(약 {Math.min(effPkg?.scenes?.length ?? 0, 4)}개)</b>을 생성해 비용이 큽니다.
+                        반복 테스트는 <b>변형 여러 종</b>이나 <b>초안 티어</b>로 저렴하게 하세요.
+                      </p>
+                    )}
                   </div>
                   <div>
                     <span className="mb-1.5 block text-[11px] font-semibold text-[var(--muted)]">품질 티어</span>
@@ -467,7 +473,7 @@ export default function RemakeStudioPage() {
               <div className="mt-3 flex gap-2">
                 <button onClick={() => setStep(1)} className="rounded-lg border border-[var(--border)] px-5 py-2.5 text-[12px] font-bold text-[var(--muted)] hover:bg-white"><ArrowLeft size={14} className="mr-1 inline" /> 제품</button>
                 <button onClick={() => startGen()} className="flex-1 rounded-lg bg-gradient-to-r from-[#7C3AED] to-[#FF5C8D] py-2.5 text-[12px] font-black text-white">
-                  <Wand2 size={14} className="mr-1 inline" /> {TIER_LABEL[tier]} 영상 생성 시작
+                  <Wand2 size={14} className="mr-1 inline" /> {TIER_LABEL[tier]} 생성{sceneMode ? ` · 약 ${Math.min(effPkg?.scenes?.length ?? 0, 4)}클립` : ""}
                 </button>
               </div>
               {genErr && <p className="mt-2 rounded-lg bg-rose-50 px-3 py-2 text-center text-[11px] font-semibold text-rose-600">{genErr}</p>}
