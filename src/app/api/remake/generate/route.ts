@@ -35,6 +35,24 @@ function buildPrompt(
 
 const NEGATIVE = "any on-screen text, captions, subtitles, words, letters, numbers, hashtags, hex color codes, gibberish typography, distorted lettering, logos, watermark, UI overlays, real celebrity likeness, copyrighted audio, exaggerated or false efficacy claims";
 
+// 레퍼런스 원본 대표 프레임(oEmbed 썸네일)을 base64로 — 영상 스타일 조건용.
+async function fetchRefFrame(tiktokUrl: string): Promise<{ b64: string; mime: string } | null> {
+  try {
+    const o = await fetch(`https://www.tiktok.com/oembed?url=${encodeURIComponent(tiktokUrl)}`);
+    if (!o.ok) return null;
+    const j = (await o.json()) as { thumbnail_url?: string };
+    const thumb = j?.thumbnail_url;
+    if (!thumb || !/^https:\/\//.test(thumb)) return null;
+    const img = await fetch(thumb);
+    if (!img.ok) return null;
+    const mime = img.headers.get("content-type") || "image/jpeg";
+    const buf = Buffer.from(await img.arrayBuffer());
+    return { b64: buf.toString("base64"), mime };
+  } catch {
+    return null;
+  }
+}
+
 export async function POST(req: Request) {
   if (!dbConfigured()) return NextResponse.json({ error: "DB 미설정" }, { status: 503 });
   await ensureSchema();
@@ -49,6 +67,7 @@ export async function POST(req: Request) {
     tier?: Tier;           // 품질 티어(재생성 시 override)
     sceneMode?: boolean;   // 장면별 정밀(레퍼런스 각 화면 1:1 재현)
     scenes?: { time?: string; roleKo?: string; shot?: string; action?: string }[];
+    refTiktokUrl?: string; // 레퍼런스 원본 → 실제 프레임을 스타일 조건으로 주입
   };
   const t = body.templateId ? REMAKE_TEMPLATE_MAP[body.templateId] : undefined;
   const seed = body.scoreSeed || body.templateId || "remake";
@@ -69,6 +88,12 @@ export async function POST(req: Request) {
   if (typeof body.image === "string" && body.image.startsWith("data:")) {
     const m = body.image.match(/^data:([^;]+);base64,([\s\S]+)$/);
     if (m) { imageMime = m[1]; imageBase64 = m[2]; }
+  }
+
+  // 레퍼런스 실제 프레임(스타일 조건) — reference-to-video 지원 모델(Omni)에서 사용.
+  let refFrame: { b64: string; mime: string } | null = null;
+  if (typeof body.refTiktokUrl === "string" && /tiktok\.com/.test(body.refTiktokUrl)) {
+    refFrame = await fetchRefFrame(body.refTiktokUrl);
   }
 
   // 실제 생성은 (1) provider가 mock이 아니고 (2) 제품 이미지가 있을 때만.
@@ -108,20 +133,26 @@ Match the reference's framing, camera movement and pacing for THIS scene faithfu
 ‼ NO on-screen text of any kind — no captions, words, letters, numbers, hashtags, hex color codes, logos or UI. Clean footage only (captions are added later in post).`;
   }
 
+  // 레퍼런스 프레임을 함께 넣을 때: 첫 이미지=레퍼런스 스타일, 둘째 이미지=내 제품(교체) 지시.
+  const refNote = refFrame
+    ? "\n\n[REFERENCE-TO-VIDEO] 첫 번째 입력 이미지는 레퍼런스 영상의 실제 프레임입니다. 그 영상의 시각 스타일·구도·프레이밍·조명·색감을 최대한 그대로 따르세요. 두 번째 입력 이미지는 내 제품입니다 — 같은 스타일을 유지하되 제품만 내 제품으로 교체해 등장시키세요. 레퍼런스의 글자/로고/인물은 복제하지 마세요."
+    : "";
   const jobs: { id: string; variation: number }[] = [];
   for (let v = 0; v < unitCount; v++) {
     const id = randomUUID();
     const score = mockViralScore(seed, v).total;
-    const prompt = sceneMode
+    const prompt = (sceneMode
       ? scenePrompt(v)
       : promptBase
       ? `${promptBase}\n\nVARIATION ${v + 1}: ${cams[v % cams.length]} camera movement.`
-      : buildPrompt(t!, product, v);
+      : buildPrompt(t!, product, v)) + refNote;
 
     if (real) {
       try {
         const { requestId } = await provider.submit({
-          prompt, tier, imageUrl: imageUrl || undefined, imageBase64, imageMime, negativePrompt: NEGATIVE,
+          prompt, tier, imageUrl: imageUrl || undefined, imageBase64, imageMime,
+          refImageBase64: refFrame?.b64, refImageMime: refFrame?.mime,
+          negativePrompt: NEGATIVE,
         });
         await sql`INSERT INTO remake_jobs (id, provider, request_id, template_id, variation, score, status)
           VALUES (${id}, ${usedProvider}, ${requestId}, ${seed}, ${v}, ${score}, 'in_progress')`;

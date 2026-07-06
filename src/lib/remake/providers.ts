@@ -13,8 +13,10 @@ export interface SubmitInput {
   prompt: string;
   tier: Tier;
   imageUrl?: string;      // 공개 URL (higgsfield)
-  imageBase64?: string;   // base64 (gemini)
+  imageBase64?: string;   // 제품 이미지 base64 (gemini)
   imageMime?: string;
+  refImageBase64?: string; // 레퍼런스 프레임 base64 — 영상 스타일 조건(Omni reference-to-video)
+  refImageMime?: string;
   aspectRatio?: string;
   negativePrompt?: string;
 }
@@ -67,6 +69,8 @@ export const geminiProvider: VideoProvider = {
     return gm.submitImage2Video({
       imageBase64: i.imageBase64,
       imageMime: i.imageMime || "image/png",
+      refImageBase64: i.refImageBase64,
+      refImageMime: i.refImageMime,
       prompt: i.prompt,
       model: GM_MODEL[i.tier],
       aspectRatio: i.aspectRatio,

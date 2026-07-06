@@ -21,6 +21,8 @@ function key(): string {
 export interface GeminiSubmitInput {
   imageBase64: string;
   imageMime: string;
+  refImageBase64?: string; // 레퍼런스 프레임(영상 스타일 조건)
+  refImageMime?: string;
   prompt: string;
   model: string;
   aspectRatio?: string;
@@ -94,17 +96,15 @@ function safeJson(t: string): Record<string, unknown> | null {
 // 비동기: output_video URI를 받아 파일 상태(state.name)가 ACTIVE 될 때까지 폴링.
 // ⚠️ 문서 접근 제한으로 응답 필드는 방어적으로 파싱 — 실제 응답과 다르면 이 두 함수만 조정.
 async function submitOmni(i: GeminiSubmitInput): Promise<{ requestId: string }> {
+  // reference-to-video: [스타일 레퍼런스 프레임(있으면), 제품 이미지, 지시 텍스트]
+  const input: Record<string, string>[] = [];
+  if (i.refImageBase64) input.push({ type: "image", data: i.refImageBase64, mime_type: i.refImageMime || "image/jpeg" });
+  input.push({ type: "image", data: i.imageBase64, mime_type: i.imageMime || "image/png" });
+  input.push({ type: "text", text: i.prompt });
   const res = await fetch(`${BASE}/interactions`, {
     method: "POST",
     headers: { "content-type": "application/json", "x-goog-api-key": key() },
-    body: JSON.stringify({
-      model: i.model,
-      input: [
-        { type: "image", data: i.imageBase64, mime_type: i.imageMime || "image/png" },
-        { type: "text", text: i.prompt },
-      ],
-      response_format: { delivery: "uri" },
-    }),
+    body: JSON.stringify({ model: i.model, input, response_format: { delivery: "uri" } }),
   });
   const text = await res.text();
   const json = safeJson(text);

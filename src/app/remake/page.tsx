@@ -187,6 +187,7 @@ export default function RemakeStudioPage() {
           tier: genTier,
           sceneMode: useScene,
           scenes: useScene ? effPkg!.scenes : undefined,
+          refTiktokUrl: isRef ? refUrl : undefined,
         }),
       });
       const data = await res.json();
