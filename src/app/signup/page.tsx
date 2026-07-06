@@ -2,10 +2,11 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Check, UserPlus, ArrowRight } from "lucide-react";
+import { Check, UserPlus, ArrowRight, ShoppingBag } from "lucide-react";
 import PageShell from "@/components/ktrend/PageShell";
 import { usePlan } from "@/components/ktrend/PlanContext";
 import { getStoredUtm } from "@/lib/utm";
+import { ONBOARDING } from "@/data/ktrend/meta";
 
 export default function SignupPage() {
   const { user, signup } = usePlan();
@@ -48,12 +49,27 @@ export default function SignupPage() {
         {done || user ? (
           <div className="kt-card space-y-3 p-6 text-center">
             <Check className="mx-auto text-emerald-500" />
-            <p className="text-[14px] font-bold">{user?.name ?? "가입"} 완료되었습니다</p>
+            <p className="text-[14px] font-bold">{user?.name ? `${user.name}님, ` : ""}가입이 완료되었습니다</p>
             <p className="text-[12px] text-[var(--muted)]">Basic 플랜으로 시작합니다.</p>
             <div className="flex justify-center gap-2 pt-1">
               <Link href="/explorer" className="kt-btn kt-btn-primary px-5 py-2 text-[12px]">콘텐츠 레퍼런스 <ArrowRight size={14} /></Link>
               <Link href="/plans" className="kt-btn kt-btn-outline px-5 py-2 text-[12px]">Pro 보기</Link>
             </div>
+
+            {/* 틱톡샵 입점 신청 루트 (롤백 가능: ONBOARDING.enabled=false) */}
+            {ONBOARDING.enabled && (
+              <div className="mt-3 border-t border-[var(--border)] pt-4">
+                <p className="mb-2 text-[12px] text-[var(--muted)]">틱톡샵에 입점하려면?</p>
+                <Link
+                  href={ONBOARDING.path}
+                  className="inline-flex items-center gap-1.5 rounded-lg px-5 py-2.5 text-[12px] font-bold text-white shadow-sm transition-opacity hover:opacity-90"
+                  style={{ background: "linear-gradient(90deg,#7C3AED,#1A56DB)" }}
+                >
+                  <ShoppingBag size={14} /> {ONBOARDING.navLabel} 신청하기 <ArrowRight size={14} />
+                </Link>
+                <p className="mt-2 text-[11px] text-[var(--muted)]">자가체크로 맞춤 트랙을 추천받고 바로 신청할 수 있어요.</p>
+              </div>
+            )}
           </div>
         ) : (
           <form onSubmit={submitSignup} className="kt-card space-y-3 p-5">
