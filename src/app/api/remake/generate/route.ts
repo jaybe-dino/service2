@@ -133,36 +133,37 @@ Match the reference's framing, camera movement and pacing for THIS scene faithfu
   const refNote = (refFrame || usedSceneFrames)
     ? `\n\n[REFERENCE-TO-VIDEO] 첫 번째 입력 이미지는 레퍼런스 영상의${usedSceneFrames ? " 이 장면(timestamp) 실제 프레임" : " 실제 프레임"}입니다. 그 장면의 시각 스타일·구도·프레이밍·카메라 앵글·조명·색감·질감 디테일을 최대한 살려 유사하게 따르세요(똑같이 복제하는 것이 아니라 디테일을 살린 유사 재현). 두 번째 입력 이미지는 내 제품입니다 — 같은 룩을 유지하되 화면의 제품만 내 제품으로 교체하세요. 레퍼런스의 글자·로고·특정 인물은 복제 금지.`
     : "";
-  const jobs: { id: string; variation: number }[] = [];
-  for (let v = 0; v < unitCount; v++) {
-    const id = randomUUID();
-    const score = mockViralScore(seed, v).total;
-    const prompt = (sceneMode
-      ? scenePrompt(v)
-      : promptBase
-      ? `${promptBase}\n\nVARIATION ${v + 1}: ${cams[v % cams.length]} camera movement.`
-      : buildPrompt(t!, product, v)) + refNote;
-
-    const sceneRef = sceneFrames[v] || refFrame; // 씬별 프레임 우선, 없으면 커버 프레임
-    if (real) {
-      try {
-        const { requestId } = await provider.submit({
-          prompt, tier, imageUrl: imageUrl || undefined, imageBase64, imageMime,
-          refImageBase64: sceneRef?.b64, refImageMime: sceneRef?.mime,
-          negativePrompt: NEGATIVE,
-        });
-        await sql`INSERT INTO remake_jobs (id, provider, request_id, template_id, variation, score, status)
-          VALUES (${id}, ${usedProvider}, ${requestId}, ${seed}, ${v}, ${score}, 'in_progress')`;
-      } catch (e) {
-        await sql`INSERT INTO remake_jobs (id, provider, template_id, variation, score, status, error)
-          VALUES (${id}, ${usedProvider}, ${seed}, ${v}, ${score}, 'failed', ${String(e).slice(0, 300)})`;
+  // 클립별 제출을 병렬로 → 다중 클립일 때 지연(타임아웃) 완화.
+  const jobs = await Promise.all(
+    Array.from({ length: unitCount }, (_, v) => v).map(async (v) => {
+      const id = randomUUID();
+      const score = mockViralScore(seed, v).total;
+      const prompt = (sceneMode
+        ? scenePrompt(v)
+        : promptBase
+        ? `${promptBase}\n\nVARIATION ${v + 1}: ${cams[v % cams.length]} camera movement.`
+        : buildPrompt(t!, product, v)) + refNote;
+      const sceneRef = sceneFrames[v] || refFrame; // 씬별 프레임 우선, 없으면 커버 프레임
+      if (real) {
+        try {
+          const { requestId } = await provider.submit({
+            prompt, tier, imageUrl: imageUrl || undefined, imageBase64, imageMime,
+            refImageBase64: sceneRef?.b64, refImageMime: sceneRef?.mime,
+            negativePrompt: NEGATIVE,
+          });
+          await sql`INSERT INTO remake_jobs (id, provider, request_id, template_id, variation, score, status)
+            VALUES (${id}, ${usedProvider}, ${requestId}, ${seed}, ${v}, ${score}, 'in_progress')`;
+        } catch (e) {
+          await sql`INSERT INTO remake_jobs (id, provider, template_id, variation, score, status, error)
+            VALUES (${id}, ${usedProvider}, ${seed}, ${v}, ${score}, 'failed', ${String(e).slice(0, 300)})`;
+        }
+      } else {
+        await sql`INSERT INTO remake_jobs (id, provider, template_id, variation, score, status)
+          VALUES (${id}, 'mock', ${seed}, ${v}, ${score}, 'in_progress')`;
       }
-    } else {
-      await sql`INSERT INTO remake_jobs (id, provider, template_id, variation, score, status)
-        VALUES (${id}, 'mock', ${seed}, ${v}, ${score}, 'in_progress')`;
-    }
-    jobs.push({ id, variation: v });
-  }
+      return { id, variation: v };
+    }),
+  );
 
   return NextResponse.json({
     mode: real ? usedProvider : "mock",

@@ -190,8 +190,14 @@ export default function RemakeStudioPage() {
           refTiktokUrl: isRef ? refUrl : undefined,
         }),
       });
-      const data = await res.json();
-      if (!res.ok || !data.jobs?.length) throw new Error(data.error || "생성 시작에 실패했습니다.");
+      const raw = await res.text();
+      let data: { jobs?: { id: string }[]; error?: string; mode?: string; provider?: string; tier?: string; sceneMode?: boolean; fidelity?: string };
+      try {
+        data = JSON.parse(raw);
+      } catch {
+        throw new Error(`서버 오류 ${res.status}: ${raw.slice(0, 160)}${res.status === 504 ? " (타임아웃 — 장면 수를 줄여보세요: REMAKE_MAX_SCENES=1)" : ""}`);
+      }
+      if (!res.ok || !data.jobs?.length) throw new Error(data.error || `생성 실패 (${res.status})`);
       const scenesOn = Boolean(data.sceneMode);
       // 구조 유사도(재현율): 장면별 모드면 각 화면 1:1 재현 → 높게, 변형 모드면 근사.
       const sim = scenesOn ? Math.min(96, 80 + Math.min(effPkg!.scenes.length, 5) * 3) : 66;
