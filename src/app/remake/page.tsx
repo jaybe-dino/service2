@@ -590,16 +590,20 @@ export default function RemakeStudioPage() {
   );
 }
 
-// 콘텐츠 레퍼런스 카드 — Explorer(콘텐츠 레퍼런스)와 동일하게 TikTok oEmbed 썸네일(지연 로드)+그라데이션 폴백
+// 콘텐츠 레퍼런스 카드 — 썸네일 클릭=실제 틱톡 영상 열기, 하단 버튼=이 콘텐츠로 생성.
+// 썸네일은 Explorer와 동일하게 TikTok oEmbed 지연 로드(그라데이션 폴백).
 function RefCard({ c, onSelect }: { c: Content; onSelect: (c: Content) => void }) {
   const mediaRef = useRef<HTMLDivElement | null>(null);
   const thumb = useTikTokThumb(c.tiktokUrl, mediaRef);
   const [loaded, setLoaded] = useState(false);
   const catKo = c.category === "skincare" ? "스킨케어" : c.category === "makeup" ? "메이크업" : "헤어케어";
+  const openVideo = () => window.open(c.tiktokUrl, "_blank", "noopener,noreferrer");
   return (
-    <button onClick={() => onSelect(c)}
-      className="group overflow-hidden rounded-2xl border border-[var(--border)] bg-white text-left transition hover:border-[var(--accent)] hover:shadow-lg">
-      <div ref={mediaRef} className="relative aspect-[9/16] overflow-hidden"
+    <div className="group flex flex-col overflow-hidden rounded-2xl border border-[var(--border)] bg-white transition hover:border-[var(--accent)] hover:shadow-lg">
+      {/* 썸네일 클릭 → 실제 영상 새 탭 열기 */}
+      <div ref={mediaRef} onClick={openVideo} role="button" tabIndex={0}
+        onKeyDown={(e) => e.key === "Enter" && openVideo()}
+        className="relative aspect-[9/16] cursor-pointer select-none overflow-hidden"
         style={{ background: `linear-gradient(160deg, hsl(${c.hue} 65% 52%), hsl(${(c.hue + 50) % 360} 60% 38%))` }}>
         {thumb && (
           // eslint-disable-next-line @next/next/no-img-element
@@ -613,19 +617,25 @@ function RefCard({ c, onSelect }: { c: Content; onSelect: (c: Content) => void }
           {c.isAd && <span className="rounded bg-amber-400 px-1.5 py-0.5 text-[8px] font-bold text-black">#ad</span>}
         </div>
         <span className="absolute right-2 top-2 flex items-center gap-1 rounded bg-rose-500 px-1.5 py-0.5 text-[9px] font-bold text-white">🔥 {c.viralScore}</span>
-        <span className="absolute left-1/2 top-1/2 grid -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full bg-white/90 p-2.5 text-[var(--accent)] opacity-0 shadow-lg transition group-hover:opacity-100"><Wand2 size={16} /></span>
+        {/* 재생 버튼(원본 영상 보기) */}
+        <span className="absolute left-1/2 top-1/2 grid h-11 w-11 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full bg-white/90 text-black opacity-0 shadow-lg transition group-hover:opacity-100"><Play size={18} className="ml-0.5" fill="currentColor" /></span>
         <div className="absolute inset-x-0 bottom-0 px-2 pb-1.5 pt-6 text-white">
           <div className="text-[12px] font-black drop-shadow">👁 {fmtCompact(c.views)}</div>
           <div className="text-[10px] font-bold drop-shadow">참여 {c.engagementRate.toFixed(1)}% · @{c.influencerId}</div>
         </div>
       </div>
-      <div className="p-3">
+      <div className="flex flex-1 flex-col gap-2 p-3">
         <div className="flex items-center gap-1.5">
           <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[9px] font-bold text-[var(--muted)]">{catKo}</span>
+          <button onClick={openVideo} className="text-[10px] font-semibold text-[var(--muted)] hover:text-[var(--accent)]">원본 영상 보기</button>
         </div>
-        <div className="mt-2 inline-flex items-center gap-1 text-[11px] font-bold text-[var(--accent)]">이 콘텐츠로 프롬프트 생성 <ArrowRight size={12} className="transition-transform group-hover:translate-x-0.5" /></div>
+        {/* 생성은 별도 버튼 */}
+        <button onClick={() => onSelect(c)}
+          className="mt-auto inline-flex items-center justify-center gap-1 rounded-lg bg-gradient-to-r from-[#7C3AED] to-[#FF5C8D] py-2 text-[11px] font-black text-white">
+          <Wand2 size={13} /> 이 콘텐츠로 생성하기
+        </button>
       </div>
-    </button>
+    </div>
   );
 }
 
