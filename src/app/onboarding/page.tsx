@@ -22,7 +22,7 @@ const won = (n: number) => "₩" + Math.round(n).toLocaleString();
 const STEPS = ["자가체크", "트랙 선택", "국가·결제", "정보입력", "완료"];
 const PRODUCT_CATS = ["스킨케어", "색조", "헤어케어", "이너뷰티", "푸드", "기타"];
 const BANKS = ["국민", "신한", "우리", "하나", "농협", "기업", "카카오뱅크", "토스뱅크", "SC제일", "씨티", "기타"];
-const productLimit = (t: MallTrackId) => (t === "ready" ? 2 : t === "live" ? 5 : 10);
+const productLimit = (t: MallTrackId) => (t === "live" ? 5 : 10);
 
 function loadSdk(): Promise<void> {
   return new Promise((resolve, reject) => {
@@ -459,7 +459,7 @@ function OnboardingInner() {
                 <ArrowRight size={16} className="shrink-0 text-[var(--accent)]" />
               </button>
             )}
-            <div className="grid gap-4 md:grid-cols-3">
+            <div className="mx-auto grid max-w-3xl gap-4 md:grid-cols-2">
               {MALL_TRACKS.map((t) => {
                 const rec = gradeInfo?.recommended === t.id;
                 const dim = !!gradeInfo && !rec; // 추천 외 트랙은 회색(비강조)

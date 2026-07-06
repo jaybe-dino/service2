@@ -121,7 +121,7 @@ export default function PlansPage() {
               <h3 className="mt-2 text-[17px] font-black leading-snug">틱톡샵 입점(온보딩)은 별도 트랙입니다</h3>
               <p className="mt-2 text-[12.5px] leading-relaxed text-white/90">
                 위 요금제는 <b className="font-bold text-white">콘텐츠·인플루언서·브랜드 분석 서비스</b> 구독입니다.<br className="hidden sm:block" />
-                글로벌 틱톡샵 멀티몰 입점·운영(Start / Live Focus / Onboarding)은<br className="hidden sm:block" />
+                글로벌 틱톡샵 멀티몰 입점·운영(Live Focus / Onboarding)은<br className="hidden sm:block" />
                 <b className="font-bold text-white">자가체크 → 트랙 선택 → 결제</b>까지 별도 신청 페이지에서 진행됩니다.
               </p>
             </div>

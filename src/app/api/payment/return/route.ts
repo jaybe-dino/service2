@@ -64,12 +64,12 @@ export async function POST(req: Request) {
     return go("success");
   }
 
-  // ── 몰 입점 트랙(ready/live/onboarding) — 빌링키 등록 → 첫 달 즉시 결제 → 매월 자동청구.
+  // ── 몰 입점 트랙(live/onboarding) — 빌링키 등록 → 첫 달 즉시 결제 → 매월 자동청구.
   //     Pro 권한은 부여하지 않음. Onboarding 트랙은 결제 후 apply.tpartners 로 이동. ──
   if (order.kind === "mall") {
-    const track = (order.plan as MallTrackId) || "ready";
+    const track = (order.plan as MallTrackId) || "live";
     const fail = () => NextResponse.redirect(`${base}/onboarding?payfail=1`, 303);
-    const plan = PAY_PLANS[track] ?? PAY_PLANS.ready;
+    const plan = PAY_PLANS[track] ?? PAY_PLANS.live;
     // 다국가/약정 반영 결제액 (start에서 산출해 둔 charge_amount). 6개월 약정은 합계+180일 주기.
     const amt = Number(order.charge_amount) || plan.amount;
     const periodMs = (Number(order.period_days) || plan.periodDays || 30) * 86_400_000;

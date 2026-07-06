@@ -45,12 +45,12 @@ export function gradeFromChecks(yesCount: number): GradeInfo {
   if (yesCount >= 5) return { grade: "S", label: "S등급 (즉시 스케일업 가능)", recommended: "onboarding" };
   if (yesCount >= 4) return { grade: "A", label: "A등급 (성장 가속 단계)", recommended: "onboarding" };
   if (yesCount >= 2) return { grade: "B", label: "B등급 (진출 계획 단계)", recommended: "live" };
-  return { grade: "C", label: "C등급 (입문 단계)", recommended: "ready" };
+  return { grade: "C", label: "C등급 (입문 단계)", recommended: "live" };
 }
 
 // 등급별 가이드 (자가체크 스케일·요금표 추천에 공용)
 export const GRADE_GUIDE: { grade: Grade; short: string; yCount: string; recommended: MallTrackId; note: string; color: string }[] = [
-  { grade: "C", short: "입문", yCount: "0~1개", recommended: "ready", note: "저비용으로 초기 국가 파일럿부터", color: "#64748b" },
+  { grade: "C", short: "입문", yCount: "0~1개", recommended: "live", note: "라이브·시딩으로 초기 국가 파일럿부터", color: "#64748b" },
   { grade: "B", short: "진출 계획", yCount: "2~3개", recommended: "live", note: "라이브·시딩으로 채널 성장", color: "#0E9F6E" },
   { grade: "A", short: "성장 가속", yCount: "4개", recommended: "onboarding", note: "대형 캠페인으로 빠른 확장", color: "#1A56DB" },
   { grade: "S", short: "즉시 스케일업", yCount: "5개", recommended: "onboarding", note: "메가 스케일업·채널 독립 준비 완료", color: "#7C3AED" },
