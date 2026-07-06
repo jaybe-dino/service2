@@ -1,0 +1,10 @@
+{
+  "name": "remake-frame-extract",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Remake Studio 장면별 프레임 추출 워커 (yt-dlp + ffmpeg)",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  }
+}

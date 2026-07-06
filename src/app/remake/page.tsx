@@ -54,7 +54,7 @@ export default function RemakeStudioPage() {
   // 생성
   const [genScene, setGenScene] = useState(0);
   const [results, setResults] = useState<Variation[]>([]);
-  const [genInfo, setGenInfo] = useState<{ real: boolean; label: string; tier: Tier; sceneMode: boolean; similarity: number }>({ real: false, label: "시뮬레이션", tier: "hd", sceneMode: false, similarity: 0 });
+  const [genInfo, setGenInfo] = useState<{ real: boolean; label: string; tier: Tier; sceneMode: boolean; similarity: number; fidelity: string }>({ real: false, label: "시뮬레이션", tier: "hd", sceneMode: false, similarity: 0, fidelity: "text" });
   const [genScenesMeta, setGenScenesMeta] = useState<{ time?: string; roleKo?: string }[]>([]);
   const [genErr, setGenErr] = useState<string | null>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -195,7 +195,7 @@ export default function RemakeStudioPage() {
       const scenesOn = Boolean(data.sceneMode);
       // 구조 유사도(재현율): 장면별 모드면 각 화면 1:1 재현 → 높게, 변형 모드면 근사.
       const sim = scenesOn ? Math.min(96, 80 + Math.min(effPkg!.scenes.length, 5) * 3) : 66;
-      setGenInfo({ real: data.mode !== "mock", label: data.provider || "시뮬레이션", tier: (data.tier as Tier) || genTier, sceneMode: scenesOn, similarity: sim });
+      setGenInfo({ real: data.mode !== "mock", label: data.provider || "시뮬레이션", tier: (data.tier as Tier) || genTier, sceneMode: scenesOn, similarity: sim, fidelity: data.fidelity || "text" });
       const ids: string[] = data.jobs.map((j: { id: string }) => j.id);
 
       const poll = async () => {
@@ -517,6 +517,11 @@ export default function RemakeStudioPage() {
               )}
               {genInfo.sceneMode && (
                 <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-bold text-emerald-700">레퍼런스 구조 유사도 ~{genInfo.similarity}%</span>
+              )}
+              {genInfo.real && (
+                <span className={`rounded-full px-2 py-0.5 text-[11px] font-bold ${genInfo.fidelity === "perScene" ? "bg-violet-100 text-violet-700" : genInfo.fidelity === "cover" ? "bg-sky-50 text-sky-700" : "bg-slate-100 text-slate-500"}`}>
+                  {genInfo.fidelity === "perScene" ? "장면별 실제 프레임 반영" : genInfo.fidelity === "cover" ? "레퍼런스 대표 프레임 반영" : "텍스트 기반"}
+                </span>
               )}
               <span className="text-[12px] text-[var(--muted)]">{genInfo.sceneMode ? "레퍼런스 장면 순서대로 정렬됨" : "바이럴 예측 점수 상위부터 테스트하세요"}</span>
             </div>

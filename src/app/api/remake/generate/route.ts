@@ -35,8 +35,10 @@ function buildPrompt(
 
 const NEGATIVE = "any on-screen text, captions, subtitles, words, letters, numbers, hashtags, hex color codes, gibberish typography, distorted lettering, logos, watermark, UI overlays, real celebrity likeness, copyrighted audio, exaggerated or false efficacy claims";
 
-// 레퍼런스 원본 대표 프레임(oEmbed 썸네일)을 base64로 — 영상 스타일 조건용.
-async function fetchRefFrame(tiktokUrl: string): Promise<{ b64: string; mime: string } | null> {
+interface Frame { b64: string; mime: string }
+
+// 레퍼런스 원본 대표 프레임(oEmbed 썸네일)을 base64로 — 영상 스타일 조건(폴백)용.
+async function fetchRefFrame(tiktokUrl: string): Promise<Frame | null> {
   try {
     const o = await fetch(`https://www.tiktok.com/oembed?url=${encodeURIComponent(tiktokUrl)}`);
     if (!o.ok) return null;
@@ -50,6 +52,41 @@ async function fetchRefFrame(tiktokUrl: string): Promise<{ b64: string; mime: st
     return { b64: buf.toString("base64"), mime };
   } catch {
     return null;
+  }
+}
+
+// 씬 타임코드("2-8s") → 대표 시각(초, 중간값).
+function midTime(t?: string, idx = 0): number {
+  const m = /(\d+)\s*-\s*(\d+)/.exec(t || "");
+  if (m) return Math.max(0, (Number(m[1]) + Number(m[2])) / 2);
+  const m2 = /(\d+)/.exec(t || "");
+  return m2 ? Number(m2[1]) : idx * 3;
+}
+
+// 장면별 프레임 추출 서비스(배포형 워커) 호출 — REMAKE_FRAME_SERVICE_URL 설정 시.
+// 계약: POST { videoUrl, timestamps:[초...] } → { frames:[{ b64|data, mime }] } (인덱스 매칭)
+async function fetchSceneFrames(videoUrl: string, timestamps: number[]): Promise<(Frame | null)[]> {
+  const svc = process.env.REMAKE_FRAME_SERVICE_URL;
+  if (!svc) return timestamps.map(() => null);
+  try {
+    const res = await fetch(svc, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        ...(process.env.REMAKE_FRAME_SERVICE_KEY ? { authorization: `Bearer ${process.env.REMAKE_FRAME_SERVICE_KEY}` } : {}),
+      },
+      body: JSON.stringify({ videoUrl, timestamps }),
+    });
+    if (!res.ok) return timestamps.map(() => null);
+    const j = (await res.json()) as { frames?: { b64?: string; data?: string; mime?: string }[] };
+    const frames = Array.isArray(j.frames) ? j.frames : [];
+    return timestamps.map((_, i) => {
+      const f = frames[i];
+      const b64 = f?.b64 || f?.data;
+      return b64 ? { b64, mime: f?.mime || "image/jpeg" } : null;
+    });
+  } catch {
+    return timestamps.map(() => null);
   }
 }
 
@@ -119,6 +156,15 @@ export async function POST(req: Request) {
   const sceneMode = Boolean(body.sceneMode) && scenes.length > 0;
   const unitCount = sceneMode ? scenes.length : count;
 
+  // 최고 정밀: 장면별로 레퍼런스 영상의 실제 프레임을 추출(외부 워커)해 각 씬의 스타일 조건으로 사용.
+  // 서비스 미설정 시 커버 프레임(refFrame)로 폴백.
+  let sceneFrames: (Frame | null)[] = [];
+  if (sceneMode && typeof body.refTiktokUrl === "string" && /tiktok\.com/.test(body.refTiktokUrl)) {
+    const timestamps = scenes.map((s, idx) => midTime(s.time, idx));
+    sceneFrames = await fetchSceneFrames(body.refTiktokUrl, timestamps);
+  }
+  const usedSceneFrames = sceneFrames.some(Boolean);
+
   // 장면별 프롬프트: 해당 장면의 타이밍·카메라·동작을 그대로 따르도록 지시(구조 유사도↑),
   // 단 제품 정체성은 일관 유지하고 비주얼/음원은 원본과 구분(표면 유사도↓, 저작권 안전).
   function scenePrompt(idx: number): string {
@@ -134,8 +180,8 @@ Match the reference's framing, camera movement and pacing for THIS scene faithfu
   }
 
   // 레퍼런스 프레임을 함께 넣을 때: 첫 이미지=레퍼런스 스타일, 둘째 이미지=내 제품(교체) 지시.
-  const refNote = refFrame
-    ? "\n\n[REFERENCE-TO-VIDEO] 첫 번째 입력 이미지는 레퍼런스 영상의 실제 프레임입니다. 그 영상의 시각 스타일·구도·프레이밍·조명·색감을 최대한 그대로 따르세요. 두 번째 입력 이미지는 내 제품입니다 — 같은 스타일을 유지하되 제품만 내 제품으로 교체해 등장시키세요. 레퍼런스의 글자/로고/인물은 복제하지 마세요."
+  const refNote = (refFrame || usedSceneFrames)
+    ? `\n\n[REFERENCE-TO-VIDEO] 첫 번째 입력 이미지는 레퍼런스 영상의${usedSceneFrames ? " 이 장면(timestamp) 실제 프레임" : " 실제 프레임"}입니다. 그 장면의 시각 스타일·구도·프레이밍·카메라 앵글·조명·색감·질감 디테일을 최대한 살려 유사하게 따르세요(똑같이 복제하는 것이 아니라 디테일을 살린 유사 재현). 두 번째 입력 이미지는 내 제품입니다 — 같은 룩을 유지하되 화면의 제품만 내 제품으로 교체하세요. 레퍼런스의 글자·로고·특정 인물은 복제 금지.`
     : "";
   const jobs: { id: string; variation: number }[] = [];
   for (let v = 0; v < unitCount; v++) {
@@ -147,11 +193,12 @@ Match the reference's framing, camera movement and pacing for THIS scene faithfu
       ? `${promptBase}\n\nVARIATION ${v + 1}: ${cams[v % cams.length]} camera movement.`
       : buildPrompt(t!, product, v)) + refNote;
 
+    const sceneRef = sceneFrames[v] || refFrame; // 씬별 프레임 우선, 없으면 커버 프레임
     if (real) {
       try {
         const { requestId } = await provider.submit({
           prompt, tier, imageUrl: imageUrl || undefined, imageBase64, imageMime,
-          refImageBase64: refFrame?.b64, refImageMime: refFrame?.mime,
+          refImageBase64: sceneRef?.b64, refImageMime: sceneRef?.mime,
           negativePrompt: NEGATIVE,
         });
         await sql`INSERT INTO remake_jobs (id, provider, request_id, template_id, variation, score, status)
@@ -172,6 +219,8 @@ Match the reference's framing, camera movement and pacing for THIS scene faithfu
     provider: real ? provider.label : "시뮬레이션",
     tier,
     sceneMode,
+    // 정밀도: perScene(장면별 실제 프레임) > cover(대표 1프레임) > text(텍스트만)
+    fidelity: usedSceneFrames ? "perScene" : refFrame ? "cover" : "text",
     jobs,
   });
 }
