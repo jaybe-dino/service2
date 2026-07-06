@@ -60,7 +60,7 @@ export async function GET(req: Request) {
         httpStatus: res.status,
         framesReturned: frames.length,
         nonNullFrames: frames.filter(Boolean).length,
-        bodyPreview: text.slice(0, 400),
+        bodyPreview: text.slice(0, 900),
       };
     } catch (e) {
       out.worker = { error: String(e).slice(0, 200) };

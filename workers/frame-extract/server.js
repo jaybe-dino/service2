@@ -5,7 +5,7 @@
 // ⚠️ 타 크리에이터 영상 다운로드는 플랫폼 ToS/저작권 이슈가 있을 수 있음 — 권리/정책 확인 후 사용.
 const http = require("http");
 const { execFile } = require("child_process");
-const { mkdtempSync, readFileSync, rmSync } = require("fs");
+const { mkdtempSync, readFileSync, rmSync, statSync } = require("fs");
 const os = require("os");
 const path = require("path");
 
@@ -68,19 +68,26 @@ const server = http.createServer((req, res) => {
       }
       if (!Array.isArray(timestamps)) throw new Error("timestamps 또는 count 필요");
 
+      // 진단: 다운로드 파일 크기
+      let fileSize = 0;
+      try { fileSize = statSync(mp4).size; } catch { fileSize = 0; }
+
       const frames = [];
+      const errors = [];
       for (let i = 0; i < timestamps.length; i++) {
         const t = Math.max(0, Number(timestamps[i]) || 0);
         const out = path.join(dir, `f${i}.jpg`);
         try {
-          await run("ffmpeg", ["-y", "-ss", String(t), "-i", mp4, "-frames:v", "1", "-q:v", "3", "-vf", "scale=720:-2", out]);
+          // 견고한 단일 프레임 추출(스케일 필터 제거, -update 1, q 2)
+          await run("ffmpeg", ["-y", "-ss", String(t), "-i", mp4, "-map", "0:v:0", "-frames:v", "1", "-q:v", "2", "-update", "1", out]);
           frames.push({ b64: readFileSync(out).toString("base64"), mime: "image/jpeg" });
-        } catch {
+        } catch (e) {
           frames.push(null);
+          if (errors.length < 2) errors.push(String((e && e.message) || e).slice(0, 300));
         }
       }
       res.writeHead(200, { "content-type": "application/json" });
-      res.end(JSON.stringify({ frames, timestamps }));
+      res.end(JSON.stringify({ frames, timestamps, debug: { fileSize, errors } }));
     } catch (e) {
       res.writeHead(500, { "content-type": "application/json" });
       res.end(JSON.stringify({ error: String((e && e.message) || e) }));
