@@ -540,8 +540,8 @@ export default function RemakeStudioPage() {
                 <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-bold text-emerald-700">레퍼런스 구조 유사도 ~{genInfo.similarity}%</span>
               )}
               {genInfo.real && (
-                <span className={`rounded-full px-2 py-0.5 text-[11px] font-bold ${genInfo.fidelity === "perScene" ? "bg-violet-100 text-violet-700" : genInfo.fidelity === "cover" ? "bg-sky-50 text-sky-700" : "bg-slate-100 text-slate-500"}`}>
-                  {genInfo.fidelity === "perScene" ? "장면별 실제 프레임 반영" : genInfo.fidelity === "cover" ? "레퍼런스 대표 프레임 반영" : "텍스트 기반"}
+                <span className={`rounded-full px-2 py-0.5 text-[11px] font-bold ${genInfo.fidelity === "productSwap" ? "bg-pink-100 text-pink-700" : genInfo.fidelity === "perScene" ? "bg-violet-100 text-violet-700" : genInfo.fidelity === "cover" ? "bg-sky-50 text-sky-700" : "bg-slate-100 text-slate-500"}`}>
+                  {genInfo.fidelity === "productSwap" ? "제품 스왑 편집(최고 정밀)" : genInfo.fidelity === "perScene" ? "장면별 실제 프레임 반영" : genInfo.fidelity === "cover" ? "레퍼런스 대표 프레임 반영" : "텍스트 기반"}
                 </span>
               )}
               <span className="text-[12px] text-[var(--muted)]">{genInfo.sceneMode ? "레퍼런스 장면 순서대로 정렬됨" : "바이럴 예측 점수 상위부터 테스트하세요"}</span>

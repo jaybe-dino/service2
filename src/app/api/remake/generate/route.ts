@@ -3,6 +3,7 @@ import { randomUUID } from "crypto";
 import { sql, ensureSchema, isConfigured as dbConfigured } from "@/lib/db";
 import { selectProvider, TIERS, type Tier } from "@/lib/remake/providers";
 import { type Frame, midTime, fetchCoverFrame, fetchSceneFrames } from "@/lib/remake/frames";
+import { hasImageEdit, editProductSwap } from "@/lib/remake/imageedit";
 import { REMAKE_TEMPLATE_MAP, mockViralScore } from "@/data/ktrend/remake-templates";
 
 export const runtime = "nodejs";
@@ -133,22 +134,45 @@ Match the reference's framing, camera movement and pacing for THIS scene faithfu
   const refNote = (refFrame || usedSceneFrames)
     ? `\n\n[REFERENCE-TO-VIDEO] 첫 번째 입력 이미지는 레퍼런스 영상의${usedSceneFrames ? " 이 장면(timestamp) 실제 프레임" : " 실제 프레임"}입니다. 그 장면의 시각 스타일·구도·프레이밍·카메라 앵글·조명·색감·질감 디테일을 최대한 살려 유사하게 따르세요(똑같이 복제하는 것이 아니라 디테일을 살린 유사 재현). 두 번째 입력 이미지는 내 제품입니다 — 같은 룩을 유지하되 화면의 제품만 내 제품으로 교체하세요. 레퍼런스의 글자·로고·특정 인물은 복제 금지.`
     : "";
+  // 긴밀 재현: base64 경로(gemini)에서 레퍼런스 프레임의 '제품만' 스왑 → 그 프레임을 애니메이션.
+  const canEdit = real && !provider.needsPublicImageUrl && Boolean(imageBase64) && hasImageEdit();
+
   // 클립별 제출을 병렬로 → 다중 클립일 때 지연(타임아웃) 완화.
-  const jobs = await Promise.all(
+  const jobResults = await Promise.all(
     Array.from({ length: unitCount }, (_, v) => v).map(async (v) => {
       const id = randomUUID();
       const score = mockViralScore(seed, v).total;
-      const prompt = (sceneMode
-        ? scenePrompt(v)
-        : promptBase
-        ? `${promptBase}\n\nVARIATION ${v + 1}: ${cams[v % cams.length]} camera movement.`
-        : buildPrompt(t!, product, v)) + refNote;
       const sceneRef = sceneFrames[v] || refFrame; // 씬별 프레임 우선, 없으면 커버 프레임
+
+      // 1) 제품 스왑 편집(성공 시 이 편집 프레임이 곧 첫 프레임)
+      let inputB64 = imageBase64;
+      let inputMime = imageMime;
+      let edited = false;
+      if (canEdit && sceneRef) {
+        const sc = scenes[v] || {};
+        const sw = await editProductSwap(
+          { b64: sceneRef.b64, mime: sceneRef.mime },
+          { b64: imageBase64, mime: imageMime },
+          `${sc.roleKo || ""} ${sc.action || ""}`.trim(),
+        );
+        if (sw) { inputB64 = sw.b64; inputMime = sw.mime; edited = true; }
+      }
+
+      // 2) 프롬프트: 편집됐으면 "이 프레임을 자연스럽게 애니메이션"(구도/제품 유지), 아니면 기존.
+      const prompt = edited
+        ? `Animate this vertical 9:16 image into a short realistic clip with subtle, natural motion for a "${scenes[v]?.roleKo || "beauty"}" short-form beat${scenes[v]?.action ? ` (${scenes[v]!.action})` : ""}. Keep the product and composition exactly as in the image; do not change the scene, product or add elements. Photorealistic. NO on-screen text, captions, letters, numbers, hashtags, logos or UI.`
+        : (sceneMode
+          ? scenePrompt(v)
+          : promptBase
+          ? `${promptBase}\n\nVARIATION ${v + 1}: ${cams[v % cams.length]} camera movement.`
+          : buildPrompt(t!, product, v)) + refNote;
+
       if (real) {
         try {
           const { requestId } = await provider.submit({
-            prompt, tier, imageUrl: imageUrl || undefined, imageBase64, imageMime,
-            refImageBase64: sceneRef?.b64, refImageMime: sceneRef?.mime,
+            prompt, tier, imageUrl: imageUrl || undefined, imageBase64: inputB64, imageMime: inputMime,
+            // 편집 프레임이 입력이면 별도 스타일 레퍼런스는 불필요
+            refImageBase64: edited ? undefined : sceneRef?.b64, refImageMime: edited ? undefined : sceneRef?.mime,
             negativePrompt: NEGATIVE,
           });
           await sql`INSERT INTO remake_jobs (id, provider, request_id, template_id, variation, score, status)
@@ -161,17 +185,19 @@ Match the reference's framing, camera movement and pacing for THIS scene faithfu
         await sql`INSERT INTO remake_jobs (id, provider, template_id, variation, score, status)
           VALUES (${id}, 'mock', ${seed}, ${v}, ${score}, 'in_progress')`;
       }
-      return { id, variation: v };
+      return { id, variation: v, edited };
     }),
   );
+  const jobs = jobResults.map(({ id, variation }) => ({ id, variation }));
+  const usedEdit = jobResults.some((r) => r.edited);
 
   return NextResponse.json({
     mode: real ? usedProvider : "mock",
     provider: real ? provider.label : "시뮬레이션",
     tier,
     sceneMode,
-    // 정밀도: perScene(장면별 실제 프레임) > cover(대표 1프레임) > text(텍스트만)
-    fidelity: usedSceneFrames ? "perScene" : refFrame ? "cover" : "text",
+    // 정밀도: productSwap(프레임 제품 스왑, 최고) > perScene > cover > text
+    fidelity: usedEdit ? "productSwap" : usedSceneFrames ? "perScene" : refFrame ? "cover" : "text",
     jobs,
   });
 }
