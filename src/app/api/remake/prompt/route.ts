@@ -16,31 +16,6 @@ function hasClaude(): boolean {
 interface Product { pname?: string; benefit?: string; concern?: string }
 interface Options { lang?: string; length?: number; aiPerson?: boolean; brandColor?: string }
 
-const RESPONSE_SCHEMA = {
-  type: "object",
-  additionalProperties: false,
-  properties: {
-    headline: { type: "string" },
-    scenes: {
-      type: "array",
-      items: {
-        type: "object",
-        additionalProperties: false,
-        properties: {
-          time: { type: "string" },
-          roleKo: { type: "string" },
-          shot: { type: "string" },
-          action: { type: "string" },
-        },
-        required: ["time", "roleKo", "shot", "action"],
-      },
-    },
-    fullPrompt: { type: "string" },
-    negative: { type: "string" },
-  },
-  required: ["headline", "scenes", "fullPrompt", "negative"],
-};
-
 export async function POST(req: Request) {
   const body = (await req.json().catch(() => ({}))) as {
     template?: RemakeTemplate;
@@ -118,9 +93,19 @@ export async function POST(req: Request) {
       "fullPrompt는 샷 리스트·톤·사운드·페이싱을 포함하되, ‼화면에 자막·문구·hex코드·로고를 넣지 말라고 명시하고 '깨끗한 실사 영상'을 지시하세요(자막은 후처리).",
   ].filter(Boolean).join("\n");
 
-  // 비전 그라운딩: 실제 프레임(base64)들을 이미지 블록으로 함께 전달
+  // 비전 그라운딩: 실제 프레임(base64)들을 이미지 블록으로 함께 전달. media_type은 허용값만.
+  const okTypes = new Set(["image/jpeg", "image/png", "image/gif", "image/webp"]);
+  const normMime = (m: string) => {
+    const t = (m || "").split(";")[0].trim().toLowerCase().replace("image/jpg", "image/jpeg");
+    return okTypes.has(t) ? t : "image/jpeg";
+  };
   const content: unknown[] = [{ type: "text", text: userMsg }];
-  for (const f of frames) content.push({ type: "image", source: { type: "base64", media_type: f.mime, data: f.b64 } });
+  for (const f of frames) content.push({ type: "image", source: { type: "base64", media_type: normMime(f.mime), data: f.b64 } });
+
+  // 구조화 출력 파라미터(output_config) 대신 "순수 JSON만 출력" 지시 + 견고한 파싱 (호환성↑).
+  const jsonInstruction =
+    '\n\n출력 형식: 아래 JSON 객체 하나만, 코드블록/설명 없이 순수 JSON으로 출력하세요.\n' +
+    '{"headline": string, "scenes": [{"time": string, "roleKo": string, "shot": string, "action": string}], "fullPrompt": string, "negative": string}';
 
   try {
     const res = await fetch("https://api.anthropic.com/v1/messages", {
@@ -132,31 +117,46 @@ export async function POST(req: Request) {
       },
       body: JSON.stringify({
         model,
-        max_tokens: 2000,
-        system,
+        max_tokens: 2500,
+        system: system + jsonInstruction,
         messages: [{ role: "user", content }],
-        output_config: { format: { type: "json_schema", schema: RESPONSE_SCHEMA } },
       }),
     });
     const data = await res.json();
     if (!res.ok) {
-      return NextResponse.json({ mode: "heuristic", pkg: base, warn: `AI 오류(${res.status})` });
+      const emsg = (data?.error?.message as string) || JSON.stringify(data).slice(0, 160);
+      return NextResponse.json({ mode: "heuristic", pkg: base, warn: `AI 오류 ${res.status}: ${emsg}` });
     }
-    // 응답에서 JSON 텍스트 추출
     const text: string = Array.isArray(data.content)
       ? data.content.filter((b: { type?: string }) => b.type === "text").map((b: { text?: string }) => b.text || "").join("")
       : "";
-    let parsed: RemakePromptPackage | null = null;
-    try {
-      parsed = JSON.parse(text) as RemakePromptPackage;
-    } catch {
-      parsed = null;
-    }
+    const parsed = extractJson(text);
     if (!parsed || !parsed.fullPrompt || !Array.isArray(parsed.scenes)) {
-      return NextResponse.json({ mode: "heuristic", pkg: base, warn: "AI 응답 파싱 실패" });
+      return NextResponse.json({ mode: "heuristic", pkg: base, warn: `AI 응답 파싱 실패: ${text.slice(0, 120)}` });
     }
     return NextResponse.json({ mode: "ai", pkg: parsed, grounded: frames.length > 0, framesUsed: frames.length });
   } catch (e) {
-    return NextResponse.json({ mode: "heuristic", pkg: base, warn: String(e).slice(0, 120) });
+    return NextResponse.json({ mode: "heuristic", pkg: base, warn: String(e).slice(0, 140) });
   }
+}
+
+// 코드블록/여분 텍스트가 있어도 첫 JSON 객체를 뽑아 파싱.
+function extractJson(text: string): RemakePromptPackage | null {
+  if (!text) return null;
+  const cleaned = text.replace(/```json\s*/gi, "").replace(/```/g, "").trim();
+  try {
+    return JSON.parse(cleaned) as RemakePromptPackage;
+  } catch {
+    /* 계속 */
+  }
+  const s = cleaned.indexOf("{");
+  const e = cleaned.lastIndexOf("}");
+  if (s >= 0 && e > s) {
+    try {
+      return JSON.parse(cleaned.slice(s, e + 1)) as RemakePromptPackage;
+    } catch {
+      return null;
+    }
+  }
+  return null;
 }
