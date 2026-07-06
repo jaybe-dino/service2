@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { randomUUID } from "crypto";
 import { sql, ensureSchema, isConfigured as dbConfigured } from "@/lib/db";
 import { selectProvider, TIERS, type Tier } from "@/lib/remake/providers";
+import { type Frame, midTime, fetchCoverFrame, fetchSceneFrames } from "@/lib/remake/frames";
 import { REMAKE_TEMPLATE_MAP, mockViralScore } from "@/data/ktrend/remake-templates";
 
 export const runtime = "nodejs";
@@ -35,60 +36,6 @@ function buildPrompt(
 
 const NEGATIVE = "any on-screen text, captions, subtitles, words, letters, numbers, hashtags, hex color codes, gibberish typography, distorted lettering, logos, watermark, UI overlays, real celebrity likeness, copyrighted audio, exaggerated or false efficacy claims";
 
-interface Frame { b64: string; mime: string }
-
-// 레퍼런스 원본 대표 프레임(oEmbed 썸네일)을 base64로 — 영상 스타일 조건(폴백)용.
-async function fetchRefFrame(tiktokUrl: string): Promise<Frame | null> {
-  try {
-    const o = await fetch(`https://www.tiktok.com/oembed?url=${encodeURIComponent(tiktokUrl)}`);
-    if (!o.ok) return null;
-    const j = (await o.json()) as { thumbnail_url?: string };
-    const thumb = j?.thumbnail_url;
-    if (!thumb || !/^https:\/\//.test(thumb)) return null;
-    const img = await fetch(thumb);
-    if (!img.ok) return null;
-    const mime = img.headers.get("content-type") || "image/jpeg";
-    const buf = Buffer.from(await img.arrayBuffer());
-    return { b64: buf.toString("base64"), mime };
-  } catch {
-    return null;
-  }
-}
-
-// 씬 타임코드("2-8s") → 대표 시각(초, 중간값).
-function midTime(t?: string, idx = 0): number {
-  const m = /(\d+)\s*-\s*(\d+)/.exec(t || "");
-  if (m) return Math.max(0, (Number(m[1]) + Number(m[2])) / 2);
-  const m2 = /(\d+)/.exec(t || "");
-  return m2 ? Number(m2[1]) : idx * 3;
-}
-
-// 장면별 프레임 추출 서비스(배포형 워커) 호출 — REMAKE_FRAME_SERVICE_URL 설정 시.
-// 계약: POST { videoUrl, timestamps:[초...] } → { frames:[{ b64|data, mime }] } (인덱스 매칭)
-async function fetchSceneFrames(videoUrl: string, timestamps: number[]): Promise<(Frame | null)[]> {
-  const svc = process.env.REMAKE_FRAME_SERVICE_URL;
-  if (!svc) return timestamps.map(() => null);
-  try {
-    const res = await fetch(svc, {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-        ...(process.env.REMAKE_FRAME_SERVICE_KEY ? { authorization: `Bearer ${process.env.REMAKE_FRAME_SERVICE_KEY}` } : {}),
-      },
-      body: JSON.stringify({ videoUrl, timestamps }),
-    });
-    if (!res.ok) return timestamps.map(() => null);
-    const j = (await res.json()) as { frames?: { b64?: string; data?: string; mime?: string }[] };
-    const frames = Array.isArray(j.frames) ? j.frames : [];
-    return timestamps.map((_, i) => {
-      const f = frames[i];
-      const b64 = f?.b64 || f?.data;
-      return b64 ? { b64, mime: f?.mime || "image/jpeg" } : null;
-    });
-  } catch {
-    return timestamps.map(() => null);
-  }
-}
 
 export async function POST(req: Request) {
   if (!dbConfigured()) return NextResponse.json({ error: "DB 미설정" }, { status: 503 });
@@ -130,7 +77,7 @@ export async function POST(req: Request) {
   // 레퍼런스 실제 프레임(스타일 조건) — reference-to-video 지원 모델(Omni)에서 사용.
   let refFrame: { b64: string; mime: string } | null = null;
   if (typeof body.refTiktokUrl === "string" && /tiktok\.com/.test(body.refTiktokUrl)) {
-    refFrame = await fetchRefFrame(body.refTiktokUrl);
+    refFrame = await fetchCoverFrame(body.refTiktokUrl);
   }
 
   // 실제 생성은 (1) provider가 mock이 아니고 (2) 제품 이미지가 있을 때만.

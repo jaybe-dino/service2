@@ -98,7 +98,7 @@ export default function RemakeStudioPage() {
       const d = await res.json();
       if (d.pkg) {
         setAiPkg(d.pkg);
-        setAiMsg(d.mode === "ai" ? (d.grounded ? "AI 정교화 완료 (레퍼런스 영상 반영)" : "AI 정교화 완료") : `규칙 기반 (${d.warn || "AI 미설정"})`);
+        setAiMsg(d.mode === "ai" ? (d.grounded ? `AI 분석 완료 (레퍼런스 프레임 ${d.framesUsed || 1}장 반영)` : "AI 정교화 완료 (프레임 미확보 — 메타데이터 기반)") : `규칙 기반 (${d.warn || "AI 미설정"})`);
       } else {
         setAiMsg(d.error || "정교화에 실패했습니다.");
       }
