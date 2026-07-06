@@ -126,34 +126,46 @@ async function fetchOmniStatus(ref: string): Promise<StatusResult> {
     const uri = ref.slice(5);
     return { status: "completed", videoUrl: `/api/remake/video?u=${encodeURIComponent(uri)}` };
   }
-  const base = ref.startsWith("http") ? ref : `${BASE}/${ref.replace(/^\//, "")}`;
-  const url = base.includes("key=") ? base : `${base}${base.includes("?") ? "&" : "?"}key=${encodeURIComponent(key())}`;
-  let res: Response;
-  try {
-    res = await fetch(url, { headers: { "x-goog-api-key": key() } });
-  } catch (e) {
-    return { status: "in_progress", error: `network: ${String(e).slice(0, 120)}` };
+  // 폴링 URL 후보: http면 그대로 / 경로 포함이면 BASE 결합 / 순수 id면 interactions·operations 시도.
+  const candidates = /^https?:\/\//.test(ref)
+    ? [ref]
+    : ref.includes("/")
+    ? [`${BASE}/${ref.replace(/^\//, "")}`]
+    : [`${BASE}/interactions/${ref}`, `${BASE}/operations/${ref}`, `${BASE}/files/${ref}`, `${BASE}/${ref}`];
+
+  let last = "";
+  for (const base of candidates) {
+    const url = base.includes("key=") ? base : `${base}${base.includes("?") ? "&" : "?"}key=${encodeURIComponent(key())}`;
+    let res: Response;
+    try {
+      res = await fetch(url, { headers: { "x-goog-api-key": key() } });
+    } catch (e) {
+      return { status: "in_progress", error: `network: ${String(e).slice(0, 120)}` };
+    }
+    if (res.status === 404) { last = base.replace(`${BASE}/`, ""); continue; }
+    const text = await res.text();
+    const json = safeJson(text);
+    if (!res.ok) return res.status >= 500 ? { status: "in_progress" } : { status: "failed", error: `status ${res.status}: ${text.slice(0, 150)}` };
+    const stateRaw = json?.state as { name?: string } | string | undefined;
+    const state = String((typeof stateRaw === "object" ? stateRaw?.name : stateRaw) || "").toUpperCase();
+    if (state === "FAILED" || json?.error) return { status: "failed", error: `${state || "error"}: ${text.slice(0, 130)}` };
+    const done = json?.done === true || state === "ACTIVE" || state === "SUCCEEDED";
+    const uri = extractOmniVideoUri(json);
+    if (done && uri) return { status: "completed", videoUrl: `/api/remake/video?u=${encodeURIComponent(uri)}` };
+    if (done && !uri) return { status: "failed", error: `완료됐지만 영상 URI 없음: ${text.slice(0, 150)}` };
+    return { status: "in_progress" };
   }
-  const text = await res.text();
-  const json = safeJson(text);
-  if (!res.ok) return res.status >= 500 ? { status: "in_progress" } : { status: "failed", error: `status ${res.status}` };
-  const stateRaw = (json?.state as { name?: string } | string | undefined);
-  const state = String((typeof stateRaw === "object" ? stateRaw?.name : stateRaw) || "").toUpperCase();
-  if (state === "FAILED" || json?.error) return { status: "failed", error: state || "error" };
-  const done = json?.done === true || state === "ACTIVE" || state === "SUCCEEDED";
-  const uri = extractOmniVideoUri(json);
-  if (done && uri) return { status: "completed", videoUrl: `/api/remake/video?u=${encodeURIComponent(uri)}` };
-  if (done && !uri) return { status: "failed", error: "완료됐지만 영상 URI를 찾지 못함" };
-  return { status: "in_progress" };
+  return { status: "failed", error: `status 404 (ref=${ref}; tried=${last})` };
 }
 
 function extractOmniRef(j: unknown): string | undefined {
   const o = (j || {}) as Record<string, unknown>;
   const ov = (o.output_video || o.outputVideo) as Record<string, unknown> | undefined;
   const cands = [
+    o.status_url, o.statusUrl, o.poll_url,
     ov?.uri, ov?.name,
     (o.operation as Record<string, unknown> | undefined)?.name,
-    o.name, o.id,
+    o.name, o.id, o.interaction_id, o.request_id,
   ];
   const c = cands.find((v) => typeof v === "string");
   return typeof c === "string" ? c : undefined;
