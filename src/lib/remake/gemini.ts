@@ -101,21 +101,32 @@ async function submitOmni(i: GeminiSubmitInput): Promise<{ requestId: string }> 
   if (i.refImageBase64) input.push({ type: "image", data: i.refImageBase64, mime_type: i.refImageMime || "image/jpeg" });
   input.push({ type: "image", data: i.imageBase64, mime_type: i.imageMime || "image/png" });
   input.push({ type: "text", text: i.prompt });
-  const res = await fetch(`${BASE}/interactions`, {
+  // 인증 이중화: 헤더 + ?key= (엔드포인트별 차이 대비)
+  const res = await fetch(`${BASE}/interactions?key=${encodeURIComponent(key())}`, {
     method: "POST",
     headers: { "content-type": "application/json", "x-goog-api-key": key() },
     body: JSON.stringify({ model: i.model, input, response_format: { delivery: "uri" } }),
   });
   const text = await res.text();
   const json = safeJson(text);
-  if (!res.ok) throw new Error(`omni submit ${res.status}: ${text.slice(0, 200)}`);
+  if (!res.ok) throw new Error(`omni submit ${res.status} @${BASE}/interactions model=${i.model}: ${text.slice(0, 240)}`);
+  // 동기 응답(이미 영상 URI 포함)이면 즉시 완료 처리.
+  const readyUri = extractOmniVideoUri(json);
   const ref = extractOmniRef(json);
-  if (!ref) throw new Error(`omni submit: 폴링 참조 없음 (${text.slice(0, 180)})`);
-  return { requestId: `omni::${ref}` };
+  if (readyUri && (!ref || ref === readyUri)) return { requestId: `omni::done:${readyUri}` };
+  if (ref) return { requestId: `omni::${ref}` };
+  if (readyUri) return { requestId: `omni::done:${readyUri}` };
+  throw new Error(`omni submit: 폴링 참조/영상 URI 없음 — 응답=${text.slice(0, 220)}`);
 }
 
 async function fetchOmniStatus(ref: string): Promise<StatusResult> {
-  const url = ref.startsWith("http") ? ref : `${BASE}/${ref.replace(/^\//, "")}`;
+  // 동기 완료 케이스
+  if (ref.startsWith("done:")) {
+    const uri = ref.slice(5);
+    return { status: "completed", videoUrl: `/api/remake/video?u=${encodeURIComponent(uri)}` };
+  }
+  const base = ref.startsWith("http") ? ref : `${BASE}/${ref.replace(/^\//, "")}`;
+  const url = base.includes("key=") ? base : `${base}${base.includes("?") ? "&" : "?"}key=${encodeURIComponent(key())}`;
   let res: Response;
   try {
     res = await fetch(url, { headers: { "x-goog-api-key": key() } });
