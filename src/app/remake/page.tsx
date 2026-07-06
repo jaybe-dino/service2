@@ -20,7 +20,7 @@ const TIER_LABEL: Record<Tier, string> = { draft: "초안", hd: "HD", premium: "
 const STEPS = ["템플릿 선택", "제품 등록", "생성 옵션", "생성", "결과"];
 const ROLE_KO: Record<string, string> = { hook: "훅", apply: "발림", result: "결과", cta: "CTA", detail: "디테일" };
 
-interface Variation { v: number; score: ReturnType<typeof mockViralScore>; videoUrl?: string | null; status?: string }
+interface Variation { v: number; score: ReturnType<typeof mockViralScore>; videoUrl?: string | null; status?: string; error?: string | null }
 
 export default function RemakeStudioPage() {
   const [step, setStep] = useState(0);
@@ -142,10 +142,10 @@ export default function RemakeStudioPage() {
     });
   };
 
-  const finish = (t: RemakeTemplate, jobs: { variation: number; videoUrl?: string | null; status?: string }[], scenes: boolean) => {
+  const finish = (t: RemakeTemplate, jobs: { variation: number; videoUrl?: string | null; status?: string; error?: string | null }[], scenes: boolean) => {
     const ctx = { hasProduct: !!(pname || benefit || concern), hasImage: images.length > 0 };
     const vars: Variation[] = jobs
-      .map((j) => ({ v: j.variation, score: predictViral(t, j.variation, ctx), videoUrl: j.videoUrl ?? null, status: j.status }))
+      .map((j) => ({ v: j.variation, score: predictViral(t, j.variation, ctx), videoUrl: j.videoUrl ?? null, status: j.status, error: j.error ?? null }))
       // 장면 모드: 레퍼런스 순서 유지 / 변형 모드: 예측 점수 상위 정렬
       .sort((a, b) => (scenes ? a.v - b.v : b.score.total - a.score.total));
     setResults(vars);
@@ -202,7 +202,7 @@ export default function RemakeStudioPage() {
         try {
           const r = await fetch(`/api/remake/status?ids=${ids.join(",")}`);
           const d = await r.json();
-          const jobs: { variation: number; status: string; videoUrl?: string | null }[] = d.jobs || [];
+          const jobs: { variation: number; status: string; videoUrl?: string | null; error?: string | null }[] = d.jobs || [];
           const done = jobs.length > 0 && jobs.every((j) => ["completed", "failed", "nsfw"].includes(j.status));
           if (done) finish(t, jobs, scenesOn);
           else pollRef.current = setTimeout(poll, 2500);
@@ -532,7 +532,7 @@ export default function RemakeStudioPage() {
               <span className="text-[12px] text-[var(--muted)]">{genInfo.sceneMode ? "레퍼런스 장면 순서대로 정렬됨" : "바이럴 예측 점수 상위부터 테스트하세요"}</span>
             </div>
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-              {results.map(({ v, score, videoUrl, status }, rank) => {
+              {results.map(({ v, score, videoUrl, status, error }, rank) => {
                 const failed = status === "failed" || status === "nsfw";
                 return (
                 <div key={v} className="overflow-hidden rounded-2xl border border-[var(--border)] bg-white">
@@ -547,7 +547,10 @@ export default function RemakeStudioPage() {
                         )}
                         <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
                         {failed ? (
-                          <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-lg bg-rose-600/90 px-3 py-1 text-[11px] font-bold text-white">생성 실패</span>
+                          <div className="absolute inset-x-2 top-1/2 -translate-y-1/2 rounded-lg bg-rose-600/90 p-2 text-center">
+                            <div className="text-[11px] font-bold text-white">생성 실패</div>
+                            {error && <div className="mt-1 max-h-24 overflow-auto break-words text-[9px] leading-snug text-white/90">{error}</div>}
+                          </div>
                         ) : (
                           <button className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full bg-white/90 p-3 text-[var(--accent)]"><Play size={20} fill="currentColor" /></button>
                         )}
