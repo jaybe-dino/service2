@@ -28,11 +28,11 @@ export async function fetchCoverFrame(tiktokUrl: string): Promise<Frame | null> 
   }
 }
 
-// 장면별/스트립 프레임 추출 서비스(배포형 워커) 호출 — REMAKE_FRAME_SERVICE_URL 설정 시.
-// 계약: POST { videoUrl, timestamps:[초...] } → { frames:[{ b64|data, mime }|null] } (인덱스 매칭)
-export async function fetchSceneFrames(videoUrl: string, timestamps: number[]): Promise<(Frame | null)[]> {
+// 프레임 추출 서비스(배포형 워커) 호출 — REMAKE_FRAME_SERVICE_URL 설정 시.
+// 계약: POST { videoUrl, timestamps?:[초...], count?:N } → { frames:[{ b64|data, mime }|null] }
+async function callFrameService(payload: Record<string, unknown>, n: number): Promise<(Frame | null)[]> {
   const svc = process.env.REMAKE_FRAME_SERVICE_URL;
-  if (!svc) return timestamps.map(() => null);
+  if (!svc) return Array.from({ length: n }, () => null);
   try {
     const res = await fetch(svc, {
       method: "POST",
@@ -40,24 +40,28 @@ export async function fetchSceneFrames(videoUrl: string, timestamps: number[]): 
         "content-type": "application/json",
         ...(process.env.REMAKE_FRAME_SERVICE_KEY ? { authorization: `Bearer ${process.env.REMAKE_FRAME_SERVICE_KEY}` } : {}),
       },
-      body: JSON.stringify({ videoUrl, timestamps }),
+      body: JSON.stringify(payload),
     });
-    if (!res.ok) return timestamps.map(() => null);
+    if (!res.ok) return Array.from({ length: n }, () => null);
     const j = (await res.json()) as { frames?: { b64?: string; data?: string; mime?: string }[] };
     const frames = Array.isArray(j.frames) ? j.frames : [];
-    return timestamps.map((_, i) => {
+    return Array.from({ length: n }, (_, i) => {
       const f = frames[i];
       const b64 = f?.b64 || f?.data;
       return b64 ? { b64, mime: f?.mime || "image/jpeg" } : null;
     });
   } catch {
-    return timestamps.map(() => null);
+    return Array.from({ length: n }, () => null);
   }
 }
 
-// 분석용 스트립: 숏폼 전체에 걸친 대표 시각(워커 있으면 실제 프레임, 없으면 빈 배열).
-export async function fetchAnalysisFrames(tiktokUrl: string): Promise<Frame[]> {
-  const ts = [1, 3, 5, 8, 11, 14];
-  const strip = await fetchSceneFrames(tiktokUrl, ts);
+// 장면별 프레임(생성용): 각 씬 타임스탬프의 실제 프레임.
+export async function fetchSceneFrames(videoUrl: string, timestamps: number[]): Promise<(Frame | null)[]> {
+  return callFrameService({ videoUrl, timestamps }, timestamps.length);
+}
+
+// 분석용 스트립(소스 분석용): 영상 길이 기준 균등 N장(워커가 ffprobe로 샘플링).
+export async function fetchAnalysisFrames(tiktokUrl: string, count = 6): Promise<Frame[]> {
+  const strip = await callFrameService({ videoUrl: tiktokUrl, count }, count);
   return strip.filter((f): f is Frame => !!f);
 }

@@ -42,25 +42,45 @@ const server = http.createServer((req, res) => {
   req.on("end", async () => {
     let dir;
     try {
-      const { videoUrl, timestamps } = JSON.parse(body || "{}");
-      if (!videoUrl || !Array.isArray(timestamps)) throw new Error("videoUrl/timestamps 필요");
+      const parsed = JSON.parse(body || "{}");
+      const { videoUrl } = parsed;
+      let { timestamps } = parsed;
+      const count = Number(parsed.count) || 0;
+      if (!videoUrl) throw new Error("videoUrl 필요");
       dir = mkdtempSync(path.join(os.tmpdir(), "fx-"));
       const mp4 = path.join(dir, "in.mp4");
       // 세로 숏폼 mp4 다운로드
       await run("yt-dlp", ["-f", "mp4/best", "-o", mp4, "--no-playlist", "--no-warnings", "--quiet", videoUrl]);
+
+      // count만 주면 영상 길이(ffprobe) 기준으로 균등 샘플링 → 분석용 스트립.
+      if ((!Array.isArray(timestamps) || !timestamps.length) && count > 0) {
+        let dur = 0;
+        try {
+          const out = await run("ffprobe", ["-v", "error", "-show_entries", "format=duration", "-of", "default=nw=1:nk=1", mp4]);
+          dur = parseFloat(String(out).trim()) || 0;
+        } catch {
+          dur = 0;
+        }
+        const n = Math.max(1, Math.min(10, count));
+        timestamps = dur > 0
+          ? Array.from({ length: n }, (_, k) => +((dur * (k + 0.5)) / n).toFixed(2))
+          : Array.from({ length: n }, (_, k) => k * 2);
+      }
+      if (!Array.isArray(timestamps)) throw new Error("timestamps 또는 count 필요");
+
       const frames = [];
       for (let i = 0; i < timestamps.length; i++) {
         const t = Math.max(0, Number(timestamps[i]) || 0);
         const out = path.join(dir, `f${i}.jpg`);
         try {
-          await run("ffmpeg", ["-y", "-ss", String(t), "-i", mp4, "-frames:v", "1", "-q:v", "3", out]);
+          await run("ffmpeg", ["-y", "-ss", String(t), "-i", mp4, "-frames:v", "1", "-q:v", "3", "-vf", "scale=720:-2", out]);
           frames.push({ b64: readFileSync(out).toString("base64"), mime: "image/jpeg" });
         } catch {
           frames.push(null);
         }
       }
       res.writeHead(200, { "content-type": "application/json" });
-      res.end(JSON.stringify({ frames }));
+      res.end(JSON.stringify({ frames, timestamps }));
     } catch (e) {
       res.writeHead(500, { "content-type": "application/json" });
       res.end(JSON.stringify({ error: String((e && e.message) || e) }));

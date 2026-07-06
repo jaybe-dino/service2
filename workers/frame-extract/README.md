@@ -9,21 +9,30 @@ Vercel 앱(`/api/remake/generate`)이 이 워커를 호출해, 각 씬 생성에
 ## API 계약
 ```
 POST /            (Authorization: Bearer <FRAME_SERVICE_KEY>, 설정 시)
-body: { "videoUrl": "https://www.tiktok.com/@x/video/123", "timestamps": [1, 5, 10, 14] }
+# 생성용(장면별): 특정 시각들의 프레임
+body: { "videoUrl": "https://www.tiktok.com/@x/video/123", "timestamps": [1,5,10,14] }
+# 분석용(스트립): 영상 길이 기준 균등 N장 (ffprobe로 자동 샘플링)
+body: { "videoUrl": "...", "count": 6 }
 → 200 { "frames": [ { "b64": "...", "mime": "image/jpeg" }, null, ... ] }   // 인덱스 매칭
 GET /  → "frame-extract ok" (헬스체크)
 ```
 
-## 배포 (택1)
-ffmpeg를 쓸 수 있는 아무 곳이나: **Railway / Render / Fly.io / Google Cloud Run** 등.
+## 배포 — Google Cloud Run (권장: Gemini와 같은 프로젝트/결제)
+이미 쓰는 Google 프로젝트(`gen-lang-client-0078394014`)에 그대로 올리면 결제도 통합됩니다.
 ```bash
-# 예: 이 폴더에서 컨테이너 배포
-docker build -t remake-frame-extract .
-# Cloud Run
-gcloud run deploy remake-frame-extract --source . --region asia-northeast3 --allow-unauthenticated \
-  --set-env-vars FRAME_SERVICE_KEY=$(openssl rand -hex 16)
+cd workers/frame-extract
+# gcloud CLI 로그인/프로젝트 지정 후:
+gcloud config set project gen-lang-client-0078394014
+KEY=$(openssl rand -hex 16); echo "FRAME_SERVICE_KEY=$KEY"   # 이 값 메모(아래 Vercel에 사용)
+gcloud run deploy remake-frame-extract \
+  --source . --region asia-northeast3 --allow-unauthenticated \
+  --memory 1Gi --timeout 300 \
+  --set-env-vars FRAME_SERVICE_KEY=$KEY
+# 출력된 Service URL 을 REMAKE_FRAME_SERVICE_URL 로 사용
 ```
-- 환경변수: `PORT`(기본 8080), `FRAME_SERVICE_KEY`(선택, 인증)
+> 대안: **Railway/Render** — GitHub 연결 → 이 폴더(`workers/frame-extract`)를 루트로 지정 → Dockerfile 자동 감지 → 배포. 환경변수 `FRAME_SERVICE_KEY` 설정.
+
+- 컨테이너 env: `PORT`(기본 8080), `FRAME_SERVICE_KEY`(선택, 인증)
 
 ## Vercel(앱)에 연결
 배포된 워커 URL을 Vercel 환경변수에 넣고 Redeploy:
