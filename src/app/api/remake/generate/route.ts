@@ -46,6 +46,8 @@ export async function POST(req: Request) {
     promptBase?: string;   // 콘텐츠 레퍼런스에서 만든 상세 프롬프트("프롬프트화")
     scoreSeed?: string;    // 점수 결정론용 시드
     tier?: Tier;           // 품질 티어(재생성 시 override)
+    sceneMode?: boolean;   // 장면별 정밀(레퍼런스 각 화면 1:1 재현)
+    scenes?: { time?: string; roleKo?: string; shot?: string; action?: string }[];
   };
   const t = body.templateId ? REMAKE_TEMPLATE_MAP[body.templateId] : undefined;
   const seed = body.scoreSeed || body.templateId || "remake";
@@ -85,11 +87,32 @@ export async function POST(req: Request) {
   const usedProvider = real ? provider.id : "mock";
 
   const cams = ["subtle push-in", "slow orbit", "gentle handheld sway", "smooth tilt-up reveal"];
+
+  // 장면별 정밀 모드: 레퍼런스 장면 그래프를 1:1로 재현(각 화면을 개별 생성).
+  const scenes = Array.isArray(body.scenes) ? body.scenes.slice(0, 6) : [];
+  const sceneMode = Boolean(body.sceneMode) && scenes.length > 0;
+  const unitCount = sceneMode ? scenes.length : count;
+
+  // 장면별 프롬프트: 해당 장면의 타이밍·카메라·동작을 그대로 따르도록 지시(구조 유사도↑),
+  // 단 제품 정체성은 일관 유지하고 비주얼/음원은 원본과 구분(표면 유사도↓, 저작권 안전).
+  function scenePrompt(idx: number): string {
+    const s = scenes[idx] || {};
+    const head = promptBase ? `${promptBase}\n\n` : `${t ? buildPrompt(t, product, idx) : ""}\n\n`;
+    return `${head}SCENE ${idx + 1}/${scenes.length} — reproduce this exact beat of the reference:
+- timing: ${s.time || `${idx + 1}`}
+- role: ${s.roleKo || ""}
+- shot/camera: ${s.shot || cams[idx % cams.length]}
+- action: ${s.action || ""}
+Match the reference's framing, camera movement and pacing for THIS scene faithfully (high structure similarity). Keep the product identity (label, color, shape) consistent across scenes. Use distinct visuals/audio from any original clip. Vertical 9:16.`;
+  }
+
   const jobs: { id: string; variation: number }[] = [];
-  for (let v = 0; v < count; v++) {
+  for (let v = 0; v < unitCount; v++) {
     const id = randomUUID();
     const score = mockViralScore(seed, v).total;
-    const prompt = promptBase
+    const prompt = sceneMode
+      ? scenePrompt(v)
+      : promptBase
       ? `${promptBase}\n\nVARIATION ${v + 1}: ${cams[v % cams.length]} camera movement.`
       : buildPrompt(t!, product, v);
 
@@ -115,6 +138,7 @@ export async function POST(req: Request) {
     mode: real ? usedProvider : "mock",
     provider: real ? provider.label : "시뮬레이션",
     tier,
+    sceneMode,
     jobs,
   });
 }

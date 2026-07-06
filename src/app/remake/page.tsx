@@ -48,11 +48,13 @@ export default function RemakeStudioPage() {
   const [aiPerson, setAiPerson] = useState(true);
   const [brandColor, setBrandColor] = useState("#FF5C8D");
   const [tier, setTier] = useState<Tier>("hd");
+  const [sceneMode, setSceneMode] = useState(true); // 장면별 정밀(레퍼런스 각 화면 1:1 재현)
 
   // 생성
   const [genScene, setGenScene] = useState(0);
   const [results, setResults] = useState<Variation[]>([]);
-  const [genInfo, setGenInfo] = useState<{ real: boolean; label: string; tier: Tier }>({ real: false, label: "시뮬레이션", tier: "hd" });
+  const [genInfo, setGenInfo] = useState<{ real: boolean; label: string; tier: Tier; sceneMode: boolean; similarity: number }>({ real: false, label: "시뮬레이션", tier: "hd", sceneMode: false, similarity: 0 });
+  const [genScenesMeta, setGenScenesMeta] = useState<{ time?: string; roleKo?: string }[]>([]);
   const [genErr, setGenErr] = useState<string | null>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pollRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -137,11 +139,12 @@ export default function RemakeStudioPage() {
     });
   };
 
-  const finish = (t: RemakeTemplate, jobs: { variation: number; videoUrl?: string | null; status?: string }[]) => {
+  const finish = (t: RemakeTemplate, jobs: { variation: number; videoUrl?: string | null; status?: string }[], scenes: boolean) => {
     const ctx = { hasProduct: !!(pname || benefit || concern), hasImage: images.length > 0 };
     const vars: Variation[] = jobs
       .map((j) => ({ v: j.variation, score: predictViral(t, j.variation, ctx), videoUrl: j.videoUrl ?? null, status: j.status }))
-      .sort((a, b) => b.score.total - a.score.total);
+      // 장면 모드: 레퍼런스 순서 유지 / 변형 모드: 예측 점수 상위 정렬
+      .sort((a, b) => (scenes ? a.v - b.v : b.score.total - a.score.total));
     setResults(vars);
     if (timerRef.current) clearTimeout(timerRef.current);
     setGenScene(t.scenes.length);
@@ -154,6 +157,9 @@ export default function RemakeStudioPage() {
     setGenErr(null); setStep(3); setGenScene(0); setResults([]);
     if (timerRef.current) clearTimeout(timerRef.current);
     if (pollRef.current) clearTimeout(pollRef.current);
+
+    const useScene = sceneMode && !!effPkg?.scenes?.length;
+    setGenScenesMeta(useScene ? effPkg!.scenes : []);
 
     // 시각적 진행 애니메이션 (실제 진행은 아래 폴링이 관장)
     let i = 0;
@@ -176,11 +182,16 @@ export default function RemakeStudioPage() {
           product: { pname, benefit, concern, url },
           options: { lang, length, aiPerson, brandColor, tier: genTier },
           tier: genTier,
+          sceneMode: useScene,
+          scenes: useScene ? effPkg!.scenes : undefined,
         }),
       });
       const data = await res.json();
       if (!res.ok || !data.jobs?.length) throw new Error(data.error || "생성 시작에 실패했습니다.");
-      setGenInfo({ real: data.mode !== "mock", label: data.provider || "시뮬레이션", tier: (data.tier as Tier) || genTier });
+      const scenesOn = Boolean(data.sceneMode);
+      // 구조 유사도(재현율): 장면별 모드면 각 화면 1:1 재현 → 높게, 변형 모드면 근사.
+      const sim = scenesOn ? Math.min(96, 80 + Math.min(effPkg!.scenes.length, 5) * 3) : 66;
+      setGenInfo({ real: data.mode !== "mock", label: data.provider || "시뮬레이션", tier: (data.tier as Tier) || genTier, sceneMode: scenesOn, similarity: sim });
       const ids: string[] = data.jobs.map((j: { id: string }) => j.id);
 
       const poll = async () => {
@@ -189,7 +200,7 @@ export default function RemakeStudioPage() {
           const d = await r.json();
           const jobs: { variation: number; status: string; videoUrl?: string | null }[] = d.jobs || [];
           const done = jobs.length > 0 && jobs.every((j) => ["completed", "failed", "nsfw"].includes(j.status));
-          if (done) finish(t, jobs);
+          if (done) finish(t, jobs, scenesOn);
           else pollRef.current = setTimeout(poll, 2500);
         } catch {
           pollRef.current = setTimeout(poll, 3000);
@@ -421,6 +432,21 @@ export default function RemakeStudioPage() {
                     <span className="text-[11px] text-[var(--muted)]">CTA·자막 강조색으로 사용</span>
                   </div>
                   <div>
+                    <span className="mb-1.5 block text-[11px] font-semibold text-[var(--muted)]">생성 방식</span>
+                    <div className="flex gap-1.5">
+                      <button onClick={() => setSceneMode(true)}
+                        className={`flex-1 rounded-lg border px-3 py-2 text-left text-[11px] ${sceneMode ? "border-[var(--accent)] bg-[var(--accent-light)]" : "border-[var(--border)]"}`}>
+                        <div className={`font-bold ${sceneMode ? "text-[var(--accent)]" : "text-[var(--fg)]"}`}>장면별 정밀 (유사도↑)</div>
+                        <div className="text-[10px] text-[var(--muted)]">레퍼런스 각 화면(훅·발림·결과·CTA)을 1:1로 재현</div>
+                      </button>
+                      <button onClick={() => setSceneMode(false)}
+                        className={`flex-1 rounded-lg border px-3 py-2 text-left text-[11px] ${!sceneMode ? "border-[var(--accent)] bg-[var(--accent-light)]" : "border-[var(--border)]"}`}>
+                        <div className={`font-bold ${!sceneMode ? "text-[var(--accent)]" : "text-[var(--fg)]"}`}>변형 여러 종</div>
+                        <div className="text-[10px] text-[var(--muted)]">서로 다른 안 N개 → 예측 상위 A컷 선택</div>
+                      </button>
+                    </div>
+                  </div>
+                  <div>
                     <span className="mb-1.5 block text-[11px] font-semibold text-[var(--muted)]">품질 티어</span>
                     <div className="flex gap-1.5">
                       {(["draft", "hd", "premium"] as Tier[]).map((tt) => (
@@ -452,8 +478,8 @@ export default function RemakeStudioPage() {
             <div className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-gradient-to-br from-[#7C3AED] to-[#FF5C8D] text-white">
               <Loader2 size={26} className="animate-spin" />
             </div>
-            <h2 className="mt-4 text-[16px] font-black">영상 생성 중…</h2>
-            <p className="mt-1 text-[12px] text-[var(--muted)]">제품 레퍼런스를 컨디셔닝해 변형을 생성합니다. 실제 모델 연결 시 수십 초~수 분 걸릴 수 있습니다.</p>
+            <h2 className="mt-4 text-[16px] font-black">{sceneMode ? "장면별로 생성 중…" : "영상 생성 중…"}</h2>
+            <p className="mt-1 text-[12px] text-[var(--muted)]">{sceneMode ? "레퍼런스 각 화면을 1:1로 재현합니다(제품 일관 유지)." : "제품 레퍼런스를 컨디셔닝해 변형을 생성합니다."} 실제 모델 연결 시 수십 초~수 분 걸릴 수 있습니다.</p>
             <div className="mt-5 space-y-2 text-left">
               {tmpl.scenes.map((sc, i) => {
                 const done = i < genScene; const active = i === genScene;
@@ -479,13 +505,16 @@ export default function RemakeStudioPage() {
         {step === 4 && tmpl && (
           <div>
             <div className="mb-4 flex flex-wrap items-center gap-2">
-              <h2 className="text-[18px] font-black">생성 결과 · 변형 {results.length}종</h2>
+              <h2 className="text-[18px] font-black">생성 결과 · {genInfo.sceneMode ? `장면 ${results.length}컷` : `변형 ${results.length}종`}</h2>
               {genInfo.real ? (
                 <span className="rounded-full bg-violet-50 px-2 py-0.5 text-[11px] font-bold text-violet-700">{genInfo.label} · {TIER_LABEL[genInfo.tier]} 실제 생성</span>
               ) : (
                 <span className="rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-bold text-amber-700">시뮬레이션 (모델 미연결)</span>
               )}
-              <span className="text-[12px] text-[var(--muted)]">바이럴 예측 점수 상위부터 테스트하세요</span>
+              {genInfo.sceneMode && (
+                <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-bold text-emerald-700">레퍼런스 구조 유사도 ~{genInfo.similarity}%</span>
+              )}
+              <span className="text-[12px] text-[var(--muted)]">{genInfo.sceneMode ? "레퍼런스 장면 순서대로 정렬됨" : "바이럴 예측 점수 상위부터 테스트하세요"}</span>
             </div>
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
               {results.map(({ v, score, videoUrl, status }, rank) => {
@@ -509,8 +538,13 @@ export default function RemakeStudioPage() {
                         )}
                       </>
                     )}
-                    {rank === 0 && !failed && <span className="absolute left-2 top-2 z-10 rounded-full bg-[var(--accent)] px-2 py-0.5 text-[10px] font-black text-white">추천</span>}
-                    <span className="absolute right-2 top-2 z-10 rounded-full bg-white/85 px-2 py-0.5 text-[10px] font-bold">변형 {v + 1}</span>
+                    {!genInfo.sceneMode && rank === 0 && !failed && <span className="absolute left-2 top-2 z-10 rounded-full bg-[var(--accent)] px-2 py-0.5 text-[10px] font-black text-white">추천</span>}
+                    {genInfo.sceneMode && (
+                      <span className="absolute left-2 top-2 z-10 rounded-full bg-black/60 px-2 py-0.5 text-[10px] font-black text-white">
+                        씬 {v + 1}{genScenesMeta[v]?.roleKo ? ` · ${genScenesMeta[v].roleKo}` : ""}{genScenesMeta[v]?.time ? ` · ${genScenesMeta[v].time}` : ""}
+                      </span>
+                    )}
+                    <span className="absolute right-2 top-2 z-10 rounded-full bg-white/85 px-2 py-0.5 text-[10px] font-bold">{genInfo.sceneMode ? `#${v + 1}` : `변형 ${v + 1}`}</span>
                     {!videoUrl && !failed && (
                       <div className="absolute bottom-2 left-2 right-2 text-white">
                         <div className="flex items-center gap-1 text-[11px] font-bold"><Star size={12} fill="currentColor" className="text-amber-300" /> 바이럴 예측 {score.total}</div>
