@@ -42,9 +42,14 @@ export async function POST(req: Request) {
     image?: string;
     product?: Product;
     options?: Options;
+    promptBase?: string;   // 콘텐츠 레퍼런스에서 만든 상세 프롬프트("프롬프트화")
+    scoreSeed?: string;    // 점수 결정론용 시드(레퍼런스=ref-<id>, 템플릿=템플릿 id)
   };
+  // 큐레이션 템플릿이면 맵에서, 콘텐츠 레퍼런스(ref-*)면 promptBase 필수.
   const t = body.templateId ? REMAKE_TEMPLATE_MAP[body.templateId] : undefined;
-  if (!t) return NextResponse.json({ error: "템플릿을 찾을 수 없습니다." }, { status: 400 });
+  const seed = body.scoreSeed || body.templateId || "remake";
+  const promptBase = typeof body.promptBase === "string" && body.promptBase.trim() ? body.promptBase.trim() : "";
+  if (!t && !promptBase) return NextResponse.json({ error: "템플릿 또는 프롬프트가 필요합니다." }, { status: 400 });
 
   const product = body.product || {};
   const options = body.options || {};
@@ -66,23 +71,28 @@ export async function POST(req: Request) {
   }
   const real = Boolean(imageUrl);
 
+  const cams = ["subtle push-in", "slow orbit", "gentle handheld sway", "smooth tilt-up reveal"];
   const jobs: { id: string; variation: number }[] = [];
   for (let v = 0; v < count; v++) {
     const id = randomUUID();
-    const score = mockViralScore(t.id, v).total;
+    const score = mockViralScore(seed, v).total;
+    // 프롬프트: 레퍼런스 상세 프롬프트가 있으면 그것을(변형별 카메라 부여), 없으면 템플릿 기반.
+    const prompt = promptBase
+      ? `${promptBase}\n\nVARIATION ${v + 1}: ${cams[v % cams.length]} camera movement.`
+      : buildPrompt(t!, product, options, v);
     if (real && imageUrl) {
       try {
-        const { requestId } = await submitImage2Video({ imageUrl, prompt: buildPrompt(t, product, options, v) });
+        const { requestId } = await submitImage2Video({ imageUrl, prompt });
         await sql`INSERT INTO remake_jobs (id, provider, request_id, template_id, variation, score, status)
-          VALUES (${id}, 'higgsfield', ${requestId}, ${t.id}, ${v}, ${score}, 'in_progress')`;
+          VALUES (${id}, 'higgsfield', ${requestId}, ${seed}, ${v}, ${score}, 'in_progress')`;
       } catch (e) {
         await sql`INSERT INTO remake_jobs (id, provider, template_id, variation, score, status, error)
-          VALUES (${id}, 'higgsfield', ${t.id}, ${v}, ${score}, 'failed', ${String(e).slice(0, 300)})`;
+          VALUES (${id}, 'higgsfield', ${seed}, ${v}, ${score}, 'failed', ${String(e).slice(0, 300)})`;
       }
     } else {
       // mock: 상태 폴링에서 경과시간으로 완료 시뮬레이션
       await sql`INSERT INTO remake_jobs (id, provider, template_id, variation, score, status)
-        VALUES (${id}, 'mock', ${t.id}, ${v}, ${score}, 'in_progress')`;
+        VALUES (${id}, 'mock', ${seed}, ${v}, ${score}, 'in_progress')`;
     }
     jobs.push({ id, variation: v });
   }

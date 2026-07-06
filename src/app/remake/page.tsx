@@ -1,14 +1,16 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Sparkles, ArrowRight, ArrowLeft, Upload, Check, Loader2, Play, Download,
-  RefreshCw, Star, X, Info, Wand2,
+  RefreshCw, Star, X, Info, Wand2, FileText, Copy, Eye, Flame,
 } from "lucide-react";
 import {
   REMAKE_TEMPLATES, REMAKE_TEMPLATE_MAP, REMAKE_LANGS, REMAKE_LENGTHS, mockViralScore,
   type RemakeTemplate,
 } from "@/data/ktrend/remake-templates";
+import { refToTemplate, buildRemakePrompt, type RemakePromptPackage } from "@/data/ktrend/remake-refs";
+import { loadContent, sortContent, fmtCompact, type Content } from "@/data/ktrend/content";
 
 const STEPS = ["템플릿 선택", "제품 등록", "생성 옵션", "생성", "결과"];
 const ROLE_KO: Record<string, string> = { hook: "훅", apply: "발림", result: "결과", cta: "CTA", detail: "디테일" };
@@ -19,6 +21,12 @@ export default function RemakeStudioPage() {
   const [step, setStep] = useState(0);
   const [cat, setCat] = useState<"all" | RemakeTemplate["category"]>("all");
   const [tid, setTid] = useState<string | null>(null);
+
+  // 소스: 큐레이션 템플릿 vs 실제 콘텐츠 레퍼런스
+  const [srcMode, setSrcMode] = useState<"templates" | "refs">("templates");
+  const [refs, setRefs] = useState<Content[]>([]);
+  const [refsLoading, setRefsLoading] = useState(false);
+  const [customTmpl, setCustomTmpl] = useState<RemakeTemplate | null>(null); // 콘텐츠에서 생성한 템플릿
 
   // 제품
   const [images, setImages] = useState<string[]>([]);
@@ -46,8 +54,36 @@ export default function RemakeStudioPage() {
     if (pollRef.current) clearTimeout(pollRef.current);
   }, []);
 
-  const tmpl = tid ? REMAKE_TEMPLATE_MAP[tid] : null;
+  const tmpl = customTmpl ?? (tid ? REMAKE_TEMPLATE_MAP[tid] : null);
   const templates = REMAKE_TEMPLATES.filter((t) => cat === "all" || t.category === cat);
+  const isRef = !!customTmpl;
+
+  // "아주 구체적인 프롬프트화" — 선택 템플릿/콘텐츠 + 제품 + 옵션으로 실시간 상세 프롬프트 생성
+  const promptPkg: RemakePromptPackage | null = useMemo(
+    () => (tmpl ? buildRemakePrompt(tmpl, { pname, benefit, concern }, { lang, length, aiPerson, brandColor }) : null),
+    [tmpl, pname, benefit, concern, lang, length, aiPerson, brandColor],
+  );
+
+  // 콘텐츠 레퍼런스 로드 (탭 최초 진입 시 1회)
+  useEffect(() => {
+    if (srcMode !== "refs" || refs.length || refsLoading) return;
+    setRefsLoading(true);
+    loadContent()
+      .then((list) => {
+        const top = sortContent(list.filter((c) => c.tiktokUrl), "viral").slice(0, 60);
+        setRefs(top);
+      })
+      .catch(() => setRefs([]))
+      .finally(() => setRefsLoading(false));
+  }, [srcMode, refs.length, refsLoading]);
+
+  const refList = refs.filter((c) => cat === "all" || c.category === cat);
+
+  const selectRef = (c: Content) => {
+    setCustomTmpl(refToTemplate(c));
+    setTid(`ref-${c.id}`);
+    setStep(1);
+  };
 
   const onFiles = (files: FileList | null) => {
     if (!files) return;
@@ -90,7 +126,9 @@ export default function RemakeStudioPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          templateId: t.id,
+          templateId: isRef ? undefined : t.id,
+          scoreSeed: t.id,
+          promptBase: promptPkg?.fullPrompt,
           image: images[0] || null,
           product: { pname, benefit, concern, url },
           options: { lang, length, aiPerson, brandColor },
@@ -124,7 +162,7 @@ export default function RemakeStudioPage() {
   const reset = () => {
     if (timerRef.current) clearTimeout(timerRef.current);
     if (pollRef.current) clearTimeout(pollRef.current);
-    setStep(0); setTid(null); setImages([]); setPname(""); setBenefit(""); setConcern(""); setUrl("");
+    setStep(0); setTid(null); setCustomTmpl(null); setImages([]); setPname(""); setBenefit(""); setConcern(""); setUrl("");
     setResults([]); setGenScene(0); setGenErr(null);
   };
 
@@ -162,18 +200,33 @@ export default function RemakeStudioPage() {
             <Info size={16} className="mt-0.5 shrink-0 text-[var(--accent)]" />
             <div>
               <b className="text-[var(--fg)]">검증된 바이럴 레퍼런스 구조로 제품 영상을 자동 생성</b>하는 기능의 프로토타입입니다.
+              <b>추천 템플릿</b> 또는 <b>수집된 실제 콘텐츠 레퍼런스</b>를 고르면 <b>아주 구체적인 생성 프롬프트</b>로 자동 변환됩니다.
               템플릿마다 <b>실제 성과 데이터</b>(조회수·참여율·ROAS)가 붙어 있어, 무엇이 터지는지 알고 제작합니다.
               원본 영상은 저장하지 않고 <b>구조만</b> 재현합니다(저작권 안전). ※ 서버에 <code>HF_CREDENTIALS</code>가 설정되면 <b>Higgsfield</b>로 실제 영상을 생성하고, 없으면 시뮬레이션으로 동작합니다.
             </div>
           </div>
         )}
 
-        {/* STEP 0: 템플릿 갤러리 */}
+        {/* STEP 0: 템플릿 / 콘텐츠 레퍼런스 갤러리 */}
         {step === 0 && (
           <div>
+            {/* 소스 토글 */}
+            <div className="mb-4 inline-flex rounded-xl border border-[var(--border)] bg-white p-1">
+              <button onClick={() => setSrcMode("templates")}
+                className={`inline-flex items-center gap-1.5 rounded-lg px-4 py-2 text-[12px] font-bold transition ${srcMode === "templates" ? "bg-[var(--accent)] text-white" : "text-[var(--muted)] hover:text-[var(--fg)]"}`}>
+                <Sparkles size={13} /> 추천 템플릿
+              </button>
+              <button onClick={() => setSrcMode("refs")}
+                className={`inline-flex items-center gap-1.5 rounded-lg px-4 py-2 text-[12px] font-bold transition ${srcMode === "refs" ? "bg-[var(--accent)] text-white" : "text-[var(--muted)] hover:text-[var(--fg)]"}`}>
+                <Flame size={13} /> 콘텐츠 레퍼런스
+              </button>
+            </div>
+
             <div className="mb-4 flex flex-wrap items-center gap-2">
-              <h1 className="text-[20px] font-black">리메이크 템플릿</h1>
-              <span className="text-[12px] text-[var(--muted)]">지금 터지는 구조를 골라 내 제품에 입히세요</span>
+              <h1 className="text-[20px] font-black">{srcMode === "templates" ? "리메이크 템플릿" : "실제 콘텐츠 레퍼런스"}</h1>
+              <span className="text-[12px] text-[var(--muted)]">
+                {srcMode === "templates" ? "지금 터지는 구조를 골라 내 제품에 입히세요" : "수집된 바이럴 콘텐츠를 고르면 아주 구체적인 생성 프롬프트로 변환됩니다"}
+              </span>
               <div className="ml-auto flex gap-1.5">
                 {[["all", "전체"], ["skincare", "스킨케어"], ["makeup", "메이크업"], ["haircare", "헤어케어"]].map(([k, v]) => (
                   <button key={k} onClick={() => setCat(k as typeof cat)}
@@ -181,30 +234,72 @@ export default function RemakeStudioPage() {
                 ))}
               </div>
             </div>
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {templates.map((t) => (
-                <button key={t.id} onClick={() => { setTid(t.id); setStep(1); }}
-                  className={`group overflow-hidden rounded-2xl border bg-white text-left transition hover:shadow-lg ${tid === t.id ? "border-[var(--accent)] ring-2 ring-[var(--accent)]" : "border-[var(--border)]"}`}>
-                  <div className="relative h-40" style={{ background: t.grad }}>
-                    <span className="absolute left-3 top-3 rounded-full bg-black/50 px-2 py-0.5 text-[10px] font-bold text-white">▶ {t.hookType}</span>
-                    <span className="absolute right-3 top-3 rounded-full bg-white/85 px-2 py-0.5 text-[10px] font-bold text-[var(--fg)]">리메이크 가능</span>
-                    <div className="absolute bottom-3 left-3 right-3 flex items-end justify-between text-white">
-                      <span className="text-[13px] font-black drop-shadow">👁 {t.perf.views}</span>
-                      <span className="text-[11px] font-bold drop-shadow">참여 {t.perf.engagement}{t.perf.roas ? ` · ROAS ${t.perf.roas}` : ""}</span>
+
+            {/* 추천 템플릿 */}
+            {srcMode === "templates" && (
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {templates.map((t) => (
+                  <button key={t.id} onClick={() => { setCustomTmpl(null); setTid(t.id); setStep(1); }}
+                    className={`group overflow-hidden rounded-2xl border bg-white text-left transition hover:shadow-lg ${tid === t.id ? "border-[var(--accent)] ring-2 ring-[var(--accent)]" : "border-[var(--border)]"}`}>
+                    <div className="relative h-40" style={{ background: t.grad }}>
+                      <span className="absolute left-3 top-3 rounded-full bg-black/50 px-2 py-0.5 text-[10px] font-bold text-white">▶ {t.hookType}</span>
+                      <span className="absolute right-3 top-3 rounded-full bg-white/85 px-2 py-0.5 text-[10px] font-bold text-[var(--fg)]">리메이크 가능</span>
+                      <div className="absolute bottom-3 left-3 right-3 flex items-end justify-between text-white">
+                        <span className="text-[13px] font-black drop-shadow">👁 {t.perf.views}</span>
+                        <span className="text-[11px] font-bold drop-shadow">참여 {t.perf.engagement}{t.perf.roas ? ` · ROAS ${t.perf.roas}` : ""}</span>
+                      </div>
                     </div>
-                  </div>
-                  <div className="p-4">
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-[14px] font-black">{t.name}</span>
-                      <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[9px] font-bold text-[var(--muted)]">{t.categoryKo}</span>
+                    <div className="p-4">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-[14px] font-black">{t.name}</span>
+                        <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[9px] font-bold text-[var(--muted)]">{t.categoryKo}</span>
+                      </div>
+                      <p className="mt-1 text-[11px] italic text-[var(--muted)]">“{t.hookCopy}”</p>
+                      <p className="mt-2 line-clamp-2 text-[11px] leading-relaxed text-[var(--muted)]">💡 {t.why}</p>
+                      <div className="mt-3 inline-flex items-center gap-1 text-[12px] font-bold text-[var(--accent)]">이 구조로 내 제품 만들기 <ArrowRight size={13} className="transition-transform group-hover:translate-x-0.5" /></div>
                     </div>
-                    <p className="mt-1 text-[11px] italic text-[var(--muted)]">“{t.hookCopy}”</p>
-                    <p className="mt-2 line-clamp-2 text-[11px] leading-relaxed text-[var(--muted)]">💡 {t.why}</p>
-                    <div className="mt-3 inline-flex items-center gap-1 text-[12px] font-bold text-[var(--accent)]">이 구조로 내 제품 만들기 <ArrowRight size={13} className="transition-transform group-hover:translate-x-0.5" /></div>
-                  </div>
-                </button>
-              ))}
-            </div>
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {/* 콘텐츠 레퍼런스 */}
+            {srcMode === "refs" && (
+              refsLoading ? (
+                <div className="grid place-items-center rounded-2xl border border-[var(--border)] bg-white py-20 text-[13px] text-[var(--muted)]">
+                  <Loader2 size={22} className="mb-2 animate-spin text-[var(--accent)]" /> 수집된 콘텐츠 불러오는 중…
+                </div>
+              ) : refList.length === 0 ? (
+                <div className="rounded-2xl border border-[var(--border)] bg-white py-16 text-center text-[13px] text-[var(--muted)]">
+                  표시할 콘텐츠가 없습니다. 수집 데이터가 준비되면 자동으로 노출됩니다.
+                </div>
+              ) : (
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                  {refList.slice(0, 40).map((c) => (
+                    <button key={c.id} onClick={() => selectRef(c)}
+                      className="group overflow-hidden rounded-2xl border border-[var(--border)] bg-white text-left transition hover:shadow-lg hover:border-[var(--accent)]">
+                      <div className="relative aspect-[9/16]" style={{ background: `linear-gradient(135deg,hsl(${c.hue % 360},85%,72%),hsl(${(c.hue + 40) % 360},80%,64%))` }}>
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/55 to-transparent" />
+                        {c.isShop && <span className="absolute left-2 top-2 rounded-full bg-pink-500 px-2 py-0.5 text-[9px] font-black text-white">SHOP</span>}
+                        <span className="absolute right-2 top-2 rounded-full bg-white/85 px-2 py-0.5 text-[9px] font-bold">🔥 {c.viralScore}</span>
+                        <div className="absolute bottom-2 left-2 right-2 text-white">
+                          <div className="text-[12px] font-black drop-shadow">👁 {fmtCompact(c.views)}</div>
+                          <div className="text-[10px] font-bold drop-shadow">참여 {c.engagementRate.toFixed(1)}% · @{c.influencerId}</div>
+                        </div>
+                        <span className="absolute left-1/2 top-1/2 grid -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full bg-white/90 p-2.5 text-[var(--accent)] opacity-0 transition group-hover:opacity-100"><Wand2 size={16} /></span>
+                      </div>
+                      <div className="p-3">
+                        <div className="flex items-center gap-1.5">
+                          <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[9px] font-bold text-[var(--muted)]">{c.category === "skincare" ? "스킨케어" : c.category === "makeup" ? "메이크업" : "헤어케어"}</span>
+                          {c.isAd && <span className="rounded bg-amber-50 px-1.5 py-0.5 text-[9px] font-bold text-amber-700">AD</span>}
+                        </div>
+                        <div className="mt-2 inline-flex items-center gap-1 text-[11px] font-bold text-[var(--accent)]">이 콘텐츠로 프롬프트 생성 <ArrowRight size={12} className="transition-transform group-hover:translate-x-0.5" /></div>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )
+            )}
           </div>
         )}
 
@@ -254,7 +349,7 @@ export default function RemakeStudioPage() {
               {!images.length && <p className="mt-2 text-center text-[10px] text-[var(--muted)]">제품 이미지를 1장 이상 올리면 다음으로 넘어갈 수 있어요.</p>}
             </div>
 
-            <TemplateSide tmpl={tmpl} />
+            <TemplateSide tmpl={tmpl} pkg={promptPkg} isRef={isRef} />
           </div>
         )}
 
@@ -300,7 +395,7 @@ export default function RemakeStudioPage() {
               </div>
               {genErr && <p className="mt-2 rounded-lg bg-rose-50 px-3 py-2 text-center text-[11px] font-semibold text-rose-600">{genErr}</p>}
             </div>
-            <TemplateSide tmpl={tmpl} />
+            <TemplateSide tmpl={tmpl} pkg={promptPkg} isRef={isRef} />
           </div>
         )}
 
@@ -407,11 +502,12 @@ export default function RemakeStudioPage() {
   );
 }
 
-function TemplateSide({ tmpl }: { tmpl: RemakeTemplate }) {
+function TemplateSide({ tmpl, pkg, isRef }: { tmpl: RemakeTemplate; pkg: RemakePromptPackage | null; isRef: boolean }) {
   return (
-    <div className="md:col-span-2">
+    <div className="space-y-3 md:col-span-2">
       <div className="overflow-hidden rounded-2xl border border-[var(--border)] bg-white">
         <div className="relative h-32" style={{ background: tmpl.grad }}>
+          {isRef && <span className="absolute left-3 top-3 rounded-full bg-black/55 px-2 py-0.5 text-[10px] font-bold text-white">🔥 콘텐츠 레퍼런스</span>}
           <span className="absolute bottom-2 left-3 text-[13px] font-black text-white drop-shadow">👁 {tmpl.perf.views} · 참여 {tmpl.perf.engagement}</span>
         </div>
         <div className="p-4 text-[12px]">
@@ -431,6 +527,56 @@ function TemplateSide({ tmpl }: { tmpl: RemakeTemplate }) {
             톤: {tmpl.tone} · 사운드: {tmpl.sound}
           </div>
         </div>
+      </div>
+      {pkg && <PromptPanel pkg={pkg} isRef={isRef} />}
+    </div>
+  );
+}
+
+// "아주 구체적인 프롬프트화" 결과 — 선택 콘텐츠/템플릿 + 제품/옵션으로 만든 상세 생성 브리프
+function PromptPanel({ pkg, isRef }: { pkg: RemakePromptPackage; isRef: boolean }) {
+  const [open, setOpen] = useState(true);
+  const [copied, setCopied] = useState(false);
+  const copy = () => {
+    navigator.clipboard?.writeText(pkg.fullPrompt).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    }).catch(() => {});
+  };
+  return (
+    <div className="overflow-hidden rounded-2xl border border-violet-200 bg-white">
+      <div className="flex items-center gap-2 border-b border-violet-100 bg-violet-50 px-4 py-2.5">
+        <FileText size={14} className="text-violet-600" />
+        <span className="text-[12px] font-black text-violet-700">생성 프롬프트 {isRef ? "(콘텐츠 → 자동 변환)" : ""}</span>
+        <button onClick={() => setOpen((v) => !v)} className="ml-auto inline-flex items-center gap-1 text-[11px] font-semibold text-violet-600">
+          <Eye size={12} /> {open ? "접기" : "보기"}
+        </button>
+      </div>
+      <div className="p-4 text-[11px]">
+        <div className="font-bold text-[var(--fg)]">{pkg.headline}</div>
+        {open && (
+          <>
+            <div className="mt-3 space-y-1">
+              {pkg.scenes.map((s, i) => (
+                <div key={i} className="flex gap-2 leading-relaxed">
+                  <span className="w-14 shrink-0 font-mono text-[10px] text-violet-500">{s.time}</span>
+                  <span className="w-8 shrink-0 font-bold text-[var(--muted)]">{s.roleKo}</span>
+                  <span className="text-[var(--muted)]">{s.shot} — {s.action}</span>
+                </div>
+              ))}
+            </div>
+            <div className="mt-3">
+              <div className="mb-1 flex items-center gap-2">
+                <span className="text-[10px] font-bold text-[var(--muted)]">FULL PROMPT</span>
+                <button onClick={copy} className="ml-auto inline-flex items-center gap-1 rounded border border-[var(--border)] px-2 py-0.5 text-[10px] font-semibold text-[var(--muted)] hover:bg-slate-50">
+                  <Copy size={11} /> {copied ? "복사됨" : "복사"}
+                </button>
+              </div>
+              <pre className="max-h-56 overflow-auto whitespace-pre-wrap rounded-lg bg-slate-900 p-3 text-[10px] leading-relaxed text-slate-100">{pkg.fullPrompt}</pre>
+              <div className="mt-2 rounded-lg bg-rose-50 p-2 text-[10px] leading-relaxed text-rose-600"><b>제외(negative):</b> {pkg.negative}</div>
+            </div>
+          </>
+        )}
       </div>
     </div>
   );
