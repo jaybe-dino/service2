@@ -10,7 +10,11 @@ import {
   type RemakeTemplate,
 } from "@/data/ktrend/remake-templates";
 import { refToTemplate, buildRemakePrompt, type RemakePromptPackage } from "@/data/ktrend/remake-refs";
+import { predictViral } from "@/lib/remake/predict";
 import { loadContentStaged, sortContent, fmtCompact, type Content } from "@/data/ktrend/content";
+
+type Tier = "draft" | "hd" | "premium";
+const TIER_LABEL: Record<Tier, string> = { draft: "초안", hd: "HD", premium: "프리미엄" };
 
 const STEPS = ["템플릿 선택", "제품 등록", "생성 옵션", "생성", "결과"];
 const ROLE_KO: Record<string, string> = { hook: "훅", apply: "발림", result: "결과", cta: "CTA", detail: "디테일" };
@@ -42,11 +46,12 @@ export default function RemakeStudioPage() {
   const [length, setLength] = useState<number>(REMAKE_LENGTHS[1]);
   const [aiPerson, setAiPerson] = useState(true);
   const [brandColor, setBrandColor] = useState("#FF5C8D");
+  const [tier, setTier] = useState<Tier>("hd");
 
   // 생성
   const [genScene, setGenScene] = useState(0);
   const [results, setResults] = useState<Variation[]>([]);
-  const [mode, setMode] = useState<"mock" | "higgsfield">("mock");
+  const [genInfo, setGenInfo] = useState<{ real: boolean; label: string; tier: Tier }>({ real: false, label: "시뮬레이션", tier: "hd" });
   const [genErr, setGenErr] = useState<string | null>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pollRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -132,8 +137,9 @@ export default function RemakeStudioPage() {
   };
 
   const finish = (t: RemakeTemplate, jobs: { variation: number; videoUrl?: string | null; status?: string }[]) => {
+    const ctx = { hasProduct: !!(pname || benefit || concern), hasImage: images.length > 0 };
     const vars: Variation[] = jobs
-      .map((j) => ({ v: j.variation, score: mockViralScore(t.id, j.variation), videoUrl: j.videoUrl ?? null, status: j.status }))
+      .map((j) => ({ v: j.variation, score: predictViral(t, j.variation, ctx), videoUrl: j.videoUrl ?? null, status: j.status }))
       .sort((a, b) => b.score.total - a.score.total);
     setResults(vars);
     if (timerRef.current) clearTimeout(timerRef.current);
@@ -141,7 +147,7 @@ export default function RemakeStudioPage() {
     timerRef.current = setTimeout(() => setStep(4), 500);
   };
 
-  const startGen = async () => {
+  const startGen = async (genTier: Tier = tier) => {
     if (!tmpl) return;
     const t = tmpl;
     setGenErr(null); setStep(3); setGenScene(0); setResults([]);
@@ -167,12 +173,13 @@ export default function RemakeStudioPage() {
           promptBase: effPkg?.fullPrompt,
           image: images[0] || null,
           product: { pname, benefit, concern, url },
-          options: { lang, length, aiPerson, brandColor },
+          options: { lang, length, aiPerson, brandColor, tier: genTier },
+          tier: genTier,
         }),
       });
       const data = await res.json();
       if (!res.ok || !data.jobs?.length) throw new Error(data.error || "생성 시작에 실패했습니다.");
-      setMode(data.mode === "higgsfield" ? "higgsfield" : "mock");
+      setGenInfo({ real: data.mode !== "mock", label: data.provider || "시뮬레이션", tier: (data.tier as Tier) || genTier });
       const ids: string[] = data.jobs.map((j: { id: string }) => j.id);
 
       const poll = async () => {
@@ -238,7 +245,7 @@ export default function RemakeStudioPage() {
               <b className="text-[var(--fg)]">검증된 바이럴 레퍼런스 구조로 제품 영상을 자동 생성</b>하는 기능의 프로토타입입니다.
               <b>추천 템플릿</b> 또는 <b>수집된 실제 콘텐츠 레퍼런스</b>를 고르면 <b>아주 구체적인 생성 프롬프트</b>로 자동 변환됩니다.
               템플릿마다 <b>실제 성과 데이터</b>(조회수·참여율·ROAS)가 붙어 있어, 무엇이 터지는지 알고 제작합니다.
-              원본 영상은 저장하지 않고 <b>구조만</b> 재현합니다(저작권 안전). ※ 서버에 <code>HF_CREDENTIALS</code>가 설정되면 <b>Higgsfield</b>로 실제 영상을 생성하고, 없으면 시뮬레이션으로 동작합니다.
+              원본 영상은 저장하지 않고 <b>구조만</b> 재현합니다(저작권 안전). ※ 서버에 영상 생성 키(<code>HF_CREDENTIALS</code> 또는 <code>GEMINI_API_KEY</code>)가 설정되면 <b>Higgsfield / Gemini(Omni Flash)</b>로 실제 생성하고, 없으면 시뮬레이션으로 동작합니다.
             </div>
           </div>
         )}
@@ -431,12 +438,24 @@ export default function RemakeStudioPage() {
                     <input type="color" value={brandColor} onChange={(e) => setBrandColor(e.target.value)} className="h-8 w-12 rounded border border-[var(--border)]" />
                     <span className="text-[11px] text-[var(--muted)]">CTA·자막 강조색으로 사용</span>
                   </div>
+                  <div>
+                    <span className="mb-1.5 block text-[11px] font-semibold text-[var(--muted)]">품질 티어</span>
+                    <div className="flex gap-1.5">
+                      {(["draft", "hd", "premium"] as Tier[]).map((tt) => (
+                        <button key={tt} onClick={() => setTier(tt)}
+                          className={`rounded-full border px-3 py-1.5 text-[11px] font-semibold ${tier === tt ? "border-[var(--accent)] bg-[var(--accent-light)] text-[var(--accent)]" : "border-[var(--border)] text-[var(--muted)]"}`}>
+                          {TIER_LABEL[tt]}
+                        </button>
+                      ))}
+                    </div>
+                    <p className="mt-1 text-[10px] leading-relaxed text-[var(--muted)]">초안=빠르고 저렴(다량 변형) · HD=업로드용 · 프리미엄=대표컷(Veo·Omni Flash급). 결과에서 A컷만 프리미엄으로 재생성할 수 있어요.</p>
+                  </div>
                 </div>
               </div>
               <div className="mt-3 flex gap-2">
                 <button onClick={() => setStep(1)} className="rounded-lg border border-[var(--border)] px-5 py-2.5 text-[12px] font-bold text-[var(--muted)] hover:bg-white"><ArrowLeft size={14} className="mr-1 inline" /> 제품</button>
-                <button onClick={startGen} className="flex-1 rounded-lg bg-gradient-to-r from-[#7C3AED] to-[#FF5C8D] py-2.5 text-[12px] font-black text-white">
-                  <Wand2 size={14} className="mr-1 inline" /> 영상 생성 시작
+                <button onClick={() => startGen()} className="flex-1 rounded-lg bg-gradient-to-r from-[#7C3AED] to-[#FF5C8D] py-2.5 text-[12px] font-black text-white">
+                  <Wand2 size={14} className="mr-1 inline" /> {TIER_LABEL[tier]} 영상 생성 시작
                 </button>
               </div>
               {genErr && <p className="mt-2 rounded-lg bg-rose-50 px-3 py-2 text-center text-[11px] font-semibold text-rose-600">{genErr}</p>}
@@ -479,8 +498,8 @@ export default function RemakeStudioPage() {
           <div>
             <div className="mb-4 flex flex-wrap items-center gap-2">
               <h2 className="text-[18px] font-black">생성 결과 · 변형 {results.length}종</h2>
-              {mode === "higgsfield" ? (
-                <span className="rounded-full bg-violet-50 px-2 py-0.5 text-[11px] font-bold text-violet-700">Higgsfield 실제 생성</span>
+              {genInfo.real ? (
+                <span className="rounded-full bg-violet-50 px-2 py-0.5 text-[11px] font-bold text-violet-700">{genInfo.label} · {TIER_LABEL[genInfo.tier]} 실제 생성</span>
               ) : (
                 <span className="rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-bold text-amber-700">시뮬레이션 (모델 미연결)</span>
               )}
@@ -538,8 +557,15 @@ export default function RemakeStudioPage() {
 
             <div className="mt-5 flex flex-col gap-2 rounded-xl bg-white p-4 text-[11px] text-[var(--muted)] sm:flex-row sm:items-center">
               <Info size={15} className="shrink-0 text-[var(--accent)]" />
-              <span>틱톡 업로드 시 <b className="text-[var(--fg)]">AIGC(AI 생성) 라벨</b>을 부착하세요. 업로드 후 성과는 Glovek 대시보드로 회수되어 템플릿 추천을 고도화합니다(플라이휠).</span>
-              <button onClick={reset} className="rounded-lg border border-[var(--border)] px-4 py-2 font-bold text-[var(--fg)] sm:ml-auto">새 영상 만들기</button>
+              <span>틱톡 업로드 시 <b className="text-[var(--fg)]">AIGC(AI 생성) 라벨</b>을 부착하세요{genInfo.label.includes("Omni") ? " (Omni Flash는 SynthID·C2PA 자동 부착)" : ""}. 업로드 후 성과는 Glovek 대시보드로 회수되어 템플릿 추천을 고도화합니다(플라이휠).</span>
+              <div className="flex gap-2 sm:ml-auto">
+                {genInfo.tier !== "premium" && (
+                  <button onClick={() => { setTier("premium"); startGen("premium"); }} className="inline-flex items-center gap-1 rounded-lg bg-gradient-to-r from-[#7C3AED] to-[#FF5C8D] px-4 py-2 font-bold text-white">
+                    <Star size={13} /> 프리미엄으로 재생성
+                  </button>
+                )}
+                <button onClick={reset} className="rounded-lg border border-[var(--border)] px-4 py-2 font-bold text-[var(--fg)]">새 영상 만들기</button>
+              </div>
             </div>
           </div>
         )}

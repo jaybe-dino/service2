@@ -93,11 +93,30 @@
 
 ---
 
-## 4. 다음 개발 우선순위 (요청 시 진행)
-1. **실측 바이럴 예측 연동** — `mockViralScore` → 실제 예측(품질 게이트의 핵심)
-2. **Gemini Omni Flash 어댑터 + `REMAKE_PROVIDER` 토글** — env로 벤더 무중단 전환
-3. **모델 티어링**(draft→final 자동 승급)
-4. **후처리 파이프라인**(업스케일·자막·AIGC 라벨) + 멀티신 어셈블
+## 4. 개발 현황
 
-> 현재 상태: 생성 파이프라인·AI 프롬프트 정교화·단계별 콘텐츠 로드까지 구현·배포됨.
+### ✅ 구현·배포됨
+1. **바이럴 예측** — `predictViral`(레퍼런스 참여율·조회수·훅유형 가중, 결정론적). 순수 해시 대체.
+2. **벤더 추상화 + `REMAKE_PROVIDER` 토글** — Higgsfield / Gemini(Omni Flash) / mock. env로 무중단 전환.
+   - Gemini 어댑터: predictLongRunning + operation 폴링, base64 인라인 입력, 결과 프록시(`/api/remake/video`).
+   - **Omni Flash 2경로**: ①Higgsfield에서 모델만 지정(`HF_PREMIUM_MODEL`) ②Gemini 직접(`GEMINI_VIDEO_MODEL`).
+3. **모델 티어링** — draft/hd/premium 선택 + 결과에서 "프리미엄으로 재생성"(A컷만 고품질).
+4. **AIGC 라벨 안내** — Omni Flash는 SynthID·C2PA 자동 표기, 그 외 업로드 시 부착 안내.
+
+### 🔜 로드맵 (서버리스 ffmpeg 필요 → 별도 영상처리 백엔드에서)
+- **업스케일**(2K/4K) — Higgsfield `upscale_video` 등 연동(계약 확인 후)
+- **자막·CTA 번인 + 멀티신 어셈블**(15/30/60초 완성본) — ffmpeg/편집 서비스 필요
+
+### 환경변수 요약
+| 변수 | 용도 |
+|---|---|
+| `REMAKE_PROVIDER` | `higgsfield`/`gemini`/`mock` 강제(미설정=키 있는 것 자동) |
+| `HF_CREDENTIALS` | Higgsfield 키(`KEY_ID:KEY_SECRET`) |
+| `HF_DRAFT_MODEL`/`HF_MODEL`/`HF_PREMIUM_MODEL` | 티어별 HF 모델(예: premium=Omni Flash) |
+| `GEMINI_API_KEY` | Gemini 키 |
+| `GEMINI_VIDEO_MODEL` | Omni Flash 모델 ID(배포 문서 기준) |
+| `POSTGRES_URL` | 잡·자산 저장(Higgsfield 경로는 이미지 공개 URL에 필수) |
+| `REMAKE_MAX_VARIATIONS` | 변형 개수(비용 상한) |
+| `ANTHROPIC_API_KEY` | 프롬프트 AI 정교화 |
+
 > 키 미설정 시 시뮬레이션으로 안전 폴백(코드 변경 없이 env만으로 실전 전환).

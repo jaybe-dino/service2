@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { sql, ensureSchema, isConfigured as dbConfigured } from "@/lib/db";
-import { fetchStatus } from "@/lib/remake/higgsfield";
+import { providerById } from "@/lib/remake/providers";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -35,8 +35,8 @@ export async function GET(req: Request) {
     let videoUrl = r.video_url;
     let error = r.error;
 
-    if (r.provider === "higgsfield" && !TERMINAL.has(status) && r.request_id) {
-      const s = await fetchStatus(r.request_id);
+    if (r.provider !== "mock" && !TERMINAL.has(status) && r.request_id) {
+      const s = await providerById(r.provider).status(r.request_id);
       status = s.status;
       videoUrl = s.videoUrl ?? videoUrl;
       error = s.error ?? error;
