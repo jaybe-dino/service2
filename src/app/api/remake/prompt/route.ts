@@ -58,40 +58,36 @@ export async function POST(req: Request) {
     "실존 인물 유사성, 저작권 음원/로고, 과장·허위 효능 표현은 배제합니다. " +
     "출력은 반드시 지정된 JSON 스키마를 따르며, scenes는 실제 프레임에서 관찰한 각 장면(시간대·역할·샷·구체 동작)을, fullPrompt는 영상 생성 모델에 그대로 전달할 상세 프롬프트를 담습니다.";
 
-  const userMsg = [
-    "레퍼런스 구조(성과 신호 포함):",
-    JSON.stringify(
-      {
-        name: t.name,
-        category: t.categoryKo,
-        hookType: t.hookType,
-        hookCopy: t.hookCopy,
-        tone: t.tone,
-        sound: t.sound,
-        perf: t.perf,
-        why: t.why,
-        scenes: t.scenes,
-      },
-      null,
-      2,
-    ),
-    "",
-    "제품 정보:",
-    JSON.stringify(product, null, 2),
-    "",
-    "생성 옵션:",
-    JSON.stringify(options, null, 2),
-    "",
-    "참고용 규칙 기반 초안(개선의 출발점):",
-    base.fullPrompt,
-    "",
-    frames.length
-      ? `첨부된 ${frames.length}장은 이 레퍼런스 영상의 시간순 프레임입니다. 실제로 보이는 장면 전개·샷·구도·색감·제품 제시 방식을 정확히 관찰해 반영하고, 제품만 이 브랜드 제품으로 교체해 재구성하세요(복제 금지).`
-      : "",
-    "위를 바탕으로, 이 제품에 최적화된 구체적 생성 브리프를 스키마에 맞춰 작성하세요. " +
-      "scenes는 실제 프레임에서 관찰한 각 장면의 시간대(0-2s 등)·역할(훅/발림/결과/CTA)·카메라·구체적 액션(카메라 무빙·피사체 동작)을 담습니다. " +
-      "fullPrompt는 샷 리스트·톤·사운드·페이싱을 포함하되, ‼화면에 자막·문구·hex코드·로고를 넣지 말라고 명시하고 '깨끗한 실사 영상'을 지시하세요(자막은 후처리).",
-  ].filter(Boolean).join("\n");
+  // 프레임이 있으면 '프레임 우선' — 아키타입 구조를 넣지 않고, 실제 관찰로 씬을 새로 구성.
+  const userMsg = frames.length
+    ? [
+        `첨부된 ${frames.length}장은 이 레퍼런스 영상의 시간순 프레임입니다(앞→뒤 순서).`,
+        "이 프레임들만을 근거로 실제 영상을 분석하세요. 아래 참고 정보나 일반적 틀(훅/발림/결과/CTA)에 끼워맞추지 말고, 프레임에 실제로 보이는 대로 장면을 구성합니다:",
+        "- 각 프레임에서 실제로 보이는 것: 피사체(사람/손/제품), 구도·앵글, 카메라 워크, 배경·색감·조명, 제품 노출 방식, 화면 분할/전환.",
+        "- scenes: 관찰된 실제 장면 수·순서·타이밍으로 구성(억지로 4개로 맞추지 말 것). 각 scene의 shot·action은 '그 프레임에서 실제로 일어나는 일'을 구체적으로.",
+        "",
+        `카테고리(참고): ${t.categoryKo}`,
+        "제품 정보(이 제품으로 교체):",
+        JSON.stringify(product, null, 2),
+        "생성 옵션:",
+        JSON.stringify(options, null, 2),
+        "",
+        "요구사항: 위 프레임의 실제 스타일·구도·전개를 그대로 살리되(디테일 유사 재현), 화면의 제품만 내 제품으로 교체하는 생성 브리프를 작성하세요. " +
+          "fullPrompt는 각 씬의 구체 샷 리스트·카메라·톤·페이싱을 담고, ‼화면에 자막·문구·hex코드·로고를 넣지 말라고 명시(깨끗한 실사 영상, 자막은 후처리). 원본의 글자/로고/특정 인물은 복제 금지.",
+      ].filter(Boolean).join("\n")
+    : [
+        "※ 레퍼런스 실제 프레임을 확보하지 못했습니다(프레임 워커 미연결). 아래 메타데이터로 최선의 추정을 합니다.",
+        "레퍼런스 구조(추정):",
+        JSON.stringify({ category: t.categoryKo, hookType: t.hookType, tone: t.tone, perf: t.perf }, null, 2),
+        "제품 정보:",
+        JSON.stringify(product, null, 2),
+        "생성 옵션:",
+        JSON.stringify(options, null, 2),
+        "참고 초안:",
+        base.fullPrompt,
+        "",
+        "이 제품에 맞는 구체 생성 브리프를 작성하세요. ‼화면에 자막·문구·hex코드·로고를 넣지 말 것(깨끗한 실사 영상, 자막은 후처리).",
+      ].filter(Boolean).join("\n");
 
   // 비전 그라운딩: 실제 프레임(base64)들을 이미지 블록으로 함께 전달. media_type은 허용값만.
   const okTypes = new Set(["image/jpeg", "image/png", "image/gif", "image/webp"]);
