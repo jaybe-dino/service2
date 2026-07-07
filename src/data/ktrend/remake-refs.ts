@@ -189,12 +189,19 @@ function compact(n: number): string {
 }
 
 // ── "아주 구체적인 프롬프트화" ─────────────────────────────────────────────
-export interface PromptScene { time: string; roleKo: string; shot: string; action: string }
+export interface PromptScene {
+  time: string; roleKo: string; shot: string; action: string;
+  sceneImagePrompt?: string; // 이 비트의 '새 장면 스틸'(내 제품·새 인물/배경) 생성용 영어 프롬프트
+  motionPrompt?: string;     // 스틸을 image-to-video로 움직일 영어 모션 프롬프트
+}
 export interface RemakePromptPackage {
   headline: string;
   scenes: PromptScene[];
   fullPrompt: string; // 생성 모델에 전달되는 전체 프롬프트
   negative: string;
+  concept?: string;  // 레퍼런스의 맥락 한 줄(재현 대상)
+  talent?: string;   // 새 인물 묘사(원본 복제 금지)
+  setting?: string;  // 새 환경 묘사
 }
 
 export interface PromptProduct { pname?: string; benefit?: string; concern?: string }

@@ -11,7 +11,7 @@ export const maxDuration = 60;
 
 interface Product { pname?: string; benefit?: string; concern?: string; url?: string }
 interface Options { lang?: string; length?: number; aiPerson?: boolean; brandColor?: string; tier?: Tier }
-interface Scene { time?: string; roleKo?: string; shot?: string; action?: string }
+interface Scene { time?: string; roleKo?: string; shot?: string; action?: string; sceneImagePrompt?: string; motionPrompt?: string }
 
 // 생성 요청 = "잡 생성 + 스펙 저장"만 (가벼움, <2s). 무거운 작업(프레임·제품 스왑·제출)은
 // 클라이언트가 각 잡별로 /api/remake/process를 호출해 처리한다(잡마다 새 60s 예산 → 타임아웃 방지).
@@ -30,6 +30,9 @@ export async function POST(req: Request) {
     sceneMode?: boolean;
     scenes?: Scene[];
     refTiktokUrl?: string;
+    concept?: string;
+    talent?: string;
+    setting?: string;
   };
   const t = body.templateId ? REMAKE_TEMPLATE_MAP[body.templateId] : undefined;
   const seed = body.scoreSeed || body.templateId || "remake";
@@ -75,9 +78,11 @@ export async function POST(req: Request) {
   const scenes = allScenes.slice(0, maxScenes);
   const sceneMode = Boolean(body.sceneMode) && scenes.length > 0;
   const unitCount = sceneMode ? scenes.length : count;
-  const hasRef = typeof body.refTiktokUrl === "string" && /tiktok\.com/.test(body.refTiktokUrl);
-  const refUrl = hasRef ? (body.refTiktokUrl as string) : null;
-  const canEdit = real && !provider.needsPublicImageUrl && Boolean(imageBase64) && hasImageEdit();
+  const concept = typeof body.concept === "string" ? body.concept.slice(0, 600) : "";
+  const talent = typeof body.talent === "string" ? body.talent.slice(0, 400) : "";
+  const setting = typeof body.setting === "string" ? body.setting.slice(0, 400) : "";
+  // 맥락 기반 재창조 가능 여부(내 제품을 새 장면에 합성): gemini + 이미지 편집 + 제품 이미지.
+  const canCompose = real && !provider.needsPublicImageUrl && Boolean(imageBase64) && hasImageEdit();
 
   // 잡 행 생성(status=preparing) + 각 잡 스펙 저장. process가 이 스펙으로 실제 생성 수행.
   const jobs: { id: string; variation: number }[] = [];
@@ -90,9 +95,9 @@ export async function POST(req: Request) {
           seed, variation: v, tier, providerId: usedProvider,
           needsPublicUrl: provider.needsPublicImageUrl, imageUrl,
           productAssetId, imageMime,
-          templateId: body.templateId || null, promptBase, product,
-          sceneMode, scene: scenes[v] || null, scenesLen: scenes.length,
-          refUrl, canEdit, hasRef,
+          promptBase, product, concept, talent, setting,
+          scene: scenes[v] || (sceneMode ? null : { action: promptBase, shot: "" }),
+          scenesLen: unitCount, variationLabel: `${v + 1}`,
         })
       : null;
     await sql`INSERT INTO remake_jobs (id, provider, template_id, variation, score, status, spec)
@@ -101,9 +106,7 @@ export async function POST(req: Request) {
   }
 
   // 예상 정밀도(process 확정 전 표시). 실제 결과는 status의 fidelity로 갱신.
-  const expectedFidelity = canEdit && hasRef ? "productSwap"
-    : hasRef && sceneMode ? "perScene"
-    : hasRef ? "cover" : "text";
+  const expectedFidelity = canCompose ? "sceneCompose" : "text";
 
   return NextResponse.json({
     mode: real ? usedProvider : "mock",

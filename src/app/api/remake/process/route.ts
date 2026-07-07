@@ -1,28 +1,29 @@
 import { NextResponse } from "next/server";
 import { sql, ensureSchema, isConfigured as dbConfigured } from "@/lib/db";
 import { providerById, type Tier } from "@/lib/remake/providers";
-import { type Frame, midTime, fetchCoverFrame, fetchSceneFrames } from "@/lib/remake/frames";
-import { hasImageEdit, editProductSwap } from "@/lib/remake/imageedit";
-import { REMAKE_TEMPLATE_MAP } from "@/data/ktrend/remake-templates";
+import { hasImageEdit, composeScene } from "@/lib/remake/imageedit";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
-interface Scene { time?: string; roleKo?: string; shot?: string; action?: string }
+interface Scene { time?: string; roleKo?: string; shot?: string; action?: string; sceneImagePrompt?: string; motionPrompt?: string }
 interface Spec {
   seed: string; variation: number; tier: Tier; providerId: string;
   needsPublicUrl: boolean; imageUrl: string | null;
   productAssetId: string | null; imageMime: string;
-  templateId: string | null; promptBase: string; product: { pname?: string; benefit?: string; concern?: string };
-  sceneMode: boolean; scene: Scene | null; scenesLen: number;
-  refUrl: string | null; canEdit: boolean; hasRef: boolean;
+  promptBase: string; product: { pname?: string; benefit?: string; concern?: string };
+  concept?: string; talent?: string; setting?: string;
+  scene: Scene | null; scenesLen: number; variationLabel?: string;
 }
 
 const cams = ["subtle push-in", "slow orbit", "gentle handheld sway", "smooth tilt-up reveal"];
 const NEGATIVE = "any on-screen text, captions, subtitles, words, letters, numbers, hashtags, hex color codes, gibberish typography, distorted lettering, logos, watermark, UI overlays, real celebrity likeness, copyrighted audio, exaggerated or false efficacy claims";
 
-// 잡 하나를 실제 생성(프레임 → 제품 스왑 → 제출). 각 호출이 독립적인 60s 예산을 가짐.
+// 맥락 기반 재창조 — 잡 하나:
+//  1) 내 제품을 '새 장면(새 인물·배경)'에 합성한 스틸 생성(Nano Banana)
+//  2) 그 스틸을 image-to-video로 애니메이션
+// 레퍼런스 원본은 분석에서만 사용 → 생성 단계는 원본 다운로드 없음(빠름, 타임아웃 여유).
 export async function POST(req: Request) {
   if (!dbConfigured()) return NextResponse.json({ error: "DB 미설정" }, { status: 503 });
   await ensureSchema();
@@ -35,7 +36,6 @@ export async function POST(req: Request) {
     SELECT status, request_id, spec FROM remake_jobs WHERE id=${id}`;
   const row = rows[0];
   if (!row) return NextResponse.json({ error: "잡 없음" }, { status: 404 });
-  // 이미 제출됐거나 종료된 잡은 재처리 안 함(중복 제출 방지).
   if (row.request_id || ["completed", "failed", "nsfw"].includes(row.status)) {
     return NextResponse.json({ ok: true, status: row.status, already: true });
   }
@@ -51,7 +51,8 @@ export async function POST(req: Request) {
 
   try {
     const v = spec.variation;
-    const t = spec.templateId ? REMAKE_TEMPLATE_MAP[spec.templateId] : undefined;
+    const sc = spec.scene || {};
+    const motion = sc.motionPrompt || sc.shot || cams[v % cams.length];
 
     // 제품 이미지 로드(자산).
     let imageBase64 = "";
@@ -60,90 +61,66 @@ export async function POST(req: Request) {
       const a = await sql<{ data: string; mime: string }>`SELECT data, mime FROM remake_assets WHERE id=${spec.productAssetId}`;
       imageBase64 = a.rows[0]?.data || "";
     }
+    const base64Seed = !spec.needsPublicUrl; // gemini(Veo/Omni)면 스틸을 base64 시드로 사용 가능
 
-    // 1) 프레임(커버 + 이 장면) — 캐시 우선.
-    const tf = Date.now();
-    const timestamps = spec.scene ? [midTime(spec.scene.time, v)] : [];
-    const [refFrame, sceneFrames] = await Promise.all([
-      spec.hasRef && spec.refUrl ? fetchCoverFrame(spec.refUrl) : Promise.resolve(null),
-      spec.hasRef && spec.refUrl && spec.sceneMode && timestamps.length
-        ? fetchSceneFrames(spec.refUrl, timestamps)
-        : Promise.resolve([] as (Frame | null)[]),
-    ]);
-    mark("frames", tf);
-    const sceneRef = sceneFrames[0] || refFrame;
-    const usedSceneFrames = Boolean(sceneFrames[0]);
+    // 이 비트의 새 장면 프롬프트(분석에서 제공). 없으면 제품·맥락으로 구성.
+    const sceneImagePrompt = sc.sceneImagePrompt
+      || [
+        spec.concept ? `Concept: ${spec.concept}.` : "",
+        `Beat role: ${sc.roleKo || "product moment"}.`,
+        sc.action ? `Action: ${sc.action}.` : "",
+        spec.talent ? `Talent: ${spec.talent}.` : "A fresh new on-screen person.",
+        spec.setting ? `Setting: ${spec.setting}.` : "A bright, clean fresh environment.",
+        spec.product.pname ? `Product: ${spec.product.pname}.` : "",
+        spec.product.benefit ? `Highlight: ${spec.product.benefit}.` : "",
+        `Shot: ${sc.shot || "clean UGC framing"}.`,
+      ].filter(Boolean).join(" ");
 
-    // 2) 제품 스왑 편집(레퍼런스 프레임에서 제품만 교체) — 가장 긴밀한 재현.
-    let inputB64 = imageBase64;
-    let inputMime = imageMime;
-    let edited = false;
-    if (spec.canEdit && sceneRef && imageBase64 && hasImageEdit()) {
-      const te = Date.now();
-      const sc = spec.scene || {};
-      const sw = await editProductSwap(
-        { b64: sceneRef.b64, mime: sceneRef.mime },
-        { b64: imageBase64, mime: imageMime },
-        `${sc.roleKo || ""} ${sc.action || ""}`.trim(),
-      );
-      mark("edit", te);
-      if (sw) { inputB64 = sw.b64; inputMime = sw.mime; edited = true; }
+    // 1) 새 장면 스틸 합성(내 제품 포함, 새 인물·배경).
+    let seedB64 = imageBase64;
+    let seedMime = imageMime;
+    let composed = false;
+    if (base64Seed && imageBase64 && hasImageEdit()) {
+      const tc = Date.now();
+      const still = await composeScene({ b64: imageBase64, mime: imageMime }, sceneImagePrompt);
+      mark("compose", tc);
+      if (still) { seedB64 = still.b64; seedMime = still.mime; composed = true; }
     }
 
-    // 3) 프롬프트
-    const refNote = (refFrame || usedSceneFrames)
-      ? `\n\n[REFERENCE-TO-VIDEO] 첫 번째 입력 이미지는 레퍼런스 영상의${usedSceneFrames ? " 이 장면(timestamp) 실제 프레임" : " 실제 프레임"}입니다. 그 장면의 시각 스타일·구도·프레이밍·카메라 앵글·조명·색감·질감 디테일을 최대한 살려 유사하게 따르세요(똑같이 복제가 아니라 디테일을 살린 유사 재현). 두 번째 입력 이미지는 내 제품입니다 — 같은 룩을 유지하되 화면의 제품만 내 제품으로 교체하세요. 레퍼런스의 글자·로고·특정 인물은 복제 금지.`
-      : "";
-    const sc = spec.scene || {};
-    const head = spec.promptBase ? `${spec.promptBase}\n\n` : (t ? `${buildPrompt(t, spec.product, v)}\n\n` : "");
-    const scenePrompt = `${head}SCENE ${v + 1}/${spec.scenesLen || 1} — reproduce this exact beat of the reference:
-- timing: ${sc.time || `${v + 1}`}
-- role: ${sc.roleKo || ""}
-- shot/camera: ${sc.shot || cams[v % cams.length]}
-- action: ${sc.action || ""}
-Match the reference's framing, camera movement and pacing for THIS scene faithfully (high structure similarity). Keep the product identity (label, color, shape) consistent across scenes. Use distinct visuals/audio from any original clip. Vertical 9:16, photorealistic.
-‼ NO on-screen text of any kind — no captions, words, letters, numbers, hashtags, hex color codes, logos or UI. Clean footage only (captions are added later in post).`;
+    // 2) 애니메이션 프롬프트 — 합성 스틸이면 "이 장면을 자연스럽게 움직이기", 아니면 텍스트 기반.
+    const prompt = composed
+      ? `Animate this vertical 9:16 image into a short, realistic short-form clip. Keep the person, product, composition and style of the image; add natural motion — ${motion}${sc.action ? ` conveying "${sc.action}"` : ""}. Photorealistic UGC. NO on-screen text, captions, letters, numbers, hashtags, logos or UI.`
+      : [
+          spec.promptBase || "",
+          `A short-form vertical 9:16 beauty clip. Beat: ${sc.roleKo || "product moment"}.`,
+          sc.action ? `Action: ${sc.action}.` : "",
+          spec.talent ? `New person: ${spec.talent}.` : "",
+          spec.setting ? `New setting: ${spec.setting}.` : "",
+          spec.product.pname ? `Featuring the product ${spec.product.pname}.` : "",
+          `Camera: ${motion}. Photorealistic, clean, high-conversion UGC. NO on-screen text, captions, letters, logos or UI.`,
+        ].filter(Boolean).join(" ");
 
-    const prompt = edited
-      ? `Animate this vertical 9:16 image into a short realistic clip with subtle, natural motion for a "${sc.roleKo || "beauty"}" short-form beat${sc.action ? ` (${sc.action})` : ""}. Keep the product and composition exactly as in the image; do not change the scene, product or add elements. Photorealistic. NO on-screen text, captions, letters, numbers, hashtags, logos or UI.`
-      : (spec.sceneMode
-        ? scenePrompt
-        : spec.promptBase
-        ? `${spec.promptBase}\n\nVARIATION ${v + 1}: ${cams[v % cams.length]} camera movement.`
-        : t ? buildPrompt(t, spec.product, v) : "") + refNote;
-
-    // 4) 제출
+    // 3) 제출(image-to-video)
     const ts = Date.now();
     const provider = providerById(spec.providerId);
     const { requestId } = await provider.submit({
       prompt, tier: spec.tier, imageUrl: spec.imageUrl || undefined,
-      imageBase64: inputB64, imageMime: inputMime,
-      refImageBase64: edited ? undefined : sceneRef?.b64, refImageMime: edited ? undefined : sceneRef?.mime,
+      imageBase64: seedB64, imageMime: seedMime,
       negativePrompt: NEGATIVE,
     });
     mark("submit", ts);
 
-    const fidelity = edited ? "productSwap" : usedSceneFrames ? "perScene" : refFrame ? "cover" : "text";
-    const debug = `${timing.join(" ")} total=${Date.now() - t0}ms edited=${edited} sceneRef=${Boolean(sceneRef)}`;
+    const fidelity = composed ? "sceneCompose" : "text";
+    const debug = `${timing.join(" ")} total=${Date.now() - t0}ms composed=${composed}`;
     await sql`UPDATE remake_jobs SET request_id=${requestId}, status='in_progress', fidelity=${fidelity}, debug=${debug}, updated_at=now() WHERE id=${id}`;
     return NextResponse.json({ ok: true, status: "in_progress", fidelity, debug });
   } catch (e) {
+    const raw = String(e);
+    const msg = /abort/i.test(raw)
+      ? "생성 제출이 지연되어 중단됐습니다(벤더 응답 지연). 잠시 후 다시 시도하거나 티어를 낮춰보세요."
+      : raw.slice(0, 300);
     const debug = `${timing.join(" ")} total=${Date.now() - t0}ms`;
-    await sql`UPDATE remake_jobs SET status='failed', error=${String(e).slice(0, 300)}, debug=${debug}, updated_at=now() WHERE id=${id}`;
-    return NextResponse.json({ ok: false, status: "failed", error: String(e).slice(0, 200), debug });
+    await sql`UPDATE remake_jobs SET status='failed', error=${msg}, debug=${debug}, updated_at=now() WHERE id=${id}`;
+    return NextResponse.json({ ok: false, status: "failed", error: msg, debug });
   }
-}
-
-function buildPrompt(t: (typeof REMAKE_TEMPLATE_MAP)[string], product: { pname?: string; benefit?: string; concern?: string }, variation: number): string {
-  return [
-    `TikTok-style ${t.category} beauty product hero shot`,
-    `${cams[variation % cams.length]} camera movement`,
-    t.tone,
-    product.pname ? `product: ${product.pname}` : "",
-    product.benefit ? `emphasize ${product.benefit}` : "",
-    product.concern ? `targets ${product.concern}` : "",
-    `mood matching hook "${t.hookCopy}"`,
-    "clean, bright, high-conversion UGC aesthetic, vertical 9:16",
-    "no on-screen text, no captions, no letters or logos — clean footage only",
-  ].filter(Boolean).join(", ");
 }
