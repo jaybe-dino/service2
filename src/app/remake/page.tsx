@@ -212,8 +212,11 @@ export default function RemakeStudioPage() {
         try {
           const r = await fetch(`/api/remake/status?ids=${ids.join(",")}`);
           const d = await r.json();
-          const jobs: { variation: number; status: string; videoUrl?: string | null; error?: string | null }[] = d.jobs || [];
+          const jobs: { variation: number; status: string; videoUrl?: string | null; error?: string | null; fidelity?: string | null }[] = d.jobs || [];
           setGenElapsed(Math.round((Date.now() - startedAt) / 1000));
+          // 백그라운드에서 확정된 실제 정밀도로 배지 갱신(제품 스왑 성공 여부 등).
+          const confirmed = jobs.find((j) => j.fidelity)?.fidelity;
+          if (confirmed) setGenInfo((g) => (g.fidelity === confirmed ? g : { ...g, fidelity: confirmed }));
           const done = jobs.length > 0 && jobs.every((j) => ["completed", "failed", "nsfw"].includes(j.status));
           if (done) finish(t, jobs, scenesOn);
           else if (Date.now() - startedAt > DEADLINE) {

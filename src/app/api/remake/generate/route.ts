@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextResponse, after } from "next/server";
 import { randomUUID } from "crypto";
 import { sql, ensureSchema, isConfigured as dbConfigured } from "@/lib/db";
 import { selectProvider, TIERS, type Tier } from "@/lib/remake/providers";
@@ -12,14 +12,12 @@ export const maxDuration = 60;
 
 interface Product { pname?: string; benefit?: string; concern?: string; url?: string }
 interface Options { lang?: string; length?: number; aiPerson?: boolean; brandColor?: string; tier?: Tier }
+interface Scene { time?: string; roleKo?: string; shot?: string; action?: string }
+
+const cams = ["subtle push-in", "slow orbit", "gentle handheld sway", "smooth tilt-up reveal"];
 
 // 템플릿 구조 + 제품 정보 → 이미지→영상 모션 프롬프트. 변형별로 카메라 무빙을 달리함.
-function buildPrompt(
-  t: (typeof REMAKE_TEMPLATE_MAP)[string],
-  product: Product,
-  variation: number,
-): string {
-  const cams = ["subtle push-in", "slow orbit", "gentle handheld sway", "smooth tilt-up reveal"];
+function buildPrompt(t: (typeof REMAKE_TEMPLATE_MAP)[string], product: Product, variation: number): string {
   return [
     `TikTok-style ${t.category} beauty product hero shot`,
     `${cams[variation % cams.length]} camera movement`,
@@ -37,7 +35,6 @@ function buildPrompt(
 
 const NEGATIVE = "any on-screen text, captions, subtitles, words, letters, numbers, hashtags, hex color codes, gibberish typography, distorted lettering, logos, watermark, UI overlays, real celebrity likeness, copyrighted audio, exaggerated or false efficacy claims";
 
-
 export async function POST(req: Request) {
   if (!dbConfigured()) return NextResponse.json({ error: "DB 미설정" }, { status: 503 });
   await ensureSchema();
@@ -47,12 +44,12 @@ export async function POST(req: Request) {
     image?: string;
     product?: Product;
     options?: Options;
-    promptBase?: string;   // 콘텐츠 레퍼런스에서 만든 상세 프롬프트("프롬프트화")
-    scoreSeed?: string;    // 점수 결정론용 시드
-    tier?: Tier;           // 품질 티어(재생성 시 override)
-    sceneMode?: boolean;   // 장면별 정밀(레퍼런스 각 화면 1:1 재현)
-    scenes?: { time?: string; roleKo?: string; shot?: string; action?: string }[];
-    refTiktokUrl?: string; // 레퍼런스 원본 → 실제 프레임을 스타일 조건으로 주입
+    promptBase?: string;
+    scoreSeed?: string;
+    tier?: Tier;
+    sceneMode?: boolean;
+    scenes?: Scene[];
+    refTiktokUrl?: string;
   };
   const t = body.templateId ? REMAKE_TEMPLATE_MAP[body.templateId] : undefined;
   const seed = body.scoreSeed || body.templateId || "remake";
@@ -67,7 +64,7 @@ export async function POST(req: Request) {
 
   const provider = selectProvider();
 
-  // 이미지 파싱(base64) — gemini는 이걸 직접 사용, higgsfield는 공개 URL 필요.
+  // 이미지 파싱(base64) — gemini는 직접 사용, higgsfield는 공개 URL 필요.
   let imageBase64 = "";
   let imageMime = "image/png";
   if (typeof body.image === "string" && body.image.startsWith("data:")) {
@@ -75,7 +72,7 @@ export async function POST(req: Request) {
     if (m) { imageMime = m[1]; imageBase64 = m[2]; }
   }
 
-  // 실제 생성은 (1) provider가 mock이 아니고 (2) 제품 이미지가 있을 때만.
+  // 실제 생성은 provider가 mock이 아니고 제품 이미지가 있을 때만. (공개 URL은 빠른 단일 insert)
   let imageUrl: string | null = null;
   const canReal = provider.id !== "mock" && Boolean(imageBase64);
   if (canReal && provider.needsPublicImageUrl) {
@@ -87,31 +84,20 @@ export async function POST(req: Request) {
       (req.headers.get("host") ? `https://${req.headers.get("host")}` : "");
     imageUrl = `${origin}/api/remake/asset/${assetId}`;
   }
-  // higgsfield인데 공개 URL을 못 만든 경우(오리진 없음 등)만 mock 폴백.
   const real = canReal && (!provider.needsPublicImageUrl || Boolean(imageUrl));
   const usedProvider = real ? provider.id : "mock";
 
-  const cams = ["subtle push-in", "slow orbit", "gentle handheld sway", "smooth tilt-up reveal"];
-
-  // 장면별 정밀 모드: 레퍼런스 장면 그래프를 1:1로 재현(각 화면을 개별 생성).
-  // ⚠️ 비용·타임아웃 가드: 클립 수 상한(REMAKE_MAX_SCENES, 기본 1). 여러 클립은 60초 초과 위험.
+  // 장면별 정밀 모드. 비용·타임아웃 가드: 클립 수 상한(REMAKE_MAX_SCENES, 기본 1).
   const maxScenes = Math.max(1, Math.min(6, Number(process.env.REMAKE_MAX_SCENES ?? 1)));
   const allScenes = Array.isArray(body.scenes) ? body.scenes : [];
   const scenes = allScenes.slice(0, maxScenes);
   const sceneMode = Boolean(body.sceneMode) && scenes.length > 0;
   const unitCount = sceneMode ? scenes.length : count;
-
-  // 프레임 취득(병렬): 커버 프레임 + 장면별 실제 프레임(워커). 60초 안에 들도록 타임박스.
   const hasRef = typeof body.refTiktokUrl === "string" && /tiktok\.com/.test(body.refTiktokUrl);
-  const timestamps = scenes.map((s, idx) => midTime(s.time, idx));
-  const [refFrame, sceneFrames] = await Promise.all([
-    hasRef ? fetchCoverFrame(body.refTiktokUrl as string) : Promise.resolve(null),
-    hasRef && sceneMode ? fetchSceneFrames(body.refTiktokUrl as string, timestamps) : Promise.resolve([] as (Frame | null)[]),
-  ]);
-  const usedSceneFrames = sceneFrames.some(Boolean);
+  const refUrl = body.refTiktokUrl as string;
+  const canEdit = real && !provider.needsPublicImageUrl && Boolean(imageBase64) && hasImageEdit();
 
-  // 장면별 프롬프트: 해당 장면의 타이밍·카메라·동작을 그대로 따르도록 지시(구조 유사도↑),
-  // 단 제품 정체성은 일관 유지하고 비주얼/음원은 원본과 구분(표면 유사도↓, 저작권 안전).
+  // 장면별 프롬프트(구조 유사도↑, 제품 정체성 유지, 원본과 비주얼/음원 구분).
   function scenePrompt(idx: number): string {
     const s = scenes[idx] || {};
     const head = promptBase ? `${promptBase}\n\n` : `${t ? buildPrompt(t, product, idx) : ""}\n\n`;
@@ -124,74 +110,85 @@ Match the reference's framing, camera movement and pacing for THIS scene faithfu
 ‼ NO on-screen text of any kind — no captions, words, letters, numbers, hashtags, hex color codes, logos or UI. Clean footage only (captions are added later in post).`;
   }
 
-  // 레퍼런스 프레임을 함께 넣을 때: 첫 이미지=레퍼런스 스타일, 둘째 이미지=내 제품(교체) 지시.
-  const refNote = (refFrame || usedSceneFrames)
-    ? `\n\n[REFERENCE-TO-VIDEO] 첫 번째 입력 이미지는 레퍼런스 영상의${usedSceneFrames ? " 이 장면(timestamp) 실제 프레임" : " 실제 프레임"}입니다. 그 장면의 시각 스타일·구도·프레이밍·카메라 앵글·조명·색감·질감 디테일을 최대한 살려 유사하게 따르세요(똑같이 복제하는 것이 아니라 디테일을 살린 유사 재현). 두 번째 입력 이미지는 내 제품입니다 — 같은 룩을 유지하되 화면의 제품만 내 제품으로 교체하세요. 레퍼런스의 글자·로고·특정 인물은 복제 금지.`
-    : "";
-  // 긴밀 재현: base64 경로(gemini)에서 레퍼런스 프레임의 '제품만' 스왑 → 그 프레임을 애니메이션.
-  const canEdit = real && !provider.needsPublicImageUrl && Boolean(imageBase64) && hasImageEdit();
+  // 1) 잡 행을 즉시 생성(status=in_progress, request_id=NULL) → 클라이언트는 바로 폴링 시작.
+  //    무거운 작업(프레임 취득·제품 스왑 편집·제출)은 응답 후 after()에서 처리 → 504 방지.
+  const jobs: { id: string; variation: number }[] = [];
+  for (let v = 0; v < unitCount; v++) {
+    const id = randomUUID();
+    const score = mockViralScore(seed, v).total;
+    await sql`INSERT INTO remake_jobs (id, provider, template_id, variation, score, status)
+      VALUES (${id}, ${usedProvider}, ${seed}, ${v}, ${score}, 'in_progress')`;
+    jobs.push({ id, variation: v });
+  }
 
-  // 클립별 제출을 병렬로 → 다중 클립일 때 지연(타임아웃) 완화.
-  const jobResults = await Promise.all(
-    Array.from({ length: unitCount }, (_, v) => v).map(async (v) => {
-      const id = randomUUID();
-      const score = mockViralScore(seed, v).total;
-      const sceneRef = sceneFrames[v] || refFrame; // 씬별 프레임 우선, 없으면 커버 프레임
+  // 2) 응답 후 백그라운드: 프레임 → 제품 스왑 편집 → 제출 → 각 잡 행 업데이트.
+  if (real) {
+    after(async () => {
+      try {
+        const timestamps = scenes.map((s, idx) => midTime(s.time, idx));
+        const [refFrame, sceneFrames] = await Promise.all([
+          hasRef ? fetchCoverFrame(refUrl) : Promise.resolve(null),
+          hasRef && sceneMode ? fetchSceneFrames(refUrl, timestamps) : Promise.resolve([] as (Frame | null)[]),
+        ]);
+        const usedSceneFrames = sceneFrames.some(Boolean);
+        const refNote = (refFrame || usedSceneFrames)
+          ? `\n\n[REFERENCE-TO-VIDEO] 첫 번째 입력 이미지는 레퍼런스 영상의${usedSceneFrames ? " 이 장면(timestamp) 실제 프레임" : " 실제 프레임"}입니다. 그 장면의 시각 스타일·구도·프레이밍·카메라 앵글·조명·색감·질감 디테일을 최대한 살려 유사하게 따르세요(똑같이 복제가 아니라 디테일을 살린 유사 재현). 두 번째 입력 이미지는 내 제품입니다 — 같은 룩을 유지하되 화면의 제품만 내 제품으로 교체하세요. 레퍼런스의 글자·로고·특정 인물은 복제 금지.`
+          : "";
 
-      // 1) 제품 스왑 편집(성공 시 이 편집 프레임이 곧 첫 프레임)
-      let inputB64 = imageBase64;
-      let inputMime = imageMime;
-      let edited = false;
-      if (canEdit && sceneRef) {
-        const sc = scenes[v] || {};
-        const sw = await editProductSwap(
-          { b64: sceneRef.b64, mime: sceneRef.mime },
-          { b64: imageBase64, mime: imageMime },
-          `${sc.roleKo || ""} ${sc.action || ""}`.trim(),
-        );
-        if (sw) { inputB64 = sw.b64; inputMime = sw.mime; edited = true; }
+        await Promise.all(jobs.map(async ({ id, variation: v }) => {
+          try {
+            const sceneRef = sceneFrames[v] || refFrame; // 씬별 프레임 우선, 없으면 커버 프레임
+            let inputB64 = imageBase64;
+            let inputMime = imageMime;
+            let edited = false;
+            if (canEdit && sceneRef) {
+              const sc = scenes[v] || {};
+              const sw = await editProductSwap(
+                { b64: sceneRef.b64, mime: sceneRef.mime },
+                { b64: imageBase64, mime: imageMime },
+                `${sc.roleKo || ""} ${sc.action || ""}`.trim(),
+              );
+              if (sw) { inputB64 = sw.b64; inputMime = sw.mime; edited = true; }
+            }
+            const prompt = edited
+              ? `Animate this vertical 9:16 image into a short realistic clip with subtle, natural motion for a "${scenes[v]?.roleKo || "beauty"}" short-form beat${scenes[v]?.action ? ` (${scenes[v]!.action})` : ""}. Keep the product and composition exactly as in the image; do not change the scene, product or add elements. Photorealistic. NO on-screen text, captions, letters, numbers, hashtags, logos or UI.`
+              : (sceneMode
+                ? scenePrompt(v)
+                : promptBase
+                ? `${promptBase}\n\nVARIATION ${v + 1}: ${cams[v % cams.length]} camera movement.`
+                : buildPrompt(t!, product, v)) + refNote;
+
+            const { requestId } = await provider.submit({
+              prompt, tier, imageUrl: imageUrl || undefined, imageBase64: inputB64, imageMime: inputMime,
+              refImageBase64: edited ? undefined : sceneRef?.b64, refImageMime: edited ? undefined : sceneRef?.mime,
+              negativePrompt: NEGATIVE,
+            });
+            await sql`UPDATE remake_jobs SET request_id=${requestId}, fidelity=${edited ? "productSwap" : usedSceneFrames ? "perScene" : refFrame ? "cover" : "text"}, updated_at=now() WHERE id=${id}`;
+          } catch (e) {
+            await sql`UPDATE remake_jobs SET status='failed', error=${String(e).slice(0, 300)}, updated_at=now() WHERE id=${id}`;
+          }
+        }));
+      } catch (e) {
+        // 준비 자체 실패 → 아직 제출 안 된(request_id NULL) 잡을 실패 처리.
+        const msg = String(e).slice(0, 200);
+        await sql`UPDATE remake_jobs SET status='failed', error=${msg}, updated_at=now()
+          WHERE id = ANY(${jobs.map((j) => j.id) as unknown as string}) AND request_id IS NULL`;
       }
+    });
+  }
 
-      // 2) 프롬프트: 편집됐으면 "이 프레임을 자연스럽게 애니메이션"(구도/제품 유지), 아니면 기존.
-      const prompt = edited
-        ? `Animate this vertical 9:16 image into a short realistic clip with subtle, natural motion for a "${scenes[v]?.roleKo || "beauty"}" short-form beat${scenes[v]?.action ? ` (${scenes[v]!.action})` : ""}. Keep the product and composition exactly as in the image; do not change the scene, product or add elements. Photorealistic. NO on-screen text, captions, letters, numbers, hashtags, logos or UI.`
-        : (sceneMode
-          ? scenePrompt(v)
-          : promptBase
-          ? `${promptBase}\n\nVARIATION ${v + 1}: ${cams[v % cams.length]} camera movement.`
-          : buildPrompt(t!, product, v)) + refNote;
-
-      if (real) {
-        try {
-          const { requestId } = await provider.submit({
-            prompt, tier, imageUrl: imageUrl || undefined, imageBase64: inputB64, imageMime: inputMime,
-            // 편집 프레임이 입력이면 별도 스타일 레퍼런스는 불필요
-            refImageBase64: edited ? undefined : sceneRef?.b64, refImageMime: edited ? undefined : sceneRef?.mime,
-            negativePrompt: NEGATIVE,
-          });
-          await sql`INSERT INTO remake_jobs (id, provider, request_id, template_id, variation, score, status)
-            VALUES (${id}, ${usedProvider}, ${requestId}, ${seed}, ${v}, ${score}, 'in_progress')`;
-        } catch (e) {
-          await sql`INSERT INTO remake_jobs (id, provider, template_id, variation, score, status, error)
-            VALUES (${id}, ${usedProvider}, ${seed}, ${v}, ${score}, 'failed', ${String(e).slice(0, 300)})`;
-        }
-      } else {
-        await sql`INSERT INTO remake_jobs (id, provider, template_id, variation, score, status)
-          VALUES (${id}, 'mock', ${seed}, ${v}, ${score}, 'in_progress')`;
-      }
-      return { id, variation: v, edited };
-    }),
-  );
-  const jobs = jobResults.map(({ id, variation }) => ({ id, variation }));
-  const usedEdit = jobResults.some((r) => r.edited);
+  // 예상 정밀도(백그라운드 확정 전 표시용). 실제 결과는 status에서 fidelity로 확정.
+  const expectedFidelity = canEdit && hasRef ? "productSwap"
+    : hasRef && sceneMode ? "perScene"
+    : hasRef ? "cover" : "text";
 
   return NextResponse.json({
     mode: real ? usedProvider : "mock",
     provider: real ? provider.label : "시뮬레이션",
     tier,
     sceneMode,
-    // 정밀도: productSwap(프레임 제품 스왑, 최고) > perScene > cover > text
-    fidelity: usedEdit ? "productSwap" : usedSceneFrames ? "perScene" : refFrame ? "cover" : "text",
+    fidelity: expectedFidelity,
+    async: real,
     jobs,
   });
 }
