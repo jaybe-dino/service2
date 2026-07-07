@@ -1,15 +1,19 @@
 import { NextResponse } from "next/server";
 import { sql, ensureSchema, isConfigured } from "@/lib/db";
 import { isAdminAuthed } from "@/lib/admin-auth";
+import { COUNTRIES } from "@/data/ktrend/meta";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
-// 태국 K-뷰티 데이터(중복 제거·병합 완료) → DB videos에 country='TH'로 적재.
-// 소스: public/data/th-videos.json (컴팩트 시드). 멱등(ON CONFLICT UPDATE).
-// 적재 후 브랜드/크리에이터 통계 재계산(브랜드·인플루언서 매칭 반영).
+// 국가별 K-뷰티 시드(중복 제거·언어 필터 완료)를 DB videos에 country=<CC>로 적재.
+// 소스: public/data/<cc>-videos.json. 멱등 + 클린 교체(해당 국가 기존분 제거 후 삽입).
+// 국가별 언어/쿼리 필터는 시드 생성 단계에서 이미 적용됨(태국=타이어, 베트남=베트남어).
 interface Seed { country: string; fields: string[]; rows: (string | number)[][] }
+
+// 시드 가능 국가 = 활성 국가 중 US 외(US는 정적 시드).
+const SEEDABLE = new Set(COUNTRIES.filter((c) => c.active && c.id !== "US").map((c) => c.id));
 
 function originOf(req: Request): string {
   return (
@@ -24,20 +28,25 @@ export async function POST(req: Request) {
   if (!isConfigured()) return NextResponse.json({ error: "DB 미설정" }, { status: 503 });
   await ensureSchema();
 
+  const body = (await req.json().catch(() => ({}))) as { country?: string };
+  const country = String(body?.country || "").trim().toUpperCase();
+  if (!SEEDABLE.has(country)) {
+    return NextResponse.json({ error: `지원하지 않는 국가: ${country || "(없음)"} (가능: ${[...SEEDABLE].join(",")})` }, { status: 400 });
+  }
+
   const origin = originOf(req);
   if (!origin) return NextResponse.json({ error: "origin 확인 불가" }, { status: 500 });
 
   // 시드 로드
   let seed: Seed;
   try {
-    const res = await fetch(`${origin}/data/th-videos.json`, { cache: "no-store" });
-    if (!res.ok) return NextResponse.json({ error: `시드 로드 실패 ${res.status}` }, { status: 502 });
+    const res = await fetch(`${origin}/data/${country.toLowerCase()}-videos.json`, { cache: "no-store" });
+    if (!res.ok) return NextResponse.json({ error: `시드 로드 실패 ${res.status} (${country})` }, { status: 502 });
     seed = (await res.json()) as Seed;
   } catch (e) {
     return NextResponse.json({ error: `시드 로드 오류: ${String(e).slice(0, 160)}` }, { status: 502 });
   }
   const rows = Array.isArray(seed?.rows) ? seed.rows : [];
-  const country = (seed?.country || "TH").toUpperCase();
   if (!rows.length) return NextResponse.json({ error: "시드 데이터 없음" }, { status: 400 });
 
   // rows: [video_id, brand, handle, views, likes, comments, shares, is_ad, is_shop, date, tier?]
@@ -60,11 +69,10 @@ export async function POST(req: Request) {
     })
     .filter((x): x is NonNullable<typeof x> => !!x);
 
-  // 클린 리시드: 이 국가의 기존 시드분을 먼저 제거(이전에 섞여 들어간 글로벌/영문 행 정리).
-  // (해당 국가 크롤링은 별도 opt-in이므로 현재 country=TH는 이 시드가 유일한 소스)
+  // 클린 리시드: 이 국가의 기존 시드분 제거(섞여 들어간 글로벌/타국 행 정리).
+  // (해당 국가 크롤링은 별도 opt-in이므로 현재 country=<CC>는 이 시드가 유일한 소스)
   await sql`DELETE FROM videos WHERE country=${country}`;
 
-  // 배치 insert (300행 = 3900 파라미터, 안전).
   const COLS = 13;
   const CHUNK = 300;
   let inserted = 0;
@@ -90,7 +98,7 @@ export async function POST(req: Request) {
     inserted += batch.length;
   }
 
-  // 브랜드 통계 재계산(적재된 브랜드 대상) — 브랜드↔콘텐츠 매칭 반영.
+  // 브랜드 통계 재계산(적재 브랜드) — 브랜드↔콘텐츠 매칭 반영.
   const brandList = Array.from(brands);
   await sql`
     INSERT INTO brand_stats (brand_name, videos, influencers, total_views, avg_views, max_views, shop_count, updated_at)
@@ -102,7 +110,7 @@ export async function POST(req: Request) {
       videos=EXCLUDED.videos, influencers=EXCLUDED.influencers, total_views=EXCLUDED.total_views,
       avg_views=EXCLUDED.avg_views, max_views=EXCLUDED.max_views, shop_count=EXCLUDED.shop_count, updated_at=now()`;
 
-  // 크리에이터(인플루언서) 집계 재계산 — 인플루언서↔브랜드 매칭 반영.
+  // 크리에이터 집계 재계산 — 인플루언서↔브랜드 매칭 반영.
   const handleList = Array.from(handles);
   await sql`
     INSERT INTO creators (handle, videos, total_views, avg_views, brands, updated_at)
@@ -113,7 +121,7 @@ export async function POST(req: Request) {
       videos=EXCLUDED.videos, total_views=EXCLUDED.total_views, avg_views=EXCLUDED.avg_views,
       brands=EXCLUDED.brands, updated_at=now()`;
 
-  await sql`INSERT INTO collection_runs (kind, target, status, collected) VALUES ('seed_th', ${country}, 'ok', ${inserted})`;
+  await sql`INSERT INTO collection_runs (kind, target, status, collected) VALUES ('seed_market', ${country}, 'ok', ${inserted})`;
 
   return NextResponse.json({ ok: true, country, inserted, brands: brandList.length, creators: handleList.length });
 }

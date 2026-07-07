@@ -2,14 +2,20 @@
 // + 확장 브랜드 마스터 (출처: K-뷰티 422 브랜드 리스트, 신규 376개) — 수집 1차학습 대상
 import raw from "./real-brands.json";
 import collectMaster from "./collect-brands.json";
-import thBrandCat from "./th-brand-category.json";
+import seedBrandCat from "./seed-brand-category.json";
 import type { CategoryId, SubCategoryId } from "./meta";
 import { classifyBrandAttrs, type BrandAttrs } from "./brand-attrs";
 
-// 수집 브랜드 카테고리 오버라이드(브랜드명 소문자 → skincare|makeup|haircare).
-// 정적 시드에 없는 신규 브랜드가 올바른 카테고리로 등록되도록(예: 태국 데이터의 메이크업/헤어케어).
+// 브랜드 철자 정규화 키(소문자 + 영숫자만) — 철자/문장부호/대소문자 변형을 하나로 통합.
+// 예: "Dr. G"=="Dr.G", "Mary & May"=="Mary&May", "TONYMOLY"=="Tony Moly", "SU:M37°"=="Sum37".
+export function normKey(name: string): string {
+  return (name || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+}
+
+// 수집 브랜드 카테고리 오버라이드(정규화 키 → skincare|makeup|haircare).
+// 정적 시드에 없는 신규 브랜드가 올바른 카테고리로 등록되도록(태국·베트남 데이터의 메이크업/헤어케어).
 const CAT_OVERRIDE: Record<string, CategoryId> = Object.fromEntries(
-  Object.entries(thBrandCat as Record<string, string>).map(([k, v]) => [k.toLowerCase(), v as CategoryId]),
+  Object.entries(seedBrandCat as Record<string, string>).map(([k, v]) => [normKey(k), v as CategoryId]),
 );
 
 export interface Brand {
@@ -80,7 +86,6 @@ const seedBrands: Brand[] = (raw as Omit<Brand, "subCategory" | "attrs">[])
 // 확장 마스터의 신규 브랜드(서비스 미수록분)를 디렉터리에 합류.
 // 콘텐츠 통계는 0에서 시작 → 수집 1차학습 후 loadContent가 실수치로 갱신.
 type MasterRow = { name: string; category: CategoryId; subCategory: SubCategoryId; isNew: boolean };
-const normKey = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, "");
 const seedNorm = new Set(seedBrands.map((b) => normKey(b.name)));
 const extraSeen = new Set<string>();
 const extraBrands: Brand[] = (collectMaster as MasterRow[])
@@ -119,6 +124,13 @@ export const BRAND_BY_NAME: Record<string, Brand> = Object.fromEntries(
   BRANDS.map((b) => [b.name.toLowerCase(), b]),
 );
 
+// 철자 정규화 룩업 — 같은 브랜드의 다른 표기를 통합. 먼저 등록된(정적 시드) 표기가 캐논.
+export const BRAND_BY_NORM: Record<string, Brand> = {};
+for (const b of BRANDS) {
+  const nk = normKey(b.name);
+  if (nk && !(nk in BRAND_BY_NORM)) BRAND_BY_NORM[nk] = b;
+}
+
 let dynSeq = 0;
 
 // 정적 시드에 없는, 수집으로 새로 발굴된 브랜드를 런타임 등록.
@@ -127,7 +139,11 @@ export function ensureBrandByName(name: string): Brand {
   const key = name.trim().toLowerCase();
   const existing = BRAND_BY_NAME[key];
   if (existing) return existing;
-  const category: CategoryId = CAT_OVERRIDE[key] ?? "skincare"; // 오버라이드 우선, 없으면 스킨케어
+  // 철자 변형 통합: 정규화 키로 기존 브랜드와 매칭되면 그 브랜드로 합류(별도 신규 생성 안 함).
+  const nk = normKey(name);
+  const normHit = BRAND_BY_NORM[nk];
+  if (normHit) { BRAND_BY_NAME[key] = normHit; return normHit; }
+  const category: CategoryId = CAT_OVERRIDE[nk] ?? "skincare"; // 오버라이드 우선, 없으면 스킨케어
   const subCategory: SubCategoryId = SUB_BY_NAME[name] ?? subFallback(category);
   const az = /^[A-Za-z]/.test(name) ? name[0].toUpperCase() : "#";
   const brand: Brand = {
@@ -150,6 +166,7 @@ export function ensureBrandByName(name: string): Brand {
   BRANDS.push(brand);
   BRAND_MAP[brand.id] = brand;
   BRAND_BY_NAME[key] = brand;
+  if (nk && !(nk in BRAND_BY_NORM)) BRAND_BY_NORM[nk] = brand; // 이후 철자 변형이 이 브랜드로 통합되도록
   if (!BRAND_AZ_KEYS.includes(az)) BRAND_AZ_KEYS.push(az);
   return brand;
 }

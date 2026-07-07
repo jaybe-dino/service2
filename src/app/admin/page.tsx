@@ -375,22 +375,24 @@ export default function AdminPage() {
     }
   };
 
-  const seedTh = async () => {
+  const seedMarket = async (country: string, flag: string, label: string) => {
     setCollecting(true);
     const tnow = new Date().toLocaleTimeString("ko-KR");
     try {
-      const r = await fetch("/api/admin/seed-th", { method: "POST" });
+      const r = await fetch("/api/admin/seed-market", {
+        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ country }),
+      });
       const text = await r.text();
       let d: Record<string, unknown> = {};
       try { d = JSON.parse(text); } catch { /* non-json */ }
       setCollecting(false);
-      setDebugLog((L) => [`[${tnow}] 태국 데이터 반영 → HTTP ${r.status}: ${text.slice(0, 400)}`, ...L].slice(0, 20));
-      setToast(r.ok ? `🇹🇭 태국 ${d.inserted ?? 0}건 · 브랜드 ${d.brands ?? 0} · 인플루언서 ${d.creators ?? 0} 반영` : `실패 (HTTP ${r.status})`);
+      setDebugLog((L) => [`[${tnow}] ${label} 데이터 반영 → HTTP ${r.status}: ${text.slice(0, 400)}`, ...L].slice(0, 20));
+      setToast(r.ok ? `${flag} ${label} ${d.inserted ?? 0}건 · 브랜드 ${d.brands ?? 0} · 인플루언서 ${d.creators ?? 0} 반영` : `실패: ${d.error ?? `HTTP ${r.status}`}`);
       setTimeout(() => setToast(""), 6000);
       loadData();
     } catch (e) {
       setCollecting(false);
-      setDebugLog((L) => [`[${tnow}] 태국 반영 오류: ${String(e).slice(0, 200)}`, ...L].slice(0, 20));
+      setDebugLog((L) => [`[${tnow}] ${label} 반영 오류: ${String(e).slice(0, 200)}`, ...L].slice(0, 20));
       setToast("요청 오류");
       setTimeout(() => setToast(""), 4000);
     }
@@ -723,8 +725,11 @@ export default function AdminPage() {
               <input value={newBrand} onChange={(e) => setNewBrand(e.target.value)} placeholder="브랜드명" className="rounded-md border border-[var(--border)] px-2 py-1.5 text-[11px]" />
               <button className="kt-btn kt-btn-outline px-3 py-1.5 text-[11px]">요청 추가</button>
             </form>
-            <button onClick={seedTh} disabled={collecting} className="kt-btn kt-btn-outline ml-auto px-3 py-1.5 text-[11px] disabled:opacity-50">
-              🇹🇭 태국 데이터 반영
+            <button onClick={() => seedMarket("TH", "🇹🇭", "태국")} disabled={collecting} className="kt-btn kt-btn-outline ml-auto px-3 py-1.5 text-[11px] disabled:opacity-50">
+              🇹🇭 태국 반영
+            </button>
+            <button onClick={() => seedMarket("VN", "🇻🇳", "베트남")} disabled={collecting} className="kt-btn kt-btn-outline px-3 py-1.5 text-[11px] disabled:opacity-50">
+              🇻🇳 베트남 반영
             </button>
             <button onClick={runShopCollect} disabled={collecting} className="kt-btn kt-btn-outline px-3 py-1.5 text-[11px] disabled:opacity-50">
               🛍 틱톡샵 상품 수집
