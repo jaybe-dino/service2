@@ -89,6 +89,17 @@ export default function Home() {
             <Link href="/plans" className="kt-btn kt-btn-outline px-6 py-3 text-[13px]">요금제 보기</Link>
           </div>
 
+          {/* 온보딩(자가체크)을 첫 화면에서 바로 노출 — 슬라이드로 넘기지 않아도 진입 가능 */}
+          {ONBOARDING.enabled && (
+            <Link
+              href={`${ONBOARDING.path}?step=check`}
+              className="mx-auto mt-6 inline-flex items-center gap-2 rounded-full border border-[var(--accent)]/40 bg-white/80 px-4 py-2 text-[12px] font-bold text-[var(--accent)] shadow-sm backdrop-blur transition-colors hover:bg-[var(--accent-light)]"
+            >
+              <ShoppingBag size={14} /> TikTok Shop 입점? 1분 자가체크로 예비 등급·추천 트랙 확인
+              <ArrowRight size={13} />
+            </Link>
+          )}
+
           {/* 데이터 규모: 관리자 전용 */}
           {isAdmin && (
             <div className="mx-auto mt-12 grid max-w-2xl grid-cols-3 gap-4">

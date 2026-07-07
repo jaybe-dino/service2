@@ -2,8 +2,15 @@
 // + 확장 브랜드 마스터 (출처: K-뷰티 422 브랜드 리스트, 신규 376개) — 수집 1차학습 대상
 import raw from "./real-brands.json";
 import collectMaster from "./collect-brands.json";
+import thBrandCat from "./th-brand-category.json";
 import type { CategoryId, SubCategoryId } from "./meta";
 import { classifyBrandAttrs, type BrandAttrs } from "./brand-attrs";
+
+// 수집 브랜드 카테고리 오버라이드(브랜드명 소문자 → skincare|makeup|haircare).
+// 정적 시드에 없는 신규 브랜드가 올바른 카테고리로 등록되도록(예: 태국 데이터의 메이크업/헤어케어).
+const CAT_OVERRIDE: Record<string, CategoryId> = Object.fromEntries(
+  Object.entries(thBrandCat as Record<string, string>).map(([k, v]) => [k.toLowerCase(), v as CategoryId]),
+);
 
 export interface Brand {
   id: string;
@@ -120,7 +127,7 @@ export function ensureBrandByName(name: string): Brand {
   const key = name.trim().toLowerCase();
   const existing = BRAND_BY_NAME[key];
   if (existing) return existing;
-  const category: CategoryId = "skincare";
+  const category: CategoryId = CAT_OVERRIDE[key] ?? "skincare"; // 오버라이드 우선, 없으면 스킨케어
   const subCategory: SubCategoryId = SUB_BY_NAME[name] ?? subFallback(category);
   const az = /^[A-Za-z]/.test(name) ? name[0].toUpperCase() : "#";
   const brand: Brand = {
