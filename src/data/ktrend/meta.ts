@@ -27,17 +27,19 @@ export const CATEGORY_MAP: Record<CategoryId, Category> = Object.fromEntries(
   CATEGORIES.map((c) => [c.id, c]),
 ) as Record<CategoryId, Category>;
 
-// 타겟 국가 (현재 US만 활성, 추후 확장 예정)
+// 타겟 국가 (US + 동남아 4개국 활성. PH/ID는 추후 확장)
 export interface Country { id: string; nameKo: string; flag: string; active: boolean }
 export const COUNTRIES: Country[] = [
   { id: "US", nameKo: "미국", flag: "🇺🇸", active: true },
-  { id: "TH", nameKo: "태국", flag: "🇹🇭", active: false },
-  { id: "VN", nameKo: "베트남", flag: "🇻🇳", active: false },
+  { id: "TH", nameKo: "태국", flag: "🇹🇭", active: true },
+  { id: "VN", nameKo: "베트남", flag: "🇻🇳", active: true },
+  { id: "MY", nameKo: "말레이시아", flag: "🇲🇾", active: true },
+  { id: "SG", nameKo: "싱가포르", flag: "🇸🇬", active: true },
   { id: "PH", nameKo: "필리핀", flag: "🇵🇭", active: false },
-  { id: "MY", nameKo: "말레이시아", flag: "🇲🇾", active: false },
-  { id: "SG", nameKo: "싱가포르", flag: "🇸🇬", active: false },
   { id: "ID", nameKo: "인도네시아", flag: "🇮🇩", active: false },
 ];
+// 동남아 크롤링 대상(프록시 국가코드로 지역 타게팅). US는 기본 시장.
+export const SEA_COUNTRIES = ["TH", "VN", "MY", "SG"] as const;
 export const COUNTRY_MAP: Record<string, Country> = Object.fromEntries(COUNTRIES.map((c) => [c.id, c]));
 
 // ---------------------------------------------------------------------------

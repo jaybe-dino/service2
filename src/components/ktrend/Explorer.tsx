@@ -128,7 +128,7 @@ export default function Explorer() {
   const filtered = useMemo(() => {
     if (!all) return [];
     const list = all.filter((c) => {
-      if (c.country !== country) return false; // 타겟 국가
+      if (country !== "ALL" && c.country !== country) return false; // 타겟 국가(ALL=전체 시장)
       // 게이팅: 비Pro는 선택한 브랜드만. Pro·Advance는 좌측 필터 기준.
       if (gated) {
         if (!(c.brandId in viewBrands)) return false;
@@ -416,29 +416,37 @@ export default function Explorer() {
 
       {/* ===== 우측 콘텐츠 리스팅 ===== */}
       <section>
-        {/* 타겟 국가 — 어드민에게만 노출 (일반 사용자는 US만, 다국가 미공개) */}
-        {isAdmin && (
-          <div className="kt-noscrollbar mb-3 flex items-center gap-1.5 overflow-x-auto">
-            <span className="shrink-0 text-[10px] font-semibold text-[var(--muted)]">국가</span>
-            {COUNTRIES.map((co) => (
-              <button
-                key={co.id}
-                onClick={() => co.active && setCountry(co.id)}
-                disabled={!co.active}
-                title={co.active ? "" : "준비 중"}
-                className={`shrink-0 rounded-full border px-2.5 py-1 text-[11px] font-semibold transition-colors ${
-                  country === co.id
-                    ? "border-[var(--accent)] bg-[var(--accent)] text-white"
-                    : co.active
-                    ? "border-[var(--border)] text-[var(--muted)] hover:border-[var(--accent)]"
-                    : "cursor-not-allowed border-[var(--border)] text-[var(--muted)]/40"
-                }`}
-              >
-                {co.flag} {co.nameKo}{!co.active && " · 준비중"}
-              </button>
-            ))}
-          </div>
-        )}
+        {/* 타겟 국가 — 시장 필터(전체/미국/동남아 4개국). 비활성 국가는 준비중 표시. */}
+        <div className="kt-noscrollbar mb-3 flex items-center gap-1.5 overflow-x-auto">
+          <span className="shrink-0 text-[10px] font-semibold text-[var(--muted)]">시장</span>
+          <button
+            onClick={() => setCountry("ALL")}
+            className={`shrink-0 rounded-full border px-2.5 py-1 text-[11px] font-semibold transition-colors ${
+              country === "ALL"
+                ? "border-[var(--accent)] bg-[var(--accent)] text-white"
+                : "border-[var(--border)] text-[var(--muted)] hover:border-[var(--accent)]"
+            }`}
+          >
+            🌏 전체
+          </button>
+          {COUNTRIES.map((co) => (
+            <button
+              key={co.id}
+              onClick={() => co.active && setCountry(co.id)}
+              disabled={!co.active}
+              title={co.active ? "" : "준비 중"}
+              className={`shrink-0 rounded-full border px-2.5 py-1 text-[11px] font-semibold transition-colors ${
+                country === co.id
+                  ? "border-[var(--accent)] bg-[var(--accent)] text-white"
+                  : co.active
+                  ? "border-[var(--border)] text-[var(--muted)] hover:border-[var(--accent)]"
+                  : "cursor-not-allowed border-[var(--border)] text-[var(--muted)]/40"
+              }`}
+            >
+              {co.flag} {co.nameKo}{!co.active && " · 준비중"}
+            </button>
+          ))}
+        </div>
 
         <div className="mb-3 flex flex-wrap items-center gap-2">
           <button

@@ -24,6 +24,7 @@ export interface CollectInput {
   sinceDate?: string | null; // 증분: 이 날짜 이후만
   backfillDays?: number | null; // 1차학습: 최근 N일치(예: 365)
   limit?: number;
+  region?: string | null; // 지역 타게팅 국가코드(예: TH/VN/MY/SG). 없으면 US(프록시 미지정).
 }
 
 export function scraperConfigured(): boolean {
@@ -82,6 +83,11 @@ function apifyInput(input: CollectInput): Record<string, unknown> {
   };
   const oldest = oldestDate(input);
   if (oldest) body.oldestPostDateUnified = oldest; // 수집 단계에서 기간 제한 → 중복/비용 절감
+  // 지역 타게팅: 해당 국가 프록시로 요청 → 틱톡이 그 지역 맞춤 콘텐츠를 서빙(US/미지정은 프록시 안 붙임).
+  const region = (input.region || "").toUpperCase();
+  if (region && region !== "US") {
+    body.proxyConfiguration = { useApifyProxy: true, apifyProxyCountry: region };
+  }
   return body;
 }
 
@@ -114,6 +120,7 @@ export async function startApifyRun(input: CollectInput, webhookUrl?: string): P
         requestUrl: webhookUrl,
         payloadTemplate: JSON.stringify({
           brandName: input.brandName,
+          region: input.region || "US",
           datasetId: "{{resource.defaultDatasetId}}",
           runId: "{{resource.id}}",
         }),

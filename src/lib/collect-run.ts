@@ -7,6 +7,27 @@ import {
 import { isOfficialHandle } from "@/data/ktrend/official";
 import { BRANDS } from "@/data/ktrend/brands";
 import { DEFAULT_CRAWL_RULES, type CrawlRules } from "./crawl-rules";
+import { SEA_COUNTRIES } from "@/data/ktrend/meta";
+
+// 수집 가능 지역: US(기본) + 동남아 4개국. admin_settings(collect_regions)로 켬.
+const ALLOWED_REGIONS = new Set<string>(["US", ...SEA_COUNTRIES]);
+
+// 수집 대상 지역 목록 — admin_settings(key='collect_regions') 우선, 없으면 env, 기본 ['US'].
+// 동남아를 켜면 각 브랜드를 지역별 프록시로 크롤해 국가 태깅한다(지역당 1 run).
+export async function getCollectRegions(): Promise<string[]> {
+  let regions: string[] = [];
+  try {
+    const r = await sql`SELECT value FROM admin_settings WHERE key='collect_regions' LIMIT 1`;
+    const v = r.rows[0]?.value as { regions?: unknown } | unknown[] | undefined;
+    const arr = Array.isArray(v) ? v : ((v as { regions?: unknown })?.regions ?? []);
+    regions = (Array.isArray(arr) ? arr : []).map((x) => String(x).toUpperCase()).filter((x) => ALLOWED_REGIONS.has(x));
+  } catch { /* 폴백 */ }
+  if (!regions.length) {
+    regions = (process.env.COLLECT_REGIONS || process.env.COLLECT_COUNTRY || "US")
+      .split(",").map((x) => x.trim().toUpperCase()).filter((x) => ALLOWED_REGIONS.has(x));
+  }
+  return regions.length ? Array.from(new Set(regions)) : ["US"];
+}
 
 const MAX_ATTEMPTS = 3; // 재시도 상한 — 초과 시 'failed'로 격리
 // 수집 깊이/배치 — 환경변수로 조절. 기본값은 Apify 월 상한 $100 기준(하드 상한이 안전망).
@@ -74,7 +95,7 @@ async function getBlocked(): Promise<{ handles: Set<string>; brands: Set<string>
   };
 }
 
-async function upsertVideos(brandName: string, vids: CollectedVideo[], rules: CrawlRules): Promise<number> {
+async function upsertVideos(brandName: string, vids: CollectedVideo[], rules: CrawlRules, region?: string | null): Promise<number> {
   const blocked = await getBlocked();
   if (blocked.brands.has(brandName)) return 0; // 블락 브랜드는 적재하지 않음
 
@@ -92,7 +113,8 @@ async function upsertVideos(brandName: string, vids: CollectedVideo[], rules: Cr
   if (!rows.length) return 0;
 
   // 배치 INSERT (1건씩 → 타임아웃 방지). 100행씩 묶어서.
-  const country = process.env.COLLECT_COUNTRY || "US"; // 현재 전량 US
+  // 국가 태깅: 수집 잡의 region 우선(동남아 타게팅), 없으면 env/기본 US.
+  const country = (region || process.env.COLLECT_COUNTRY || "US").toUpperCase();
   const COLS = 12;
   const CHUNK = 100;
   for (let i = 0; i < rows.length; i += CHUNK) {
@@ -193,10 +215,10 @@ export async function ingestProducts(brandName: string, products: ShopProduct[])
 }
 
 // B안 webhook 적재 공용 함수: dedup upsert → 통계/인플루언서 갱신 → 추적/로그 갱신
-export async function ingestVideos(brandName: string, vids: CollectedVideo[]): Promise<number> {
+export async function ingestVideos(brandName: string, vids: CollectedVideo[], region?: string | null): Promise<number> {
   await ensureSchema();
   const rules = await getRules();
-  const c = await upsertVideos(brandName, vids, rules); // video_id 멱등 = 중복 저장 차단
+  const c = await upsertVideos(brandName, vids, rules, region); // video_id 멱등 = 중복 저장 차단
   if (c > 0) await syncDerived(brandName);
   await sql`INSERT INTO brand_tracking (brand_name, last_collected_at, updated_at)
             VALUES (${brandName}, now(), now())
@@ -237,8 +259,8 @@ function ingestWebhook(baseUrl?: string): string | undefined {
 // 폴링(pull): 진행 중 run의 완료 여부를 직접 확인 → 끝났으면 dataset 가져와 적재.
 // (Apify→우리 webhook 인바운드가 막혀도 동작 — 아웃바운드만 사용)
 async function pollJobs(maxPoll: number): Promise<{ ingested: number; done: number }> {
-  const jobs = await sql<{ run_id: string; brand_name: string; since_date: string | null; kind: string }>`
-    SELECT run_id, brand_name, since_date, kind FROM collect_jobs WHERE status='running' ORDER BY created_at ASC LIMIT ${maxPoll}`;
+  const jobs = await sql<{ run_id: string; brand_name: string; since_date: string | null; kind: string; region: string | null }>`
+    SELECT run_id, brand_name, since_date, kind, region FROM collect_jobs WHERE status='running' ORDER BY created_at ASC LIMIT ${maxPoll}`;
   let ingested = 0;
   let done = 0;
   for (const j of jobs.rows) {
@@ -251,7 +273,7 @@ async function pollJobs(maxPoll: number): Promise<{ ingested: number; done: numb
           c = await ingestProducts(j.brand_name, products);
         } else {
           const vids = await fetchApifyDataset(run.datasetId, j.since_date);
-          c = await ingestVideos(j.brand_name, vids);
+          c = await ingestVideos(j.brand_name, vids, j.region);
         }
         await sql`UPDATE collect_jobs SET status='done', collected=${c}, updated_at=now() WHERE run_id=${j.run_id}`;
         ingested += c;
@@ -293,24 +315,28 @@ export async function runCollection(opts: { maxPending?: number; maxRefresh?: nu
   let kickedNew = 0;
   let kickedRefresh = 0;
   const backfillSince = new Date(Date.now() - BACKFILL_DAYS * 86_400_000).toISOString().slice(0, 10);
+  const regions = await getCollectRegions(); // ['US'] 또는 ['US','TH','VN','MY','SG'] 등
 
-  // 1) 신규 브랜드: 1년치 깊은 백필 run 시작 (pending → collecting). 결과는 폴링이 적재 → active.
+  // 1) 신규 브랜드: 1년치 깊은 백필 run 시작 (pending → collecting). 지역마다 프록시 타게팅으로 1 run.
   const pending = await sql<{ id: number; brand_name: string; handle: string | null; hashtags: string | null; attempts: number }>`
     SELECT id, brand_name, handle, hashtags, attempts FROM brand_requests WHERE status='pending' ORDER BY created_at ASC LIMIT ${maxPending}`;
   for (const req of pending.rows) {
     if (outOfTime()) break;
     try {
-      const runId = await startApifyRun(
-        { brandName: req.brand_name, handle: req.handle, hashtags: req.hashtags, backfillDays: BACKFILL_DAYS, limit: tuning.initialLimit },
-        webhook,
-      );
-      if (runId) await sql`INSERT INTO collect_jobs (run_id, brand_name, since_date) VALUES (${runId}, ${req.brand_name}, ${backfillSince}) ON CONFLICT (run_id) DO NOTHING`;
+      for (const region of regions) {
+        if (outOfTime()) break;
+        const runId = await startApifyRun(
+          { brandName: req.brand_name, handle: req.handle, hashtags: req.hashtags, backfillDays: BACKFILL_DAYS, limit: tuning.initialLimit, region },
+          webhook,
+        );
+        if (runId) await sql`INSERT INTO collect_jobs (run_id, brand_name, since_date, region) VALUES (${runId}, ${req.brand_name}, ${backfillSince}, ${region}) ON CONFLICT (run_id) DO NOTHING`;
+        if (runId) kickedNew += 1;
+      }
       await sql`UPDATE brand_requests SET status='collecting', updated_at=now() WHERE id=${req.id}`;
       await sql`INSERT INTO brand_tracking (brand_name, hashtags, updated_at)
                 VALUES (${req.brand_name}, ${req.hashtags}, now())
                 ON CONFLICT (brand_name) DO UPDATE SET hashtags=COALESCE(EXCLUDED.hashtags, brand_tracking.hashtags), updated_at=now()`;
       await sql`INSERT INTO collection_runs (kind, target, status) VALUES ('kick_new', ${req.brand_name}, 'started')`;
-      kickedNew += 1;
     } catch (e) {
       const next = (req.attempts ?? 0) + 1;
       const status = next >= MAX_ATTEMPTS ? "failed" : "pending";
@@ -344,13 +370,16 @@ export async function runCollection(opts: { maxPending?: number; maxRefresh?: nu
   for (const t of targets) {
     if (outOfTime()) break;
     try {
-      const runId = await startApifyRun({ brandName: t.name, hashtags: t.hashtags, sinceDate: since, limit: tuning.refreshLimit }, webhook);
-      if (runId) await sql`INSERT INTO collect_jobs (run_id, brand_name, since_date) VALUES (${runId}, ${t.name}, ${since}) ON CONFLICT (run_id) DO NOTHING`;
+      for (const region of regions) {
+        if (outOfTime()) break;
+        const runId = await startApifyRun({ brandName: t.name, hashtags: t.hashtags, sinceDate: since, limit: tuning.refreshLimit, region }, webhook);
+        if (runId) await sql`INSERT INTO collect_jobs (run_id, brand_name, since_date, region) VALUES (${runId}, ${t.name}, ${since}, ${region}) ON CONFLICT (run_id) DO NOTHING`;
+        if (runId) kickedRefresh += 1;
+      }
       await sql`INSERT INTO brand_tracking (brand_name, last_collected_at, updated_at)
                 VALUES (${t.name}, now(), now())
                 ON CONFLICT (brand_name) DO UPDATE SET last_collected_at=now(), updated_at=now()`;
       await sql`INSERT INTO collection_runs (kind, target, status) VALUES ('kick_refresh', ${t.name}, 'started')`;
-      kickedRefresh += 1;
     } catch (e) {
       await sql`INSERT INTO collection_runs (kind, target, status, error) VALUES ('kick_refresh', ${t.name}, 'error', ${String(e).slice(0, 200)})`;
     }

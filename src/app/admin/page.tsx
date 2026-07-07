@@ -104,6 +104,8 @@ export default function AdminPage() {
   const [totals, setTotals] = useState<Totals | null>(null);
   const [rules, setRules] = useState<CrawlRules>(DEFAULT_CRAWL_RULES);
   const [tuning, setTuning] = useState<{ initialLimit: number; refreshLimit: number; maxPending: number; maxRefresh: number; maxPoll: number } | null>(null);
+  const [regions, setRegions] = useState<string[] | null>(null);
+  const [regionOpts, setRegionOpts] = useState<{ id: string; nameKo: string; flag: string }[]>([]);
   const loadedTabs = useRef<Set<string>>(new Set());
   const [loadingData, setLoadingData] = useState(false);
   const [grantEmail, setGrantEmail] = useState("");
@@ -147,6 +149,14 @@ export default function AdminPage() {
   const loadTuning = async () => {
     const t = await fetch("/api/admin/collect-tuning", { cache: "no-store" }).then((x) => x.json()).catch(() => null);
     if (t?.ok) setTuning(t.tuning);
+    const g = await fetch("/api/admin/collect-regions", { cache: "no-store" }).then((x) => x.json()).catch(() => null);
+    if (g?.ok) { setRegions(g.regions); setRegionOpts(g.options ?? []); }
+  };
+  const saveRegions = async (next: string[]) => {
+    setRegions(next);
+    const r = await fetch("/api/admin/collect-regions", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ regions: next }) });
+    const d = await r.json().catch(() => ({}));
+    if (r.ok && d.ok) { setRegions(d.regions); setToast("수집 지역 저장됨 (즉시 적용)"); } else setToast(d.error ?? "저장 실패");
   };
   // 탭 진입 시 1회 지연 로드
   useEffect(() => {
@@ -613,6 +623,37 @@ export default function AdminPage() {
                 ))}
               </div>
               <p className="mt-2 text-[10px] text-[var(--muted)]">※ 403개 전체를 빠르게 채우려면 ‘얕고 넓게’로 시작 → Apify 사용량 보며 조정. 적재/회는 함수 60초 제한 때문에 12 이하 권장.</p>
+            </div>
+          )}
+          {/* 수집 지역 — 동남아 4개국 크롤링 켜기(지역 프록시 타게팅). US는 항상 포함. */}
+          {regions && (
+            <div className="mb-3 kt-card p-3">
+              <div className="mb-2 flex flex-wrap items-center gap-2">
+                <span className="flex items-center gap-1.5 text-[11px] font-bold">🌏 수집 지역 (크롤링 대상 시장)</span>
+                <span className="text-[10px] text-[var(--muted)]">선택한 지역마다 프록시로 타게팅해 브랜드를 크롤 → 국가별 태깅</span>
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                {regionOpts.map((co) => {
+                  const on = regions.includes(co.id);
+                  const isUS = co.id === "US";
+                  return (
+                    <button
+                      key={co.id}
+                      disabled={isUS}
+                      onClick={() => {
+                        if (isUS) return; // US는 항상 포함
+                        saveRegions(on ? regions.filter((r) => r !== co.id) : [...regions, co.id]);
+                      }}
+                      className={`rounded-full border px-2.5 py-1 text-[11px] font-semibold transition-colors ${
+                        on ? "border-[var(--accent)] bg-[var(--accent)] text-white" : "border-[var(--border)] text-[var(--muted)] hover:border-[var(--accent)]"
+                      } ${isUS ? "cursor-default opacity-90" : ""}`}
+                    >
+                      {co.flag} {co.nameKo}{isUS ? " · 기본" : ""}
+                    </button>
+                  );
+                })}
+              </div>
+              <p className="mt-2 text-[10px] text-amber-600">⚠️ 지역을 추가하면 브랜드당 <b>지역 수만큼</b> Apify run이 실행됩니다(비용↑). 동남아부터 소규모로 켜고 사용량을 보며 확장하세요.</p>
             </div>
           )}
           <div className="mb-3 flex flex-wrap items-center gap-2 kt-card p-3">

@@ -225,6 +225,8 @@ export function ensureSchema(): Promise<void> {
       )`;
       // 수집 종류: video(영상) | shop(틱톡샵 상품)
       await sql`ALTER TABLE collect_jobs ADD COLUMN IF NOT EXISTS kind text NOT NULL DEFAULT 'video'`;
+      // 수집 지역(국가코드) — 결과 영상을 이 국가로 태깅. 기본 US.
+      await sql`ALTER TABLE collect_jobs ADD COLUMN IF NOT EXISTS region text NOT NULL DEFAULT 'US'`;
       // 틱톡샵 상품 (A안: 실 커미션율 + 가격×판매수 매출 추정)
       await sql`CREATE TABLE IF NOT EXISTS products (
         product_id text PRIMARY KEY,

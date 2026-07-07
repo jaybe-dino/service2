@@ -25,10 +25,12 @@ export async function POST(req: Request) {
 
   const body = (await req.json().catch(() => ({}))) as {
     brandName?: string;
+    region?: string;
     datasetId?: string;
     resource?: { defaultDatasetId?: string };
   };
   const brandName = String(body.brandName ?? "").trim();
+  const region = String(body.region ?? "US").trim().toUpperCase() || "US";
   const datasetId = body.datasetId || body.resource?.defaultDatasetId;
   if (!brandName || !datasetId) {
     return NextResponse.json({ error: "brandName/datasetId 필요" }, { status: 400 });
@@ -36,7 +38,7 @@ export async function POST(req: Request) {
 
   try {
     const vids = await fetchApifyDataset(datasetId);
-    const collected = await ingestVideos(brandName, vids);
+    const collected = await ingestVideos(brandName, vids, region);
     return NextResponse.json({ ok: true, brand: brandName, collected });
   } catch (e) {
     return NextResponse.json({ ok: false, error: String(e).slice(0, 200) }, { status: 500 });
