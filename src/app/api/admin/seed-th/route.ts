@@ -40,26 +40,32 @@ export async function POST(req: Request) {
   const country = (seed?.country || "TH").toUpperCase();
   if (!rows.length) return NextResponse.json({ error: "시드 데이터 없음" }, { status: 400 });
 
-  // rows: [video_id, brand, handle, views, likes, comments, shares, is_ad, is_shop, date]
+  // rows: [video_id, brand, handle, views, likes, comments, shares, is_ad, is_shop, date, tier?]
   const brands = new Set<string>();
   const handles = new Set<string>();
   const clean = rows
     .map((r) => {
-      const [vid, brand, handle, views, likes, comments, shares, ad, shop, date] = r;
+      const [vid, brand, handle, views, likes, comments, shares, ad, shop, date, tier] = r;
       if (!vid || !brand || !handle) return null;
       brands.add(String(brand));
       handles.add(String(handle));
+      const t = String(tier || "");
       return {
         vid: String(vid), brand: String(brand), handle: String(handle),
         views: Number(views) || 0, likes: Number(likes) || 0, comments: Number(comments) || 0, shares: Number(shares) || 0,
         ad: Number(ad) === 1, shop: Number(shop) === 1, date: String(date || ""),
+        tier: (t === "mega" || t === "macro" || t === "micro") ? t : null,
         url: `https://www.tiktok.com/@${handle}/video/${vid}`,
       };
     })
     .filter((x): x is NonNullable<typeof x> => !!x);
 
-  // 배치 upsert (300행 = 3600 파라미터, 안전).
-  const COLS = 12;
+  // 클린 리시드: 이 국가의 기존 시드분을 먼저 제거(이전에 섞여 들어간 글로벌/영문 행 정리).
+  // (해당 국가 크롤링은 별도 opt-in이므로 현재 country=TH는 이 시드가 유일한 소스)
+  await sql`DELETE FROM videos WHERE country=${country}`;
+
+  // 배치 insert (300행 = 3900 파라미터, 안전).
+  const COLS = 13;
   const CHUNK = 300;
   let inserted = 0;
   for (let i = 0; i < clean.length; i += CHUNK) {
@@ -67,18 +73,18 @@ export async function POST(req: Request) {
     const ph = batch
       .map((_, j) => {
         const b = j * COLS;
-        return `($${b + 1},$${b + 2},$${b + 3},$${b + 4},$${b + 5},$${b + 6},$${b + 7},$${b + 8},$${b + 9},$${b + 10},$${b + 11},$${b + 12})`;
+        return `(${Array.from({ length: COLS }, (_, k) => `$${b + k + 1}`).join(",")})`;
       })
       .join(",");
     const params: unknown[] = [];
-    for (const v of batch) params.push(v.vid, v.brand, v.handle, v.views, v.likes, v.comments, v.shares, v.ad, v.shop, v.date, v.url, country);
+    for (const v of batch) params.push(v.vid, v.brand, v.handle, v.views, v.likes, v.comments, v.shares, v.ad, v.shop, v.date, v.url, country, v.tier);
     await sql.query(
-      `INSERT INTO videos (video_id, brand_name, handle, views, likes, comments, shares, is_ad, is_shop, posted_at, url, country)
+      `INSERT INTO videos (video_id, brand_name, handle, views, likes, comments, shares, is_ad, is_shop, posted_at, url, country, tier)
        VALUES ${ph}
        ON CONFLICT (video_id) DO UPDATE SET brand_name=EXCLUDED.brand_name, handle=EXCLUDED.handle,
          views=EXCLUDED.views, likes=EXCLUDED.likes, comments=EXCLUDED.comments, shares=EXCLUDED.shares,
          is_ad=EXCLUDED.is_ad, is_shop=EXCLUDED.is_shop, posted_at=EXCLUDED.posted_at, url=EXCLUDED.url,
-         country=EXCLUDED.country, collected_at=now()`,
+         country=EXCLUDED.country, tier=EXCLUDED.tier, collected_at=now()`,
       params,
     );
     inserted += batch.length;

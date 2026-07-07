@@ -116,6 +116,8 @@ export function ensureSchema(): Promise<void> {
       )`;
       // 콘텐츠 타겟 국가 (현재 전량 US, 추후 확장) — 기존 테이블 보강
       await sql`ALTER TABLE videos ADD COLUMN IF NOT EXISTS country text NOT NULL DEFAULT 'US'`;
+      // 크리에이터 티어(mega|macro|micro) — 팔로워 기반(수집 소스 제공 시). 없으면 조회수로 근사.
+      await sql`ALTER TABLE videos ADD COLUMN IF NOT EXISTS tier text`;
       // 브랜드별 수집 주기/추적 관리
       await sql`CREATE TABLE IF NOT EXISTS brand_tracking (
         brand_name text PRIMARY KEY,

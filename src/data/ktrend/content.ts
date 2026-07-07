@@ -130,14 +130,14 @@ function mapRow(r: RawVideos["rows"][number], i: number): Content | null {
   });
 }
 
-// DB(수집) 영상 컴팩트 행: [video_id, brand, handle, views, likes, comments, shares, is_ad, is_shop, posted_at, url, country]
-type DbRow = [string, string, string, number, number, number, number, number, number, string, string, string];
+// DB(수집) 영상 컴팩트 행: [video_id, brand, handle, views, likes, comments, shares, is_ad, is_shop, posted_at, url, country, tier?]
+type DbRow = [string, string, string, number, number, number, number, number, number, string, string, string, (string | undefined)?];
 
 function mapDbRow(r: DbRow): Content | null {
-  const [videoId, brandName, handle, views, likes, comments, shares, ad, shop, date, url, country] = r;
+  const [videoId, brandName, handle, views, likes, comments, shares, ad, shop, date, url, country, tier] = r;
   if (!handle || !brandName) return null;
   const brand = ensureBrandByName(brandName); // 정적 시드에 없으면 런타임 등록
-  return buildContent({
+  const c = buildContent({
     id: `db:${videoId}`,
     brand,
     handle,
@@ -152,6 +152,9 @@ function mapDbRow(r: DbRow): Content | null {
     tiktokUrl: url || `https://www.tiktok.com/@${handle}/video/${videoId}`,
     hashSeed: handle + videoId,
   });
+  // 수집 소스가 팔로워 기반 티어를 제공하면 우선 사용(조회수 근사보다 정확).
+  if (tier === "mega" || tier === "macro" || tier === "micro") c.tier = tier;
+  return c;
 }
 
 // 틱톡 video_id 추출 (정적/DB 중복 제거 키, 콘텐츠 블락 키)
