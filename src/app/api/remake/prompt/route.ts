@@ -43,7 +43,7 @@ export async function POST(req: Request) {
   // 레퍼런스 실제 프레임(시간순 스트립) → 비전 분석 그라운딩. 워커 있으면 여러 장, 없으면 커버 1장.
   let frames: Frame[] = [];
   if (typeof body.refTiktokUrl === "string" && /tiktok\.com/.test(body.refTiktokUrl)) {
-    frames = await fetchAnalysisFrames(body.refTiktokUrl);
+    frames = await fetchAnalysisFrames(body.refTiktokUrl, Number(process.env.REMAKE_ANALYSIS_FRAMES ?? 10));
     if (!frames.length) {
       const cover = await fetchCoverFrame(body.refTiktokUrl);
       if (cover) frames = [cover];
@@ -119,7 +119,7 @@ export async function POST(req: Request) {
       },
       body: JSON.stringify({
         model,
-        max_tokens: 2500,
+        max_tokens: 4000,
         system: system + jsonInstruction,
         messages: [{ role: "user", content }],
       }),

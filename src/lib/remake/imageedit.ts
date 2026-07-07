@@ -53,22 +53,40 @@ async function generateImage(parts: unknown[], ms: number): Promise<Img | null> 
   }
 }
 
-// 맥락 기반 재창조: 내 제품을 '새로운 장면(새 인물·배경·스타일)'에 자연스럽게 합성한 스틸 생성.
-// 레퍼런스는 복제하지 않고, 분석에서 나온 sceneImagePrompt(맥락)만 반영. 실패 시 null(상위 폴백).
-export async function composeScene(product: Img, scenePrompt: string): Promise<Img | null> {
+export interface ComposeOpts {
+  hero?: Img;        // 앞선 컷의 '히어로 스틸' — 같은 인물·의상·배경 유지(컷 간 일관성)
+  talent?: string;   // 새 인물 묘사(일관성 앵커)
+  setting?: string;  // 새 환경 묘사(일관성 앵커)
+}
+
+// 맥락 기반 재창조: 내 제품을 '새로운 장면(새 인물·배경·스타일)'에 자연스럽게 합성한 고품질 스틸 생성.
+// hero가 주어지면 그 인물·의상·배경을 이어받아 '같은 사람의 다른 컷'을 만든다(내러티브 일관성).
+// 레퍼런스 원본은 복제하지 않고, 분석에서 나온 sceneImagePrompt(맥락)만 반영. 실패 시 null.
+export async function composeScene(product: Img, scenePrompt: string, opts: ComposeOpts = {}): Promise<Img | null> {
+  const parts: unknown[] = [
+    { inline_data: { mime_type: product.mime || "image/png", data: product.b64 } },
+  ];
+  let identityNote = "";
+  if (opts.hero) {
+    parts.push({ inline_data: { mime_type: opts.hero.mime || "image/jpeg", data: opts.hero.b64 } });
+    identityNote =
+      "The SECOND image is the SAME person from the previous shot of this ad. Keep that exact person — same face, hair, makeup, wardrobe and the same environment/color grade — for visual continuity across the ad. Only change the pose, action and framing to fit this new beat. ";
+  }
+  const consistency = [
+    !opts.hero && opts.talent ? `Talent (new person, keep consistent through the ad): ${opts.talent}.` : "",
+    !opts.hero && opts.setting ? `Setting: ${opts.setting}.` : "",
+  ].filter(Boolean).join(" ");
   const instruction =
-    "Create a brand-new, photorealistic vertical 9:16 short-form (TikTok/UGC) scene. " +
-    "The attached image is MY product — feature it naturally in the scene and keep its real label, shape and color faithful. " +
-    "Use a completely NEW person, NEW environment and NEW styling (do not copy any specific real person or brand). " +
+    "Create a brand-new, photorealistic, high-end vertical 9:16 short-form (TikTok/UGC) advertising still. " +
+    "The FIRST image is MY product — feature it naturally and keep its real label, wording, shape, proportions and color EXACTLY faithful; do not distort, relabel, or restyle the product. " +
+    identityNote +
+    (opts.hero ? "" : "Use a completely NEW person and NEW environment (do not copy any specific real celebrity or brand). ") +
+    (consistency ? consistency + " " : "") +
+    "Cinematic natural soft lighting, shallow depth of field, crisp focus, realistic skin texture and pores, authentic candid UGC feel — professional but believable, not plastic or over-retouched. " +
     `Scene to create: ${scenePrompt}. ` +
-    "Clean, bright, high-conversion beauty aesthetic. Absolutely NO on-screen text, captions, letters, numbers, hashtags, logos or UI overlays.";
-  return generateImage(
-    [
-      { inline_data: { mime_type: product.mime || "image/png", data: product.b64 } },
-      { text: instruction },
-    ],
-    24000,
-  );
+    "Absolutely NO on-screen text, captions, letters, numbers, hashtags, logos or UI overlays.";
+  parts.push({ text: instruction });
+  return generateImage(parts, 26000);
 }
 
 // (레거시) 레퍼런스 프레임에서 제품만 교체 — 프레임-복제 모드에서 사용. 유지하되 기본 경로는 composeScene.

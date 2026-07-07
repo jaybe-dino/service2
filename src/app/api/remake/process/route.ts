@@ -15,6 +15,7 @@ interface Spec {
   promptBase: string; product: { pname?: string; benefit?: string; concern?: string };
   concept?: string; talent?: string; setting?: string;
   scene: Scene | null; scenesLen: number; variationLabel?: string;
+  heroJobId?: string; isHero?: boolean; // 컷 간 인물·배경 일관성용 '히어로 스틸' 공유
 }
 
 const cams = ["subtle push-in", "slow orbit", "gentle handheld sway", "smooth tilt-up reveal"];
@@ -76,15 +77,34 @@ export async function POST(req: Request) {
         `Shot: ${sc.shot || "clean UGC framing"}.`,
       ].filter(Boolean).join(" ");
 
-    // 1) 새 장면 스틸 합성(내 제품 포함, 새 인물·배경).
+    // 컷 간 일관성: 히어로(첫 컷) 스틸을 자산으로 공유. 뒤 컷들은 이를 인물·배경 레퍼런스로 사용.
+    const heroAssetId = spec.heroJobId ? `herostill:${spec.heroJobId}` : null;
+    let hero: { b64: string; mime: string } | undefined;
+    if (heroAssetId && !spec.isHero) {
+      const h = await sql<{ data: string; mime: string }>`SELECT data, mime FROM remake_assets WHERE id=${heroAssetId}`;
+      if (h.rows[0]?.data) hero = { b64: h.rows[0].data, mime: h.rows[0].mime || "image/png" };
+    }
+
+    // 1) 새 장면 스틸 합성(내 제품 포함, 새 인물·배경, 앞 컷과 동일 인물 유지).
     let seedB64 = imageBase64;
     let seedMime = imageMime;
     let composed = false;
     if (base64Seed && imageBase64 && hasImageEdit()) {
       const tc = Date.now();
-      const still = await composeScene({ b64: imageBase64, mime: imageMime }, sceneImagePrompt);
+      const still = await composeScene(
+        { b64: imageBase64, mime: imageMime },
+        sceneImagePrompt,
+        { hero, talent: spec.talent, setting: spec.setting },
+      );
       mark("compose", tc);
-      if (still) { seedB64 = still.b64; seedMime = still.mime; composed = true; }
+      if (still) {
+        seedB64 = still.b64; seedMime = still.mime; composed = true;
+        // 히어로 컷이면 스틸을 공유 자산으로 저장(뒤 컷들이 같은 인물·배경 참조).
+        if (heroAssetId && spec.isHero) {
+          await sql`INSERT INTO remake_assets (id, mime, data) VALUES (${heroAssetId}, ${seedMime}, ${seedB64})
+            ON CONFLICT (id) DO UPDATE SET data=EXCLUDED.data, mime=EXCLUDED.mime, created_at=now()`;
+        }
+      }
     }
 
     // 2) 애니메이션 프롬프트 — 합성 스틸이면 "이 장면을 자연스럽게 움직이기", 아니면 텍스트 기반.

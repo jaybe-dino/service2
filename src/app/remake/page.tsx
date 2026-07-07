@@ -207,16 +207,21 @@ export default function RemakeStudioPage() {
       const sim = scenesOn ? Math.min(96, 80 + Math.min(effPkg!.scenes.length, 5) * 3) : 66;
       setGenInfo({ real: data.mode !== "mock", label: data.provider || "시뮬레이션", tier: (data.tier as Tier) || genTier, sceneMode: scenesOn, similarity: sim, fidelity: data.fidelity || "text" });
       const ids: string[] = data.jobs.map((j: { id: string }) => j.id);
-      // 실제 생성(프레임·제품 스왑·제출)은 잡별 process 호출이 담당 — 각기 새 60s 예산.
+      // 실제 생성(장면 합성·제출)은 잡별 process 호출이 담당 — 각기 새 60s 예산.
+      // 컷 간 일관성: 히어로 컷(첫 잡)을 먼저 처리해 인물·배경 스틸을 만든 뒤, 나머지 컷을 병렬 처리.
       // fire-and-forget: 진행/결과는 아래 상태 폴링이 반영(process가 잡 행을 업데이트).
-      if (data.needsProcess) {
-        for (const jid of ids) {
+      if (data.needsProcess && ids.length) {
+        const callProc = (jid: string) =>
           fetch("/api/remake/process", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ id: jid }),
           }).catch(() => {});
-        }
+        void (async () => {
+          const [heroId, ...rest] = ids;
+          await callProc(heroId);            // 히어로 스틸 완성까지 대기
+          for (const jid of rest) callProc(jid); // 나머지는 병렬(히어로 인물·배경 참조)
+        })();
       }
       const startedAt = Date.now();
       setGenElapsed(0);
@@ -471,8 +476,8 @@ export default function RemakeStudioPage() {
                     <div className="flex gap-1.5">
                       <button onClick={() => setSceneMode(true)}
                         className={`flex-1 rounded-lg border px-3 py-2 text-left text-[11px] ${sceneMode ? "border-[var(--accent)] bg-[var(--accent-light)]" : "border-[var(--border)]"}`}>
-                        <div className={`font-bold ${sceneMode ? "text-[var(--accent)]" : "text-[var(--fg)]"}`}>장면별 정밀 (유사도↑)</div>
-                        <div className="text-[10px] text-[var(--muted)]">레퍼런스 각 화면(훅·발림·결과·CTA)을 1:1로 재현</div>
+                        <div className={`font-bold ${sceneMode ? "text-[var(--accent)]" : "text-[var(--fg)]"}`}>장면별 스토리보드 (완성형)</div>
+                        <div className="text-[10px] text-[var(--muted)]">맥락(훅·문제·시연·결과·CTA)을 비트별로 재창조 · 같은 인물·내 제품 일관</div>
                       </button>
                       <button onClick={() => setSceneMode(false)}
                         className={`flex-1 rounded-lg border px-3 py-2 text-left text-[11px] ${!sceneMode ? "border-[var(--accent)] bg-[var(--accent-light)]" : "border-[var(--border)]"}`}>
@@ -482,8 +487,8 @@ export default function RemakeStudioPage() {
                     </div>
                     {sceneMode && (
                       <p className="mt-1.5 rounded-lg bg-amber-50 px-2 py-1.5 text-[10px] leading-relaxed text-amber-700">
-                        ⚠️ 장면별 정밀은 서버 설정(<b>REMAKE_MAX_SCENES</b>, 기본 <b>1클립</b>)만큼 생성합니다.
-                        여러 클립은 비용·시간이 커지고 60초 타임아웃 위험이 있어, 안정적으로 <b>1클립</b>부터 확인하세요.
+                        서버 설정(<b>REMAKE_MAX_SCENES</b>, 기본 <b>4컷</b>)만큼 비트를 생성합니다(훅→시연→결과→CTA).
+                        컷 수만큼 비용·시간이 늘어납니다. 저렴히 확인하려면 <b>REMAKE_MAX_SCENES=1</b>로 낮추세요.
                       </p>
                     )}
                   </div>
@@ -520,7 +525,7 @@ export default function RemakeStudioPage() {
               <Loader2 size={26} className="animate-spin" />
             </div>
             <h2 className="mt-4 text-[16px] font-black">{sceneMode ? "장면별로 생성 중…" : "영상 생성 중…"}</h2>
-            <p className="mt-1 text-[12px] text-[var(--muted)]">{sceneMode ? "레퍼런스 각 화면을 1:1로 재현합니다(제품 일관 유지)." : "제품 레퍼런스를 컨디셔닝해 변형을 생성합니다."} <b className="text-[var(--fg)]">영상 생성은 보통 30초~3분</b> 걸립니다.</p>
+            <p className="mt-1 text-[12px] text-[var(--muted)]">{sceneMode ? "레퍼런스의 맥락을 비트별로 재창조합니다(같은 인물·내 제품 일관, 새 인물·배경)." : "제품 레퍼런스를 컨디셔닝해 변형을 생성합니다."} <b className="text-[var(--fg)]">영상 생성은 보통 30초~3분</b> 걸립니다.</p>
             <p className="mt-1 text-[12px] font-bold text-[var(--accent)]">경과 {genElapsed}s · 처리 중…</p>
             <div className="mt-5 space-y-2 text-left">
               {tmpl.scenes.map((sc, i) => {

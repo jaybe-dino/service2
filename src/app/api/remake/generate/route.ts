@@ -72,8 +72,8 @@ export async function POST(req: Request) {
   const real = canReal && (!provider.needsPublicImageUrl || Boolean(imageUrl));
   const usedProvider = real ? provider.id : "mock";
 
-  // 장면별 정밀 모드. 클립 수 상한(REMAKE_MAX_SCENES, 기본 1).
-  const maxScenes = Math.max(1, Math.min(6, Number(process.env.REMAKE_MAX_SCENES ?? 1)));
+  // 장면별 정밀 모드. 클립 수 상한(REMAKE_MAX_SCENES, 기본 4 — 완성형 내러티브 훅→시연→결과→CTA).
+  const maxScenes = Math.max(1, Math.min(8, Number(process.env.REMAKE_MAX_SCENES ?? 4)));
   const allScenes = Array.isArray(body.scenes) ? body.scenes : [];
   const scenes = allScenes.slice(0, maxScenes);
   const sceneMode = Boolean(body.sceneMode) && scenes.length > 0;
@@ -85,9 +85,12 @@ export async function POST(req: Request) {
   const canCompose = real && !provider.needsPublicImageUrl && Boolean(imageBase64) && hasImageEdit();
 
   // 잡 행 생성(status=preparing) + 각 잡 스펙 저장. process가 이 스펙으로 실제 생성 수행.
+  // 첫 잡(v=0)이 '히어로 컷' — 그 합성 스틸을 뒤 컷들이 인물·배경 레퍼런스로 재사용(일관성).
+  const ids = Array.from({ length: unitCount }, () => randomUUID());
+  const heroJobId = ids[0];
   const jobs: { id: string; variation: number }[] = [];
   for (let v = 0; v < unitCount; v++) {
-    const id = randomUUID();
+    const id = ids[v];
     const score = mockViralScore(seed, v).total;
     const status = real ? "preparing" : "in_progress"; // mock은 상태 라우트가 경과시간으로 완료
     const spec = real
@@ -98,6 +101,7 @@ export async function POST(req: Request) {
           promptBase, product, concept, talent, setting,
           scene: scenes[v] || (sceneMode ? null : { action: promptBase, shot: "" }),
           scenesLen: unitCount, variationLabel: `${v + 1}`,
+          heroJobId, isHero: v === 0,
         })
       : null;
     await sql`INSERT INTO remake_jobs (id, provider, template_id, variation, score, status, spec)
