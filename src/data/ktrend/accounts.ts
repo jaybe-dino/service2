@@ -12,6 +12,7 @@ export interface Account {
   role?: string;
   isMember?: boolean;
   proUntil?: number; // 체험/유료 만료 타임스탬프(ms)
+  markets?: string[]; // 열람 가능 시장(국가코드). 항상 US 포함.
 }
 
 export const DEMO_ACCOUNTS: Account[] = [

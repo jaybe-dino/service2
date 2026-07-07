@@ -52,7 +52,7 @@ function fmtRemain(ms: number): string {
 }
 
 export default function Explorer() {
-  const { isPro, isAdmin, user, plan } = usePlan();
+  const { isPro, isAdmin, user, plan, markets } = usePlan();
 
   // 테스트2 BM: Advance(전체) 외에는 브랜드 선택 게이팅 (비로그인 1 / Basic 3 / Pro 20)
   const isAdvance = plan === "enterprise" || isAdmin; // Advance(=enterprise) 또는 어드민
@@ -128,7 +128,9 @@ export default function Explorer() {
   const filtered = useMemo(() => {
     if (!all) return [];
     const list = all.filter((c) => {
-      if (country !== "ALL" && c.country !== country) return false; // 타겟 국가(ALL=전체 시장)
+      // 시장 게이팅: 승인된 시장만. '전체'도 허용 시장으로 한정(비승인 국가 노출 차단).
+      if (country === "ALL") { if (!markets.includes(c.country)) return false; }
+      else { if (c.country !== country) return false; if (!markets.includes(country)) return false; }
       // 게이팅: 비Pro는 선택한 브랜드만. Pro·Advance는 좌측 필터 기준.
       if (gated) {
         if (!(c.brandId in viewBrands)) return false;
@@ -149,7 +151,7 @@ export default function Explorer() {
       return true;
     });
     return sortContent(list, sort);
-  }, [all, country, gated, viewBrands, selectedBrands, categories, subs, bfacets, tiers, onlyShop, onlyAd, sort]);
+  }, [all, country, markets, gated, viewBrands, selectedBrands, categories, subs, bfacets, tiers, onlyShop, onlyAd, sort]);
 
   useEffect(() => setVisible(PAGE), [country, viewBrands, selectedBrands, categories, subs, bfacets, tiers, onlyShop, onlyAd, sort]);
 
@@ -416,37 +418,49 @@ export default function Explorer() {
 
       {/* ===== 우측 콘텐츠 리스팅 ===== */}
       <section>
-        {/* 타겟 국가 — 시장 필터(전체/미국/동남아 4개국). 비활성 국가는 준비중 표시. */}
-        <div className="kt-noscrollbar mb-3 flex items-center gap-1.5 overflow-x-auto">
-          <span className="shrink-0 text-[10px] font-semibold text-[var(--muted)]">시장</span>
-          <button
-            onClick={() => setCountry("ALL")}
-            className={`shrink-0 rounded-full border px-2.5 py-1 text-[11px] font-semibold transition-colors ${
-              country === "ALL"
-                ? "border-[var(--accent)] bg-[var(--accent)] text-white"
-                : "border-[var(--border)] text-[var(--muted)] hover:border-[var(--accent)]"
-            }`}
-          >
-            🌏 전체
-          </button>
-          {COUNTRIES.map((co) => (
-            <button
-              key={co.id}
-              onClick={() => co.active && setCountry(co.id)}
-              disabled={!co.active}
-              title={co.active ? "" : "준비 중"}
-              className={`shrink-0 rounded-full border px-2.5 py-1 text-[11px] font-semibold transition-colors ${
-                country === co.id
-                  ? "border-[var(--accent)] bg-[var(--accent)] text-white"
-                  : co.active
-                  ? "border-[var(--border)] text-[var(--muted)] hover:border-[var(--accent)]"
-                  : "cursor-not-allowed border-[var(--border)] text-[var(--muted)]/40"
-              }`}
-            >
-              {co.flag} {co.nameKo}{!co.active && " · 준비중"}
-            </button>
-          ))}
-        </div>
+        {/* 타겟 국가 — 시장 필터. US는 모두 노출, 그 외 시장은 관리자 승인(markets) 사용자만 선택 가능. */}
+        {(() => {
+          const multiMarket = markets.length > 1 || isAdmin; // 승인 시장이 US 외에도 있으면 표시
+          return (
+            <div className="kt-noscrollbar mb-3 flex items-center gap-1.5 overflow-x-auto">
+              <span className="shrink-0 text-[10px] font-semibold text-[var(--muted)]">시장</span>
+              {multiMarket && (
+                <button
+                  onClick={() => setCountry("ALL")}
+                  className={`shrink-0 rounded-full border px-2.5 py-1 text-[11px] font-semibold transition-colors ${
+                    country === "ALL"
+                      ? "border-[var(--accent)] bg-[var(--accent)] text-white"
+                      : "border-[var(--border)] text-[var(--muted)] hover:border-[var(--accent)]"
+                  }`}
+                >
+                  🌏 전체
+                </button>
+              )}
+              {COUNTRIES.map((co) => {
+                const approved = markets.includes(co.id); // 승인된 시장
+                const locked = co.active && !approved;    // 활성인데 미승인
+                const clickable = co.active && approved;
+                return (
+                  <button
+                    key={co.id}
+                    onClick={() => clickable && setCountry(co.id)}
+                    disabled={!clickable}
+                    title={!co.active ? "준비 중" : locked ? "열람 권한 필요 (관리자 승인)" : ""}
+                    className={`shrink-0 rounded-full border px-2.5 py-1 text-[11px] font-semibold transition-colors ${
+                      country === co.id
+                        ? "border-[var(--accent)] bg-[var(--accent)] text-white"
+                        : clickable
+                        ? "border-[var(--border)] text-[var(--muted)] hover:border-[var(--accent)]"
+                        : "cursor-not-allowed border-[var(--border)] text-[var(--muted)]/40"
+                    }`}
+                  >
+                    {co.flag} {co.nameKo}{!co.active ? " · 준비중" : locked ? " 🔒" : ""}
+                  </button>
+                );
+              })}
+            </div>
+          );
+        })()}
 
         <div className="mb-3 flex flex-wrap items-center gap-2">
           <button

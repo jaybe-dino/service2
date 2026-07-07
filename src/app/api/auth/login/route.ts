@@ -17,7 +17,7 @@ export async function POST(req: Request) {
   }
   await ensureSchema();
   const { rows } = await sql<DbUser & { password_hash: string }>`
-    SELECT id,email,name,brand,role,plan,pro_until,password_hash FROM users WHERE email=${email} LIMIT 1`;
+    SELECT id,email,name,brand,role,plan,pro_until,markets,password_hash FROM users WHERE email=${email} LIMIT 1`;
   const u = rows[0];
   if (!u || !(await verifyPassword(password, u.password_hash))) {
     return NextResponse.json({ error: "이메일 또는 비밀번호가 올바르지 않습니다." }, { status: 401 });

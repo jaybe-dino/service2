@@ -35,11 +35,21 @@ export function scraperProvider(): string {
   return process.env.SCRAPER_PROVIDER || "apify";
 }
 
-// 해시태그 후보: 명시값 없으면 브랜드명 기반 생성
+// 브랜드 해시태그 변형 접미사 — 브랜드명에 붙여 더 넓게 수집(디테일↑). 모두 브랜드 프리픽스라 귀속 유지.
+// env COLLECT_TAG_SUFFIXES(콤마구분)로 조정. 빈 문자열("")은 브랜드명 그대로.
+const DEFAULT_TAG_SUFFIXES = ["", "review", "haul", "skincare", "makeup", "tutorial", "grwm", "beforeafter"];
+function tagSuffixes(): string[] {
+  const raw = process.env.COLLECT_TAG_SUFFIXES;
+  const list = raw ? raw.split(",").map((s) => s.trim()) : DEFAULT_TAG_SUFFIXES;
+  return Array.from(new Set(list));
+}
+
+// 해시태그 후보: 명시값 있으면 그대로, 없으면 브랜드명 기반으로 여러 변형 생성(상세 수집).
 function hashtagsFor(input: CollectInput): string[] {
   if (input.hashtags) return input.hashtags.split(/[,\s#]+/).filter(Boolean);
   const slug = input.brandName.toLowerCase().replace(/[^a-z0-9]/g, "");
-  return [slug, `${slug}review`, `${slug}haul`].filter(Boolean);
+  if (!slug) return [];
+  return tagSuffixes().map((suf) => `${slug}${suf}`).filter(Boolean);
 }
 
 // Apify dataset 아이템 → CollectedVideo (수집 단계 중복 방지: sinceDate 이후만)

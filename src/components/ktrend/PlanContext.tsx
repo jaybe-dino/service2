@@ -8,7 +8,10 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import type { PlanId } from "@/data/ktrend/meta";
+import { type PlanId, COUNTRIES } from "@/data/ktrend/meta";
+
+// 어드민은 활성 시장 전체 열람.
+const ACTIVE_MARKETS = COUNTRIES.filter((c) => c.active).map((c) => c.id);
 import {
   ADMIN_EMAILS,
   findAccount,
@@ -49,6 +52,7 @@ interface PlanState {
   plan: PlanId;
   isPro: boolean;
   isAdmin: boolean;
+  markets: string[]; // 이 사용자가 열람 가능한 시장(국가코드). 항상 US 포함. 어드민은 전체.
   serverMode: boolean; // DB(Postgres) 연결 여부
   ready: boolean;
   login: (email: string, password: string) => Promise<boolean>;
@@ -87,6 +91,7 @@ function mapApiUser(u: ApiUser): Account {
     plan: u.plan as PlanId,
     isMember: true,
     proUntil: u.proUntil,
+    markets: Array.isArray(u.markets) && u.markets.length ? u.markets : ["US"],
   };
 }
 
@@ -269,6 +274,10 @@ export function PlanProvider({ children }: { children: ReactNode }) {
   // 어드민은 서비스 전 영역 권한 오픈
   const isPro = plan === "pro" || plan === "enterprise" || trialActive || isAdmin;
   const trialMsLeft = trialActive ? effectiveProUntil - Date.now() : 0;
+  // 열람 가능 시장: 어드민=전체, 그 외=사용자에 승인된 시장(항상 US 포함).
+  const markets: string[] = isAdmin
+    ? ACTIVE_MARKETS
+    : Array.from(new Set(["US", ...((user?.markets) ?? [])]));
 
   const currentQuota = (): Quota => {
     const q = quotaRef.current;
@@ -294,7 +303,7 @@ export function PlanProvider({ children }: { children: ReactNode }) {
   return (
     <PlanContext.Provider
       value={{
-        user, plan, isPro, isAdmin, serverMode, ready,
+        user, plan, isPro, isAdmin, markets, serverMode, ready,
         login, loginAs, logout, signup, invite, startTrial, trialMsLeft,
         isNameRevealed, revealName, isVideoOpened, openVideo,
         passRemaining, nameRemaining: passRemaining, clickRemaining: passRemaining,

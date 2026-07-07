@@ -5,7 +5,10 @@ import { ShieldCheck, Users, CreditCard, UserSquare2, Tag, SlidersHorizontal, Lo
 import PageShell from "@/components/ktrend/PageShell";
 import { INFLUENCERS, contactFor } from "@/data/ktrend/influencers";
 import { BRANDS } from "@/data/ktrend/brands";
-import { TIERS } from "@/data/ktrend/meta";
+import { TIERS, COUNTRIES } from "@/data/ktrend/meta";
+
+// 관리자 승인으로 부여 가능한 시장(US는 기본 허용이라 제외)
+const GRANT_MARKETS = COUNTRIES.filter((c) => c.active && c.id !== "US");
 import { SELF_CHECK_QUESTIONS, ONB_COUNTRY_MAP, COMMON_CERT } from "@/lib/onboarding";
 import { DEFAULT_CRAWL_RULES, type CrawlRules } from "@/lib/crawl-rules";
 
@@ -13,6 +16,7 @@ interface Member {
   id: string; email: string; name: string; brand: string | null; role: string | null;
   plan: string; pro_until: number; created_at: string; paid_total: number; last_paid: string | null;
   promo_code?: string | null; sub_status?: string | null; invite_count?: number;
+  markets?: string | null; // 열람 승인 시장 CSV(US 제외 저장)
 }
 interface Order {
   order_id: string; user_id: string; plan: string; amount: number; status: string; created_at: string; paid: boolean;
@@ -228,6 +232,17 @@ export default function AdminPage() {
     setToast(r.ok ? `${grantEmail}에 Pro ${grantDays}일 부여` : (d.error ?? "실패"));
     setTimeout(() => setToast(""), 2500);
     if (r.ok) { setGrantEmail(""); loadData(); }
+  };
+
+  const setMemberMarkets = async (email: string, codes: string[]) => {
+    const r = await fetch("/api/admin/markets", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, markets: codes }),
+    });
+    const d = await r.json().catch(() => ({}));
+    setToast(r.ok ? `${email} 시장 열람 권한 업데이트` : (d.error ?? "실패"));
+    setTimeout(() => setToast(""), 2000);
+    if (r.ok) loadData();
   };
 
   const replyInquiry = async (id: number, status: string, response: string) => {
@@ -452,8 +467,10 @@ export default function AdminPage() {
             <button className="kt-btn kt-btn-primary px-3 py-1.5 text-[11px]">부여</button>
           </form>
 
-          <Table head={["이메일", "이름", "브랜드", "플랜", "결제액", "최근결제", "Pro 상태", "Pro 출처", "가입일", "비번"]}>
-            {members.map((m) => (
+          <Table head={["이메일", "이름", "브랜드", "플랜", "결제액", "최근결제", "Pro 상태", "Pro 출처", "시장 열람", "가입일", "비번"]}>
+            {members.map((m) => {
+              const cur = new Set((m.markets ?? "").split(",").map((s) => s.trim().toUpperCase()).filter(Boolean));
+              return (
               <tr key={m.id} className="border-b border-[var(--border)] last:border-0">
                 <td className="p-2 font-semibold">{m.email}</td>
                 <td className="p-2">{m.name}</td>
@@ -463,11 +480,33 @@ export default function AdminPage() {
                 <td className="p-2 text-[var(--muted)]">{dt(m.last_paid)}</td>
                 <td className="p-2">{proState(m.pro_until)}</td>
                 <td className="p-2 text-[10px]">{proSource(m)}</td>
+                <td className="p-2">
+                  <div className="flex flex-wrap gap-1" title="동남아 시장 열람 승인 (US는 모두 기본)">
+                    {GRANT_MARKETS.map((co) => {
+                      const on = cur.has(co.id);
+                      return (
+                        <button
+                          key={co.id}
+                          onClick={() => {
+                            const next = new Set(cur);
+                            if (on) next.delete(co.id); else next.add(co.id);
+                            setMemberMarkets(m.email, Array.from(next));
+                          }}
+                          title={co.nameKo}
+                          className={`rounded-full border px-1.5 py-0.5 text-[9px] font-semibold transition-colors ${on ? "border-[var(--accent)] bg-[var(--accent)] text-white" : "border-[var(--border)] text-[var(--muted)] hover:border-[var(--accent)]"}`}
+                        >
+                          {co.flag}{co.id}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </td>
                 <td className="p-2 text-[var(--muted)]">{dt(m.created_at)}</td>
                 <td className="p-2"><button onClick={() => resetPw(m.email)} className="text-[10px] font-semibold text-[var(--accent)] hover:underline">초기화</button></td>
               </tr>
-            ))}
-            {!members.length && <EmptyRow cols={10} text="가입 회원 없음" />}
+              );
+            })}
+            {!members.length && <EmptyRow cols={11} text="가입 회원 없음" />}
           </Table>
         </>
       )}
@@ -602,6 +641,7 @@ export default function AdminPage() {
               <div className="mb-2 flex flex-wrap items-center gap-2">
                 <span className="flex items-center gap-1.5 text-[11px] font-bold"><SlidersHorizontal size={13} className="text-[var(--accent)]" /> 수집 강도</span>
                 <button onClick={() => setTuning({ initialLimit: 150, refreshLimit: 60, maxPending: 8, maxRefresh: 25, maxPoll: 6 })} className="rounded-md border border-[var(--border)] px-2 py-1 text-[10px] font-semibold text-[var(--accent)]">얕고 넓게 프리셋</button>
+                <button onClick={() => setTuning({ initialLimit: 1000, refreshLimit: 300, maxPending: 6, maxRefresh: 12, maxPoll: 10 })} className="rounded-md border border-[var(--border)] px-2 py-1 text-[10px] font-semibold text-[var(--accent)]">디테일(깊게) 프리셋</button>
                 <button onClick={() => setTuning({ initialLimit: 500, refreshLimit: 100, maxPending: 4, maxRefresh: 6, maxPoll: 2 })} className="rounded-md border border-[var(--border)] px-2 py-1 text-[10px] font-semibold text-[var(--muted)]">기본값</button>
                 <button onClick={saveTuning} className="kt-btn kt-btn-primary ml-auto px-3 py-1.5 text-[11px]">저장 (즉시 적용)</button>
               </div>

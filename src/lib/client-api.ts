@@ -10,6 +10,7 @@ export interface ApiUser {
   plan: string;
   proUntil: number;
   isPro: boolean;
+  markets?: string[]; // 열람 가능 시장(국가코드). 항상 US 포함.
 }
 
 async function jpost<T>(path: string, body: unknown): Promise<{ ok: boolean; status: number; data: T }> {

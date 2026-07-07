@@ -53,11 +53,20 @@ export async function getCurrentUser(): Promise<DbUser | null> {
   if (!id) return null;
   await ensureSchema();
   const { rows } = await sql<DbUser>`
-    SELECT id, email, name, brand, role, plan, pro_until FROM users WHERE id = ${id} LIMIT 1`;
+    SELECT id, email, name, brand, role, plan, pro_until, markets FROM users WHERE id = ${id} LIMIT 1`;
   return rows[0] ?? null;
 }
 
-// 클라이언트로 내려줄 안전한 형태 (+ 체험 반영 isPro)
+// 열람 가능 시장 파싱 — US는 항상 포함(기본 시장). CSV → 정규화된 대문자 코드 배열.
+export function parseMarkets(raw: string | null | undefined): string[] {
+  const extra = String(raw || "")
+    .split(/[,\s]+/)
+    .map((s) => s.trim().toUpperCase())
+    .filter(Boolean);
+  return Array.from(new Set(["US", ...extra]));
+}
+
+// 클라이언트로 내려줄 안전한 형태 (+ 체험 반영 isPro, 열람 가능 시장)
 export function publicUser(u: DbUser) {
   const trialActive = Number(u.pro_until) > Date.now();
   return {
@@ -69,5 +78,6 @@ export function publicUser(u: DbUser) {
     plan: u.plan,
     proUntil: Number(u.pro_until),
     isPro: u.plan === "pro" || u.plan === "enterprise" || trialActive,
+    markets: parseMarkets(u.markets),
   };
 }

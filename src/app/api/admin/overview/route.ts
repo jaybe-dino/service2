@@ -12,7 +12,7 @@ export async function GET() {
   await ensureSchema();
 
   const members = await sql`
-    SELECT u.id, u.email, u.name, u.brand, u.role, u.plan, u.pro_until, u.created_at,
+    SELECT u.id, u.email, u.name, u.brand, u.role, u.plan, u.pro_until, u.created_at, u.markets,
            COALESCE(p.total, 0) AS paid_total, p.last_paid,
            pr.code AS promo_code,
            sub.status AS sub_status,
