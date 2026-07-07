@@ -46,6 +46,8 @@ export async function POST(req: Request) {
     await sql`UPDATE remake_jobs SET status='failed', error='스펙 없음(재생성 필요)', updated_at=now() WHERE id=${id}`;
     return NextResponse.json({ ok: false, status: "failed" });
   }
+  // '처리 시작' 스탬프 — 상태 라우트의 준비-타임아웃은 이 updated_at 기준으로 측정(순차 처리 오탐 방지).
+  await sql`UPDATE remake_jobs SET status='processing', updated_at=now() WHERE id=${id}`;
 
   const timing: string[] = [];
   const mark = (name: string, from: number) => timing.push(`${name}=${Date.now() - from}ms`);
