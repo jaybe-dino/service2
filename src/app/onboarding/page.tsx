@@ -105,6 +105,13 @@ function OnboardingInner() {
     if (ref) { try { localStorage.setItem("onb.ref", ref); } catch {} setReferral(ref); }
     else { try { const r = localStorage.getItem("onb.ref"); if (r) setReferral(r); } catch {} }
 
+    // 딥링크: 메인의 '자가체크 시작' → 자가진단(step 0)으로 진입. 트랙 버튼 → 해당 트랙 프리셀렉트.
+    if (sp.get("step") === "check" || sp.get("self") === "1" || sp.get("selfcheck") === "1") {
+      setStep(0); setGradeInfo(null); setP1(0);
+    }
+    const tp = sp.get("track");
+    if (tp && (MALL_TRACK_MAP as Record<string, unknown>)[tp]) setTrack(tp as MallTrackId);
+
     // 🧪 결제 테스트 토큰 캡처(URL ?test= → 세션 유지)
     const tk = sp.get("test");
     if (tk) { try { sessionStorage.setItem("pay.test", tk); } catch {} setTestTok(tk); }

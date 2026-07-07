@@ -118,9 +118,9 @@ export default function Home() {
               브랜드 자가체크하고 맞춤 트랙에 맞춰<br />GloveK와 함께 입점하세요!
             </h2>
 
-            {/* 자가체크 CTA */}
+            {/* 자가체크 CTA → 자가진단(step 0)로 딥링크 */}
             <Link
-              href={ONBOARDING.path}
+              href={`${ONBOARDING.path}?step=check`}
               className="mx-auto mt-5 block max-w-2xl rounded-2xl bg-gradient-to-r from-[#7C3AED] to-[#1A56DB] p-4 text-white shadow-md transition-opacity hover:opacity-95"
             >
               <div className="flex flex-col items-center gap-3 sm:flex-row">
