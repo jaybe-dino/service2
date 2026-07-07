@@ -314,6 +314,16 @@ export function ensureSchema(): Promise<void> {
         data text,
         created_at timestamptz NOT NULL DEFAULT now()
       )`;
+      // 레퍼런스 프레임 캐시 — 분석 때 추출한 프레임을 저장, 생성 때 재사용(다운로드 생략).
+      await sql`CREATE TABLE IF NOT EXISTS remake_ref_frames (
+        video_id text NOT NULL,
+        idx int NOT NULL,
+        ts numeric,
+        mime text,
+        data text,
+        created_at timestamptz NOT NULL DEFAULT now(),
+        PRIMARY KEY (video_id, idx)
+      )`;
       await sql`CREATE TABLE IF NOT EXISTS remake_jobs (
         id text PRIMARY KEY,
         provider text NOT NULL DEFAULT 'mock',

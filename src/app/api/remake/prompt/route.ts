@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { buildRemakePrompt, type RemakePromptPackage } from "@/data/ktrend/remake-refs";
 import type { RemakeTemplate } from "@/data/ktrend/remake-templates";
 import { fetchAnalysisFrames, fetchCoverFrame, type Frame } from "@/lib/remake/frames";
+import { ensureSchema, isConfigured as dbConfigured } from "@/lib/db";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -36,6 +37,8 @@ export async function POST(req: Request) {
   if (!hasClaude()) {
     return NextResponse.json({ mode: "heuristic", pkg: base });
   }
+
+  if (dbConfigured()) { try { await ensureSchema(); } catch { /* 캐시 없이 진행 */ } }
 
   // 레퍼런스 실제 프레임(시간순 스트립) → 비전 분석 그라운딩. 워커 있으면 여러 장, 없으면 커버 1장.
   let frames: Frame[] = [];
