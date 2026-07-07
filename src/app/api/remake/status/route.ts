@@ -23,7 +23,7 @@ export async function GET(req: Request) {
   if (!ids.length) return NextResponse.json({ jobs: [] });
 
   const { rows } = await sql`
-    SELECT id, provider, request_id, variation, score, status, video_url, error, fidelity,
+    SELECT id, provider, request_id, variation, score, status, video_url, error, fidelity, debug,
            extract(epoch from (now() - created_at)) AS age
     FROM remake_jobs WHERE id = ANY(${ids as unknown as string})`;
 
@@ -31,7 +31,7 @@ export async function GET(req: Request) {
   for (const r of rows as Array<{
     id: string; provider: string; request_id: string | null; variation: number;
     score: number; status: string; video_url: string | null; error: string | null;
-    fidelity: string | null; age: number;
+    fidelity: string | null; debug: string | null; age: number;
   }>) {
     let status = r.status;
     let videoUrl = r.video_url;
@@ -64,9 +64,10 @@ export async function GET(req: Request) {
       status,
       videoUrl: videoUrl || null,
       error: error || null,
-      // request_id 없이 in_progress면 아직 백그라운드 준비 중(제출 전).
+      // request_id 없이 non-terminal이면 아직 준비 중(제출 전).
       preparing: r.provider !== "mock" && !TERMINAL.has(status) && !r.request_id,
       fidelity: r.fidelity || null,
+      debug: r.debug || null,
     });
   }
 

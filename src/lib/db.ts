@@ -335,11 +335,15 @@ export function ensureSchema(): Promise<void> {
         video_url text,
         error text,
         fidelity text,
+        spec text,
+        debug text,
         created_at timestamptz NOT NULL DEFAULT now(),
         updated_at timestamptz NOT NULL DEFAULT now()
       )`;
-      // 기존 DB 보정: fidelity 컬럼 추가(멱등).
+      // 기존 DB 보정: 신규 컬럼 추가(멱등).
       await sql`ALTER TABLE remake_jobs ADD COLUMN IF NOT EXISTS fidelity text`;
+      await sql`ALTER TABLE remake_jobs ADD COLUMN IF NOT EXISTS spec text`;
+      await sql`ALTER TABLE remake_jobs ADD COLUMN IF NOT EXISTS debug text`;
       // 데모/관리자 계정 시드 (bcrypt("ktrend2026")) — 서버 세션 로그인 가능하도록
       const DEMO_HASH = "$2b$10$mLc7sBm3zK4a83l6/Tg9NOoDGLLYsfp4SXRfZcls4.LTw6Tsy/8Oy";
       await sql`INSERT INTO users (id, email, password_hash, name, brand, role, plan) VALUES

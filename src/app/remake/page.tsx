@@ -192,7 +192,7 @@ export default function RemakeStudioPage() {
         }),
       });
       const raw = await res.text();
-      let data: { jobs?: { id: string }[]; error?: string; mode?: string; provider?: string; tier?: string; sceneMode?: boolean; fidelity?: string };
+      let data: { jobs?: { id: string }[]; error?: string; mode?: string; provider?: string; tier?: string; sceneMode?: boolean; fidelity?: string; needsProcess?: boolean };
       try {
         data = JSON.parse(raw);
       } catch {
@@ -204,6 +204,17 @@ export default function RemakeStudioPage() {
       const sim = scenesOn ? Math.min(96, 80 + Math.min(effPkg!.scenes.length, 5) * 3) : 66;
       setGenInfo({ real: data.mode !== "mock", label: data.provider || "시뮬레이션", tier: (data.tier as Tier) || genTier, sceneMode: scenesOn, similarity: sim, fidelity: data.fidelity || "text" });
       const ids: string[] = data.jobs.map((j: { id: string }) => j.id);
+      // 실제 생성(프레임·제품 스왑·제출)은 잡별 process 호출이 담당 — 각기 새 60s 예산.
+      // fire-and-forget: 진행/결과는 아래 상태 폴링이 반영(process가 잡 행을 업데이트).
+      if (data.needsProcess) {
+        for (const jid of ids) {
+          fetch("/api/remake/process", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ id: jid }),
+          }).catch(() => {});
+        }
+      }
       const startedAt = Date.now();
       setGenElapsed(0);
       const DEADLINE = 300_000; // 5분 초과 시 폴링 중단(무한 스핀 방지)

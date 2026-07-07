@@ -18,6 +18,17 @@ function key(): string {
   return (process.env.GEMINI_API_KEY || "").trim();
 }
 
+// 제출 호출 타임박스 — 벤더 지연이 서버리스 수명(60s)을 통째로 잡아먹지 않도록.
+async function fetchT(url: string, opts: RequestInit, ms = 30000): Promise<Response> {
+  const ac = new AbortController();
+  const timer = setTimeout(() => ac.abort(), ms);
+  try {
+    return await fetch(url, { ...opts, signal: ac.signal });
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 export interface GeminiSubmitInput {
   imageBase64: string;
   imageMime: string;
@@ -32,7 +43,7 @@ export interface GeminiSubmitInput {
 export async function submitImage2Video(i: GeminiSubmitInput): Promise<{ requestId: string }> {
   // Omni Flash는 Interactions API(다른 규격), Veo류는 predictLongRunning.
   if (/omni/i.test(i.model)) return submitOmni(i);
-  const res = await fetch(`${BASE}/models/${i.model}:predictLongRunning`, {
+  const res = await fetchT(`${BASE}/models/${i.model}:predictLongRunning`, {
     method: "POST",
     headers: { "content-type": "application/json", "x-goog-api-key": key() },
     body: JSON.stringify({
@@ -102,7 +113,7 @@ async function submitOmni(i: GeminiSubmitInput): Promise<{ requestId: string }> 
   input.push({ type: "image", data: i.imageBase64, mime_type: i.imageMime || "image/png" });
   input.push({ type: "text", text: i.prompt });
   // 인증 이중화: 헤더 + ?key= (엔드포인트별 차이 대비)
-  const res = await fetch(`${BASE}/interactions?key=${encodeURIComponent(key())}`, {
+  const res = await fetchT(`${BASE}/interactions?key=${encodeURIComponent(key())}`, {
     method: "POST",
     headers: { "content-type": "application/json", "x-goog-api-key": key() },
     // response_format.type 필수(오류로 확인). 영상 출력 + URI 전달.
