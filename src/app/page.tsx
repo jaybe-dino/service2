@@ -7,7 +7,7 @@ import PageShell from "@/components/ktrend/PageShell";
 import ContentCard from "@/components/ktrend/ContentCard";
 import HeroBackground from "@/components/ktrend/HeroBackground";
 import { usePlan } from "@/components/ktrend/PlanContext";
-import { CATEGORIES, ONBOARDING, MALL_TRACKS, MALL_TRACK_MAP } from "@/data/ktrend/meta";
+import { CATEGORIES, ONBOARDING, MALL_TRACKS } from "@/data/ktrend/meta";
 import { GRADE_GUIDE } from "@/lib/onboarding";
 import { BRANDS } from "@/data/ktrend/brands";
 import { loadContentStaged, randomSample, fmtCompact, type Content } from "@/data/ktrend/content";
@@ -148,7 +148,7 @@ export default function Home() {
             </Link>
 
             <div className="mx-auto mt-6 grid max-w-3xl gap-4 text-left sm:grid-cols-2">
-              {MALL_TRACKS.filter((t) => t.flow === "subscribe").map((t) => (
+              {MALL_TRACKS.map((t) => (
                 <div
                   key={t.id}
                   className={`flex flex-col overflow-hidden rounded-2xl border bg-white ${
@@ -164,7 +164,7 @@ export default function Home() {
                     <div className="mt-1 text-[12px] text-[var(--muted)]">{t.tagline}</div>
                     <div className="mt-3 flex items-end gap-1">
                       <span className="text-[24px] font-black text-pink-500">{t.priceLabel}</span>
-                      <span className="mb-1 text-[12px] font-semibold text-[var(--muted)]">/월</span>
+                      {!t.inquiry && <span className="mb-1 text-[12px] font-semibold text-[var(--muted)]">/월</span>}
                     </div>
                     <div className="text-[12px] text-[var(--muted)]">+ {t.commissionLabel}</div>
                   </div>
@@ -180,7 +180,7 @@ export default function Home() {
                         t.highlight ? "bg-pink-500 text-white hover:bg-pink-600" : "border border-[var(--fg)] text-[var(--fg)] hover:bg-slate-50"
                       }`}
                     >
-                      {t.name}으로 입점
+                      {t.inquiry ? "가격 문의하기" : `${t.name}으로 입점`}
                     </Link>
                   </div>
                 </div>
@@ -188,11 +188,7 @@ export default function Home() {
             </div>
 
             <div className="mt-6 text-center text-[12px] text-[var(--muted)]">
-              메가 스케일업이 필요하다면{" "}
-              <Link href={`${ONBOARDING.path}?track=onboarding`} className="font-semibold text-[var(--accent)] hover:underline">
-                {MALL_TRACK_MAP.onboarding.name} ({MALL_TRACK_MAP.onboarding.priceLabel})
-              </Link>
-              {" "}· <Link href={ONBOARDING.path} className="font-semibold text-[var(--accent)] hover:underline">전체 트랙 비교</Link>
+              <Link href={ONBOARDING.path} className="font-semibold text-[var(--accent)] hover:underline">전체 트랙 비교 →</Link>
             </div>
           </div>
         </section>
