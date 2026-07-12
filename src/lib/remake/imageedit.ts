@@ -1,6 +1,8 @@
 // Remake Studio — 이미지 편집(제품 스왑). 서버 전용.
 // 레퍼런스 프레임에서 "제품만" 내 제품으로 교체(구도·조명·나머지는 그대로) → 가장 긴밀한 재현.
 // Gemini 이미지 모델(Nano Banana, gemini-2.5-flash-image 등) generateContent 사용.
+import type { ShotPlan } from "./spec";
+
 const BASE = process.env.GEMINI_BASE_URL || "https://generativelanguage.googleapis.com/v1beta";
 
 export function hasImageEdit(): boolean {
@@ -86,6 +88,23 @@ export async function composeScene(product: Img, scenePrompt: string, opts: Comp
     `Scene to create: ${scenePrompt}. ` +
     "Absolutely NO on-screen text, captions, letters, numbers, hashtags, logos or UI overlays.";
   parts.push({ text: instruction });
+  return generateImage(parts, 26000);
+}
+
+// ③ KeyframeRenderer 코어 — ShotPlan 하나를 키프레임 스틸로 렌더(제품 합성 + 리얼리즘 패스).
+// 제품 슬롯이 있는 샷은 내 제품 이미지를 조건으로 합성, 없으면 텍스트 기반 신규 장면.
+export async function composeKeyframe(product: Img, plan: ShotPlan): Promise<Img | null> {
+  const parts: unknown[] = [];
+  if (plan.needs_product && product?.b64) {
+    parts.push({ inline_data: { mime_type: product.mime || "image/png", data: product.b64 } });
+  }
+  const text = [
+    plan.image_prompt,
+    plan.product_placement,
+    plan.needs_product && product?.b64 ? "The attached image is MY product — keep its real label, wording, shape and color exactly faithful; do not distort or relabel." : "",
+    `Avoid: ${plan.negative_prompt}.`,
+  ].filter(Boolean).join(" ");
+  parts.push({ text });
   return generateImage(parts, 26000);
 }
 

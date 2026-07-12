@@ -74,6 +74,43 @@ export function layerControlStage2(preset: string): LayerControl {
   return { sales: { lock: true }, structure: { lock: true }, style: { vary: true, preset }, product: { vary: true } };
 }
 
+// ── ② KeyframePlanner 산출물: 샷별 이미지 생성 지시 ──
+export interface ShotPlan {
+  shot_no: number;
+  sales_beat: string;         // 세일즈 매핑 유지(불변)
+  shot_type: ShotType;
+  camera: CameraMove;
+  base_composition: string;   // 구도(원본 구조 전이 — depth/pose만, 얼굴·배경 신규)
+  image_prompt: string;       // style+composition 조합(렌더러가 그대로 사용)
+  product_asset: string;      // 합성할 우리 제품 자산 키
+  product_placement: string;  // 배치·조명 매칭 지시(제품 슬롯 있는 샷만)
+  needs_product: boolean;
+  negative_prompt: string;
+}
+
+// 2차 변형용 스타일 프리셋 — sales_beat/shot_type/camera는 건드리지 않고 style만 치환.
+export interface StylePreset { avatar: StyleLayer["avatar"]; setting: string; lighting: string; color_grade: string }
+export const STYLE_PRESETS: Record<string, StylePreset> = {
+  "avatar_B/clean_studio": {
+    avatar: { gender: "female", age_range: "20s", vibe: "차분한 전문가형" },
+    setting: "미니멀 화이트 스튜디오",
+    lighting: "clean softbox, even",
+    color_grade: "neutral, crisp",
+  },
+  "avatar_C/cozy_home": {
+    avatar: { gender: "female", age_range: "30s", vibe: "편안한 데일리 후기형" },
+    setting: "따뜻한 우드톤 홈, 자연광",
+    lighting: "warm window light",
+    color_grade: "warm, soft",
+  },
+  "avatar_M/outdoor_cafe": {
+    avatar: { gender: "male", age_range: "20s", vibe: "트렌디 캐주얼" },
+    setting: "밝은 야외 카페 테라스",
+    lighting: "bright daylight, airy",
+    color_grade: "vivid, fresh",
+  },
+};
+
 const SHOT_TYPES = new Set<ShotType>(["wide", "medium", "close-up", "ecu", "establishing"]);
 const CAMERA_MOVES = new Set<CameraMove>(["static", "pan", "dolly", "handheld", "push-in"]);
 
