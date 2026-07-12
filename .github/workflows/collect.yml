@@ -6,9 +6,9 @@ name: 수집 자동화 (collect)
 #    리포지토리 Settings → Secrets → Actions 에 COLLECT_CRON_URL 를 등록하세요.
 #    예: https://glovek.space/api/cron/collect?key=<CRON_SECRET 값>
 on:
-  schedule:
-    - cron: "*/15 * * * *"
-  workflow_dispatch: {}        # 수동 실행도 가능
+  # 자동 크롤링 중단 — 수집은 어드민 '지금 수집 실행'(수동) 또는 아래 수동 트리거로만.
+  # (다시 자동화하려면 schedule 블록을 되살리고 COLLECT_CRON_URL 시크릿 등록)
+  workflow_dispatch: {}        # 수동 실행만
 
 jobs:
   collect:
