@@ -17,6 +17,8 @@ jobs:
       - name: Ping collect endpoint
         run: |
           if [ -z "${{ secrets.COLLECT_CRON_URL }}" ]; then
-            echo "COLLECT_CRON_URL 시크릿이 없습니다. Settings → Secrets에 등록하세요."; exit 1
+            # 시크릿 미등록 시 실패가 아니라 '건너뜀'으로 종료(실패 알림 스팸 방지).
+            echo "::warning::COLLECT_CRON_URL 시크릿 미등록 — 수집 건너뜀. Settings → Secrets에 등록하면 활성화됩니다."
+            exit 0
           fi
           curl -fsS --max-time 70 "${{ secrets.COLLECT_CRON_URL }}" && echo "" && echo "OK"
