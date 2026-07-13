@@ -88,28 +88,56 @@ export interface ShotPlan {
   negative_prompt: string;
 }
 
-// 2차 변형용 스타일 프리셋 — sales_beat/shot_type/camera는 건드리지 않고 style만 치환.
-export interface StylePreset { avatar: StyleLayer["avatar"]; setting: string; lighting: string; color_grade: string }
+// 2차 변형용 스타일 프리셋(캐릭터 라이브러리) — sales_beat/shot_type/camera는 건드리지 않고 style만 치환.
+export interface StylePreset { label: string; avatar: StyleLayer["avatar"]; setting: string; lighting: string; color_grade: string }
 export const STYLE_PRESETS: Record<string, StylePreset> = {
   "avatar_B/clean_studio": {
+    label: "클린 스튜디오 · 20대 전문가",
     avatar: { gender: "female", age_range: "20s", vibe: "차분한 전문가형" },
     setting: "미니멀 화이트 스튜디오",
     lighting: "clean softbox, even",
     color_grade: "neutral, crisp",
   },
   "avatar_C/cozy_home": {
+    label: "코지 홈 · 30대 데일리",
     avatar: { gender: "female", age_range: "30s", vibe: "편안한 데일리 후기형" },
     setting: "따뜻한 우드톤 홈, 자연광",
     lighting: "warm window light",
     color_grade: "warm, soft",
   },
   "avatar_M/outdoor_cafe": {
+    label: "야외 카페 · 20대 남성 캐주얼",
     avatar: { gender: "male", age_range: "20s", vibe: "트렌디 캐주얼" },
     setting: "밝은 야외 카페 테라스",
     lighting: "bright daylight, airy",
     color_grade: "vivid, fresh",
   },
+  "avatar_D/glam_vanity": {
+    label: "글램 화장대 · 20대 뷰티",
+    avatar: { gender: "female", age_range: "late-20s", vibe: "화려한 뷰티 인플루언서" },
+    setting: "핑크톤 화장대, 링라이트",
+    lighting: "ring light, glossy",
+    color_grade: "punchy, saturated",
+  },
+  "avatar_E/gymwear_bright": {
+    label: "액티브 · 20대 애슬레저",
+    avatar: { gender: "female", age_range: "20s", vibe: "건강한 애슬레저" },
+    setting: "밝은 홈짐/스튜디오",
+    lighting: "high-key daylight",
+    color_grade: "clean, energetic",
+  },
+  "avatar_F/mature_luxe": {
+    label: "럭스 · 40대 성숙",
+    avatar: { gender: "female", age_range: "40s", vibe: "세련된 성숙미" },
+    setting: "고급스러운 호텔 파우더룸",
+    lighting: "soft warm spotlights",
+    color_grade: "rich, cinematic",
+  },
 };
+
+// UI 드롭다운/멀티선택용 목록
+export const STYLE_PRESET_LIST: { id: string; label: string }[] =
+  Object.entries(STYLE_PRESETS).map(([id, p]) => ({ id, label: p.label }));
 
 const SHOT_TYPES = new Set<ShotType>(["wide", "medium", "close-up", "ecu", "establishing"]);
 const CAMERA_MOVES = new Set<CameraMove>(["static", "pan", "dolly", "handheld", "push-in"]);

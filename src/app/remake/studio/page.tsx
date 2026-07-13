@@ -4,6 +4,7 @@
 // 내부 프로토타입. 각 단계는 대응 API를 호출하고 결과를 눈으로 확인한다.
 import { useEffect, useRef, useState } from "react";
 import type { ReferenceSpec } from "@/lib/remake/spec";
+import { STYLE_PRESET_LIST } from "@/lib/remake/spec";
 
 type Step = 0 | 1 | 2 | 3 | 4;
 interface KF { shot_no: number; sales_beat: string; needs_product: boolean; ok: boolean; assetId?: string; url?: string }
@@ -20,6 +21,10 @@ export default function RemakeStudioPage() {
   const [productImg, setProductImg] = useState<string | null>(null); // dataURL
   const [stage, setStage] = useState<1 | 2>(1);
   const [preset, setPreset] = useState("avatar_B/clean_studio");
+  // 2차 멀티변형(A/B): 여러 프리셋을 미리보기 1컷으로 비교 → 고른 변형만 전체 렌더.
+  const [selPresets, setSelPresets] = useState<Set<string>>(new Set(["avatar_B/clean_studio", "avatar_C/cozy_home"]));
+  const [previews, setPreviews] = useState<Record<string, KF | null>>({});
+  const [previewBusy, setPreviewBusy] = useState(false);
 
   // 산출물
   const [spec, setSpec] = useState<ReferenceSpec | null>(null);
@@ -67,6 +72,30 @@ export default function RemakeStudioPage() {
     } catch (e) { setErr(`키프레임 실패: ${e instanceof Error ? e.message : e}`); }
     setBusy(false);
   };
+
+  // M4 — 2차 멀티변형 미리보기: 선택 프리셋마다 대표 1컷만 렌더해 A/B 비교(비용 최소).
+  const previewShot = (): number => {
+    if (!spec) return 1;
+    const ps = spec.product_slots?.[0]?.shot_no;
+    return ps ?? spec.shots?.[0]?.shot_no ?? 1;
+  };
+  const doPreviews = async () => {
+    if (!spec || !productImg || selPresets.size === 0) return;
+    setErr(null); setPreviewBusy(true);
+    const shot = previewShot();
+    const entries = await Promise.all(
+      [...selPresets].map(async (p) => {
+        try {
+          const d = await call<{ keyframes: KF[] }>("/api/remake/keyframes", { spec, image: productImg, stage: 2, preset: p, shotNos: [shot] });
+          return [p, d.keyframes?.[0] ?? null] as const;
+        } catch { return [p, null] as const; }
+      }),
+    );
+    setPreviews(Object.fromEntries(entries));
+    setPreviewBusy(false);
+  };
+  // 고른 변형으로 전체 키프레임 렌더 → 기존 승인/애니메이션 흐름으로 진입.
+  const pickVariant = (p: string) => { setPreset(p); setStage(2); doKeyframes(); };
 
   // ④ Animate + 폴링
   const doAnimate = async () => {
@@ -186,19 +215,59 @@ export default function RemakeStudioPage() {
           <div className="mt-3 flex flex-wrap items-center gap-2">
             <select value={stage} onChange={(e) => setStage(Number(e.target.value) as 1 | 2)} className="rounded-lg border border-slate-300 px-2 py-1.5 text-[12px]">
               <option value={1}>1차 — 제품만 교체(최대 유사)</option>
-              <option value={2}>2차 — 스타일 변형</option>
+              <option value={2}>2차 — 스타일 변형(멀티 A/B)</option>
             </select>
-            {stage === 2 && (
-              <select value={preset} onChange={(e) => setPreset(e.target.value)} className="rounded-lg border border-slate-300 px-2 py-1.5 text-[12px]">
-                <option value="avatar_B/clean_studio">clean studio</option>
-                <option value="avatar_C/cozy_home">cozy home</option>
-                <option value="avatar_M/outdoor_cafe">outdoor cafe</option>
-              </select>
+            {stage === 1 && (
+              <button onClick={doKeyframes} disabled={busy || !productImg} className="rounded-lg bg-pink-600 px-4 py-2 text-[13px] font-bold text-white disabled:opacity-40">
+                {busy && step === 1 ? "렌더 중…" : "② 키프레임 생성"}
+              </button>
             )}
-            <button onClick={doKeyframes} disabled={busy || !productImg} className="rounded-lg bg-pink-600 px-4 py-2 text-[13px] font-bold text-white disabled:opacity-40">
-              {busy && step === 1 ? "렌더 중…" : "② 키프레임 생성"}
-            </button>
+            {stage === 2 && (
+              <button onClick={doPreviews} disabled={previewBusy || !productImg || selPresets.size === 0} className="rounded-lg bg-pink-600 px-4 py-2 text-[13px] font-bold text-white disabled:opacity-40">
+                {previewBusy ? "변형 미리보기 중…" : `② 변형 미리보기 (${selPresets.size})`}
+              </button>
+            )}
             {!productImg && <span className="text-[11px] text-rose-500">제품 이미지를 올려주세요</span>}
+          </div>
+
+          {stage === 2 && (
+            <div className="mt-3">
+              <div className="mb-1.5 text-[11px] font-semibold text-slate-500">캐릭터 라이브러리 — 비교할 변형 선택(세일즈 구조는 동일 유지)</div>
+              <div className="flex flex-wrap gap-1.5">
+                {STYLE_PRESET_LIST.map((p) => {
+                  const on = selPresets.has(p.id);
+                  return (
+                    <button key={p.id} onClick={() => setSelPresets((s) => { const n = new Set(s); n.has(p.id) ? n.delete(p.id) : n.add(p.id); return n; })}
+                      className={`rounded-full border px-2.5 py-1 text-[11px] font-semibold ${on ? "border-pink-500 bg-pink-500 text-white" : "border-slate-300 text-slate-500"}`}>
+                      {p.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </section>
+      )}
+
+      {/* M4 — 변형 미리보기 비교(A/B): 대표 1컷씩, 고른 변형만 전체 생성 */}
+      {stage === 2 && Object.keys(previews).length > 0 && (
+        <section className="mt-4 rounded-2xl border border-slate-200 p-4">
+          <div className="mb-2 text-[13px] font-black">변형 비교 — 같은 세일즈 구조, 다른 스타일</div>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+            {STYLE_PRESET_LIST.filter((p) => p.id in previews).map((p) => {
+              const kf = previews[p.id];
+              return (
+                <div key={p.id} className="overflow-hidden rounded-xl border border-slate-200">
+                  <div className="relative aspect-[9/16] bg-slate-100">
+                    {kf?.ok && kf.url ? <img src={kf.url} alt={p.label} className="h-full w-full object-cover" /> : <div className="grid h-full place-items-center text-[10px] text-rose-500">렌더 실패</div>}
+                    <span className="absolute left-1 top-1 rounded bg-black/60 px-1.5 py-0.5 text-[9px] font-bold text-white">{p.label}</span>
+                  </div>
+                  <button onClick={() => pickVariant(p.id)} disabled={busy || !kf?.ok} className="block w-full bg-pink-600 py-1.5 text-[11px] font-bold text-white disabled:opacity-40">
+                    이 변형으로 전체 생성 →
+                  </button>
+                </div>
+              );
+            })}
           </div>
         </section>
       )}
