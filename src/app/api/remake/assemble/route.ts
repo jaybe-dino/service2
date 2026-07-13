@@ -14,8 +14,17 @@ export async function POST(req: Request) {
   };
   const v = validateReferenceSpec(body.spec);
   if (!v.ok || !v.spec) return NextResponse.json({ error: `유효한 ReferenceSpec 필요: ${v.errors.join("; ")}` }, { status: 400 });
-  const clips = Array.isArray(body.clips) ? body.clips : [];
-  if (!clips.length) return NextResponse.json({ error: "완성된 샷 클립(videoUrl)이 필요합니다." }, { status: 400 });
+  const clipsRaw = Array.isArray(body.clips) ? body.clips : [];
+  if (!clipsRaw.length) return NextResponse.json({ error: "완성된 샷 클립(videoUrl)이 필요합니다." }, { status: 400 });
+
+  // 클립 URL 절대화 — 상대경로(/api/remake/video?...)는 워커가 못 받으므로 origin 결합.
+  const proto = req.headers.get("x-forwarded-proto") ?? "https";
+  const host = req.headers.get("x-forwarded-host") ?? req.headers.get("host");
+  const origin = process.env.NEXT_PUBLIC_SITE_URL || (host ? `${proto}://${host}` : "");
+  const clips = clipsRaw.map((c) => ({
+    shot_no: c.shot_no,
+    videoUrl: c.videoUrl && c.videoUrl.startsWith("/") ? `${origin}${c.videoUrl}` : c.videoUrl,
+  }));
 
   const plan = buildAssemblyPlan(v.spec, clips);
 

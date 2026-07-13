@@ -1,0 +1,9 @@
+{
+  "name": "remake-assemble-worker",
+  "version": "1.0.0",
+  "private": true,
+  "description": "FFmpeg assembly worker for Glovek Remake Studio (EDL -> final mp4).",
+  "main": "server.js",
+  "scripts": { "start": "node server.js" },
+  "engines": { "node": ">=18" }
+}
