@@ -6,6 +6,8 @@ import { useState } from "react";
 import Link from "next/link";
 import { Check, ArrowRight, Download, ShoppingBag, CalendarClock, Loader2 } from "lucide-react";
 import { MALL_TRACKS } from "@/data/ktrend/meta";
+import SiteHeader from "@/components/ktrend/SiteHeader";
+import SiteFooter from "@/components/ktrend/SiteFooter";
 
 // env 우선, 없으면 기본값(제공받은 링크). 소개서는 구글 슬라이드 → PDF 다운로드 링크.
 const DECK_URL = process.env.NEXT_PUBLIC_GLOVEK_DECK_URL
@@ -44,17 +46,11 @@ export default function ConsultPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-[#faf7ff] to-white text-slate-800">
-      {/* 상단 브랜드 바 */}
-      <header className="border-b border-slate-200 bg-white/80 backdrop-blur">
-        <div className="mx-auto flex h-14 max-w-[1200px] items-center gap-2 px-4">
-          <span className="grid h-7 w-7 place-items-center rounded-lg bg-gradient-to-br from-[#7C3AED] to-[#FF5C8D] text-white"><ShoppingBag size={15} /></span>
-          <span className="font-black">GloveK</span>
-          <span className="text-[12px] text-slate-400">틱톡샵 멀티몰 입점</span>
-        </div>
-      </header>
+    <div className="flex min-h-screen flex-col bg-gradient-to-b from-[#faf7ff] to-white text-slate-800">
+      {/* 기존 사이트 상단 네비 그대로 */}
+      <SiteHeader />
 
-      <div className="mx-auto grid max-w-[1200px] gap-6 px-4 py-8 lg:grid-cols-2 lg:gap-10 lg:py-12">
+      <div className="mx-auto grid w-full max-w-[1200px] flex-1 gap-6 px-4 py-8 lg:grid-cols-2 lg:gap-10 lg:py-12">
         {/* ── 소개 (데스크톱 오른쪽) ── */}
         <section className="lg:order-2">
           <span className="inline-flex items-center gap-1 rounded-full bg-[var(--accent-light)]/60 px-3 py-1 text-[11px] font-bold text-[#7C3AED]">
@@ -164,6 +160,8 @@ export default function ConsultPage() {
           </div>
         </section>
       </div>
+
+      <SiteFooter />
 
       <style>{`.inp{width:100%;border:1px solid #e2e8f0;border-radius:10px;padding:9px 11px;font-size:13px;background:#fff}.inp:focus{outline:2px solid #7C3AED33;border-color:#7C3AED}`}</style>
     </div>
