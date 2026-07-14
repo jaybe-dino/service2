@@ -82,7 +82,8 @@ export async function chargeByBillingKey({ bid, orderId, amount, goodsName }: { 
     const res = await fetch(`${API_BASE}/v1/subscribe/${encodeURIComponent(bid)}/payments`, {
       method: "POST",
       headers: { Authorization: basicAuth(), "Content-Type": "application/json" },
-      body: JSON.stringify({ orderId, amount, goodsName }),
+      // NICEpay 빌키승인 필수 필드: cardQuota(할부, 0=일시불), useShopInterest(현재 false 고정)
+      body: JSON.stringify({ orderId, amount, goodsName, cardQuota: "0", useShopInterest: false }),
     });
     const raw = await res.json().catch(() => ({}));
     const resultCode = (raw as { resultCode?: string }).resultCode ?? String(res.status);
@@ -92,30 +93,33 @@ export async function chargeByBillingKey({ bid, orderId, amount, goodsName }: { 
   }
 }
 
-// 3.4b 빌링키 발급 — 정기결제 카드 등록 인증(authResultCode=0000) 후 tid로 빌키 발급
-export async function registerBillingKey({ tid }: { tid: string }): Promise<{ ok: boolean; bid?: string; raw: unknown }> {
+// 3.4b 빌링키 발급 — NICEpay 스펙: POST /v1/subscribe/regist { encData(AES 암호화 카드정보), orderId } → 응답 BID.
+//   encData 평문 형식: cardNo=..&expYear=YY&expMonth=MM&idNo=......&cardPw=XX  (AES-128/256, hex, 키는 NICEpay 제공)
+//   ⚠️ 일반결제 tid로는 빌키가 발급되지 않는다(과거 구현 오류). 카드정보 암호화 또는 빌링 결제창의 bid가 필요.
+export async function registerBillingKey({ encData, orderId, encMode }: { encData: string; orderId: string; encMode?: string }): Promise<{ ok: boolean; bid?: string; raw: unknown }> {
   if (!isConfigured()) return { ok: false, raw: null };
   try {
     const res = await fetch(`${API_BASE}/v1/subscribe/regist`, {
       method: "POST",
       headers: { Authorization: basicAuth(), "Content-Type": "application/json" },
-      body: JSON.stringify({ tid }),
+      body: JSON.stringify({ encData, orderId, encMode: encMode || "A2" }),
     });
-    const raw = await res.json().catch(() => ({}));
-    return { ok: (raw as { resultCode?: string }).resultCode === "0000", bid: (raw as { bid?: string }).bid, raw };
+    const raw = (await res.json().catch(() => ({}))) as { resultCode?: string; BID?: string; bid?: string };
+    return { ok: raw.resultCode === "0000", bid: raw.BID || raw.bid, raw };
   } catch {
     return { ok: false, raw: null };
   }
 }
 
-// 3.5 빌링키 만료(해지)
-export async function expireBillingKey(bid: string): Promise<{ ok: boolean; raw: unknown }> {
+// 3.5 빌링키 만료(해지) — NICEpay는 삭제에도 orderId(상점 거래 고유번호)를 요구.
+export async function expireBillingKey(bid: string, orderId?: string): Promise<{ ok: boolean; raw: unknown }> {
   if (!isConfigured()) return { ok: false, raw: null };
   try {
+    const oid = orderId || buildOrderId(SERVICE_ORDER_PREFIX, "X");
     const res = await fetch(`${API_BASE}/v1/subscribe/${encodeURIComponent(bid)}/expire`, {
       method: "POST",
       headers: { Authorization: basicAuth(), "Content-Type": "application/json" },
-      body: "{}",
+      body: JSON.stringify({ orderId: oid }),
     });
     const raw = await res.json().catch(() => ({}));
     return { ok: (raw as { resultCode?: string }).resultCode === "0000", raw };

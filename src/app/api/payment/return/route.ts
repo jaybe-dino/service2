@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { sql, ensureSchema, isConfigured as dbConfigured } from "@/lib/db";
-import { approvePayment, registerBillingKey } from "@/lib/nicepay";
+import { approvePayment } from "@/lib/nicepay";
 import { PAY_PLANS } from "@/lib/payments";
 import type { MallTrackId } from "@/data/ktrend/meta";
 
@@ -54,8 +54,9 @@ export async function POST(req: Request) {
     await sql`INSERT INTO payments (payment_id, order_id, amount, raw)
               VALUES (${tid}, ${orderId}, ${amt}, ${JSON.stringify(ap.raw)}::jsonb) ON CONFLICT (payment_id) DO NOTHING`;
     await sql`UPDATE orders SET status='paid' WHERE order_id=${orderId}`;
-    // 2) 빌링키 발급(다음 달부터 자동청구용) — 실패해도 첫 달 이용은 보장
-    const bid = bidForm || ap.bid || (await registerBillingKey({ tid })).bid || null;
+    // 2) 빌링키(다음 달부터 자동청구용) — 빌링 결제창이 돌려준 bid 사용. 없으면 자동갱신 없이 첫 달만 보장.
+    //    ⚠️ 일반결제 tid로는 빌키 발급 불가(NICEpay 스펙). 자동청구하려면 빌링(카드등록) 결제창으로 bid 확보 필요.
+    const bid = bidForm || ap.bid || null;
     const nextAt = Date.now() + periodMs;
     await sql`INSERT INTO subscriptions (user_id, bid, plan, amount, status, next_charge_at, updated_at)
               VALUES (${order.user_id}, ${bid}, 'pro', ${amt}, 'active', ${nextAt}, now())
@@ -80,8 +81,8 @@ export async function POST(req: Request) {
     await sql`INSERT INTO payments (payment_id, order_id, amount, raw)
               VALUES (${tid}, ${orderId}, ${amt}, ${JSON.stringify(ap.raw)}::jsonb) ON CONFLICT (payment_id) DO NOTHING`;
     await sql`UPDATE orders SET status='paid' WHERE order_id=${orderId}`;
-    // 2) 빌링키 발급(다음 달부터 자동청구용) — 실패해도 첫 달 입점은 보장
-    const bid = bidForm || ap.bid || (await registerBillingKey({ tid })).bid || null;
+    // 2) 빌링키(다음 달부터 자동청구용) — 빌링 결제창이 돌려준 bid 사용. 없으면 자동갱신 없이 첫 달만 보장.
+    const bid = bidForm || ap.bid || null;
     const nextAt = Date.now() + periodMs;
     await sql`INSERT INTO mall_subscriptions (user_id, track, bid, amount, status, next_charge_at, updated_at)
               VALUES (${order.user_id}, ${track}, ${bid}, ${amt}, 'active', ${nextAt}, now())
