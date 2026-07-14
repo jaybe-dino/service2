@@ -313,6 +313,22 @@ export function ensureSchema(): Promise<void> {
       await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS referred_by text`;
       // 열람 가능 시장(국가코드 CSV) — 관리자 승인/멤버십으로 부여. US는 코드와 무관하게 모두 허용.
       await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS markets text`;
+      // GloveK 입점 상담 신청(랜딩 이벤트) — 별도 저장.
+      await sql`CREATE TABLE IF NOT EXISTS consult_requests (
+        id serial PRIMARY KEY,
+        company text NOT NULL,
+        brand_url text,
+        category text,
+        overseas text,
+        manager_name text NOT NULL,
+        email text NOT NULL,
+        contact text NOT NULL,
+        message text,
+        agreed boolean NOT NULL DEFAULT false,
+        source text,
+        status text NOT NULL DEFAULT 'new',
+        created_at timestamptz NOT NULL DEFAULT now()
+      )`;
       // Remake Studio(프로토타입) — 업로드 제품 이미지(외부 영상모델이 가져갈 공개 URL) + 생성 잡 추적
       await sql`CREATE TABLE IF NOT EXISTS remake_assets (
         id text PRIMARY KEY,
