@@ -9,9 +9,9 @@ import { MALL_TRACKS } from "@/data/ktrend/meta";
 import SiteHeader from "@/components/ktrend/SiteHeader";
 import SiteFooter from "@/components/ktrend/SiteFooter";
 
-// env 우선, 없으면 기본값(제공받은 링크). 소개서는 구글 슬라이드 → PDF 다운로드 링크.
+// env 우선, 없으면 기본값(제공받은 링크). 서비스 소개서 = 구글 슬라이드(보기).
 const DECK_URL = process.env.NEXT_PUBLIC_GLOVEK_DECK_URL
-  || "https://docs.google.com/presentation/d/1zUGsHZ9pIbupXZsGTdDx1okGRJX5Sdwg/export/pdf";
+  || "https://docs.google.com/presentation/d/1zUGsHZ9pIbupXZsGTdDx1okGRJX5Sdwg/edit?usp=sharing&ouid=105353575394213431265&rtpof=true&sd=true";
 const MEETING_URL = process.env.NEXT_PUBLIC_GLOVEK_MEETING_URL
   || "https://scheduler.zoom.us/nwa36f2letmqfr4bht4pgtzve0/tpartners2";
 
@@ -84,7 +84,7 @@ export default function ConsultPage() {
             {DECK_URL ? (
               <a href={DECK_URL} target="_blank" rel="noopener noreferrer"
                 className="inline-flex items-center gap-2 rounded-xl border border-[#7C3AED]/40 bg-white px-4 py-2.5 text-[13px] font-bold text-[#7C3AED] hover:bg-[var(--accent-light)]">
-                <Download size={15} /> GloveK 멀티몰 서비스 소개서 다운로드
+                <Download size={15} /> GloveK 멀티몰 서비스 소개서 보기
               </a>
             ) : (
               <div className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-[13px] font-bold text-slate-400">
