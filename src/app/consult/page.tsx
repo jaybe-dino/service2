@@ -7,9 +7,11 @@ import Link from "next/link";
 import { Check, ArrowRight, Download, ShoppingBag, CalendarClock, Loader2 } from "lucide-react";
 import { MALL_TRACKS } from "@/data/ktrend/meta";
 
-// env로 주입(값 받으면 교체). 미설정 시 폴백 처리.
-const DECK_URL = process.env.NEXT_PUBLIC_GLOVEK_DECK_URL || "";
-const MEETING_URL = process.env.NEXT_PUBLIC_GLOVEK_MEETING_URL || "";
+// env 우선, 없으면 기본값(제공받은 링크). 소개서는 구글 슬라이드 → PDF 다운로드 링크.
+const DECK_URL = process.env.NEXT_PUBLIC_GLOVEK_DECK_URL
+  || "https://docs.google.com/presentation/d/1zUGsHZ9pIbupXZsGTdDx1okGRJX5Sdwg/export/pdf";
+const MEETING_URL = process.env.NEXT_PUBLIC_GLOVEK_MEETING_URL
+  || "https://scheduler.zoom.us/nwa36f2letmqfr4bht4pgtzve0/tpartners2";
 
 const CATEGORIES = ["스킨케어", "메이크업", "헤어케어", "바디·퍼스널케어", "이너뷰티/건기식", "패션·잡화", "푸드", "기타"];
 const OVERSEAS = ["없음", "아마존·쇼피 등 경험 있음", "TikTok Shop 경험 있음", "기타"];
