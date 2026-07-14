@@ -64,7 +64,8 @@ interface OnbApp {
 }
 const TRACK_LABEL: Record<string, string> = { ready: "Start", live: "Live Focus", onboarding: "Onboarding" };
 interface Referrer { code: string; login_id: string; name: string | null; created_ms: number; signups: number; paid_users: number; revenue: number; rate: number; commission: number }
-type Tab = "members" | "payments" | "inquiries" | "onboarding" | "referrers" | "collect" | "influencers" | "brands" | "utm" | "rules";
+type Tab = "members" | "payments" | "inquiries" | "consult" | "onboarding" | "referrers" | "collect" | "influencers" | "brands" | "utm" | "rules";
+interface ConsultRow { id: number; company: string; brand_url: string | null; category: string | null; overseas: string | null; manager_name: string; email: string; contact: string; message: string | null; agreed: boolean; status: string; created_at: string }
 interface UtmRow { key: string; visits: number; signups: number }
 interface UtmRecent { kind: string; source: string | null; medium: string | null; campaign: string | null; content: string | null; user_email: string | null; created_at: string }
 
@@ -79,6 +80,7 @@ export default function AdminPage() {
   const [members, setMembers] = useState<Member[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
   const [inquiries, setInquiries] = useState<Inquiry[]>([]);
+  const [consult, setConsult] = useState<ConsultRow[]>([]);
   const [brandReqs, setBrandReqs] = useState<BrandReq[]>([]);
   const [runs, setRuns] = useState<Run[]>([]);
   const [brandHealth, setBrandHealth] = useState<BrandHealth[]>([]);
@@ -132,6 +134,7 @@ export default function AdminPage() {
       setMembers(r.members ?? []);
       setOrders(r.orders ?? []);
       setInquiries(r.inquiries ?? []);
+      setConsult(r.consultRequests ?? []);
       setBrandReqs(r.brandRequests ?? []);
       setRuns(r.collectionRuns ?? []);
       setBrandHealth(r.brandHealth ?? []);
@@ -250,6 +253,14 @@ export default function AdminPage() {
     setToast(r.ok ? "답변 저장됨 (회원 마이페이지 노출)" : "저장 실패");
     setTimeout(() => setToast(""), 2500);
     if (r.ok) loadData();
+  };
+
+  const saveConsultStatus = async (id: number, status: string) => {
+    setConsult((rows) => rows.map((c) => (c.id === id ? { ...c, status } : c))); // 낙관적
+    const r = await fetch("/api/admin/consult", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id, status }) });
+    setToast(r.ok ? "상담 상태 저장됨" : "저장 실패");
+    setTimeout(() => setToast(""), 2000);
+    if (!r.ok) loadData();
   };
 
   const resetPw = async (email: string) => {
@@ -442,6 +453,7 @@ export default function AdminPage() {
     { id: "members", label: "회원·결제", icon: <Users size={13} /> },
     { id: "payments", label: "결제현황", icon: <CreditCard size={13} /> },
     { id: "inquiries", label: "문의·제안", icon: <Inbox size={13} /> },
+    { id: "consult", label: "1:1 상담신청", icon: <Inbox size={13} /> },
     { id: "onboarding", label: "틱톡샵 온보딩", icon: <ShoppingBag size={13} /> },
     { id: "referrers", label: "추천인", icon: <Gift size={13} /> },
     { id: "collect", label: "브랜드 수집", icon: <Database size={13} /> },
@@ -567,6 +579,33 @@ export default function AdminPage() {
             );
           })}
           {!inquiries.length && <EmptyRow cols={6} text="문의·제안 없음" />}
+        </Table>
+      )}
+
+      {tab === "consult" && (
+        <Table head={["회사", "담당자", "이메일", "연락처", "카테고리", "해외경험", "브랜드", "문의내용", "상태", "신청일"]}>
+          {consult.map((c) => (
+            <tr key={c.id} className="border-b border-[var(--border)] last:border-0 align-top">
+              <td className="p-2 font-semibold">{c.company}</td>
+              <td className="p-2">{c.manager_name}</td>
+              <td className="p-2"><a href={`mailto:${c.email}`} className="text-[var(--accent)] hover:underline">{c.email}</a></td>
+              <td className="p-2">{c.contact}</td>
+              <td className="p-2">{c.category ?? "—"}</td>
+              <td className="p-2 text-[10px]">{c.overseas ?? "—"}</td>
+              <td className="p-2 text-[10px]">{c.brand_url ? <a href={c.brand_url} target="_blank" rel="noreferrer" className="text-[var(--accent)] hover:underline">링크</a> : "—"}</td>
+              <td className="p-2 max-w-[240px] text-[10px] text-[var(--muted)]">{c.message || "—"}</td>
+              <td className="p-2">
+                <select value={c.status} onChange={(e) => saveConsultStatus(c.id, e.target.value)}
+                  className={`rounded-md border px-1.5 py-1 text-[10px] font-semibold ${c.status === "done" ? "border-emerald-300 text-emerald-700" : c.status === "contacted" ? "border-sky-300 text-sky-700" : "border-slate-300 text-slate-500"}`}>
+                  <option value="new">신규</option>
+                  <option value="contacted">연락함</option>
+                  <option value="done">완료</option>
+                </select>
+              </td>
+              <td className="p-2 text-[var(--muted)]">{dt(c.created_at)}</td>
+            </tr>
+          ))}
+          {!consult.length && <EmptyRow cols={10} text="상담 신청 없음" />}
         </Table>
       )}
 

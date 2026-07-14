@@ -37,6 +37,10 @@ export async function GET() {
 
   const inquiries = await sql`SELECT id, kind, user_email, payload, status, response, created_at FROM inquiries ORDER BY created_at DESC LIMIT 200`;
 
+  const consultRequests = await sql`
+    SELECT id, company, brand_url, category, overseas, manager_name, email, contact, message, agreed, status, created_at
+    FROM consult_requests ORDER BY created_at DESC LIMIT 300`;
+
   const settingsRow = await sql`SELECT value FROM admin_settings WHERE key='crawl_rules' LIMIT 1`;
   const crawlRules = settingsRow.rows[0]?.value ?? DEFAULT_CRAWL_RULES;
 
@@ -65,6 +69,7 @@ export async function GET() {
     members: members.rows,
     orders: orders.rows,
     inquiries: inquiries.rows,
+    consultRequests: consultRequests.rows,
     crawlRules,
     brandRequests: brandRequests.rows,
     collectionRuns: collectionRuns.rows,
