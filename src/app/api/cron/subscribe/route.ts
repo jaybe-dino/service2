@@ -21,18 +21,18 @@ async function handle(req: Request) {
   await ensureSchema();
 
   const now = Date.now();
-  const periodMs = (PAY_PLANS.pro.periodDays ?? 30) * 86_400_000;
-  const due = await sql<{ user_id: string; bid: string; amount: number; failures: number }>`
-    SELECT user_id, bid, amount, failures FROM subscriptions
+  const due = await sql<{ user_id: string; bid: string; amount: number; failures: number; period_days: number }>`
+    SELECT user_id, bid, amount, failures, period_days FROM subscriptions
     WHERE bid IS NOT NULL AND status IN ('trial','active') AND next_charge_at <= ${now}
     ORDER BY next_charge_at ASC LIMIT 20`;
 
   let charged = 0;
   let failed = 0;
   for (const s of due.rows) {
+    const periodMs = (Number(s.period_days) || 30) * 86_400_000; // 구독별 주기(6개월 약정=180)
     const orderId = buildOrderId(SERVICE_ORDER_PREFIX, "Pro");
-    await sql`INSERT INTO orders (order_id, user_id, plan, amount, goods_name, status, kind)
-              VALUES (${orderId}, ${s.user_id}, 'pro', ${s.amount}, ${PAY_PLANS.pro.goodsName}, 'created', 'subscribe')`;
+    await sql`INSERT INTO orders (order_id, user_id, plan, amount, goods_name, status, kind, period_days)
+              VALUES (${orderId}, ${s.user_id}, 'pro', ${s.amount}, ${PAY_PLANS.pro.goodsName}, 'created', 'subscribe', ${s.period_days})`;
     const r = await chargeByBillingKey({ bid: s.bid, orderId, amount: s.amount, goodsName: PAY_PLANS.pro.goodsName });
     if (r.ok && r.tid) {
       await sql`INSERT INTO payments (payment_id, order_id, amount, raw) VALUES (${r.tid}, ${orderId}, ${s.amount}, ${JSON.stringify(r.raw)}::jsonb) ON CONFLICT (payment_id) DO NOTHING`;
@@ -50,18 +50,18 @@ async function handle(req: Request) {
     }
   }
   // ── 몰 입점 트랙 정기결제 (Pro와 분리, pro_until 미반영) ──
-  const mallDue = await sql<{ user_id: string; track: string; bid: string; amount: number; failures: number }>`
-    SELECT user_id, track, bid, amount, failures FROM mall_subscriptions
+  const mallDue = await sql<{ user_id: string; track: string; bid: string; amount: number; failures: number; period_days: number }>`
+    SELECT user_id, track, bid, amount, failures, period_days FROM mall_subscriptions
     WHERE bid IS NOT NULL AND status IN ('active') AND next_charge_at <= ${now}
     ORDER BY next_charge_at ASC LIMIT 20`;
   let mallCharged = 0;
   let mallFailed = 0;
   for (const s of mallDue.rows) {
-    const plan = PAY_PLANS[s.track] ?? PAY_PLANS.ready;
-    const period = (plan.periodDays ?? 30) * 86_400_000;
+    const plan = PAY_PLANS[s.track] ?? PAY_PLANS.live; // 미확인 트랙 폴백(ready 제거)
+    const period = (Number(s.period_days) || 30) * 86_400_000; // 구독별 주기(6개월 약정=180)
     const orderId = buildOrderId(SERVICE_ORDER_PREFIX, plan.planInitial);
-    await sql`INSERT INTO orders (order_id, user_id, plan, amount, goods_name, status, kind)
-              VALUES (${orderId}, ${s.user_id}, ${s.track}, ${s.amount}, ${plan.goodsName}, 'created', 'mall')`;
+    await sql`INSERT INTO orders (order_id, user_id, plan, amount, goods_name, status, kind, period_days)
+              VALUES (${orderId}, ${s.user_id}, ${s.track}, ${s.amount}, ${plan.goodsName}, 'created', 'mall', ${s.period_days})`;
     const r = await chargeByBillingKey({ bid: s.bid, orderId, amount: s.amount, goodsName: plan.goodsName });
     if (r.ok && r.tid) {
       await sql`INSERT INTO payments (payment_id, order_id, amount, raw) VALUES (${r.tid}, ${orderId}, ${s.amount}, ${JSON.stringify(r.raw)}::jsonb) ON CONFLICT (payment_id) DO NOTHING`;

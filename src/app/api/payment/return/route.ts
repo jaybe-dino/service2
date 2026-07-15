@@ -58,9 +58,10 @@ export async function POST(req: Request) {
     //    ⚠️ 일반결제 tid로는 빌키 발급 불가(NICEpay 스펙). 자동청구하려면 빌링(카드등록) 결제창으로 bid 확보 필요.
     const bid = bidForm || ap.bid || null;
     const nextAt = Date.now() + periodMs;
-    await sql`INSERT INTO subscriptions (user_id, bid, plan, amount, status, next_charge_at, updated_at)
-              VALUES (${order.user_id}, ${bid}, 'pro', ${amt}, 'active', ${nextAt}, now())
-              ON CONFLICT (user_id) DO UPDATE SET bid=EXCLUDED.bid, amount=EXCLUDED.amount, status='active', next_charge_at=EXCLUDED.next_charge_at, failures=0, updated_at=now()`;
+    const pdays = Number(order.period_days) || 30;
+    await sql`INSERT INTO subscriptions (user_id, bid, plan, amount, status, next_charge_at, period_days, updated_at)
+              VALUES (${order.user_id}, ${bid}, 'pro', ${amt}, 'active', ${nextAt}, ${pdays}, now())
+              ON CONFLICT (user_id) DO UPDATE SET bid=EXCLUDED.bid, amount=EXCLUDED.amount, status='active', next_charge_at=EXCLUDED.next_charge_at, period_days=EXCLUDED.period_days, failures=0, updated_at=now()`;
     await sql`UPDATE users SET pro_until = GREATEST(pro_until, ${Date.now()}) + ${periodMs} WHERE id=${order.user_id}`;
     return go("success");
   }
@@ -84,9 +85,10 @@ export async function POST(req: Request) {
     // 2) 빌링키(다음 달부터 자동청구용) — 빌링 결제창이 돌려준 bid 사용. 없으면 자동갱신 없이 첫 달만 보장.
     const bid = bidForm || ap.bid || null;
     const nextAt = Date.now() + periodMs;
-    await sql`INSERT INTO mall_subscriptions (user_id, track, bid, amount, status, next_charge_at, updated_at)
-              VALUES (${order.user_id}, ${track}, ${bid}, ${amt}, 'active', ${nextAt}, now())
-              ON CONFLICT (user_id) DO UPDATE SET track=EXCLUDED.track, bid=EXCLUDED.bid, amount=EXCLUDED.amount, status='active', next_charge_at=EXCLUDED.next_charge_at, failures=0, updated_at=now()`;
+    const pdays = Number(order.period_days) || 30;
+    await sql`INSERT INTO mall_subscriptions (user_id, track, bid, amount, status, next_charge_at, period_days, updated_at)
+              VALUES (${order.user_id}, ${track}, ${bid}, ${amt}, 'active', ${nextAt}, ${pdays}, now())
+              ON CONFLICT (user_id) DO UPDATE SET track=EXCLUDED.track, bid=EXCLUDED.bid, amount=EXCLUDED.amount, status='active', next_charge_at=EXCLUDED.next_charge_at, period_days=EXCLUDED.period_days, failures=0, updated_at=now()`;
     // 결제 완료 → 신청 paid, 디노 물류 연동 플래그 ON. PHASE 4(정보입력)는 사이트에서 이어서.
     await sql`UPDATE onboarding_applications SET status='paid', track=${track}, phase='details', dino_linked=true, order_id=${orderId}, updated_at=now() WHERE user_id=${order.user_id}`;
     return NextResponse.redirect(`${base}/onboarding?paid=1`, 303);

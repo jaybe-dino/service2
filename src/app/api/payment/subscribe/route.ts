@@ -68,10 +68,10 @@ export async function POST(req: Request) {
             VALUES (${pay.tid}, ${chargeOrderId}, ${amount}, ${JSON.stringify(pay.raw)}::jsonb) ON CONFLICT (payment_id) DO NOTHING`;
   await sql`UPDATE orders SET status='paid' WHERE order_id=${chargeOrderId}`;
   const now = Date.now();
-  await sql`INSERT INTO subscriptions (user_id, bid, plan, amount, status, next_charge_at, updated_at)
-            VALUES (${me.id}, ${bid}, ${planKey}, ${amount}, 'active', ${now + periodMs}, now())
+  await sql`INSERT INTO subscriptions (user_id, bid, plan, amount, status, next_charge_at, period_days, updated_at)
+            VALUES (${me.id}, ${bid}, ${planKey}, ${amount}, 'active', ${now + periodMs}, ${plan.periodDays ?? 30}, now())
             ON CONFLICT (user_id) DO UPDATE SET bid=EXCLUDED.bid, plan=EXCLUDED.plan, amount=EXCLUDED.amount,
-              status='active', next_charge_at=EXCLUDED.next_charge_at, failures=0, updated_at=now()`;
+              status='active', next_charge_at=EXCLUDED.next_charge_at, period_days=EXCLUDED.period_days, failures=0, updated_at=now()`;
   await sql`UPDATE users SET pro_until = GREATEST(pro_until, ${now}) + ${periodMs} WHERE id=${me.id}`;
 
   return NextResponse.json({ ok: true, plan: planKey, amount, nextChargeAt: now + periodMs });

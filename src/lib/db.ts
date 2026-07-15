@@ -183,7 +183,7 @@ export function ensureSchema(): Promise<void> {
         created_at timestamptz NOT NULL DEFAULT now(),
         PRIMARY KEY (code, user_id)
       )`;
-      // 정기결제 구독 (NICEpay 빌링키) — 7일 체험 후 매월 자동청구
+      // 정기결제 구독 (NICEpay 빌링키) — 카드 등록 후 주기마다 자동청구
       await sql`CREATE TABLE IF NOT EXISTS subscriptions (
         user_id text PRIMARY KEY,
         bid text,
@@ -192,9 +192,12 @@ export function ensureSchema(): Promise<void> {
         status text NOT NULL DEFAULT 'trial',
         next_charge_at bigint NOT NULL DEFAULT 0,
         failures int NOT NULL DEFAULT 0,
+        period_days int NOT NULL DEFAULT 30,
         created_at timestamptz NOT NULL DEFAULT now(),
         updated_at timestamptz NOT NULL DEFAULT now()
       )`;
+      // 청구 주기 영속화(6개월 약정=180) — 기존 테이블 보강. cron이 이 값으로 다음 청구일 계산.
+      await sql`ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS period_days int NOT NULL DEFAULT 30`;
       // UTM 유입 추적 (방문/가입) — 캠페인 효과 측정용
       await sql`CREATE TABLE IF NOT EXISTS utm_events (
         id serial PRIMARY KEY,
@@ -298,9 +301,11 @@ export function ensureSchema(): Promise<void> {
         status text NOT NULL DEFAULT 'active',
         next_charge_at bigint NOT NULL DEFAULT 0,
         failures int NOT NULL DEFAULT 0,
+        period_days int NOT NULL DEFAULT 30,
         created_at timestamptz NOT NULL DEFAULT now(),
         updated_at timestamptz NOT NULL DEFAULT now()
       )`;
+      await sql`ALTER TABLE mall_subscriptions ADD COLUMN IF NOT EXISTS period_days int NOT NULL DEFAULT 30`;
       // 추천인(파트너): 어드민이 생성, 추천인 본인이 로그인해 자신의 추천 가입자 확인
       await sql`CREATE TABLE IF NOT EXISTS referrers (
         code text PRIMARY KEY,
