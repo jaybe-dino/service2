@@ -68,6 +68,8 @@ function OnboardingInner() {
   const [term, setTerm] = useState<SubTerm>("monthly");
   const [card, setCard] = useState({ cardNo: "", expMonth: "", expYear: "", idNo: "", cardPw: "" });
   const [promoCode, setPromoCode] = useState("");
+  const [promoApplied, setPromoApplied] = useState(false);
+  const [promoMsg, setPromoMsg] = useState("");
 
   // PHASE 4
   const [d, setD] = useState({
@@ -153,6 +155,16 @@ function OnboardingInner() {
 
   const yesCount = SELF_CHECK_QUESTIONS.filter((q) => checks[q.id]).length;
   const quote = track ? computeQuote(track, Math.max(1, payCountries.length), term) : null;
+  // 첫 결제액(프로모 반영): 6개월+프로모 → 첫 달 제외(5개월), 월간+프로모 → 첫 달 무료(0), 없으면 전액.
+  const firstChargeAmt = quote ? (promoApplied ? (term === "6month" ? quote.monthly * 5 : 0) : quote.payable) : 0;
+  const applyPromo = async () => {
+    if (!promoCode.trim()) return;
+    setPromoMsg("");
+    const r = await fetch("/api/promo/validate", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ code: promoCode }) });
+    const d = await r.json().catch(() => ({}));
+    if (d.ok) { setPromoApplied(true); setPromoMsg("프로모 코드가 적용됐습니다."); }
+    else { setPromoApplied(false); setPromoMsg(d.reason || "유효하지 않은 코드입니다."); }
+  };
 
   // ── PHASE 1 → 결과 ──
   const seeResult = async () => {
@@ -531,10 +543,18 @@ function OnboardingInner() {
                     <Row l="할인 적용 월 환산액" v={`${won(quote.monthly)}/월`} />
                     <div className="my-2 border-t border-[var(--border)]" />
                     <div className="flex items-end justify-between">
-                      <span className="text-[12px] font-bold">{term === "6month" ? "6개월 합계 결제액" : "월 납부액"}</span>
-                      <span className="text-[22px] font-black text-[var(--accent)]">{won(quote.payable)}</span>
+                      <span className="text-[12px] font-bold">이번 결제액</span>
+                      <span className="flex items-end gap-1.5">
+                        {promoApplied && <span className="mb-0.5 text-[11px] text-[var(--muted)] line-through">{won(quote.payable)}</span>}
+                        <span className="text-[22px] font-black text-[var(--accent)]">{won(firstChargeAmt)}</span>
+                      </span>
                     </div>
-                    {term === "6month" && <div className="text-right text-[10px] text-[var(--muted)]">월 환산 {won(quote.monthly)} × 6개월</div>}
+                    {promoApplied && (
+                      <div className="text-right text-[10px] font-semibold text-emerald-600">
+                        {term === "6month" ? "프로모 적용 · 첫 달 제외(5개월)" : "프로모 적용 · 첫 달 무료"} · 다음 주기부터 {won(quote.payable)}
+                      </div>
+                    )}
+                    {term === "6month" && <div className="text-right text-[10px] text-[var(--muted)]">월 환산 {won(quote.monthly)} × {promoApplied ? "5" : "6"}개월</div>}
                     <div className="text-right text-[10px] text-[var(--muted)]">VAT 포함</div>
                   </div>
                 )}
@@ -551,14 +571,18 @@ function OnboardingInner() {
                       <input inputMode="numeric" type="password" maxLength={2} value={card.cardPw} onChange={(e) => setCard((p) => ({ ...p, cardPw: e.target.value.replace(/\D/g, "") }))} placeholder="비번앞2" className="rounded-md border border-[var(--border)] px-2.5 py-2 text-[12px]" />
                     </div>
                     <input inputMode="numeric" maxLength={10} value={card.idNo} onChange={(e) => setCard((p) => ({ ...p, idNo: e.target.value.replace(/\D/g, "") }))} placeholder="생년월일 6자리(개인) / 사업자번호 10자리(법인)" className="w-full rounded-md border border-[var(--border)] px-2.5 py-2 text-[12px]" />
-                    <input value={promoCode} onChange={(e) => setPromoCode(e.target.value.toUpperCase())} placeholder="프로모션 코드 (선택)" className="w-full rounded-md border border-dashed border-[var(--accent)]/50 px-2.5 py-2 text-[12px]" />
+                    <div className="flex gap-2">
+                      <input value={promoCode} onChange={(e) => { setPromoCode(e.target.value.toUpperCase()); setPromoApplied(false); setPromoMsg(""); }} placeholder="프로모션 코드 (선택)" className="flex-1 rounded-md border border-dashed border-[var(--accent)]/50 px-2.5 py-2 text-[12px]" />
+                      <button type="button" onClick={applyPromo} disabled={!promoCode.trim()} className="shrink-0 rounded-md border border-[var(--accent)] px-3 py-2 text-[11px] font-bold text-[var(--accent)] hover:bg-[var(--accent-light)] disabled:opacity-40">{promoApplied ? "적용됨" : "적용"}</button>
+                    </div>
+                    {promoMsg && <div className={`text-[10px] font-semibold ${promoApplied ? "text-emerald-600" : "text-rose-500"}`}>{promoMsg}</div>}
                     <p className="text-[9px] text-[var(--muted)]">카드정보는 저장하지 않으며 결제사(NICEpay) 정기결제 규격으로 즉시 암호화됩니다.</p>
                   </div>
                 )}
                 {!user && <p className="mt-3 rounded-md bg-amber-50 px-3 py-2 text-[11px] font-semibold text-amber-700">결제하려면 로그인이 필요합니다.</p>}
                 <button onClick={pay} disabled={busy || !payCountries.length} className="kt-btn kt-btn-primary mt-4 w-full py-2.5 text-[12px] disabled:opacity-50">
                   {busy ? <Loader2 size={14} className="animate-spin" /> : !user ? <Lock size={14} /> : <CreditCard size={14} />}
-                  {busy ? "결제 진행 중…" : !user ? "로그인하고 결제" : `${quote ? won(quote.payable) : ""} 결제하고 입점`}
+                  {busy ? "결제 진행 중…" : !user ? "로그인하고 결제" : firstChargeAmt === 0 ? "무료로 입점 시작" : `${won(firstChargeAmt)} 결제하고 입점`}
                 </button>
                 <p className="mt-2 text-center text-[9px] text-[var(--muted)]">
                   {term === "6month" ? "6개월 합계 일시 결제 · 이후 6개월마다 자동결제." : "카드 등록 즉시 첫 달 결제 · 매월 자동결제."} 결제 후 상세 정보를 입력합니다.
