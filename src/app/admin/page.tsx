@@ -64,7 +64,8 @@ interface OnbApp {
 }
 const TRACK_LABEL: Record<string, string> = { ready: "Start", live: "Live Focus", onboarding: "Onboarding" };
 interface Referrer { code: string; login_id: string; name: string | null; created_ms: number; signups: number; paid_users: number; revenue: number; rate: number; commission: number }
-type Tab = "members" | "payments" | "inquiries" | "consult" | "onboarding" | "referrers" | "collect" | "influencers" | "brands" | "utm" | "rules";
+type Tab = "members" | "payments" | "inquiries" | "consult" | "promo" | "onboarding" | "referrers" | "collect" | "influencers" | "brands" | "utm" | "rules";
+interface PromoRow { code: string; plan: string; trial_days: number; max_uses: number; used_count: number; active: boolean; created_at: string }
 interface ConsultRow { id: number; company: string; brand_url: string | null; category: string | null; overseas: string | null; manager_name: string; email: string; contact: string; message: string | null; agreed: boolean; status: string; created_at: string }
 interface UtmRow { key: string; visits: number; signups: number }
 interface UtmRecent { kind: string; source: string | null; medium: string | null; campaign: string | null; content: string | null; user_email: string | null; created_at: string }
@@ -82,6 +83,8 @@ export default function AdminPage() {
   const [inquiries, setInquiries] = useState<Inquiry[]>([]);
   const [consult, setConsult] = useState<ConsultRow[]>([]);
   const [cancelling, setCancelling] = useState<string | null>(null);
+  const [promos, setPromos] = useState<PromoRow[]>([]);
+  const [newPromo, setNewPromo] = useState({ code: "", max_uses: 0 });
   const [brandReqs, setBrandReqs] = useState<BrandReq[]>([]);
   const [runs, setRuns] = useState<Run[]>([]);
   const [brandHealth, setBrandHealth] = useState<BrandHealth[]>([]);
@@ -173,6 +176,7 @@ export default function AdminPage() {
     if (tab === "onboarding") k("onboarding", loadOnb);
     if (tab === "referrers") k("referrers", loadReferrers);
     if (tab === "collect") k("tuning", loadTuning);
+    if (tab === "promo") k("promo", loadPromos);
   }, [authed, tab]);
   // 새로고침: overview + 현재 탭 부가데이터
   const refresh = () => {
@@ -254,6 +258,27 @@ export default function AdminPage() {
     setToast(r.ok ? "답변 저장됨 (회원 마이페이지 노출)" : "저장 실패");
     setTimeout(() => setToast(""), 2500);
     if (r.ok) loadData();
+  };
+
+  const loadPromos = async () => {
+    const r = await fetch("/api/admin/promo", { cache: "no-store" }).then((x) => x.json()).catch(() => null);
+    if (r?.rows) setPromos(r.rows);
+  };
+  const createPromo = async () => {
+    const r = await fetch("/api/admin/promo", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ code: newPromo.code, max_uses: newPromo.max_uses }) });
+    const d = await r.json().catch(() => ({}));
+    setToast(r.ok && d.ok ? `프로모 코드 생성: ${d.code}` : (d.error ?? "실패"));
+    setTimeout(() => setToast(""), 3000);
+    if (r.ok) { setNewPromo({ code: "", max_uses: 0 }); loadPromos(); }
+  };
+  const togglePromo = async (code: string, active: boolean) => {
+    await fetch("/api/admin/promo", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ code, active }) });
+    loadPromos();
+  };
+  const deletePromo = async (code: string) => {
+    if (!confirm(`프로모 코드 ${code} 삭제?`)) return;
+    await fetch("/api/admin/promo", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ code }) });
+    loadPromos();
   };
 
   const saveConsultStatus = async (id: number, status: string) => {
@@ -467,6 +492,7 @@ export default function AdminPage() {
     { id: "payments", label: "결제현황", icon: <CreditCard size={13} /> },
     { id: "inquiries", label: "문의·제안", icon: <Inbox size={13} /> },
     { id: "consult", label: "1:1 상담신청", icon: <Inbox size={13} /> },
+    { id: "promo", label: "프로모 코드", icon: <Gift size={13} /> },
     { id: "onboarding", label: "틱톡샵 온보딩", icon: <ShoppingBag size={13} /> },
     { id: "referrers", label: "추천인", icon: <Gift size={13} /> },
     { id: "collect", label: "브랜드 수집", icon: <Database size={13} /> },
@@ -628,6 +654,35 @@ export default function AdminPage() {
           ))}
           {!consult.length && <EmptyRow cols={10} text="상담 신청 없음" />}
         </Table>
+      )}
+
+      {tab === "promo" && (
+        <>
+          <div className="mb-3 flex flex-wrap items-end gap-2 kt-card p-3">
+            <span className="flex items-center gap-1.5 text-[11px] font-bold"><Gift size={13} className="text-[var(--accent)]" /> 프로모 코드 생성</span>
+            <label className="block"><span className="block text-[10px] font-semibold text-[var(--muted)]">코드(비우면 자동)</span>
+              <input value={newPromo.code} onChange={(e) => setNewPromo((p) => ({ ...p, code: e.target.value.toUpperCase() }))} placeholder="예: WELCOME1" className="rounded-md border border-[var(--border)] px-2 py-1.5 text-[12px]" /></label>
+            <label className="block"><span className="block text-[10px] font-semibold text-[var(--muted)]">사용 한도(0=무제한)</span>
+              <input type="number" min={0} value={newPromo.max_uses} onChange={(e) => setNewPromo((p) => ({ ...p, max_uses: Number(e.target.value) }))} className="w-28 rounded-md border border-[var(--border)] px-2 py-1.5 text-[12px]" /></label>
+            <button onClick={createPromo} className="kt-btn kt-btn-primary px-3 py-1.5 text-[11px]">코드 생성</button>
+            <span className="text-[10px] text-[var(--muted)]">틱톡샵 온보딩 결제 시 입력하면 <b>첫 주기 무료</b> → 다음 주기부터 자동결제.</span>
+          </div>
+          <Table head={["코드", "사용/한도", "상태", "생성일", "관리"]}>
+            {promos.map((p) => (
+              <tr key={p.code} className="border-b border-[var(--border)] last:border-0">
+                <td className="p-2 font-mono font-bold">{p.code}</td>
+                <td className="p-2">{p.used_count} / {p.max_uses === 0 ? "∞" : p.max_uses}</td>
+                <td className="p-2"><span className={p.active ? "text-emerald-600" : "text-slate-400"}>{p.active ? "활성" : "비활성"}</span></td>
+                <td className="p-2 text-[var(--muted)]">{dt(p.created_at)}</td>
+                <td className="p-2">
+                  <button onClick={() => togglePromo(p.code, !p.active)} className="mr-2 text-[10px] font-semibold text-[var(--accent)] hover:underline">{p.active ? "비활성화" : "활성화"}</button>
+                  <button onClick={() => deletePromo(p.code)} className="text-[10px] font-semibold text-rose-500 hover:underline">삭제</button>
+                </td>
+              </tr>
+            ))}
+            {!promos.length && <EmptyRow cols={5} text="프로모 코드 없음" />}
+          </Table>
+        </>
       )}
 
       {tab === "onboarding" && (
