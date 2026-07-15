@@ -17,25 +17,11 @@ import {
   type SubTerm, type GradeInfo,
 } from "@/lib/onboarding";
 
-const NICEPAY_SDK = "https://pay.nicepay.co.kr/v1/js/";
 const won = (n: number) => "₩" + Math.round(n).toLocaleString();
 const STEPS = ["자가체크", "트랙 선택", "국가·결제", "정보입력", "완료"];
 const PRODUCT_CATS = ["스킨케어", "색조", "헤어케어", "이너뷰티", "푸드", "기타"];
 const BANKS = ["국민", "신한", "우리", "하나", "농협", "기업", "카카오뱅크", "토스뱅크", "SC제일", "씨티", "기타"];
 const productLimit = (t: MallTrackId) => (t === "live" ? 5 : 10);
-
-function loadSdk(): Promise<void> {
-  return new Promise((resolve, reject) => {
-    if (typeof window === "undefined") return reject();
-    const w = window as unknown as { AUTHNICE?: unknown };
-    if (w.AUTHNICE) return resolve();
-    const existing = document.querySelector(`script[src="${NICEPAY_SDK}"]`);
-    if (existing) { existing.addEventListener("load", () => resolve()); return; }
-    const s = document.createElement("script");
-    s.src = NICEPAY_SDK; s.onload = () => resolve(); s.onerror = () => reject();
-    document.body.appendChild(s);
-  });
-}
 
 interface UploadedFile { id: string; filename: string }
 interface Product {
@@ -80,6 +66,8 @@ function OnboardingInner() {
   const [testTok, setTestTok] = useState(""); // 🧪 라이브 결제 테스트 토큰(URL ?test=)
   const [payCountries, setPayCountries] = useState<string[]>([]);
   const [term, setTerm] = useState<SubTerm>("monthly");
+  const [card, setCard] = useState({ cardNo: "", expMonth: "", expYear: "", idNo: "", cardPw: "" });
+  const [promoCode, setPromoCode] = useState("");
 
   // PHASE 4
   const [d, setD] = useState({
@@ -191,28 +179,28 @@ function OnboardingInner() {
   const confirmChoose = () => { if (confirmTrack) { setTrack(confirmTrack); setConfirmTrack(null); goStep(2); } };
 
   // ── PHASE 3 → 결제 ──
+  // 정기결제(카드 등록) — NICEpay V2는 호스팅 빌링창이 없어 카드폼→서버 암호화. 프로모 시 첫 주기 무료.
   const pay = async () => {
     if (!track) return;
     if (!user) { router.push("/login?next=/onboarding"); return; }
     if (!payCountries.length) { setMsg("진출 국가를 1개 이상 선택해 주세요."); return; }
+    const cardNo = card.cardNo.replace(/\D/g, "");
+    if (cardNo.length < 15 || card.expMonth.length !== 2 || card.expYear.length !== 2 || (card.idNo.length !== 6 && card.idNo.length !== 10) || card.cardPw.length !== 2) {
+      setMsg("카드 정보를 확인해 주세요 (카드번호·유효기간 MM/YY·생년월일6 또는 사업자10·카드비밀번호 앞2자리)."); return;
+    }
     setBusy(true); setMsg("");
     try {
-      const res = await fetch("/api/payment/start", { method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ plan: track, countries: payCountries, term, test: testTok }) });
+      const res = await fetch("/api/payment/subscribe-mall", { method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ track, countries: payCountries, term, promoCode, test: testTok,
+          card: { cardNo, expYear: card.expYear, expMonth: card.expMonth, idNo: card.idNo, cardPw: card.cardPw } }) });
       const data = await res.json();
+      setBusy(false);
       if (!res.ok || !data.ok) {
-        setBusy(false);
         if (data?.configured === false) { setStep(3); scrollTop(); return; } // 결제 모듈 미설정 → 정보입력으로
-        setMsg(data?.error ?? "결제 시작에 실패했습니다."); return;
+        setMsg(data?.error ?? "결제에 실패했습니다."); return;
       }
-      await loadSdk();
-      const w = window as unknown as { AUTHNICE?: { requestPay: (o: Record<string, unknown>) => void } };
-      if (!w.AUTHNICE) { setBusy(false); setMsg("결제 모듈 로드 실패"); return; }
-      w.AUTHNICE.requestPay({
-        clientId: data.clientKey, method: "card", orderId: data.orderId, amount: data.amount,
-        goodsName: data.goodsName, returnUrl: data.returnUrl,
-        fnError: (result: { errorMsg?: string }) => { setBusy(false); setMsg(result?.errorMsg ?? "결제가 취소되었습니다."); },
-      });
+      setMsg(data.firstFree ? "🎉 프로모 적용 — 첫 주기 무료로 등록됐습니다. 다음 주기부터 자동결제됩니다." : "결제가 완료됐습니다.");
+      setStep(3); scrollTop(); // 정보입력으로
     } catch { setBusy(false); setMsg("결제 처리 중 오류가 발생했습니다."); }
   };
 
@@ -548,6 +536,23 @@ function OnboardingInner() {
                     </div>
                     {term === "6month" && <div className="text-right text-[10px] text-[var(--muted)]">월 환산 {won(quote.monthly)} × 6개월</div>}
                     <div className="text-right text-[10px] text-[var(--muted)]">VAT 포함</div>
+                  </div>
+                )}
+                {/* 카드 등록(정기결제) + 프로모 코드 */}
+                {user && (
+                  <div className="mt-4 space-y-2 rounded-lg border border-[var(--border)] p-3">
+                    <div className="text-[11px] font-bold">카드 등록 (정기결제)</div>
+                    <input inputMode="numeric" maxLength={16} value={card.cardNo.replace(/(.{4})/g, "$1 ").trim()}
+                      onChange={(e) => setCard((p) => ({ ...p, cardNo: e.target.value.replace(/\D/g, "").slice(0, 16) }))}
+                      placeholder="카드번호 0000 0000 0000 0000" className="w-full rounded-md border border-[var(--border)] px-2.5 py-2 text-[12px] tracking-wider" />
+                    <div className="grid grid-cols-3 gap-2">
+                      <input inputMode="numeric" maxLength={2} value={card.expMonth} onChange={(e) => setCard((p) => ({ ...p, expMonth: e.target.value.replace(/\D/g, "") }))} placeholder="MM" className="rounded-md border border-[var(--border)] px-2.5 py-2 text-[12px]" />
+                      <input inputMode="numeric" maxLength={2} value={card.expYear} onChange={(e) => setCard((p) => ({ ...p, expYear: e.target.value.replace(/\D/g, "") }))} placeholder="YY" className="rounded-md border border-[var(--border)] px-2.5 py-2 text-[12px]" />
+                      <input inputMode="numeric" type="password" maxLength={2} value={card.cardPw} onChange={(e) => setCard((p) => ({ ...p, cardPw: e.target.value.replace(/\D/g, "") }))} placeholder="비번앞2" className="rounded-md border border-[var(--border)] px-2.5 py-2 text-[12px]" />
+                    </div>
+                    <input inputMode="numeric" maxLength={10} value={card.idNo} onChange={(e) => setCard((p) => ({ ...p, idNo: e.target.value.replace(/\D/g, "") }))} placeholder="생년월일 6자리(개인) / 사업자번호 10자리(법인)" className="w-full rounded-md border border-[var(--border)] px-2.5 py-2 text-[12px]" />
+                    <input value={promoCode} onChange={(e) => setPromoCode(e.target.value.toUpperCase())} placeholder="프로모션 코드 (선택 · 첫 주기 무료)" className="w-full rounded-md border border-dashed border-[var(--accent)]/50 px-2.5 py-2 text-[12px]" />
+                    <p className="text-[9px] text-[var(--muted)]">카드정보는 저장하지 않으며 결제사(NICEpay) 정기결제 규격으로 즉시 암호화됩니다.</p>
                   </div>
                 )}
                 {!user && <p className="mt-3 rounded-md bg-amber-50 px-3 py-2 text-[11px] font-semibold text-amber-700">결제하려면 로그인이 필요합니다.</p>}
