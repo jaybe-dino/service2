@@ -31,11 +31,12 @@ export async function POST(req: Request) {
   const term: SubTerm = body.term === "6month" ? "6month" : "monthly";
   const countries: string[] = Array.isArray(body.countries) ? body.countries : [];
   const q = computeQuote(track, Math.max(1, countries.length), term);
-  let amount = q.payable;
   const periodDays = term === "6month" ? 180 : 30;
 
   const testMode = !!process.env.PAY_TEST_TOKEN && String(body.test ?? "") === process.env.PAY_TEST_TOKEN;
-  if (testMode) amount = Math.max(100, Math.round(amount / 10000));
+  const testReduce = (v: number) => (testMode ? Math.max(100, Math.round(v / 10000)) : Math.round(v));
+  // 정기(향후) 청구액 = 전액. 첫 청구액은 프로모에 따라 달라짐.
+  const recurringAmount = testReduce(q.payable);
 
   // 카드 검증
   const c = body.card || {};
@@ -57,6 +58,17 @@ export async function POST(req: Request) {
     promoOk = true;
   }
 
+  // 첫 청구액 결정:
+  //  - 프로모 + 6개월 약정 → 첫 달 제외한 5개월치 청구(스킵 아님)
+  //  - 프로모 + 월간 → 첫 달 무료(스킵)
+  //  - 프로모 없음 → 전액
+  let firstCharge = recurringAmount;
+  let skipFirst = false;
+  if (promoOk) {
+    if (term === "6month") firstCharge = testReduce(q.monthly * 5);
+    else { skipFirst = true; firstCharge = 0; }
+  }
+
   await ensureSchema();
 
   // 1) 빌키 발급
@@ -72,32 +84,36 @@ export async function POST(req: Request) {
   const now = Date.now();
   const nextAt = now + periodDays * 86_400_000;
 
-  // 2) 첫 주기 결제 — 프로모면 스킵(무료)
-  if (!promoOk) {
+  // 2) 첫 청구 — 프로모 월간이면 스킵(무료), 그 외엔 firstCharge 청구.
+  if (skipFirst) {
+    await redeemPromo(promoCode, me.id); // 첫 달 무료
+    await sql`INSERT INTO collection_runs (kind, target, status) VALUES ('promo_first_free', ${track}, ${promoCode})`;
+  } else {
     const chargeOrderId = buildOrderId(SERVICE_ORDER_PREFIX, meta.name[0] || "M");
     await sql`INSERT INTO orders (order_id, user_id, plan, amount, goods_name, status, kind, period_days)
-              VALUES (${chargeOrderId}, ${me.id}, ${track}, ${amount}, ${goodsName}, 'created', 'mall', ${periodDays})`;
-    const pay = await chargeByBillingKey({ bid, orderId: chargeOrderId, amount, goodsName });
+              VALUES (${chargeOrderId}, ${me.id}, ${track}, ${firstCharge}, ${goodsName}, 'created', 'mall', ${periodDays})`;
+    const pay = await chargeByBillingKey({ bid, orderId: chargeOrderId, amount: firstCharge, goodsName });
     if (!pay.ok || !pay.tid) {
       await sql`UPDATE orders SET status='failed' WHERE order_id=${chargeOrderId}`;
       const msg = (pay.raw as { resultMsg?: string })?.resultMsg || "첫 결제 승인 실패";
       return NextResponse.json({ ok: false, error: `첫 결제 실패: ${msg}` }, { status: 402 });
     }
     await sql`INSERT INTO payments (payment_id, order_id, amount, raw)
-              VALUES (${pay.tid}, ${chargeOrderId}, ${amount}, ${JSON.stringify(pay.raw)}::jsonb) ON CONFLICT (payment_id) DO NOTHING`;
+              VALUES (${pay.tid}, ${chargeOrderId}, ${firstCharge}, ${JSON.stringify(pay.raw)}::jsonb) ON CONFLICT (payment_id) DO NOTHING`;
     await sql`UPDATE orders SET status='paid' WHERE order_id=${chargeOrderId}`;
-  } else {
-    await redeemPromo(promoCode, me.id); // 첫 주기 무료 처리
-    await sql`INSERT INTO collection_runs (kind, target, status) VALUES ('promo_first_free', ${track}, ${promoCode})`;
+    if (promoOk) { // 6개월 약정 첫달 제외 적용
+      await redeemPromo(promoCode, me.id);
+      await sql`INSERT INTO collection_runs (kind, target, status) VALUES ('promo_first_month_off', ${track}, ${promoCode})`;
+    }
   }
 
-  // 3) 구독 저장 + 신청서 반영
+  // 3) 구독 저장(정기 청구액=전액) + 신청서 반영
   await sql`INSERT INTO mall_subscriptions (user_id, track, bid, amount, status, next_charge_at, period_days, updated_at)
-            VALUES (${me.id}, ${track}, ${bid}, ${amount}, 'active', ${nextAt}, ${periodDays}, now())
+            VALUES (${me.id}, ${track}, ${bid}, ${recurringAmount}, 'active', ${nextAt}, ${periodDays}, now())
             ON CONFLICT (user_id) DO UPDATE SET track=EXCLUDED.track, bid=EXCLUDED.bid, amount=EXCLUDED.amount,
               status='active', next_charge_at=EXCLUDED.next_charge_at, period_days=EXCLUDED.period_days, failures=0, updated_at=now()`;
   await sql`UPDATE onboarding_applications SET status='paid', track=${track}, phase='details', dino_linked=true,
-            term=${term}, amount=${amount}, updated_at=now() WHERE user_id=${me.id}`;
+            term=${term}, amount=${recurringAmount}, updated_at=now() WHERE user_id=${me.id}`;
 
-  return NextResponse.json({ ok: true, track, amount, firstFree: promoOk, nextChargeAt: nextAt, periodDays });
+  return NextResponse.json({ ok: true, track, firstCharge, recurringAmount, firstFree: skipFirst, nextChargeAt: nextAt, periodDays });
 }
