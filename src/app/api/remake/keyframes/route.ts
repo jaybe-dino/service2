@@ -4,6 +4,7 @@ import { sql, ensureSchema, isConfigured as dbConfigured } from "@/lib/db";
 import { hasImageEdit, composeKeyframe } from "@/lib/remake/imageedit";
 import { planKeyframes } from "@/lib/remake/planner";
 import { validateReferenceSpec, LAYER_CONTROL_STAGE1, layerControlStage2, type ReferenceSpec } from "@/lib/remake/spec";
+import { maxKeyframes } from "@/lib/remake/cost";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -36,7 +37,7 @@ export async function POST(req: Request) {
   const control = stage === 2 ? layerControlStage2(body.preset || "avatar_B/clean_studio") : LAYER_CONTROL_STAGE1;
 
   const plans = planKeyframes(spec, control);
-  const maxKf = Math.max(1, Math.min(8, Number(process.env.REMAKE_MAX_KEYFRAMES ?? 4)));
+  const maxKf = maxKeyframes(); // 비용 절약 기본 1(REMAKE_COST_SAVER=0 또는 REMAKE_MAX_KEYFRAMES로 상향)
   const wanted = Array.isArray(body.shotNos) && body.shotNos.length
     ? plans.filter((p) => body.shotNos!.includes(p.shot_no))
     : plans.slice(0, maxKf);

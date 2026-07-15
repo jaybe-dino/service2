@@ -3,6 +3,7 @@ import { buildRemakePrompt, type RemakePromptPackage } from "@/data/ktrend/remak
 import type { RemakeTemplate } from "@/data/ktrend/remake-templates";
 import { fetchAnalysisFrames, fetchCoverFrame, type Frame } from "@/lib/remake/frames";
 import { ensureSchema, isConfigured as dbConfigured } from "@/lib/db";
+import { analysisFrames } from "@/lib/remake/cost";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -43,7 +44,7 @@ export async function POST(req: Request) {
   // 레퍼런스 실제 프레임(시간순 스트립) → 비전 분석 그라운딩. 워커 있으면 여러 장, 없으면 커버 1장.
   let frames: Frame[] = [];
   if (typeof body.refTiktokUrl === "string" && /tiktok\.com/.test(body.refTiktokUrl)) {
-    frames = await fetchAnalysisFrames(body.refTiktokUrl, Number(process.env.REMAKE_ANALYSIS_FRAMES ?? 10));
+    frames = await fetchAnalysisFrames(body.refTiktokUrl, analysisFrames()); // 비용 절약 기본 4프레임
     if (!frames.length) {
       const cover = await fetchCoverFrame(body.refTiktokUrl);
       if (cover) frames = [cover];

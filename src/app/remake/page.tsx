@@ -48,7 +48,7 @@ export default function RemakeStudioPage() {
   const [length, setLength] = useState<number>(REMAKE_LENGTHS[1]);
   const [aiPerson, setAiPerson] = useState(true);
   const [brandColor, setBrandColor] = useState("#FF5C8D");
-  const [tier, setTier] = useState<Tier>("hd");
+  const [tier, setTier] = useState<Tier>("draft"); // 테스트 비용 절약 기본(draft). 필요 시 hd/premium 선택
   const [sceneMode, setSceneMode] = useState(true); // 장면별 정밀(레퍼런스 각 화면 1:1 재현)
 
   // 생성

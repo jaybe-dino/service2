@@ -3,6 +3,7 @@ import { randomUUID } from "crypto";
 import { sql, ensureSchema, isConfigured as dbConfigured } from "@/lib/db";
 import { selectProvider, TIERS, type Tier } from "@/lib/remake/providers";
 import { hasImageEdit } from "@/lib/remake/imageedit";
+import { maxScenes as costMaxScenes, maxVariations, defaultTier } from "@/lib/remake/cost";
 import { REMAKE_TEMPLATE_MAP, mockViralScore } from "@/data/ktrend/remake-templates";
 
 export const runtime = "nodejs";
@@ -42,8 +43,8 @@ export async function POST(req: Request) {
   const product = body.product || {};
   const options = body.options || {};
   const tier: Tier = TIERS.includes(body.tier as Tier) ? (body.tier as Tier)
-    : TIERS.includes(options.tier as Tier) ? (options.tier as Tier) : "hd";
-  const count = Math.max(1, Math.min(4, Number(process.env.REMAKE_MAX_VARIATIONS ?? 2)));
+    : TIERS.includes(options.tier as Tier) ? (options.tier as Tier) : defaultTier();
+  const count = maxVariations(); // 비용 절약 기본 1
 
   const provider = selectProvider();
 
@@ -73,7 +74,7 @@ export async function POST(req: Request) {
   const usedProvider = real ? provider.id : "mock";
 
   // 장면별 정밀 모드. 클립 수 상한(REMAKE_MAX_SCENES, 기본 4 — 완성형 내러티브 훅→시연→결과→CTA).
-  const maxScenes = Math.max(1, Math.min(8, Number(process.env.REMAKE_MAX_SCENES ?? 4)));
+  const maxScenes = costMaxScenes(); // 비용 절약 기본 1
   const allScenes = Array.isArray(body.scenes) ? body.scenes : [];
   const scenes = allScenes.slice(0, maxScenes);
   const sceneMode = Boolean(body.sceneMode) && scenes.length > 0;

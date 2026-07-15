@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { fetchAnalysisFrames, type Frame } from "@/lib/remake/frames";
 import { ensureSchema, isConfigured as dbConfigured } from "@/lib/db";
 import { coerceSpec, validateReferenceSpec, type ReferenceSpec } from "@/lib/remake/spec";
+import { analysisFrames } from "@/lib/remake/cost";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -85,7 +86,7 @@ export async function POST(req: Request) {
   }
 
   if (dbConfigured()) { try { await ensureSchema(); } catch { /* 캐시 없이 진행 */ } }
-  const frames = await fetchAnalysisFrames(url, Number(process.env.REMAKE_ANALYSIS_FRAMES ?? 10));
+  const frames = await fetchAnalysisFrames(url, analysisFrames()); // 비용 절약 기본 4프레임
   if (!frames.length) {
     return NextResponse.json({ error: "레퍼런스 프레임을 확보하지 못했습니다(프레임 워커 미연결)." }, { status: 502 });
   }

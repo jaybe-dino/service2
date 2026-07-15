@@ -3,6 +3,7 @@ import { randomUUID } from "crypto";
 import { sql, ensureSchema, isConfigured as dbConfigured } from "@/lib/db";
 import { selectProvider, TIERS, type Tier } from "@/lib/remake/providers";
 import { validateReferenceSpec, type ReferenceSpec, type Shot } from "@/lib/remake/spec";
+import { defaultTier } from "@/lib/remake/cost";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -34,7 +35,7 @@ export async function POST(req: Request) {
   const kfs = Array.isArray(body.keyframes) ? body.keyframes.filter((k) => k && k.assetId) : [];
   if (!kfs.length) return NextResponse.json({ error: "승인된 키프레임(assetId)이 필요합니다." }, { status: 400 });
 
-  const tier: Tier = TIERS.includes(body.tier as Tier) ? (body.tier as Tier) : "hd";
+  const tier: Tier = TIERS.includes(body.tier as Tier) ? (body.tier as Tier) : defaultTier();
   const provider = selectProvider();
   const shotByNo = new Map(spec.shots.map((s) => [s.shot_no, s]));
   const seed = spec.ref_id || "remake";
