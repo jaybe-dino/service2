@@ -21,10 +21,10 @@ async function fetchT(url: string, opts: RequestInit, ms: number): Promise<Respo
   }
 }
 
-// Nano Banana(generateContent, IMAGE 출력) 공통 호출. parts에 이미지+텍스트를 넣고 결과 이미지를 반환.
-async function generateImage(parts: unknown[], ms: number): Promise<Img | null> {
+// Nano Banana(generateContent, IMAGE 출력) 공통 호출. 실패 사유(error)까지 함께 반환.
+async function generateImage(parts: unknown[], ms: number): Promise<{ img: Img | null; error?: string }> {
   const key = (process.env.GEMINI_API_KEY || "").trim();
-  if (!key) return null;
+  if (!key) return { img: null, error: "GEMINI_API_KEY 미설정" };
   const model = process.env.GEMINI_IMAGE_MODEL || "gemini-2.5-flash-image";
   try {
     const res = await fetchT(
@@ -39,19 +39,26 @@ async function generateImage(parts: unknown[], ms: number): Promise<Img | null> 
       },
       ms,
     );
-    if (!res.ok) return null;
+    if (!res.ok) {
+      const t = await res.text().catch(() => "");
+      return { img: null, error: `이미지모델 ${res.status} (${model}): ${t.slice(0, 200)}` };
+    }
     const json = (await res.json()) as {
-      candidates?: { content?: { parts?: { inline_data?: { data?: string; mime_type?: string }; inlineData?: { data?: string; mimeType?: string } }[] } }[];
+      candidates?: { finishReason?: string; content?: { parts?: { inline_data?: { data?: string; mime_type?: string }; inlineData?: { data?: string; mimeType?: string }; text?: string }[] } }[];
+      promptFeedback?: unknown;
     };
     const out = json?.candidates?.[0]?.content?.parts || [];
     for (const p of out) {
       const d = p.inline_data?.data || p.inlineData?.data;
       const m = p.inline_data?.mime_type || p.inlineData?.mimeType;
-      if (d) return { b64: d, mime: m || "image/png" };
+      if (d) return { img: { b64: d, mime: m || "image/png" } };
     }
-    return null;
-  } catch {
-    return null;
+    // 이미지가 응답에 없음(세이프티 차단/텍스트만 반환 등)
+    const fr = json?.candidates?.[0]?.finishReason;
+    const txt = out.map((p) => p.text).filter(Boolean).join(" ").slice(0, 160);
+    return { img: null, error: `이미지 없음${fr ? ` (${fr})` : ""}${txt ? `: ${txt}` : json?.promptFeedback ? `: ${JSON.stringify(json.promptFeedback).slice(0, 160)}` : ""}` };
+  } catch (e) {
+    return { img: null, error: /abort/i.test(String(e)) ? "이미지 생성 타임아웃" : String(e).slice(0, 160) };
   }
 }
 
@@ -88,12 +95,12 @@ export async function composeScene(product: Img, scenePrompt: string, opts: Comp
     `Scene to create: ${scenePrompt}. ` +
     "Absolutely NO on-screen text, captions, letters, numbers, hashtags, logos or UI overlays.";
   parts.push({ text: instruction });
-  return generateImage(parts, 26000);
+  return (await generateImage(parts, 26000)).img;
 }
 
 // ③ KeyframeRenderer 코어 — ShotPlan 하나를 키프레임 스틸로 렌더(제품 합성 + 리얼리즘 패스).
 // 제품 슬롯이 있는 샷은 내 제품 이미지를 조건으로 합성, 없으면 텍스트 기반 신규 장면.
-export async function composeKeyframe(product: Img, plan: ShotPlan): Promise<Img | null> {
+export async function composeKeyframe(product: Img, plan: ShotPlan): Promise<{ img: Img | null; error?: string }> {
   const parts: unknown[] = [];
   if (plan.needs_product && product?.b64) {
     parts.push({ inline_data: { mime_type: product.mime || "image/png", data: product.b64 } });
@@ -116,12 +123,12 @@ export async function editProductSwap(ref: Img, product: Img, extra = ""): Promi
     "Keep EVERYTHING else identical — same composition, camera angle, framing, hands/person, background, lighting, color grade and mood. " +
     "Only swap the product; match its placement and scale naturally. Photorealistic. Do not add any text, captions, letters or logos. " +
     (extra ? `Context: ${extra}` : "");
-  return generateImage(
+  return (await generateImage(
     [
       { inline_data: { mime_type: ref.mime || "image/jpeg", data: ref.b64 } },
       { inline_data: { mime_type: product.mime || "image/png", data: product.b64 } },
       { text: instruction },
     ],
     22000,
-  );
+  )).img;
 }

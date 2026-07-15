@@ -46,8 +46,8 @@ export async function POST(req: Request) {
   const results = await Promise.all(
     wanted.map(async (plan) => {
       try {
-        const still = await composeKeyframe(product, plan);
-        if (!still) return { shot_no: plan.shot_no, sales_beat: plan.sales_beat, needs_product: plan.needs_product, ok: false };
+        const { img: still, error } = await composeKeyframe(product, plan);
+        if (!still) return { shot_no: plan.shot_no, sales_beat: plan.sales_beat, needs_product: plan.needs_product, ok: false, error };
         const id = randomUUID();
         await sql`INSERT INTO remake_assets (id, mime, data) VALUES (${id}, ${still.mime}, ${still.b64})`;
         return {
@@ -61,6 +61,7 @@ export async function POST(req: Request) {
   );
 
   const rendered = results.filter((r) => r.ok).length;
+  const firstErr = results.find((r) => !r.ok && r.error)?.error;
   return NextResponse.json({
     ok: rendered > 0,
     stage,
@@ -68,6 +69,7 @@ export async function POST(req: Request) {
     planned: plans.length,
     rendered,
     keyframes: results.sort((a, b) => a.shot_no - b.shot_no),
+    error: rendered === 0 ? `키프레임 렌더 실패: ${firstErr || "이미지 모델 오류"}` : undefined,
     note: "이 키프레임들을 확인/수정한 뒤 승인해야 M3(image-to-video)로 진행합니다.",
   });
 }
