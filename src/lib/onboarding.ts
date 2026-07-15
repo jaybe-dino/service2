@@ -94,11 +94,11 @@ export interface Quote {
   termRate: number; termDiscountAmount: number;
   monthly: number;               // 할인 적용 월 환산액
   months: number;                // 1(월구독) | 6(6개월 약정)
-  payable: number;               // 이번에 결제할 금액 (월: monthly, 6개월: monthly×6 합계)
-  vat: number;                   // payable의 10%
+  payable: number;               // 이번에 결제할 금액(VAT 포함 최종가). 월: monthly, 6개월: monthly×6 합계
+  vat: number;                   // payable에 포함된 부가세 금액 (payable × 10/110)
 }
-// 월 환산액 = 트랙료 × 국가수 × (1-다국가할인) × (1-약정할인).
-// 6개월 약정은 6개월 합계(월환산 × 6)를 한 번에 결제. VAT 별도(10%).
+// 월 환산액 = 트랙료 × 국가수 × (1-다국가할인) × (1-약정할인). 표기가는 모두 VAT 포함.
+// 6개월 약정은 6개월 합계(월환산 × 6)를 한 번에 결제.
 export function computeQuote(trackId: MallTrackId, countryCount: number, term: SubTerm): Quote {
   const unitPrice = MALL_TRACK_MAP[trackId]?.price ?? 0;
   const n = Math.max(1, countryCount);
@@ -111,7 +111,7 @@ export function computeQuote(trackId: MallTrackId, countryCount: number, term: S
   const payable = monthly * months;
   const multiDiscount = Math.round(base * multiRate);
   const termDiscountAmount = Math.round(afterMulti * termRate);
-  const vat = Math.round(payable * 0.1);
+  const vat = Math.round(payable * 10 / 110); // 표기가에 포함된 부가세 금액
   return { trackId, unitPrice, countryCount: n, base, multiRate, multiDiscount, termRate, termDiscountAmount, monthly, months, payable, vat };
 }
 

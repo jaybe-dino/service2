@@ -547,7 +547,7 @@ function OnboardingInner() {
                       <span className="text-[22px] font-black text-[var(--accent)]">{won(quote.payable)}</span>
                     </div>
                     {term === "6month" && <div className="text-right text-[10px] text-[var(--muted)]">월 환산 {won(quote.monthly)} × 6개월</div>}
-                    <div className="text-right text-[10px] text-[var(--muted)]">VAT 별도 (+{won(quote.vat)})</div>
+                    <div className="text-right text-[10px] text-[var(--muted)]">VAT 포함</div>
                   </div>
                 )}
                 {!user && <p className="mt-3 rounded-md bg-amber-50 px-3 py-2 text-[11px] font-semibold text-amber-700">결제하려면 로그인이 필요합니다.</p>}
