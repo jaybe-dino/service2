@@ -81,6 +81,7 @@ export default function AdminPage() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [inquiries, setInquiries] = useState<Inquiry[]>([]);
   const [consult, setConsult] = useState<ConsultRow[]>([]);
+  const [cancelling, setCancelling] = useState<string | null>(null);
   const [brandReqs, setBrandReqs] = useState<BrandReq[]>([]);
   const [runs, setRuns] = useState<Run[]>([]);
   const [brandHealth, setBrandHealth] = useState<BrandHealth[]>([]);
@@ -261,6 +262,18 @@ export default function AdminPage() {
     setToast(r.ok ? "상담 상태 저장됨" : "저장 실패");
     setTimeout(() => setToast(""), 2000);
     if (!r.ok) loadData();
+  };
+
+  const cancelOrder = async (orderId: string, plan: string) => {
+    if (!confirm(`이 결제를 취소(환불)합니다.\n${orderId}\n계속할까요?`)) return;
+    const stopSubscription = confirm("정기결제 건이면 구독도 함께 해지할까요?\n확인 = 구독 해지 + pro 회수 / 취소 = 이번 결제만 환불");
+    setCancelling(orderId);
+    const r = await fetch("/api/admin/payment-cancel", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ orderId, stopSubscription }) });
+    const d = await r.json().catch(() => ({}));
+    setCancelling(null);
+    setToast(r.ok && d.ok ? `결제 취소됨${d.subStopped ? " · 구독 해지" : ""}` : (d.error ?? "취소 실패"));
+    setTimeout(() => setToast(""), 3500);
+    if (r.ok) loadData();
   };
 
   const resetPw = async (email: string) => {
@@ -547,19 +560,27 @@ export default function AdminPage() {
       )}
 
       {tab === "payments" && (
-        <Table head={["주문번호", "회원ID", "플랜", "금액", "상태", "결제됨", "시각"]}>
+        <Table head={["주문번호", "회원ID", "플랜", "금액", "상태", "결제됨", "시각", "취소"]}>
           {orders.map((o) => (
             <tr key={o.order_id} className="border-b border-[var(--border)] last:border-0">
               <td className="p-2 font-mono text-[10px]">{o.order_id}</td>
               <td className="p-2 text-[10px]">{o.user_id.slice(0, 12)}</td>
               <td className="p-2">{o.plan}</td>
               <td className="p-2 text-right">{won(o.amount)}</td>
-              <td className="p-2"><span className={o.status === "paid" ? "text-emerald-600" : o.status === "failed" ? "text-rose-600" : "text-[var(--muted)]"}>{o.status}</span></td>
+              <td className="p-2"><span className={o.status === "paid" ? "text-emerald-600" : o.status === "cancelled" ? "text-slate-400" : o.status === "failed" ? "text-rose-600" : "text-[var(--muted)]"}>{o.status}</span></td>
               <td className="p-2">{o.paid ? "✓" : "—"}</td>
               <td className="p-2 text-[var(--muted)]">{dt(o.created_at)}</td>
+              <td className="p-2">
+                {o.paid && o.status !== "cancelled" ? (
+                  <button onClick={() => cancelOrder(o.order_id, o.plan)} disabled={cancelling === o.order_id}
+                    className="rounded-md border border-rose-300 px-2 py-1 text-[10px] font-semibold text-rose-600 hover:bg-rose-50 disabled:opacity-50">
+                    {cancelling === o.order_id ? "취소 중…" : "결제취소"}
+                  </button>
+                ) : o.status === "cancelled" ? <span className="text-[10px] text-slate-400">취소됨</span> : <span className="text-[10px] text-slate-300">—</span>}
+              </td>
             </tr>
           ))}
-          {!orders.length && <EmptyRow cols={7} text="결제 내역 없음" />}
+          {!orders.length && <EmptyRow cols={8} text="결제 내역 없음" />}
         </Table>
       )}
 

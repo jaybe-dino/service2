@@ -88,6 +88,23 @@ export async function approvePayment({ tid, amount }: { tid: string; amount: num
   }
 }
 
+// 3.3b 결제 취소/환불 — POST /v1/payments/{tid}/cancel { reason, orderId, cancelAmt?(부분취소) }
+export async function cancelPayment({ tid, orderId, reason, cancelAmt }: { tid: string; orderId: string; reason: string; cancelAmt?: number }): Promise<ApproveResult & { cancelledTid?: string }> {
+  if (!isConfigured()) return { ok: false, resultCode: "ENV", resultMsg: "NICEPAY keys not set", raw: null };
+  try {
+    const res = await fetch(`${API_BASE}/v1/payments/${encodeURIComponent(tid)}/cancel`, {
+      method: "POST",
+      headers: { Authorization: basicAuth(), "Content-Type": "application/json" },
+      body: JSON.stringify({ reason: reason || "관리자 취소", orderId, ...(cancelAmt != null ? { cancelAmt } : {}) }),
+    });
+    const raw = (await res.json().catch(() => ({}))) as { resultCode?: string; resultMsg?: string; cancelledTid?: string; status?: string };
+    const resultCode = raw.resultCode ?? String(res.status);
+    return { ok: resultCode === "0000", resultCode, resultMsg: raw.resultMsg ?? "", cancelledTid: raw.cancelledTid, tid, raw };
+  } catch (e) {
+    return { ok: false, resultCode: "EXC", resultMsg: String(e), raw: null };
+  }
+}
+
 // 3.4 정기 결제 — 빌링키로 자동 청구
 export async function chargeByBillingKey({ bid, orderId, amount, goodsName }: { bid: string; orderId: string; amount: number; goodsName: string; }): Promise<ApproveResult & { tid?: string }> {
   if (!isConfigured()) return { ok: false, resultCode: "ENV", resultMsg: "NICEPAY keys not set", raw: null };
