@@ -289,16 +289,22 @@ export default function AdminPage() {
     if (!r.ok) loadData();
   };
 
-  const cancelOrder = async (orderId: string, plan: string) => {
+  const cancelOrder = async (orderId: string) => {
     if (!confirm(`이 결제를 취소(환불)합니다.\n${orderId}\n계속할까요?`)) return;
     const stopSubscription = confirm("정기결제 건이면 구독도 함께 해지할까요?\n확인 = 구독 해지 + pro 회수 / 취소 = 이번 결제만 환불");
     setCancelling(orderId);
-    const r = await fetch("/api/admin/payment-cancel", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ orderId, stopSubscription }) });
-    const d = await r.json().catch(() => ({}));
+    const call = (forceLocal: boolean) => fetch("/api/admin/payment-cancel", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ orderId, stopSubscription, forceLocal }) }).then((x) => x.json().catch(() => ({})));
+    let d = await call(false);
+    // 나이스페이가 거래를 못 찾는 경우(테스트/환경 불일치 등) → 기록만 취소 제안
+    if (!d.ok && (d.canForceLocal || d.noTid)) {
+      if (confirm(`나이스페이 취소가 안 됩니다:\n${d.error}\n\n실환불이 필요 없는 건(테스트/환경 불일치/이미 처리됨)이면 우리 DB 기록만 '취소'로 정리할 수 있습니다.\n기록만 취소할까요?`)) {
+        d = await call(true);
+      }
+    }
     setCancelling(null);
-    setToast(r.ok && d.ok ? `결제 취소됨${d.subStopped ? " · 구독 해지" : ""}` : (d.error ?? "취소 실패"));
-    setTimeout(() => setToast(""), 3500);
-    if (r.ok) loadData();
+    setToast(d.ok ? `취소 완료${d.forced ? "(기록만)" : ""}${d.subStopped ? " · 구독 해지" : ""}` : (d.error ?? "취소 실패"));
+    setTimeout(() => setToast(""), 4000);
+    loadData();
   };
 
   const resetPw = async (email: string) => {
@@ -598,7 +604,7 @@ export default function AdminPage() {
               <td className="p-2 text-[var(--muted)]">{dt(o.created_at)}</td>
               <td className="p-2">
                 {o.paid && o.status !== "cancelled" ? (
-                  <button onClick={() => cancelOrder(o.order_id, o.plan)} disabled={cancelling === o.order_id}
+                  <button onClick={() => cancelOrder(o.order_id)} disabled={cancelling === o.order_id}
                     className="rounded-md border border-rose-300 px-2 py-1 text-[10px] font-semibold text-rose-600 hover:bg-rose-50 disabled:opacity-50">
                     {cancelling === o.order_id ? "취소 중…" : "결제취소"}
                   </button>
