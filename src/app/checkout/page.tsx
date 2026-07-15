@@ -30,6 +30,10 @@ export default function CheckoutPage() {
     else { try { const s = sessionStorage.getItem("pay.test"); if (s) setTestTok(s); } catch {} }
   }, []);
 
+  const isTest = !!testTok; // ?test=<PAY_TEST_TOKEN> → 서버가 금액을 1/10000(최소 100원)로 축소
+  const testCharge = (n: number) => Math.max(100, Math.round(n / 10000));
+  const displayAmt = isTest ? testCharge(PRO_AMT) : PRO_AMT;
+
   const pay = async () => {
     setMsg(""); setBusy(true);
     try {
@@ -56,6 +60,7 @@ export default function CheckoutPage() {
         <h1 className="mb-1 text-[22px] font-black tracking-tight">Pro 구독 시작</h1>
         <p className="mb-5 text-[12px] text-[var(--muted)]">카드 등록 즉시 이용 · <b className="text-[var(--accent)]">매월(30일) {wonFmt(PRO_AMT)} 자동결제</b> (언제든 해지)</p>
         {PAY_TEST_MODE && <p className="mb-4 rounded-md bg-amber-50 px-3 py-2 text-[11px] font-bold text-amber-700">⚠️ 결제 테스트 모드</p>}
+        {isTest && <p className="mb-4 rounded-md bg-amber-50 px-3 py-2 text-[11px] font-bold text-amber-700">🧪 테스트 결제 — 실제 청구 {wonFmt(displayAmt)} (정가 {wonFmt(PRO_AMT)}의 1/10000)</p>}
 
         {isPro ? (
           <div className="kt-card p-6 text-center">
@@ -117,7 +122,7 @@ export default function CheckoutPage() {
             </p>
             {msg && <p className="mt-3 rounded-md bg-amber-50 px-3 py-2 text-[11px] font-semibold text-amber-700">{msg}</p>}
             <button onClick={pay} disabled={busy} className="kt-btn kt-btn-primary mt-4 w-full py-2.5 text-[12px] disabled:opacity-50">
-              {busy ? <Loader2 size={14} className="animate-spin" /> : <CreditCard size={14} />} {busy ? "처리 중…" : `${wonFmt(PRO_AMT)} 결제하고 Pro 시작`}
+              {busy ? <Loader2 size={14} className="animate-spin" /> : <CreditCard size={14} />} {busy ? "처리 중…" : `${wonFmt(displayAmt)} 결제하고 Pro 시작`}
             </button>
             <p className="mt-2 text-center text-[9px] text-[var(--muted)]">등록 즉시 첫 결제되며 이후 30일마다 자동결제됩니다. 마이페이지에서 해지 가능.</p>
           </div>

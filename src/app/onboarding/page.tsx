@@ -157,6 +157,10 @@ function OnboardingInner() {
   const quote = track ? computeQuote(track, Math.max(1, payCountries.length), term) : null;
   // 첫 결제액(프로모 반영): 6개월+프로모 → 첫 달 제외(5개월), 월간+프로모 → 첫 달 무료(0), 없으면 전액.
   const firstChargeAmt = quote ? (promoApplied ? (term === "6month" ? quote.monthly * 5 : 0) : quote.payable) : 0;
+  // ?test=<PAY_TEST_TOKEN> 이면 실제 청구가 1/10000(최소 100원)로 축소됨 — 화면에도 반영.
+  const isTest = !!testTok;
+  const tReduce = (n: number) => Math.max(100, Math.round(n / 10000));
+  const displayCharge = firstChargeAmt === 0 ? 0 : (isTest ? tReduce(firstChargeAmt) : firstChargeAmt);
   const applyPromo = async () => {
     if (!promoCode.trim()) return;
     setPromoMsg("");
@@ -545,10 +549,11 @@ function OnboardingInner() {
                     <div className="flex items-end justify-between">
                       <span className="text-[12px] font-bold">이번 결제액</span>
                       <span className="flex items-end gap-1.5">
-                        {promoApplied && <span className="mb-0.5 text-[11px] text-[var(--muted)] line-through">{won(quote.payable)}</span>}
-                        <span className="text-[22px] font-black text-[var(--accent)]">{won(firstChargeAmt)}</span>
+                        {promoApplied && <span className="mb-0.5 text-[11px] text-[var(--muted)] line-through">{won(isTest ? tReduce(quote.payable) : quote.payable)}</span>}
+                        <span className="text-[22px] font-black text-[var(--accent)]">{won(displayCharge)}</span>
                       </span>
                     </div>
+                    {isTest && <div className="text-right text-[10px] font-bold text-amber-600">🧪 테스트 결제 — 실제 청구 {won(displayCharge)} (정가의 1/10000)</div>}
                     {promoApplied && (
                       <div className="text-right text-[10px] font-semibold text-emerald-600">
                         {term === "6month" ? "프로모 적용 · 첫 달 제외(5개월)" : "프로모 적용 · 첫 달 무료"} · 다음 주기부터 {won(quote.payable)}
@@ -582,7 +587,7 @@ function OnboardingInner() {
                 {!user && <p className="mt-3 rounded-md bg-amber-50 px-3 py-2 text-[11px] font-semibold text-amber-700">결제하려면 로그인이 필요합니다.</p>}
                 <button onClick={pay} disabled={busy || !payCountries.length} className="kt-btn kt-btn-primary mt-4 w-full py-2.5 text-[12px] disabled:opacity-50">
                   {busy ? <Loader2 size={14} className="animate-spin" /> : !user ? <Lock size={14} /> : <CreditCard size={14} />}
-                  {busy ? "결제 진행 중…" : !user ? "로그인하고 결제" : firstChargeAmt === 0 ? "무료로 입점 시작" : `${won(firstChargeAmt)} 결제하고 입점`}
+                  {busy ? "결제 진행 중…" : !user ? "로그인하고 결제" : firstChargeAmt === 0 ? "무료로 입점 시작" : `${won(displayCharge)} 결제하고 입점`}
                 </button>
                 <p className="mt-2 text-center text-[9px] text-[var(--muted)]">
                   {term === "6month" ? "6개월 합계 일시 결제 · 이후 6개월마다 자동결제." : "카드 등록 즉시 첫 달 결제 · 매월 자동결제."} 결제 후 상세 정보를 입력합니다.
