@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { sql, ensureSchema, isConfigured } from "@/lib/db";
 import { isAdminAuthed } from "@/lib/admin-auth";
-import { cancelPayment, expireBillingKey } from "@/lib/nicepay";
+import { cancelPayment, expireBillingKey, buildOrderId, SERVICE_ORDER_PREFIX } from "@/lib/nicepay";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -26,9 +26,11 @@ export async function POST(req: Request) {
   if (!row) return NextResponse.json({ error: "결제 내역 없음(미결제 주문이거나 tid 없음)" }, { status: 404 });
   if (row.status === "cancelled") return NextResponse.json({ ok: true, already: true });
 
-  const r = await cancelPayment({ tid: row.payment_id, orderId, reason: b?.reason || "관리자 취소" });
+  // 취소는 새 상점거래번호(orderId)로 요청. 원 주문번호는 조회/로그용.
+  const cancelOrderId = buildOrderId(SERVICE_ORDER_PREFIX, "C");
+  const r = await cancelPayment({ tid: row.payment_id, orderId: cancelOrderId, reason: b?.reason || "관리자 취소" });
   if (!r.ok) {
-    return NextResponse.json({ ok: false, error: `취소 실패: ${r.resultMsg || r.resultCode}` }, { status: 402 });
+    return NextResponse.json({ ok: false, error: `취소 실패: ${r.resultMsg || r.resultCode}`, resultCode: r.resultCode, tid: row.payment_id }, { status: 402 });
   }
 
   await sql`UPDATE orders SET status='cancelled' WHERE order_id=${orderId}`;

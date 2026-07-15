@@ -199,7 +199,7 @@ function OnboardingInner() {
         if (data?.configured === false) { setStep(3); scrollTop(); return; } // 결제 모듈 미설정 → 정보입력으로
         setMsg(data?.error ?? "결제에 실패했습니다."); return;
       }
-      setMsg(data.firstFree ? "🎉 프로모 적용 — 첫 주기 무료로 등록됐습니다. 다음 주기부터 자동결제됩니다." : "결제가 완료됐습니다.");
+      setMsg(data.firstFree ? "프로모 코드가 적용됐습니다." : "결제가 완료됐습니다.");
       setStep(3); scrollTop(); // 정보입력으로
     } catch { setBusy(false); setMsg("결제 처리 중 오류가 발생했습니다."); }
   };
@@ -551,7 +551,7 @@ function OnboardingInner() {
                       <input inputMode="numeric" type="password" maxLength={2} value={card.cardPw} onChange={(e) => setCard((p) => ({ ...p, cardPw: e.target.value.replace(/\D/g, "") }))} placeholder="비번앞2" className="rounded-md border border-[var(--border)] px-2.5 py-2 text-[12px]" />
                     </div>
                     <input inputMode="numeric" maxLength={10} value={card.idNo} onChange={(e) => setCard((p) => ({ ...p, idNo: e.target.value.replace(/\D/g, "") }))} placeholder="생년월일 6자리(개인) / 사업자번호 10자리(법인)" className="w-full rounded-md border border-[var(--border)] px-2.5 py-2 text-[12px]" />
-                    <input value={promoCode} onChange={(e) => setPromoCode(e.target.value.toUpperCase())} placeholder="프로모션 코드 (선택 · 첫 주기 무료)" className="w-full rounded-md border border-dashed border-[var(--accent)]/50 px-2.5 py-2 text-[12px]" />
+                    <input value={promoCode} onChange={(e) => setPromoCode(e.target.value.toUpperCase())} placeholder="프로모션 코드 (선택)" className="w-full rounded-md border border-dashed border-[var(--accent)]/50 px-2.5 py-2 text-[12px]" />
                     <p className="text-[9px] text-[var(--muted)]">카드정보는 저장하지 않으며 결제사(NICEpay) 정기결제 규격으로 즉시 암호화됩니다.</p>
                   </div>
                 )}

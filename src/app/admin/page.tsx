@@ -665,7 +665,7 @@ export default function AdminPage() {
             <label className="block"><span className="block text-[10px] font-semibold text-[var(--muted)]">사용 한도(0=무제한)</span>
               <input type="number" min={0} value={newPromo.max_uses} onChange={(e) => setNewPromo((p) => ({ ...p, max_uses: Number(e.target.value) }))} className="w-28 rounded-md border border-[var(--border)] px-2 py-1.5 text-[12px]" /></label>
             <button onClick={createPromo} className="kt-btn kt-btn-primary px-3 py-1.5 text-[11px]">코드 생성</button>
-            <span className="text-[10px] text-[var(--muted)]">틱톡샵 온보딩 결제 시 입력하면 <b>첫 주기 무료</b> → 다음 주기부터 자동결제.</span>
+            <span className="text-[10px] text-[var(--muted)]">틱톡샵 온보딩 결제 시 입력하는 프로모션 코드입니다.</span>
           </div>
           <Table head={["코드", "사용/한도", "상태", "생성일", "관리"]}>
             {promos.map((p) => (
