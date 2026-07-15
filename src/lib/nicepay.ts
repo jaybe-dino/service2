@@ -48,6 +48,19 @@ function basicAuth(): string {
   return "Basic " + Buffer.from(`${CLIENT_KEY}:${SECRET_KEY}`).toString("base64");
 }
 
+// 카드정보 → encData (빌키발급용). NICEpay 스펙: AES-128 ECB · PKCS5 · 키=SecretKey 앞16자 · hex.
+//   평문: cardNo=..&expYear=YY&expMonth=MM&idNo=(개인 생년월일 YYMMDD / 법인 사업자번호 10) &cardPw=(앞2자리)
+//   ⚠️ 카드정보는 이 함수에서 즉시 암호화만 하고 저장/로깅하지 않는다.
+export interface CardInput { cardNo: string; expYear: string; expMonth: string; idNo: string; cardPw: string }
+export function encryptCardData(c: CardInput): string {
+  const cardNo = c.cardNo.replace(/\D/g, "");
+  const plain = `cardNo=${cardNo}&expYear=${c.expYear}&expMonth=${c.expMonth}&idNo=${c.idNo}&cardPw=${c.cardPw}`;
+  const key = Buffer.from(SECRET_KEY.slice(0, 16), "utf8"); // 16 bytes
+  const cipher = crypto.createCipheriv("aes-128-ecb", key, null);
+  cipher.setAutoPadding(true); // PKCS5/PKCS7
+  return Buffer.concat([cipher.update(plain, "utf8"), cipher.final()]).toString("hex");
+}
+
 interface ApproveResult { ok: boolean; resultCode: string; resultMsg: string; tid?: string; bid?: string; raw: unknown; }
 
 // 3.3 서버 승인 — 결제창 완료 후 returnUrl에서 호출
@@ -102,7 +115,8 @@ export async function registerBillingKey({ encData, orderId, encMode }: { encDat
     const res = await fetch(`${API_BASE}/v1/subscribe/regist`, {
       method: "POST",
       headers: { Authorization: basicAuth(), "Content-Type": "application/json" },
-      body: JSON.stringify({ encData, orderId, encMode: encMode || "A2" }),
+      // AES-128(기본)은 encMode 미전송. AES-256이면 encMode="A2".
+      body: JSON.stringify({ encData, orderId, ...(encMode ? { encMode } : {}) }),
     });
     const raw = (await res.json().catch(() => ({}))) as { resultCode?: string; BID?: string; bid?: string };
     return { ok: raw.resultCode === "0000", bid: raw.BID || raw.bid, raw };

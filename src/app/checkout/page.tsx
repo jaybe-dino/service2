@@ -1,39 +1,28 @@
 "use client";
 
+// Pro 정기결제(구독) 체크아웃 — 카드 등록 → 빌키발급 → 첫 달 결제 → 30일마다 자동청구.
+// NICEpay V2는 호스팅 빌링창이 없어 카드정보를 폼으로 받아 서버에서 즉시 암호화(encData)한다.
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { CreditCard, Check, Lock, Loader2 } from "lucide-react";
+import { CreditCard, Check, Lock, Loader2, ShieldCheck } from "lucide-react";
 import PageShell from "@/components/ktrend/PageShell";
 import { usePlan } from "@/components/ktrend/PlanContext";
 import { PAY_PLANS } from "@/lib/payments";
 import { PAY_TEST_MODE } from "@/data/ktrend/meta";
 
-const NICEPAY_SDK = "https://pay.nicepay.co.kr/v1/js/";
 const PRO_AMT = PAY_PLANS.pro.amount;
 const wonFmt = (n: number) => "₩" + n.toLocaleString();
-
-function loadSdk(): Promise<void> {
-  return new Promise((resolve, reject) => {
-    if (typeof window === "undefined") return reject();
-    const w = window as unknown as { AUTHNICE?: unknown };
-    if (w.AUTHNICE) return resolve();
-    const existing = document.querySelector(`script[src="${NICEPAY_SDK}"]`);
-    if (existing) { existing.addEventListener("load", () => resolve()); return; }
-    const s = document.createElement("script");
-    s.src = NICEPAY_SDK;
-    s.onload = () => resolve();
-    s.onerror = () => reject();
-    document.body.appendChild(s);
-  });
-}
 
 export default function CheckoutPage() {
   const { user, isPro } = usePlan();
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState("");
-  const [testTok, setTestTok] = useState(""); // 🧪 라이브 결제 테스트 토큰(URL ?test=)
+  const [ok, setOk] = useState(false);
+  const [testTok, setTestTok] = useState("");
+  const [card, setCard] = useState({ cardNo: "", expMonth: "", expYear: "", idNo: "", cardPw: "" });
+  const set = (k: keyof typeof card) => (e: React.ChangeEvent<HTMLInputElement>) => setCard((p) => ({ ...p, [k]: e.target.value.replace(/[^0-9]/g, "") }));
 
   useEffect(() => {
     const tk = new URLSearchParams(window.location.search).get("test");
@@ -42,47 +31,31 @@ export default function CheckoutPage() {
   }, []);
 
   const pay = async () => {
-    setMsg("");
-    setBusy(true);
+    setMsg(""); setBusy(true);
     try {
-      const res = await fetch("/api/payment/start", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ plan: "pro", mode: "subscribe", test: testTok }),
+      const res = await fetch("/api/payment/subscribe", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ plan: "pro", test: testTok, card: {
+          cardNo: card.cardNo, expYear: card.expYear, expMonth: card.expMonth, idNo: card.idNo, cardPw: card.cardPw,
+        } }),
       });
       const data = await res.json();
-      if (!res.ok || !data.ok) {
-        setBusy(false);
-        setMsg(data?.error ?? "결제 시작에 실패했습니다.");
-        return;
-      }
-      await loadSdk();
-      const w = window as unknown as { AUTHNICE?: { requestPay: (o: Record<string, unknown>) => void } };
-      if (!w.AUTHNICE) { setBusy(false); setMsg("결제 모듈 로드 실패"); return; }
-      w.AUTHNICE.requestPay({
-        clientId: data.clientKey,
-        method: "card",
-        orderId: data.orderId,
-        amount: data.amount,
-        goodsName: data.goodsName,
-        returnUrl: data.returnUrl,
-        fnError: (result: { errorMsg?: string }) => {
-          setBusy(false);
-          setMsg(result?.errorMsg ?? "결제가 취소되었습니다.");
-        },
-      });
+      if (!res.ok || !data.ok) { setBusy(false); setMsg(data?.error ?? "결제에 실패했습니다."); return; }
+      setOk(true); setBusy(false);
+      setTimeout(() => router.push("/explorer"), 2500);
     } catch {
-      setBusy(false);
-      setMsg("결제 처리 중 오류가 발생했습니다.");
+      setBusy(false); setMsg("결제 처리 중 오류가 발생했습니다.");
     }
   };
+
+  const cardFmt = (v: string) => v.replace(/(.{4})/g, "$1 ").trim();
 
   return (
     <PageShell>
       <div className="mx-auto max-w-md">
         <h1 className="mb-1 text-[22px] font-black tracking-tight">Pro 구독 시작</h1>
-        <p className="mb-5 text-[12px] text-[var(--muted)]">결제 즉시 이용 · <b className="text-[var(--accent)]">매월 {wonFmt(PRO_AMT)} 자동결제</b> (언제든 해지)</p>
-        {PAY_TEST_MODE && <p className="mb-4 rounded-md bg-amber-50 px-3 py-2 text-[11px] font-bold text-amber-700">⚠️ 결제 테스트 모드: 실제 청구 금액은 {wonFmt(PRO_AMT)} 입니다.</p>}
+        <p className="mb-5 text-[12px] text-[var(--muted)]">카드 등록 즉시 이용 · <b className="text-[var(--accent)]">매월(30일) {wonFmt(PRO_AMT)} 자동결제</b> (언제든 해지)</p>
+        {PAY_TEST_MODE && <p className="mb-4 rounded-md bg-amber-50 px-3 py-2 text-[11px] font-bold text-amber-700">⚠️ 결제 테스트 모드</p>}
 
         {isPro ? (
           <div className="kt-card p-6 text-center">
@@ -99,31 +72,54 @@ export default function CheckoutPage() {
               <Link href="/signup" className="kt-btn kt-btn-outline px-5 py-2 text-[12px]">회원가입</Link>
             </div>
           </div>
+        ) : ok ? (
+          <div className="kt-card p-6 text-center">
+            <div className="mx-auto grid h-12 w-12 place-items-center rounded-full bg-emerald-50 text-emerald-500"><Check size={26} /></div>
+            <p className="mt-3 text-[15px] font-black">구독이 시작됐습니다</p>
+            <p className="mt-1 text-[12px] text-[var(--muted)]">Pro가 활성화되었고 30일마다 자동결제됩니다. 마이페이지에서 언제든 해지할 수 있어요.</p>
+          </div>
         ) : (
           <div className="kt-card p-6">
             <div className="flex items-baseline justify-between">
-              <div>
-                <div className="text-[16px] font-black">Pro</div>
-                <div className="text-[11px] text-[var(--muted)]">월간 구독 · 언제든 해지</div>
-              </div>
-              <div className="text-right">
-                <div className="text-[24px] font-black text-[var(--accent)]">{wonFmt(PRO_AMT)}</div>
-                <div className="text-[10px] text-[var(--muted)]">/ 월 (VAT 포함)</div>
-              </div>
+              <div><div className="text-[16px] font-black">Pro</div><div className="text-[11px] text-[var(--muted)]">월간 구독 · 30일 자동결제</div></div>
+              <div className="text-right"><div className="text-[24px] font-black text-[var(--accent)]">{wonFmt(PRO_AMT)}</div><div className="text-[10px] text-[var(--muted)]">/ 월 (VAT 포함)</div></div>
             </div>
-            <div className="mt-3 rounded-md bg-[var(--accent-light)] px-3 py-2 text-[11px] font-semibold text-[var(--accent)]">
-              카드 등록 즉시 {wonFmt(PRO_AMT)} 첫 결제 · 이후 매월 자동결제
+
+            {/* 카드 등록 폼 */}
+            <div className="mt-4 space-y-2.5">
+              <label className="block">
+                <span className="mb-1 block text-[11px] font-semibold text-[var(--muted)]">카드번호</span>
+                <input inputMode="numeric" maxLength={16} value={cardFmt(card.cardNo)} onChange={set("cardNo")} placeholder="0000 0000 0000 0000" className="w-full rounded-lg border border-[var(--border)] px-3 py-2 text-[13px] tracking-wider" />
+              </label>
+              <div className="grid grid-cols-3 gap-2">
+                <label className="block">
+                  <span className="mb-1 block text-[11px] font-semibold text-[var(--muted)]">유효 월(MM)</span>
+                  <input inputMode="numeric" maxLength={2} value={card.expMonth} onChange={set("expMonth")} placeholder="MM" className="w-full rounded-lg border border-[var(--border)] px-3 py-2 text-[13px]" />
+                </label>
+                <label className="block">
+                  <span className="mb-1 block text-[11px] font-semibold text-[var(--muted)]">유효 년(YY)</span>
+                  <input inputMode="numeric" maxLength={2} value={card.expYear} onChange={set("expYear")} placeholder="YY" className="w-full rounded-lg border border-[var(--border)] px-3 py-2 text-[13px]" />
+                </label>
+                <label className="block">
+                  <span className="mb-1 block text-[11px] font-semibold text-[var(--muted)]">비밀번호 앞2</span>
+                  <input inputMode="numeric" type="password" maxLength={2} value={card.cardPw} onChange={set("cardPw")} placeholder="**" className="w-full rounded-lg border border-[var(--border)] px-3 py-2 text-[13px]" />
+                </label>
+              </div>
+              <label className="block">
+                <span className="mb-1 block text-[11px] font-semibold text-[var(--muted)]">생년월일 6자리(개인) / 사업자번호 10자리(법인)</span>
+                <input inputMode="numeric" maxLength={10} value={card.idNo} onChange={set("idNo")} placeholder="YYMMDD 또는 사업자번호" className="w-full rounded-lg border border-[var(--border)] px-3 py-2 text-[13px]" />
+              </label>
             </div>
-            <ul className="mt-4 space-y-1.5 text-[11px]">
-              <li className="flex gap-1.5"><Check size={13} className="mt-0.5 text-[var(--accent)]" /> 열람권 무제한 (콘텐츠·이름)</li>
-              <li className="flex gap-1.5"><Check size={13} className="mt-0.5 text-[var(--accent)]" /> 인플루언서 컨택·상세, 콘텐츠 분석</li>
-              <li className="flex gap-1.5"><Check size={13} className="mt-0.5 text-[var(--accent)]" /> 성장 리포트 PDF · 주간 스냅샷</li>
-            </ul>
+
+            <p className="mt-3 flex items-start gap-1.5 text-[10px] text-[var(--muted)]">
+              <ShieldCheck size={13} className="mt-0.5 shrink-0 text-emerald-500" />
+              카드정보는 저장하지 않으며, 결제사(NICEpay) 정기결제 규격으로 즉시 암호화되어 자동결제(빌링키)에만 사용됩니다.
+            </p>
             {msg && <p className="mt-3 rounded-md bg-amber-50 px-3 py-2 text-[11px] font-semibold text-amber-700">{msg}</p>}
-            <button onClick={pay} disabled={busy} className="kt-btn kt-btn-primary mt-5 w-full py-2.5 text-[12px] disabled:opacity-50">
+            <button onClick={pay} disabled={busy} className="kt-btn kt-btn-primary mt-4 w-full py-2.5 text-[12px] disabled:opacity-50">
               {busy ? <Loader2 size={14} className="animate-spin" /> : <CreditCard size={14} />} {busy ? "처리 중…" : `${wonFmt(PRO_AMT)} 결제하고 Pro 시작`}
             </button>
-            <p className="mt-2 text-center text-[9px] text-[var(--muted)]">결제 즉시 Pro가 활성화되며 매월 자동결제됩니다. 마이페이지에서 언제든 해지할 수 있습니다.</p>
+            <p className="mt-2 text-center text-[9px] text-[var(--muted)]">등록 즉시 첫 결제되며 이후 30일마다 자동결제됩니다. 마이페이지에서 해지 가능.</p>
           </div>
         )}
       </div>
