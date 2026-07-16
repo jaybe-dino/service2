@@ -7,9 +7,17 @@ import type { ReferenceSpec } from "@/lib/remake/spec";
 import { STYLE_PRESET_LIST } from "@/lib/remake/spec";
 
 type Step = 0 | 1 | 2 | 3 | 4;
-interface KF { shot_no: number; sales_beat: string; needs_product: boolean; ok: boolean; assetId?: string; url?: string }
+interface KF { shot_no: number; sales_beat: string; needs_product: boolean; ok: boolean; assetId?: string; url?: string; error?: string }
 interface JobRow { id: string; shot_no: number; failed?: boolean }
 interface ClipRow { shot_no: number; status: string; videoUrl?: string | null; error?: string | null }
+
+// 키프레임 라우트는 일부 샷이 실패해도 200 + keyframes[](샷별 error)를 돌려준다.
+// call()은 error가 있으면 throw하므로, 여기선 던지지 않고 본문을 그대로 읽어 게이트로 진입한다.
+async function postRaw<T>(path: string, body: unknown): Promise<{ ok: boolean; status: number; data: T }> {
+  const res = await fetch(path, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+  const data = (await res.json().catch(() => ({}))) as T;
+  return { ok: res.ok, status: res.status, data };
+}
 
 export default function RemakeStudioPage() {
   const [step, setStep] = useState<Step>(0);
@@ -60,15 +68,27 @@ export default function RemakeStudioPage() {
     setBusy(false);
   };
 
-  // ③ Keyframes (확인 게이트)
-  const doKeyframes = async () => {
+  // ③ Keyframes (확인 게이트). preset/stage를 인자로 받아 stale-closure 방지(A/B 경로).
+  // 일부/전부 실패해도 게이트(step 2)로 진입시켜, 어떤 샷이 왜 실패했는지 보이게 한다(막다른 골목 제거).
+  const doKeyframes = async (presetArg: string = preset, stageArg: 1 | 2 = stage) => {
     if (!spec || !productImg) return;
     setErr(null); setBusy(true);
     try {
-      const d = await call<{ keyframes: KF[] }>("/api/remake/keyframes", { spec, image: productImg, stage, preset });
-      setKeyframes(d.keyframes);
-      setApproved(new Set(d.keyframes.filter((k) => k.ok).map((k) => k.shot_no)));
-      setStep(2);
+      const { ok, status, data } = await postRaw<{ keyframes?: KF[]; error?: string }>(
+        "/api/remake/keyframes",
+        { spec, image: productImg, stage: stageArg, preset: presetArg },
+      );
+      const kfs: KF[] = Array.isArray(data.keyframes) ? data.keyframes : [];
+      // 라우트 자체가 못 뜬 경우(503 미설정 등)이고 결과도 없으면 완전 실패.
+      if (!ok && !kfs.length) throw new Error(data.error || `HTTP ${status}`);
+      setKeyframes(kfs);
+      setApproved(new Set(kfs.filter((k) => k.ok).map((k) => k.shot_no)));
+      setStep(2); // 성공/실패 섞여도 게이트로 진입
+      const okN = kfs.filter((k) => k.ok).length;
+      if (okN === 0) {
+        const why = kfs.find((k) => k.error)?.error || data.error || "이미지 모델 오류";
+        setErr(`키프레임이 렌더되지 않았습니다: ${why}`);
+      }
     } catch (e) { setErr(`키프레임 실패: ${e instanceof Error ? e.message : e}`); }
     setBusy(false);
   };
@@ -95,7 +115,8 @@ export default function RemakeStudioPage() {
     setPreviewBusy(false);
   };
   // 고른 변형으로 전체 키프레임 렌더 → 기존 승인/애니메이션 흐름으로 진입.
-  const pickVariant = (p: string) => { setPreset(p); setStage(2); doKeyframes(); };
+  // setState는 비동기라 doKeyframes에 값을 직접 넘겨 stale-closure를 피한다.
+  const pickVariant = (p: string) => { setPreset(p); setStage(2); doKeyframes(p, 2); };
 
   // ④ Animate + 폴링
   const doAnimate = async () => {
@@ -107,9 +128,11 @@ export default function RemakeStudioPage() {
       const d = await call<{ jobs: JobRow[] }>("/api/remake/animate", { spec, keyframes: chosen });
       setStep(3);
       const jobs = d.jobs.filter((j) => !j.failed);
+      // 제출 실패한 컷도 타일로 표시(원인 확인). 성공 컷만 폴링.
+      setClips(Object.fromEntries(d.jobs.map((j) => [j.shot_no, { shot_no: j.shot_no, status: j.failed ? "failed" : "in_progress", error: j.failed ? "영상 제출 실패(키프레임/제공자 확인)" : null }])));
+      if (!jobs.length) { setErr("영상 제출에 모두 실패했습니다. 키프레임을 다시 렌더하거나 영상 제공자(GEMINI/Higgsfield) 설정을 확인하세요."); setBusy(false); return; }
       const byId = new Map(jobs.map((j) => [j.id, j.shot_no]));
       const ids = jobs.map((j) => j.id);
-      setClips(Object.fromEntries(jobs.map((j) => [j.shot_no, { shot_no: j.shot_no, status: "in_progress" }])));
       const started = Date.now();
       const poll = async () => {
         try {
@@ -218,7 +241,7 @@ export default function RemakeStudioPage() {
               <option value={2}>2차 — 스타일 변형(멀티 A/B)</option>
             </select>
             {stage === 1 && (
-              <button onClick={doKeyframes} disabled={busy || !productImg} className="rounded-lg bg-pink-600 px-4 py-2 text-[13px] font-bold text-white disabled:opacity-40">
+              <button onClick={() => doKeyframes()} disabled={busy || !productImg} className="rounded-lg bg-pink-600 px-4 py-2 text-[13px] font-bold text-white disabled:opacity-40">
                 {busy && step === 1 ? "렌더 중…" : "② 키프레임 생성"}
               </button>
             )}
@@ -259,7 +282,7 @@ export default function RemakeStudioPage() {
               return (
                 <div key={p.id} className="overflow-hidden rounded-xl border border-slate-200">
                   <div className="relative aspect-[9/16] bg-slate-100">
-                    {kf?.ok && kf.url ? <img src={kf.url} alt={p.label} className="h-full w-full object-cover" /> : <div className="grid h-full place-items-center text-[10px] text-rose-500">렌더 실패</div>}
+                    {kf?.ok && kf.url ? <img src={kf.url} alt={p.label} className="h-full w-full object-cover" /> : <div className="grid h-full place-items-center px-1.5 text-center text-[10px] leading-tight text-rose-500">{kf?.error ? `실패: ${kf.error}` : "렌더 실패"}</div>}
                     <span className="absolute left-1 top-1 rounded bg-black/60 px-1.5 py-0.5 text-[9px] font-bold text-white">{p.label}</span>
                   </div>
                   <button onClick={() => pickVariant(p.id)} disabled={busy || !kf?.ok} className="block w-full bg-pink-600 py-1.5 text-[11px] font-bold text-white disabled:opacity-40">
@@ -280,7 +303,7 @@ export default function RemakeStudioPage() {
             {keyframes.map((k) => (
               <div key={k.shot_no} className={`overflow-hidden rounded-xl border ${approved.has(k.shot_no) ? "border-pink-400 ring-2 ring-pink-200" : "border-slate-200"}`}>
                 <div className="relative aspect-[9/16] bg-slate-100">
-                  {k.ok && k.url ? <img src={k.url} alt={`shot ${k.shot_no}`} className="h-full w-full object-cover" /> : <div className="grid h-full place-items-center text-[11px] text-rose-500">렌더 실패</div>}
+                  {k.ok && k.url ? <img src={k.url} alt={`shot ${k.shot_no}`} className="h-full w-full object-cover" /> : <div className="grid h-full place-items-center px-1.5 text-center text-[10px] leading-tight text-rose-500">{k.error ? `실패: ${k.error}` : "렌더 실패"}</div>}
                   <span className="absolute left-1 top-1 rounded bg-black/60 px-1.5 py-0.5 text-[9px] font-bold text-white">#{k.shot_no} · {k.sales_beat}</span>
                 </div>
                 {k.ok && (
@@ -293,7 +316,7 @@ export default function RemakeStudioPage() {
             ))}
           </div>
           <div className="mt-3 flex items-center gap-2">
-            <button onClick={doKeyframes} disabled={busy} className="rounded-lg border border-slate-300 px-3 py-2 text-[12px] font-bold disabled:opacity-40">다시 렌더</button>
+            <button onClick={() => doKeyframes()} disabled={busy} className="rounded-lg border border-slate-300 px-3 py-2 text-[12px] font-bold disabled:opacity-40">다시 렌더</button>
             <button onClick={doAnimate} disabled={busy || approved.size === 0} className="rounded-lg bg-pink-600 px-4 py-2 text-[13px] font-bold text-white disabled:opacity-40">
               ③ 승인 {approved.size}컷 영상화 (I2V)
             </button>
