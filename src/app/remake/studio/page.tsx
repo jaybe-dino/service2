@@ -8,7 +8,7 @@ import { STYLE_PRESET_LIST } from "@/lib/remake/spec";
 
 type Step = 0 | 1 | 2 | 3 | 4;
 interface KF { shot_no: number; sales_beat: string; needs_product: boolean; ok: boolean; assetId?: string; url?: string; error?: string }
-interface JobRow { id: string; shot_no: number; failed?: boolean }
+interface JobRow { id: string; shot_no: number; failed?: boolean; error?: string }
 interface ClipRow { shot_no: number; status: string; videoUrl?: string | null; error?: string | null }
 
 // 키프레임 라우트는 일부 샷이 실패해도 200 + keyframes[](샷별 error)를 돌려준다.
@@ -39,6 +39,7 @@ export default function RemakeStudioPage() {
   const [keyframes, setKeyframes] = useState<KF[]>([]);
   const [approved, setApproved] = useState<Set<number>>(new Set());
   const [clips, setClips] = useState<Record<number, ClipRow>>({});
+  const [animInfo, setAnimInfo] = useState<{ mode?: string; provider?: string }>({});
   const [plan, setPlan] = useState<unknown>(null);
   const pollRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -125,15 +126,19 @@ export default function RemakeStudioPage() {
     if (!chosen.length) { setErr("승인된 키프레임이 없습니다."); return; }
     setErr(null); setBusy(true);
     try {
-      const d = await call<{ jobs: JobRow[] }>("/api/remake/animate", { spec, keyframes: chosen });
+      const d = await call<{ jobs: JobRow[]; mode?: string; provider?: string }>("/api/remake/animate", { spec, keyframes: chosen });
       setStep(3);
+      setAnimInfo({ mode: d.mode, provider: d.provider });
       const jobs = d.jobs.filter((j) => !j.failed);
-      // 제출 실패한 컷도 타일로 표시(원인 확인). 성공 컷만 폴링.
-      setClips(Object.fromEntries(d.jobs.map((j) => [j.shot_no, { shot_no: j.shot_no, status: j.failed ? "failed" : "in_progress", error: j.failed ? "영상 제출 실패(키프레임/제공자 확인)" : null }])));
-      if (!jobs.length) { setErr("영상 제출에 모두 실패했습니다. 키프레임을 다시 렌더하거나 영상 제공자(GEMINI/Higgsfield) 설정을 확인하세요."); setBusy(false); return; }
+      // 제출 실패한 컷도 타일로 표시(진짜 사유 노출). 성공 컷만 폴링.
+      setClips(Object.fromEntries(d.jobs.map((j) => [j.shot_no, { shot_no: j.shot_no, status: j.failed ? "failed" : "in_progress", error: j.failed ? (j.error || "영상 제출 실패") : null }])));
+      // 제공자가 mock이면 실제 영상이 나오지 않음 → 즉시 안내(무한 대기 방지).
+      if (d.mode === "mock") { setErr("영상 제공자가 설정되지 않아 시뮬레이션(mock)으로 실행됩니다 — 실제 영상은 생성되지 않습니다. GEMINI(Veo) 또는 Higgsfield 키/REMAKE_PROVIDER를 설정하세요."); }
+      if (!jobs.length) { setErr("영상 제출에 모두 실패했습니다: " + (d.jobs.find((j) => j.error)?.error || "제공자/키프레임 확인")); setBusy(false); return; }
       const byId = new Map(jobs.map((j) => [j.id, j.shot_no]));
       const ids = jobs.map((j) => j.id);
       const started = Date.now();
+      const WINDOW = 300_000; // 5분 폴링 창
       const poll = async () => {
         try {
           const r = await fetch(`/api/remake/status?ids=${ids.join(",")}`);
@@ -145,7 +150,18 @@ export default function RemakeStudioPage() {
             return next;
           });
           const done = rows.length && rows.every((j) => ["completed", "failed", "nsfw"].includes(j.status));
-          if (!done && Date.now() - started < 300_000) pollRef.current = setTimeout(poll, 2500);
+          if (!done && Date.now() - started < WINDOW) { pollRef.current = setTimeout(poll, 2500); return; }
+          // 폴링 창 종료: 아직 진행 중인 컷은 지연/무응답으로 확정 표시(무한 "생성 중…" 방지).
+          if (!done) {
+            setClips((prev) => {
+              const next = { ...prev };
+              for (const c of Object.values(prev)) {
+                if (!["completed", "failed", "nsfw"].includes(c.status)) next[c.shot_no] = { ...c, status: "failed", error: c.error || "영상 생성 지연/무응답(5분 초과) — 제공자 응답 없음. draft 티어/제공자 상태를 확인하세요." };
+              }
+              return next;
+            });
+            setErr("일부 컷이 5분 내 완료되지 않았습니다 — 제공자(Veo/Omni) 지연 또는 크레딧/모델 문제일 수 있습니다.");
+          }
         } catch { pollRef.current = setTimeout(poll, 3000); }
       };
       pollRef.current = setTimeout(poll, 2500);
@@ -327,7 +343,14 @@ export default function RemakeStudioPage() {
       {/* STEP 3 — 영상 생성/폴링 */}
       {step >= 3 && (
         <section className="mt-4 rounded-2xl border border-slate-200 p-4">
-          <div className="mb-2 text-[13px] font-black">③ 샷별 영상 (image-to-video)</div>
+          <div className="mb-2 flex items-center gap-2 text-[13px] font-black">
+            ③ 샷별 영상 (image-to-video)
+            {animInfo.mode && (
+              <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${animInfo.mode === "mock" ? "bg-amber-100 text-amber-700" : "bg-violet-100 text-violet-700"}`}>
+                {animInfo.mode === "mock" ? "시뮬레이션(mock)" : `${animInfo.provider || animInfo.mode} 실제 생성`}
+              </span>
+            )}
+          </div>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
             {Object.values(clips).sort((a, b) => a.shot_no - b.shot_no).map((c) => (
               <div key={c.shot_no} className="overflow-hidden rounded-xl border border-slate-200">

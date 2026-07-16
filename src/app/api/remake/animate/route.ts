@@ -63,9 +63,10 @@ export async function POST(req: Request) {
           VALUES (${id}, ${provider.id}, ${requestId}, ${seed}, ${kf.shot_no}, 0, 'in_progress', 'keyframeI2V')`;
         return { id, shot_no: kf.shot_no };
       } catch (e) {
+        const emsg = String(e instanceof Error ? e.message : e).slice(0, 300);
         await sql`INSERT INTO remake_jobs (id, provider, template_id, variation, score, status, error, fidelity)
-          VALUES (${id}, ${provider.id}, ${seed}, ${kf.shot_no}, 0, 'failed', ${String(e).slice(0, 240)}, 'keyframeI2V')`;
-        return { id, shot_no: kf.shot_no, failed: true };
+          VALUES (${id}, ${provider.id}, ${seed}, ${kf.shot_no}, 0, 'failed', ${emsg}, 'keyframeI2V')`;
+        return { id, shot_no: kf.shot_no, failed: true, error: emsg };
       }
     }),
   );
