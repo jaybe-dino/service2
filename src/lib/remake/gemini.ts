@@ -18,8 +18,12 @@ function key(): string {
   return (process.env.GEMINI_API_KEY || "").trim();
 }
 
+// 영상 제출 타임박스(ms). Veo predictLongRunning 제출은 이미지 업로드+큐잉으로 30s를 넘길 수 있어
+// 서버리스 수명(60s) 안에서 최대한 여유를 준다. GEMINI_SUBMIT_TIMEOUT_MS로 조정.
+const SUBMIT_MS = Math.max(10000, Math.min(55000, Number(process.env.GEMINI_SUBMIT_TIMEOUT_MS || 48000)));
+
 // 제출 호출 타임박스 — 벤더 지연이 서버리스 수명(60s)을 통째로 잡아먹지 않도록.
-async function fetchT(url: string, opts: RequestInit, ms = 30000): Promise<Response> {
+async function fetchT(url: string, opts: RequestInit, ms = SUBMIT_MS): Promise<Response> {
   const ac = new AbortController();
   const timer = setTimeout(() => ac.abort(), ms);
   try {
@@ -43,23 +47,29 @@ export interface GeminiSubmitInput {
 export async function submitImage2Video(i: GeminiSubmitInput): Promise<{ requestId: string }> {
   // Omni Flash는 Interactions API(다른 규격), Veo류는 predictLongRunning.
   if (/omni/i.test(i.model)) return submitOmni(i);
-  const res = await fetchT(`${BASE}/models/${i.model}:predictLongRunning`, {
-    method: "POST",
-    headers: { "content-type": "application/json", "x-goog-api-key": key() },
-    body: JSON.stringify({
-      instances: [
-        {
-          prompt: i.prompt,
-          image: { bytesBase64Encoded: i.imageBase64, mimeType: i.imageMime || "image/png" },
+  let res: Response;
+  try {
+    res = await fetchT(`${BASE}/models/${i.model}:predictLongRunning`, {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-goog-api-key": key() },
+      body: JSON.stringify({
+        instances: [
+          {
+            prompt: i.prompt,
+            image: { bytesBase64Encoded: i.imageBase64, mimeType: i.imageMime || "image/png" },
+          },
+        ],
+        parameters: {
+          aspectRatio: i.aspectRatio || "9:16",
+          sampleCount: 1,
+          ...(i.negativePrompt ? { negativePrompt: i.negativePrompt } : {}),
         },
-      ],
-      parameters: {
-        aspectRatio: i.aspectRatio || "9:16",
-        sampleCount: 1,
-        ...(i.negativePrompt ? { negativePrompt: i.negativePrompt } : {}),
-      },
-    }),
-  });
+      }),
+    });
+  } catch (e) {
+    if (/abort/i.test(String(e))) throw new Error(`gemini submit 타임아웃(${SUBMIT_MS}ms) — 영상 제공자 응답 지연. 모델(${i.model})/네트워크/크레딧을 확인하세요.`);
+    throw new Error(`gemini submit 네트워크 오류: ${String(e).slice(0, 160)}`);
+  }
   const text = await res.text();
   const json = safeJson(text);
   if (!res.ok) throw new Error(`gemini submit ${res.status}: ${text.slice(0, 200)}`);
@@ -113,12 +123,18 @@ async function submitOmni(i: GeminiSubmitInput): Promise<{ requestId: string }> 
   input.push({ type: "image", data: i.imageBase64, mime_type: i.imageMime || "image/png" });
   input.push({ type: "text", text: i.prompt });
   // 인증 이중화: 헤더 + ?key= (엔드포인트별 차이 대비)
-  const res = await fetchT(`${BASE}/interactions?key=${encodeURIComponent(key())}`, {
-    method: "POST",
-    headers: { "content-type": "application/json", "x-goog-api-key": key() },
-    // response_format.type 필수(오류로 확인). 영상 출력 + URI 전달.
-    body: JSON.stringify({ model: i.model, input, response_format: { type: "video", delivery: "uri" } }),
-  });
+  let res: Response;
+  try {
+    res = await fetchT(`${BASE}/interactions?key=${encodeURIComponent(key())}`, {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-goog-api-key": key() },
+      // response_format.type 필수(오류로 확인). 영상 출력 + URI 전달.
+      body: JSON.stringify({ model: i.model, input, response_format: { type: "video", delivery: "uri" } }),
+    });
+  } catch (e) {
+    if (/abort/i.test(String(e))) throw new Error(`omni submit 타임아웃(${SUBMIT_MS}ms) — 영상 제공자 응답 지연. 모델(${i.model})/네트워크/크레딧을 확인하세요.`);
+    throw new Error(`omni submit 네트워크 오류: ${String(e).slice(0, 160)}`);
+  }
   const text = await res.text();
   const json = safeJson(text);
   if (!res.ok) throw new Error(`omni submit ${res.status} @${BASE}/interactions model=${i.model}: ${text.slice(0, 240)}`);
