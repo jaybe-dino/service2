@@ -23,6 +23,7 @@ export default function RemakeStudioPage() {
   const [step, setStep] = useState<Step>(0);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const [info, setInfo] = useState<string | null>(null); // 경고성 안내(복제 폴백 등)
 
   // 입력
   const [refUrl, setRefUrl] = useState("");
@@ -73,9 +74,9 @@ export default function RemakeStudioPage() {
   // 일부/전부 실패해도 게이트(step 2)로 진입시켜, 어떤 샷이 왜 실패했는지 보이게 한다(막다른 골목 제거).
   const doKeyframes = async (presetArg: string = preset, stageArg: 1 | 2 = stage) => {
     if (!spec || !productImg) return;
-    setErr(null); setBusy(true);
+    setErr(null); setInfo(null); setBusy(true);
     try {
-      const { ok, status, data } = await postRaw<{ keyframes?: KF[]; error?: string }>(
+      const { ok, status, data } = await postRaw<{ keyframes?: KF[]; error?: string; replica?: boolean; replicaFallback?: boolean; framesLoaded?: number }>(
         "/api/remake/keyframes",
         { spec, image: productImg, stage: stageArg, preset: presetArg },
       );
@@ -85,6 +86,9 @@ export default function RemakeStudioPage() {
       setKeyframes(kfs);
       setApproved(new Set(kfs.filter((k) => k.ok).map((k) => k.shot_no)));
       setStep(2); // 성공/실패 섞여도 게이트로 진입
+      // 복제 모드인데 레퍼 프레임이 없어 재창조로 폴백된 경우 → 원인(워커 미배포) 안내.
+      if (data.replicaFallback) setInfo("‘제품만 교체(복제)’를 요청했지만 레퍼런스 프레임이 없어 재창조로 대체했습니다. 실제 복제를 하려면 프레임 추출 워커(REMAKE_FRAME_SERVICE_URL)를 배포해야 합니다.");
+      else if (data.replica && data.framesLoaded) setInfo(`레퍼런스 프레임 ${data.framesLoaded}장을 기준으로 복제(제품만 교체)했습니다.`);
       const okN = kfs.filter((k) => k.ok).length;
       if (okN === 0) {
         const why = kfs.find((k) => k.error)?.error || data.error || "이미지 모델 오류";
@@ -205,6 +209,7 @@ export default function RemakeStudioPage() {
       </div>
 
       {err && <div className="mb-4 rounded-lg bg-rose-50 px-3 py-2 text-[12px] font-semibold text-rose-700">{err}</div>}
+      {info && <div className="mb-4 rounded-lg bg-amber-50 px-3 py-2 text-[12px] font-semibold text-amber-700">{info}</div>}
 
       {/* STEP 0 — 입력 */}
       <section className="rounded-2xl border border-slate-200 p-4">

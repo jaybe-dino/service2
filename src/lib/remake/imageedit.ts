@@ -115,6 +115,30 @@ export async function composeKeyframe(product: Img, plan: ShotPlan): Promise<{ i
   return generateImage(parts, 26000);
 }
 
+// 복제 모드 키프레임 — 실제 레퍼런스 프레임을 최대한 그대로 두고 '제품만' 내 제품으로 교체.
+// stage 1('제품만 교체(최대 유사)')의 코어. 실패 사유(error)까지 함께 반환(라우트에서 노출).
+export async function replicaKeyframe(product: Img, ref: Img, plan: ShotPlan): Promise<{ img: Img | null; error?: string }> {
+  const instruction = [
+    "Image 1 is a real frame from a reference short-form (TikTok/UGC) ad. Image 2 is MY product.",
+    plan.needs_product
+      ? "Edit Image 1 so the beauty product shown is replaced with MY product from Image 2."
+      : "If any beauty product appears in Image 1, replace it with MY product from Image 2; otherwise keep the frame as-is.",
+    "Keep EVERYTHING else IDENTICAL — same composition, camera angle, framing, person, pose, hands, background, lighting, color grade and mood. Only the product changes.",
+    "Keep MY product's real label, wording, shape, proportions and color EXACTLY faithful; match its placement, scale, shadows and reflections to the scene naturally.",
+    plan.product_placement,
+    "Photorealistic. Do NOT add or alter any on-screen text, captions, letters, numbers, hashtags or logos.",
+    `Avoid: ${plan.negative_prompt}.`,
+  ].filter(Boolean).join(" ");
+  return generateImage(
+    [
+      { inline_data: { mime_type: ref.mime || "image/jpeg", data: ref.b64 } },
+      { inline_data: { mime_type: product.mime || "image/png", data: product.b64 } },
+      { text: instruction },
+    ],
+    26000,
+  );
+}
+
 // (레거시) 레퍼런스 프레임에서 제품만 교체 — 프레임-복제 모드에서 사용. 유지하되 기본 경로는 composeScene.
 export async function editProductSwap(ref: Img, product: Img, extra = ""): Promise<Img | null> {
   const instruction =

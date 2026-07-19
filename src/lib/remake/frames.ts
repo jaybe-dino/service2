@@ -20,6 +20,15 @@ async function loadCached(vid: string): Promise<TFrame[]> {
     return [];
   }
 }
+// 캐시된 레퍼런스 프레임을 ref_id(틱톡 영상ID) 또는 URL로 조회(재수집 없음 — 비용/지연 0).
+// 복제 모드에서 샷별 타임코드에 맞춰 쓰도록 ts 포함. 분석(decompose) 때 저장된 프레임을 그대로 읽는다.
+export async function loadCachedFrames(idOrUrl: string): Promise<Array<Frame & { ts: number }>> {
+  const vid = /^\d{6,}$/.test(idOrUrl) ? idOrUrl : videoId(idOrUrl);
+  if (!vid) return [];
+  const fr = await loadCached(vid);
+  return fr.map((f) => ({ b64: f.b64, mime: f.mime, ts: f.ts }));
+}
+
 async function saveCached(vid: string, items: TFrame[]): Promise<void> {
   if (!isConfigured() || !items.length) return;
   try {
