@@ -45,31 +45,33 @@ async function assemble(plan) {
   const timeline = Array.isArray(plan?.timeline) ? plan.timeline : [];
   if (!timeline.length) throw new Error("timeline 비어 있음");
 
-  // 1) 클립 다운로드
-  const files = [];
+  // 1) 클립 다운로드 (+ 계획된 컷 길이 dur_sec 보존)
+  const clips = [];
   for (let i = 0; i < timeline.length; i++) {
-    const src = timeline[i].src;
-    if (!src) continue;
+    const seg = timeline[i] || {};
+    if (!seg.src) continue;
     const f = path.join(work, `c${i}.mp4`);
-    await download(src, f);
-    files.push(f);
+    await download(seg.src, f);
+    const dur = Math.max(0.5, Math.min(15, Number(seg.dur_sec) || 2)); // 계획된 컷 길이(과다 방지)
+    clips.push({ file: f, dur });
   }
-  if (!files.length) throw new Error("다운로드된 클립 없음");
+  if (!clips.length) throw new Error("다운로드된 클립 없음");
 
-  // 2) 9:16 정규화 + concat (필터그래프). 각 입력을 1080x1920/30fps로 맞춘 뒤 이어붙임.
+  // 2) 각 클립을 '계획된 길이(dur_sec)로 트림' + 9:16 정규화 → concat.
+  //    (트림 없이 붙이면 원본 5~8초 클립이 통째로 들어가 페이싱이 무너짐.)
   const inputs = [];
-  files.forEach((f) => { inputs.push("-i", f); });
-  const parts = files
-    .map((_, i) => `[${i}:v]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,setsar=1,fps=30,format=yuv420p[v${i}]`)
+  clips.forEach((c) => { inputs.push("-i", c.file); });
+  const parts = clips
+    .map((c, i) => `[${i}:v]trim=0:${c.dur.toFixed(2)},setpts=PTS-STARTPTS,scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,setsar=1,fps=30,format=yuv420p[v${i}]`)
     .join(";");
-  const concatIn = files.map((_, i) => `[v${i}]`).join("");
-  const filter = `${parts};${concatIn}concat=n=${files.length}:v=1:a=0[outv]`;
+  const concatIn = clips.map((_, i) => `[v${i}]`).join("");
+  const filter = `${parts};${concatIn}concat=n=${clips.length}:v=1:a=0[outv]`;
   const out = path.join(OUT_DIR, `${id}.mp4`);
   const r = await sh("ffmpeg", ["-y", ...inputs, "-filter_complex", filter, "-map", "[outv]", "-c:v", "libx264", "-preset", "veryfast", "-crf", "23", "-movflags", "+faststart", out]);
   // 정리
   try { fs.rmSync(work, { recursive: true, force: true }); } catch { }
   if (r.code !== 0 || !fs.existsSync(out)) throw new Error(`ffmpeg concat 실패: ${r.err}`);
-  return { id, out, shots: files.length };
+  return { id, out, shots: clips.length };
 }
 
 const server = http.createServer(async (req, res) => {

@@ -73,9 +73,10 @@ export async function POST(req: Request) {
     const base = { shot_no: plan.shot_no, sales_beat: plan.sales_beat, needs_product: plan.needs_product };
     try {
       const rf = replica ? pickFrame(plan.shot_no) : null;
-      // 복제 모드 + 프레임 있으면 프레임 복제(제품만 교체), 아니면 히어로 앵커 재창조.
+      // 복제 모드 + 프레임 있으면 프레임 복제(제품만 교체) — hero로 제품 외형 통일.
+      // 아니면 히어로 앵커 재창조.
       const { img: still, error } = rf
-        ? await replicaKeyframe(product, rf, plan)
+        ? await replicaKeyframe(product, rf, plan, hero ? { hero } : {})
         : await composeKeyframe(product, plan, hero ? { hero } : {});
       if (!still) return { row: { ...base, mode: rf ? "replica" : "recreate", ok: false, error }, img: null };
       const id = randomUUID();
@@ -86,18 +87,13 @@ export async function POST(req: Request) {
     }
   };
 
-  let results: Row[];
-  if (replica) {
-    // 복제 모드: 실제 레퍼 프레임이 인물·구도 일관성을 보장 → 전부 병렬(타임박스).
-    results = (await Promise.all(wanted.map((p) => renderOne(p)))).map((r) => r.row);
-  } else {
-    // 재창조 모드: 1) 첫(히어로) 컷 렌더 → 2) 나머지는 히어로를 참조해 병렬(인물·제품 일관성).
-    const [first, ...rest] = wanted;
-    const heroRes = await renderOne(first);
-    const hero = heroRes.img || undefined;
-    const restRes = rest.length ? await Promise.all(rest.map((p) => renderOne(p, hero))) : [];
-    results = [heroRes, ...restRes].map((r) => r.row);
-  }
+  // 항상 히어로 앵커 2라운드: 1) 첫 컷 렌더 → 2) 나머지는 첫 컷을 참조(제품·인물 외형 통일).
+  // 복제 모드는 인물·구도를 프레임이 보장하고, hero는 '제품 외형'을 컷 간 통일하는 앵커로 쓰인다.
+  const [first, ...rest] = wanted;
+  const heroRes = await renderOne(first);
+  const hero = heroRes.img || undefined;
+  const restRes = rest.length ? await Promise.all(rest.map((p) => renderOne(p, hero))) : [];
+  const results: Row[] = [heroRes, ...restRes].map((r) => r.row);
   results.sort((a, b) => a.shot_no - b.shot_no);
 
   const rendered = results.filter((r) => r.ok).length;

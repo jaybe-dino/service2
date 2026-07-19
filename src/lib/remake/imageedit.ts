@@ -125,27 +125,27 @@ export async function composeKeyframe(product: Img, plan: ShotPlan, opts: { hero
 }
 
 // 복제 모드 키프레임 — 실제 레퍼런스 프레임을 최대한 그대로 두고 '제품만' 내 제품으로 교체.
-// stage 1('제품만 교체(최대 유사)')의 코어. 실패 사유(error)까지 함께 반환(라우트에서 노출).
-export async function replicaKeyframe(product: Img, ref: Img, plan: ShotPlan): Promise<{ img: Img | null; error?: string }> {
+// stage 1('제품만 교체(최대 유사)')의 코어. opts.hero: 앞 컷에 내 제품이 렌더된 모습 — 샷 간 제품 외형 통일.
+export async function replicaKeyframe(product: Img, ref: Img, plan: ShotPlan, opts: { hero?: Img } = {}): Promise<{ img: Img | null; error?: string }> {
+  const parts: unknown[] = [
+    { inline_data: { mime_type: ref.mime || "image/jpeg", data: ref.b64 } },
+    { inline_data: { mime_type: product.mime || "image/png", data: product.b64 } },
+  ];
+  if (opts.hero?.b64) parts.push({ inline_data: { mime_type: opts.hero.mime || "image/png", data: opts.hero.b64 } });
   const instruction = [
-    "Image 1 is a real frame from a reference short-form (TikTok/UGC) ad. Image 2 is MY product.",
+    `Image 1 is a real frame from a reference short-form (TikTok/UGC) ad. Image 2 is MY product${opts.hero ? ". Image 3 shows how MY product was rendered in a previous cut of THIS SAME ad" : ""}.`,
     plan.needs_product
       ? "Edit Image 1 so the beauty product shown is replaced with MY product from Image 2."
       : "If any beauty product appears in Image 1, replace it with MY product from Image 2; otherwise keep the frame as-is.",
     "Keep EVERYTHING else IDENTICAL — same composition, camera angle, framing, person, pose, hands, background, lighting, color grade and mood. Only the product changes.",
-    "Keep MY product's real label, wording, shape, proportions and color EXACTLY faithful; match its placement, scale, shadows and reflections to the scene naturally.",
+    "MY product must be the SAME physical object in every shot: keep its label, wording, typography, shape, proportions and color EXACTLY as in image 2 — treat it as ground truth, do NOT redraw, reinterpret, relabel, recolor or restyle it.",
+    opts.hero ? "Match MY product's exact appearance (label layout, finish, color) to how it looks in image 3 so it is visually identical across all cuts." : "",
     plan.product_placement,
-    "Photorealistic. Do NOT add or alter any on-screen text, captions, letters, numbers, hashtags or logos.",
+    "Match the product's placement, scale, shadows and reflections to the scene naturally. Photorealistic. Do NOT add or alter any on-screen text, captions, letters, numbers, hashtags or logos.",
     `Avoid: ${plan.negative_prompt}.`,
   ].filter(Boolean).join(" ");
-  return generateImage(
-    [
-      { inline_data: { mime_type: ref.mime || "image/jpeg", data: ref.b64 } },
-      { inline_data: { mime_type: product.mime || "image/png", data: product.b64 } },
-      { text: instruction },
-    ],
-    26000,
-  );
+  parts.push({ text: instruction });
+  return generateImage(parts, 26000);
 }
 
 // (레거시) 레퍼런스 프레임에서 제품만 교체 — 프레임-복제 모드에서 사용. 유지하되 기본 경로는 composeScene.
