@@ -95,10 +95,13 @@ export default function RemakeStudioPage() {
   };
 
   // M4 — 2차 멀티변형 미리보기: 선택 프리셋마다 대표 1컷만 렌더해 A/B 비교(비용 최소).
+  // 제품이 등장하는 샷을 대표컷으로(제품 미노출 방지). 슬롯 없으면 마지막 샷(보통 CTA/제품 리빌).
   const previewShot = (): number => {
     if (!spec) return 1;
     const ps = spec.product_slots?.[0]?.shot_no;
-    return ps ?? spec.shots?.[0]?.shot_no ?? 1;
+    if (ps != null) return ps;
+    const shots = spec.shots || [];
+    return shots.length ? shots[shots.length - 1].shot_no : 1;
   };
   const doPreviews = async () => {
     if (!spec || !productImg || selPresets.size === 0) return;

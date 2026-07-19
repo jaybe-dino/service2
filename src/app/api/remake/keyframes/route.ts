@@ -38,9 +38,14 @@ export async function POST(req: Request) {
 
   const plans = planKeyframes(spec, control);
   const maxKf = maxKeyframes(); // 비용 절약 기본 1(REMAKE_COST_SAVER=0 또는 REMAKE_MAX_KEYFRAMES로 상향)
+  // 소수만 렌더할 때(절약모드) 제품이 등장하는 샷을 우선 선택 → 적게 뽑아도 제품이 반드시 노출.
+  const pickMinimal = (all: typeof plans, n: number) =>
+    [...all.filter((p) => p.needs_product), ...all.filter((p) => !p.needs_product)]
+      .slice(0, n)
+      .sort((a, b) => a.shot_no - b.shot_no);
   const wanted = Array.isArray(body.shotNos) && body.shotNos.length
     ? plans.filter((p) => body.shotNos!.includes(p.shot_no))
-    : plans.slice(0, maxKf);
+    : pickMinimal(plans, maxKf);
 
   // 병렬 렌더(각 Nano Banana 호출은 타임박스) → 60초 안에 들도록.
   const product = { b64: imageB64, mime: imageMime };

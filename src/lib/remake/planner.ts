@@ -64,9 +64,23 @@ export function planKeyframes(spec: ReferenceSpec, control: LayerControl, produc
     arr.push(s.role);
     slotsByShot.set(s.shot_no, arr);
   }
-  return (spec.shots || []).map((shot) => {
+  const shots = spec.shots || [];
+  // 분석이 제품 슬롯을 하나도 못 잡으면 제품이 영영 안 들어감 → 대표 샷 1개에 강제 배치.
+  // 우선순위: 결과(proof) 샷 → 없으면 마지막 샷(보통 CTA/제품 리빌).
+  let forcedShotNo: number | null = null;
+  if (slotsByShot.size === 0 && shots.length) {
+    const proof = shots.find((s) => isProofShot(s, spec));
+    forcedShotNo = (proof || shots[shots.length - 1]).shot_no;
+  }
+  return shots.map((shot) => {
     const roles = slotsByShot.get(shot.shot_no) || [];
-    const hasProduct = roles.length > 0;
+    const forced = shot.shot_no === forcedShotNo;
+    const hasProduct = roles.length > 0 || forced;
+    const placement = roles.length > 0
+      ? `Place my product for: ${roles.join(", ")}. Match ${style.lighting} lighting, shadows and reflections to the scene; natural scale and placement.`
+      : forced
+        ? `Feature my product naturally in this beat; match ${style.lighting} lighting, shadows and reflections; natural scale and placement.`
+        : "";
     return {
       shot_no: shot.shot_no,
       sales_beat: shot.sales_beat,        // 불변
@@ -75,9 +89,7 @@ export function planKeyframes(spec: ReferenceSpec, control: LayerControl, produc
       base_composition: shot.composition,
       image_prompt: buildImagePrompt(shot, style, hasProduct, emphasis, isProofShot(shot, spec)),
       product_asset: productAssetKey,
-      product_placement: hasProduct
-        ? `Place my product for: ${roles.join(", ")}. Match ${style.lighting} lighting, shadows and reflections to the scene; natural scale and placement.`
-        : "",
+      product_placement: placement,
       needs_product: hasProduct,
       negative_prompt: DEFAULT_NEGATIVE,
     };
