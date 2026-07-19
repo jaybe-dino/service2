@@ -19,8 +19,9 @@ function envInt(name: string, saverDefault: number, fullDefault: number, min: nu
   return Math.max(min, Math.min(max, Number.isFinite(n) ? n : fallback));
 }
 
-// 키프레임 렌더 수(이미지 모델 호출 수) — 절약 1, 풀 4.
-export const maxKeyframes = () => envInt("REMAKE_MAX_KEYFRAMES", 1, 4, 1, 8);
+// 키프레임 렌더 수(이미지 모델 호출 수) — 완성형 광고 흐름(훅→시연→결과→CTA)을 보려면 4.
+// 이미지 단계는 상대적으로 저렴 → 기본 4로 서사 확보. 초저가로 낮추려면 REMAKE_MAX_KEYFRAMES=1.
+export const maxKeyframes = () => envInt("REMAKE_MAX_KEYFRAMES", 4, 4, 1, 8);
 // 장면(클립) 수 — 절약 1, 풀 4.
 export const maxScenes = () => envInt("REMAKE_MAX_SCENES", 1, 4, 1, 8);
 // 변형(A/B) 수 — 절약 1, 풀 2.
