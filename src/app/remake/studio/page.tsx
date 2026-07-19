@@ -42,6 +42,7 @@ export default function RemakeStudioPage() {
   const [clips, setClips] = useState<Record<number, ClipRow>>({});
   const [animInfo, setAnimInfo] = useState<{ mode?: string; provider?: string }>({});
   const [plan, setPlan] = useState<unknown>(null);
+  const [finalVideo, setFinalVideo] = useState<string | null>(null); // 합본 mp4(assemble 워커 반환 시)
   const pollRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => () => { if (pollRef.current) clearTimeout(pollRef.current); }, []);
@@ -181,10 +182,11 @@ export default function RemakeStudioPage() {
     if (!spec) return;
     const done = Object.values(clips).filter((c) => c.status === "completed" && c.videoUrl).map((c) => ({ shot_no: c.shot_no, videoUrl: c.videoUrl! }));
     if (!done.length) { setErr("완성된 클립이 없습니다."); return; }
-    setErr(null); setBusy(true);
+    setErr(null); setInfo(null); setBusy(true);
     try {
-      const d = await call<{ plan: unknown }>("/api/remake/assemble", { spec, clips: done });
-      setPlan(d.plan); setStep(4);
+      const d = await call<{ plan: unknown; videoUrl?: string; note?: string; warn?: string }>("/api/remake/assemble", { spec, clips: done });
+      setPlan(d.plan); setFinalVideo(d.videoUrl || null); setStep(4);
+      if (!d.videoUrl) setInfo(d.warn || d.note || "최종 mp4 합본에는 assemble 워커(REMAKE_ASSEMBLE_WORKER_URL)가 필요합니다 — 현재는 편집 계획(EDL)만 생성됩니다.");
     } catch (e) { setErr(`편집 계획 실패: ${e instanceof Error ? e.message : e}`); }
     setBusy(false);
   };
@@ -372,17 +374,32 @@ export default function RemakeStudioPage() {
           </div>
           <div className="mt-3">
             <button onClick={doAssemble} disabled={busy || !Object.values(clips).some((c) => c.status === "completed")} className="rounded-lg bg-pink-600 px-4 py-2 text-[13px] font-bold text-white disabled:opacity-40">
-              ④ 편집 계획 생성
+              ④ 최종 영상 합본
             </button>
           </div>
         </section>
       )}
 
-      {/* STEP 4 — 편집 계획(EDL) */}
+      {/* STEP 4 — 최종 합본 영상 + 편집 계획(EDL) */}
       {step >= 4 && plan != null && (
         <section className="mt-4 rounded-2xl border border-slate-200 p-4">
-          <div className="mb-2 text-[13px] font-black">④ 편집 계획 (EDL) — 최종 mp4는 FFmpeg 워커에서 실행</div>
-          <pre className="max-h-[320px] overflow-auto rounded-lg bg-slate-900 p-3 text-[11px] text-emerald-200">{JSON.stringify(plan, null, 2)}</pre>
+          <div className="mb-2 text-[13px] font-black">④ 최종 광고 영상</div>
+          {finalVideo ? (
+            <div className="mb-3">
+              <video src={finalVideo} controls className="mx-auto max-h-[70vh] rounded-xl" />
+              <div className="mt-2 text-center">
+                <a href={finalVideo} download className="inline-block rounded-lg bg-pink-600 px-4 py-2 text-[12px] font-bold text-white">최종 mp4 다운로드</a>
+              </div>
+            </div>
+          ) : (
+            <div className="mb-3 rounded-lg bg-slate-50 px-3 py-4 text-center text-[12px] text-slate-500">
+              합본 mp4는 assemble 워커(<b>REMAKE_ASSEMBLE_WORKER_URL</b>)가 있어야 생성됩니다. 아래는 편집 계획(EDL)입니다.
+            </div>
+          )}
+          <details className="mt-1">
+            <summary className="cursor-pointer text-[11px] font-semibold text-slate-500">편집 계획 (EDL) 보기</summary>
+          <pre className="mt-2 max-h-[320px] overflow-auto rounded-lg bg-slate-900 p-3 text-[11px] text-emerald-200">{JSON.stringify(plan, null, 2)}</pre>
+          </details>
         </section>
       )}
     </div>

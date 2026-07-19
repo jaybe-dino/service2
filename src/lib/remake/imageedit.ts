@@ -99,16 +99,25 @@ export async function composeScene(product: Img, scenePrompt: string, opts: Comp
 }
 
 // ③ KeyframeRenderer 코어 — ShotPlan 하나를 키프레임 스틸로 렌더(제품 합성 + 리얼리즘 패스).
-// 제품 슬롯이 있는 샷은 내 제품 이미지를 조건으로 합성, 없으면 텍스트 기반 신규 장면.
-export async function composeKeyframe(product: Img, plan: ShotPlan): Promise<{ img: Img | null; error?: string }> {
-  const parts: unknown[] = [];
-  if (plan.needs_product && product?.b64) {
-    parts.push({ inline_data: { mime_type: product.mime || "image/png", data: product.b64 } });
-  }
+// opts.hero: 앞선 컷의 '히어로 스틸' — 같은 인물·의상·톤 + 같은 제품 렌더를 이어받아 컷 간 일관성 유지.
+export async function composeKeyframe(product: Img, plan: ShotPlan, opts: { hero?: Img } = {}): Promise<{ img: Img | null; error?: string }> {
+  // 이미지 순서를 고정하고 각 이미지의 역할을 텍스트로 명시(모델 혼동 방지).
+  const imgs: { img: Img; role: "product" | "hero" }[] = [];
+  if (plan.needs_product && product?.b64) imgs.push({ img: product, role: "product" });
+  if (opts.hero?.b64) imgs.push({ img: opts.hero, role: "hero" });
+  const parts: unknown[] = imgs.map((x) => ({ inline_data: { mime_type: x.img.mime || "image/png", data: x.img.b64 } }));
+  const ord = ["FIRST", "SECOND", "THIRD"];
+  const legend = imgs
+    .map((x, i) =>
+      x.role === "product"
+        ? `The ${ord[i] || `#${i + 1}`} image is MY product. Keep its label, wording, shape, proportions and color EXACTLY identical to that image in every shot — composite it faithfully; do NOT redraw, relabel, restyle, recolor or resize the product.`
+        : `The ${ord[i] || `#${i + 1}`} image is the HERO still from an earlier cut of THIS SAME ad. Keep the SAME person — identical face, hairstyle, makeup, skin tone and wardrobe — and the same lighting/color grade for continuity; change ONLY pose, action and framing to fit this beat.`,
+    )
+    .join(" ");
   const text = [
     plan.image_prompt,
     plan.product_placement,
-    plan.needs_product && product?.b64 ? "The attached image is MY product — keep its real label, wording, shape and color exactly faithful; do not distort or relabel." : "",
+    legend,
     `Avoid: ${plan.negative_prompt}.`,
   ].filter(Boolean).join(" ");
   parts.push({ text });

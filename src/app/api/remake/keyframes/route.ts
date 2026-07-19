@@ -64,29 +64,41 @@ export async function POST(req: Request) {
   };
   const replicaFallback = replica && refFrames.length === 0;
 
-  // 병렬 렌더(각 Nano Banana 호출은 타임박스) → 60초 안에 들도록.
   const product = { b64: imageB64, mime: imageMime };
-  const results = await Promise.all(
-    wanted.map(async (plan) => {
-      try {
-        const rf = replica ? pickFrame(plan.shot_no) : null;
-        // 복제 모드 + 프레임 있으면 프레임 복제(제품만 교체), 아니면 텍스트 재창조.
-        const { img: still, error } = rf
-          ? await replicaKeyframe(product, rf, plan)
-          : await composeKeyframe(product, plan);
-        if (!still) return { shot_no: plan.shot_no, sales_beat: plan.sales_beat, needs_product: plan.needs_product, mode: rf ? "replica" : "recreate", ok: false, error };
-        const id = randomUUID();
-        await sql`INSERT INTO remake_assets (id, mime, data) VALUES (${id}, ${still.mime}, ${still.b64})`;
-        return {
-          shot_no: plan.shot_no, sales_beat: plan.sales_beat, needs_product: plan.needs_product,
-          mode: rf ? "replica" : "recreate",
-          ok: true, assetId: id, url: `/api/remake/asset/${id}`,
-        };
-      } catch (e) {
-        return { shot_no: plan.shot_no, sales_beat: plan.sales_beat, needs_product: plan.needs_product, mode: "error", ok: false, error: String(e).slice(0, 160) };
-      }
-    }),
-  );
+  interface Img { b64: string; mime: string }
+  type Row = { shot_no: number; sales_beat: string; needs_product: boolean; mode: string; ok: boolean; assetId?: string; url?: string; error?: string };
+
+  // 샷 1개 렌더 → 자산 저장 + 결과행. hero가 주어지면 재창조 시 같은 인물·제품을 이어받음(일관성).
+  const renderOne = async (plan: typeof plans[number], hero?: Img): Promise<{ row: Row; img: Img | null }> => {
+    const base = { shot_no: plan.shot_no, sales_beat: plan.sales_beat, needs_product: plan.needs_product };
+    try {
+      const rf = replica ? pickFrame(plan.shot_no) : null;
+      // 복제 모드 + 프레임 있으면 프레임 복제(제품만 교체), 아니면 히어로 앵커 재창조.
+      const { img: still, error } = rf
+        ? await replicaKeyframe(product, rf, plan)
+        : await composeKeyframe(product, plan, hero ? { hero } : {});
+      if (!still) return { row: { ...base, mode: rf ? "replica" : "recreate", ok: false, error }, img: null };
+      const id = randomUUID();
+      await sql`INSERT INTO remake_assets (id, mime, data) VALUES (${id}, ${still.mime}, ${still.b64})`;
+      return { row: { ...base, mode: rf ? "replica" : "recreate", ok: true, assetId: id, url: `/api/remake/asset/${id}` }, img: still };
+    } catch (e) {
+      return { row: { ...base, mode: "error", ok: false, error: String(e).slice(0, 160) }, img: null };
+    }
+  };
+
+  let results: Row[];
+  if (replica) {
+    // 복제 모드: 실제 레퍼 프레임이 인물·구도 일관성을 보장 → 전부 병렬(타임박스).
+    results = (await Promise.all(wanted.map((p) => renderOne(p)))).map((r) => r.row);
+  } else {
+    // 재창조 모드: 1) 첫(히어로) 컷 렌더 → 2) 나머지는 히어로를 참조해 병렬(인물·제품 일관성).
+    const [first, ...rest] = wanted;
+    const heroRes = await renderOne(first);
+    const hero = heroRes.img || undefined;
+    const restRes = rest.length ? await Promise.all(rest.map((p) => renderOne(p, hero))) : [];
+    results = [heroRes, ...restRes].map((r) => r.row);
+  }
+  results.sort((a, b) => a.shot_no - b.shot_no);
 
   const rendered = results.filter((r) => r.ok).length;
   const firstErr = results.find((r) => !r.ok && r.error)?.error;
