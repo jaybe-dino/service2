@@ -61,7 +61,7 @@ const server = http.createServer((req, res) => {
         } catch {
           dur = 0;
         }
-        const n = Math.max(1, Math.min(10, count));
+        const n = Math.max(1, Math.min(16, count));
         timestamps = dur > 0
           ? Array.from({ length: n }, (_, k) => +((dur * (k + 0.5)) / n).toFixed(2))
           : Array.from({ length: n }, (_, k) => k * 2);

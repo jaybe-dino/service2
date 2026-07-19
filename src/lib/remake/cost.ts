@@ -27,8 +27,9 @@ export const maxKeyframes = () => envInt("REMAKE_MAX_KEYFRAMES", 10, 10, 1, 14);
 export const maxScenes = () => envInt("REMAKE_MAX_SCENES", 1, 4, 1, 8);
 // 변형(A/B) 수 — 절약 1, 풀 2.
 export const maxVariations = () => envInt("REMAKE_MAX_VARIATIONS", 1, 2, 1, 4);
-// 분석 프레임 수(Claude 비전 입력 수) — 절약 4, 풀 10.
-export const analysisFrames = () => envInt("REMAKE_ANALYSIS_FRAMES", 4, 10, 2, 20);
+// 분석 프레임 수(Claude 비전 입력 수) — 샷을 촘촘히 분절하려면 화면을 충분히 봐야 함 → 기본 12.
+// 저비용으로 낮추려면 REMAKE_ANALYSIS_FRAMES=4.
+export const analysisFrames = () => envInt("REMAKE_ANALYSIS_FRAMES", 12, 12, 2, 20);
 
 // 기본 영상 티어 — 절약 draft(가장 저렴), 풀 hd. REMAKE_TIER 로 강제 가능.
 export function defaultTier(): Tier {
