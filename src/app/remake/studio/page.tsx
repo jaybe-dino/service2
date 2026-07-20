@@ -246,7 +246,7 @@ export default function RemakeStudioPage() {
           </div>
           <div className="mt-3 overflow-x-auto">
             <table className="w-full text-left text-[11px]">
-              <thead className="text-slate-400"><tr><th className="p-1">#</th><th className="p-1">시간</th><th className="p-1">샷</th><th className="p-1">세일즈 비트</th><th className="p-1">동작</th><th className="p-1">제품</th></tr></thead>
+              <thead className="text-slate-400"><tr><th className="p-1">#</th><th className="p-1">시간</th><th className="p-1">샷</th><th className="p-1">세일즈 비트</th><th className="p-1">새 자막(훅)</th><th className="p-1">동작</th><th className="p-1">제품</th></tr></thead>
               <tbody>
                 {spec.shots.map((s) => (
                   <tr key={s.shot_no} className="border-t border-slate-100">
@@ -254,6 +254,7 @@ export default function RemakeStudioPage() {
                     <td className="p-1">{s.t_start}–{s.t_end}s</td>
                     <td className="p-1">{s.shot_type}/{s.camera}</td>
                     <td className="p-1 font-semibold text-pink-600">{s.sales_beat}</td>
+                    <td className="p-1 font-semibold text-violet-600">{s.caption || <span className="text-slate-300">—</span>}</td>
                     <td className="p-1">{s.action}</td>
                     <td className="p-1">{spec.product_slots?.some((p) => p.shot_no === s.shot_no) ? "✅" : ""}</td>
                   </tr>

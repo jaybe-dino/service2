@@ -44,8 +44,10 @@ export function buildAssemblyPlan(spec: ReferenceSpec, clips: AssemblyClipInput[
       transition_in: idx === 0 ? "cut" : "crossfade",
       sales_beat: s.sales_beat,
     });
-    if (s.on_screen_text) {
-      captions.push({ shot_no: s.shot_no, text: s.on_screen_text, in_sec: Math.round(cursor * 100) / 100, dur_sec: dur });
+    // 최종 자막은 '리메이크용 새 카피(caption)' 우선 — 원본 텍스트(on_screen_text) 복제 방지.
+    const capText = (s.caption && s.caption.trim()) || "";
+    if (capText) {
+      captions.push({ shot_no: s.shot_no, text: capText, in_sec: Math.round(cursor * 100) / 100, dur_sec: dur });
     }
     cursor += dur;
   });

@@ -65,13 +65,45 @@ async function assemble(plan) {
     .map((c, i) => `[${i}:v]trim=0:${c.dur.toFixed(2)},setpts=PTS-STARTPTS,scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,setsar=1,fps=30,format=yuv420p[v${i}]`)
     .join(";");
   const concatIn = clips.map((_, i) => `[v${i}]`).join("");
-  const filter = `${parts};${concatIn}concat=n=${clips.length}:v=1:a=0[outv]`;
+  const cat = `${parts};${concatIn}concat=n=${clips.length}:v=1:a=0[cat]`;
+
+  // 3) 훅/온스크린 텍스트(EDL captions) 번인 — 후킹을 결과 영상에 반영.
+  //    textfile로 특수문자/다국어 이스케이프 회피. 폰트는 CAPTION_FONT(기본 Noto CJK).
+  const FONT = process.env.CAPTION_FONT || "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc";
+  const burnOn = process.env.BURN_CAPTIONS !== "0";
+  const capList = (Array.isArray(plan.captions) ? plan.captions : [])
+    .map((cap, i) => ({ text: String(cap.text || "").trim(), inT: Math.max(0, Number(cap.in_sec) || 0), dur: Math.max(0.8, Number(cap.dur_sec) || 2), i }))
+    .filter((c) => c.text);
+
+  const ENC = ["-c:v", "libx264", "-preset", "veryfast", "-crf", "23", "-movflags", "+faststart"];
   const out = path.join(OUT_DIR, `${id}.mp4`);
-  const r = await sh("ffmpeg", ["-y", ...inputs, "-filter_complex", filter, "-map", "[outv]", "-c:v", "libx264", "-preset", "veryfast", "-crf", "23", "-movflags", "+faststart", out]);
-  // 정리
+
+  let filter, mapLabel;
+  if (burnOn && capList.length) {
+    const chain = capList.map((c, idx) => {
+      const tf = path.join(work, `cap_${c.i}.txt`);
+      fs.writeFileSync(tf, c.text);
+      const src = idx === 0 ? "cat" : `cc${idx - 1}`;
+      const dst = `cc${idx}`;
+      const outT = (c.inT + c.dur).toFixed(2);
+      // 하단 70% 위치, 반투명 박스 + 외곽선 → 어떤 배경에서도 가독.
+      return `[${src}]drawtext=fontfile='${FONT}':textfile='${tf}':fontcolor=white:fontsize=54:line_spacing=6:borderw=3:bordercolor=black:box=1:boxcolor=black@0.4:boxborderw=18:x=(w-text_w)/2:y=h*0.70:enable='between(t\\,${c.inT.toFixed(2)}\\,${outT})'[${dst}]`;
+    });
+    filter = `${cat};${chain.join(";")}`;
+    mapLabel = `cc${capList.length - 1}`;
+  } else {
+    filter = cat.replace("[cat]", "[outv]");
+    mapLabel = "outv";
+  }
+
+  let r = await sh("ffmpeg", ["-y", ...inputs, "-filter_complex", filter, "-map", `[${mapLabel}]`, ...ENC, out]);
+  // 자막 번인 실패(폰트/필터 문제) 시 자막 없이 재시도 → 최소한 합본은 보장.
+  if ((r.code !== 0 || !fs.existsSync(out)) && burnOn && capList.length) {
+    r = await sh("ffmpeg", ["-y", ...inputs, "-filter_complex", cat.replace("[cat]", "[outv]"), "-map", "[outv]", ...ENC, out]);
+  }
   try { fs.rmSync(work, { recursive: true, force: true }); } catch { }
-  if (r.code !== 0 || !fs.existsSync(out)) throw new Error(`ffmpeg concat 실패: ${r.err}`);
-  return { id, out, shots: clips.length };
+  if (r.code !== 0 || !fs.existsSync(out)) throw new Error(`ffmpeg 실패: ${r.err}`);
+  return { id, out, shots: clips.length, captions: capList.length };
 }
 
 const server = http.createServer(async (req, res) => {

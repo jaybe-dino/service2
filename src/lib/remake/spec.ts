@@ -25,7 +25,8 @@ export interface Shot {
   camera: CameraMove;
   composition: string;
   sales_beat: string;       // ← Layer1의 sales_arc 단계와 매핑
-  on_screen_text: string;
+  on_screen_text: string;   // 원본에서 관찰된 자막(참고용 — 그대로 복제 금지)
+  caption?: string;         // 리메이크용 새 자막(같은 훅 원리, 현지어, 원문 복제 X) — 최종 영상 번인
   action: string;
 }
 
@@ -199,6 +200,7 @@ export function coerceSpec(x: unknown, refId: string): ReferenceSpec {
       composition: String(s.composition || ""),
       sales_beat: String(s.sales_beat || ""),
       on_screen_text: String(s.on_screen_text || ""),
+      caption: s.caption != null ? String(s.caption) : undefined,
       action: String(s.action || ""),
     })),
     style: (o.style || {}) as StyleLayer,

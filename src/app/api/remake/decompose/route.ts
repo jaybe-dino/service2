@@ -27,10 +27,13 @@ const SYSTEM = [
   "   컷 전환(장면·구도·앵글·동작 변화)마다 새 샷으로 분절하라 — 뭉뚱그리지 말고",
   "   실제 영상의 편집 리듬대로 촘촘히(보통 8~14개, 빠른 편집이면 그 이상). 각 샷은 2~4초.",
   "5) 원본의 카피·얼굴·브랜드는 참고만 하고 재현 대상이 아니다(구조만 추출).",
+  "6) 각 샷의 caption: 그 샷의 sales_beat/훅을 살리는 '새로' 쓴 짧고 강한 자막(리메이크용).",
+  "   원문(on_screen_text)을 번역·복제하지 말고, 같은 설득 기능을 하는 새 카피를 " + (process.env.REMAKE_CAPTION_LANG === "en" ? "영어" : process.env.REMAKE_CAPTION_LANG === "th" ? "태국어" : "한국어") + "로. 8~18자, 과장·허위광고 금지.",
+  "   첫 샷 caption은 2초 안에 시선을 잡는 '훅 카피'여야 한다.",
   "",
   "출력은 지정된 JSON 스키마만. 설명·마크다운·코드펜스 금지.",
   "스키마: { ref_id, duration_sec, aspect_ratio, sales{hook_mechanism,hook_line,sales_arc[],proof_moment,cta_type,why_it_works}, " +
-    "shots[{shot_no,t_start,t_end,shot_type,camera,composition,sales_beat,on_screen_text,action}], " +
+    "shots[{shot_no,t_start,t_end,shot_type,camera,composition,sales_beat,on_screen_text,caption,action}], " +
     "style{avatar{gender,age_range,vibe},setting,lighting,color_grade,pacing,bgm_mood}, product_slots[{shot_no,role,needs_asset}] }",
   "shot_type ∈ {wide,medium,close-up,ecu,establishing}; camera ∈ {static,pan,dolly,handheld,push-in}.",
 ].join("\n");
