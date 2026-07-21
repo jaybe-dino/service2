@@ -39,9 +39,19 @@ export async function GET() {
     }
     out.push({ brand: j.brand_name, region: j.region, dbStatus: j.status, apifyStatus, datasetId: datasetId || null, itemCount });
   }
+  // 매핑을 정확히 맞추려면 필드명이 핵심 → 최상위/중첩 키 목록도 함께.
+  const rawSampleKeys = rawSample && typeof rawSample === "object" ? Object.keys(rawSample as Record<string, unknown>) : [];
+  const nestedKeys: Record<string, string[]> = {};
+  if (rawSample && typeof rawSample === "object") {
+    for (const [k, v] of Object.entries(rawSample as Record<string, unknown>)) {
+      if (v && typeof v === "object" && !Array.isArray(v)) nestedKeys[k] = Object.keys(v as Record<string, unknown>).slice(0, 20);
+    }
+  }
   return NextResponse.json({
     shopJobs: out,
-    rawSample,
-    note: "apifyStatus로 run 상태(RUNNING/SUCCEEDED/FAILED) 확인. SUCCEEDED인데 itemCount 0이면 검색결과 없음. rawSample로 actor 출력 필드명 확인.",
+    rawSampleKeys,   // 최상위 필드명 — 이거만 봐도 매핑 가능
+    nestedKeys,      // 중첩 객체 필드명(제목/가격이 안쪽에 있는 경우)
+    rawSample,       // 원본 1건 전체
+    note: "rawSampleKeys/nestedKeys를 보고 제목·가격·판매량 필드명을 찾음. SUCCEEDED인데 itemCount 0이면 검색결과 없음.",
   });
 }
