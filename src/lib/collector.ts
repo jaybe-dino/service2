@@ -258,8 +258,27 @@ export async function startShopRun(brandName: string, webhookUrl?: string): Prom
     }];
     qs += `&webhooks=${encodeURIComponent(Buffer.from(JSON.stringify(webhooks)).toString("base64"))}`;
   }
-  // 검색 입력은 actor마다 다를 수 있어 일반적 키로 전달 (keyword/search)
-  const body: Record<string, unknown> = { keyword: brandName, search: brandName, maxItems: Number(process.env.SHOP_MAX_ITEMS ?? 100) };
+  // 검색 입력은 actor마다 키가 달라서(가장 흔한 실패 원인) 일반 키 '슈퍼셋'을 전달한다.
+  // 특정 actor 스키마에 정확히 맞추려면 SHOP_ACTOR_INPUT(JSON, {{keyword}} 치환)으로 완전 오버라이드.
+  const maxItems = Number(process.env.SHOP_MAX_ITEMS ?? 100);
+  let body: Record<string, unknown>;
+  if (process.env.SHOP_ACTOR_INPUT) {
+    try {
+      body = JSON.parse(process.env.SHOP_ACTOR_INPUT.replace(/\{\{\s*keyword\s*\}\}/g, brandName));
+    } catch {
+      body = { keyword: brandName };
+    }
+  } else {
+    body = {
+      // 검색어 계열 (actor별로 하나만 사용됨, 나머지는 무시)
+      keyword: brandName, search: brandName, query: brandName,
+      keywords: [brandName], searchQueries: [brandName],
+      // 결과 수 상한 계열
+      maxItems, maxResults: maxItems, resultsLimit: maxItems,
+      // 지역(선택) — 제공 시 전달. 미제공 시 프록시 exit IP를 따름.
+      ...(process.env.SHOP_COUNTRY ? { country: process.env.SHOP_COUNTRY } : {}),
+    };
+  }
   const res = await fetch(`https://api.apify.com/v2/acts/${actor}/runs${qs}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },

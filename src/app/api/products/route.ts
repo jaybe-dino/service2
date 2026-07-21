@@ -16,6 +16,8 @@ export async function GET(req: Request) {
     const brand = (url.searchParams.get("brand") || "").trim().toLowerCase();
     const sort = url.searchParams.get("sort") || "gmv"; // gmv | sold | price
     const limit = Math.min(500, Math.max(1, Number(url.searchParams.get("limit") || 200)));
+    const minPrice = Number(url.searchParams.get("minPrice") || "") || 0;
+    const maxPrice = Number(url.searchParams.get("maxPrice") || "") || 0; // 0 = 상한없음
 
     const r = await sql<{
       product_id: string; brand_name: string | null; title: string | null;
@@ -45,11 +47,21 @@ export async function GET(req: Request) {
         url: p.url || "",
       };
     });
-    products.sort((a, b) =>
+    // 가격대(밴드) 필터
+    const filtered = products.filter((p) =>
+      (minPrice <= 0 || p.price >= minPrice) && (maxPrice <= 0 || p.price < maxPrice),
+    );
+    filtered.sort((a, b) =>
       sort === "sold" ? b.sold - a.sold : sort === "price" ? b.price - a.price : b.gmv - a.gmv,
     );
 
-    return NextResponse.json({ configured: true, count: products.length, products: products.slice(0, limit) });
+    // 요약 KPI (kalodata식 상단 지표)
+    const totalGmv = filtered.reduce((s, p) => s + p.gmv, 0);
+    const totalSold = filtered.reduce((s, p) => s + p.sold, 0);
+    const avgPrice = filtered.length ? Math.round((filtered.reduce((s, p) => s + p.price, 0) / filtered.length) * 100) / 100 : 0;
+    const summary = { count: filtered.length, totalGmv: Math.round(totalGmv), totalSold, avgPrice };
+
+    return NextResponse.json({ configured: true, count: filtered.length, summary, products: filtered.slice(0, limit) });
   } catch (e) {
     return NextResponse.json({ configured: true, products: [], count: 0, error: String(e).slice(0, 160) });
   }

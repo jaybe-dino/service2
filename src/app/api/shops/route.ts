@@ -48,7 +48,14 @@ export async function GET(req: Request) {
       sort === "sold" ? b.sold - a.sold : sort === "products" ? b.products - a.products : b.gmv - a.gmv,
     );
 
-    return NextResponse.json({ configured: true, count: shops.length, shops: shops.slice(0, limit) });
+    const summary = {
+      count: shops.length,
+      totalGmv: Math.round(shops.reduce((s, x) => s + x.gmv, 0)),
+      totalProducts: shops.reduce((s, x) => s + x.products, 0),
+      avgPrice: shops.length ? Math.round((shops.reduce((s, x) => s + x.avgPrice, 0) / shops.length) * 100) / 100 : 0,
+    };
+
+    return NextResponse.json({ configured: true, count: shops.length, summary, shops: shops.slice(0, limit) });
   } catch (e) {
     return NextResponse.json({ configured: true, shops: [], count: 0, error: String(e).slice(0, 160) });
   }

@@ -11,11 +11,13 @@ interface Shop {
   name: string; products: number; sold: number; gmv: number;
   avgPrice: number; commission: number | null; videos: number; views: number;
 }
+interface Summary { count: number; totalGmv: number; totalProducts: number; avgPrice: number }
 type Sort = "gmv" | "sold" | "products";
 const fmt = (n: number) => n.toLocaleString();
 
 export default function ShopsPage() {
   const [shops, setShops] = useState<Shop[]>([]);
+  const [summary, setSummary] = useState<Summary | null>(null);
   const [loading, setLoading] = useState(true);
   const [configured, setConfigured] = useState(true);
   const [q, setQ] = useState("");
@@ -26,7 +28,7 @@ export default function ShopsPage() {
     setLoading(true);
     fetch(`/api/shops?sort=${sort}&limit=300`)
       .then((r) => r.json())
-      .then((d) => { if (!alive) return; setShops(Array.isArray(d.shops) ? d.shops : []); setConfigured(d.configured !== false); })
+      .then((d) => { if (!alive) return; setShops(Array.isArray(d.shops) ? d.shops : []); setSummary(d.summary || null); setConfigured(d.configured !== false); })
       .catch(() => { if (alive) setShops([]); })
       .finally(() => { if (alive) setLoading(false); });
     return () => { alive = false; };
@@ -51,6 +53,15 @@ export default function ShopsPage() {
           <Info size={13} className="mt-0.5 shrink-0 text-slate-400" />
           <span><b>추정 GMV·객단가</b>는 공개 판매수 기반 <b>추정치</b>입니다. 1차 버전은 브랜드 단위 샵 집계이며, 개별 셀러·셀러타입은 확장 예정입니다.</span>
         </div>
+
+        {summary && (
+          <div className="mb-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
+            <ShopKpi label="샵 수" value={fmt(summary.count)} />
+            <ShopKpi label="총 추정 GMV" value={`$${fmt(summary.totalGmv)}`} accent />
+            <ShopKpi label="총 제품수" value={fmt(summary.totalProducts)} />
+            <ShopKpi label="평균 객단가" value={`$${fmt(summary.avgPrice)}`} />
+          </div>
+        )}
 
         <div className="mb-3 flex flex-wrap items-center gap-2">
           <div className="relative min-w-[200px] flex-1">
@@ -114,5 +125,14 @@ export default function ShopsPage() {
         )}
       </div>
     </PageShell>
+  );
+}
+
+function ShopKpi({ label, value, accent }: { label: string; value: string; accent?: boolean }) {
+  return (
+    <div className="rounded-xl border border-[var(--border)] p-3">
+      <div className="text-[10px] text-[var(--muted)]">{label}</div>
+      <div className={`mt-0.5 text-[17px] font-black ${accent ? "text-[var(--accent)]" : ""}`}>{value}</div>
+    </div>
   );
 }

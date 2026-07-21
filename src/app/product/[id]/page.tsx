@@ -74,6 +74,13 @@ export default function ProductDetailPage() {
               </p>
             </div>
 
+            <div className="mt-4 rounded-2xl border border-[var(--border)] p-4">
+              <h2 className="text-[14px] font-black">매출·판매 추이</h2>
+              <div className="mt-2 flex h-24 items-center justify-center rounded-lg bg-slate-50 text-[11px] text-[var(--muted)]">
+                일별 판매수 스냅샷이 누적되면 매출·판매량 추이와 성장률이 표시됩니다.
+              </div>
+            </div>
+
             <div className="mt-5">
               <h2 className="mb-2 text-[14px] font-black">관련 영상 <span className="text-[11px] font-normal text-[var(--muted)]">· 같은 브랜드 (영상↔제품 직접 매칭은 확장 예정)</span></h2>
               {d.relatedVideos.length === 0 ? (
