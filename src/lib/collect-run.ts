@@ -394,56 +394,71 @@ export async function runCollection(opts: { maxPending?: number; maxRefresh?: nu
   return { configured, mode: "async", polledDone: poll.done, ingested: poll.ingested, kickedNew, kickedRefresh };
 }
 
-export interface ShopSummary { configured: boolean; mode: "async" | "skipped"; polledDone: number; ingested: number; kicked: number; reason?: string; dueCount?: number; countries?: string[]; errors?: string[] }
+export interface ShopSummary { configured: boolean; mode: "async" | "skipped"; polledDone: number; ingested: number; kicked: number; reason?: string; dueCount?: number; countries?: string[]; errors?: string[]; running?: number; remaining?: number }
 
 // A안 틱톡샵 상품 수집 사이클: 완료분 적재(폴링) + 미수집 브랜드 N개 shop run 시작.
 export async function runShopCollection(opts: { maxShop?: number; baseUrl?: string } = {}): Promise<ShopSummary> {
   await ensureSchema();
   if (!shopConfigured()) return { configured: false, mode: "skipped", polledDone: 0, ingested: 0, kicked: 0, reason: "SHOP_ACTOR 미설정" };
   const webhook = ingestWebhook(opts.baseUrl);
-  const maxShop = opts.maxShop ?? 3;
+  const maxShop = opts.maxShop ?? Math.max(1, Number(process.env.SHOP_MAX_BRANDS ?? 8));
   // 다국가: SHOP_COUNTRIES(콤마) 순회. 미설정 시 US 단일.
   const countries = (process.env.SHOP_COUNTRIES || "US")
     .split(",").map((s) => s.trim().toUpperCase()).filter(Boolean);
+  // 폴링 상한(60초 내 완료되게 고정) + 백프레셔 상한(running이 이보다 많으면 킥 중단).
+  const maxPoll = Math.max(6, Math.min(25, Number(process.env.SHOP_MAX_POLL ?? 12)));
+  const maxRunning = Math.max(10, Number(process.env.SHOP_MAX_RUNNING ?? 40));
 
-  // 샵 잡만 폴링(밀린 영상 잡에 안 막히게). 대기 중인 샵 run을 넉넉히 훑음.
-  const poll = await pollJobs(Math.max(12, maxShop * countries.length * 2), "shop");
+  // 1) 완료된 샵 잡 적재(밀린 영상 잡에 안 막히게 샵만).
+  const poll = await pollJobs(maxPoll, "shop");
 
-  // 샵 수집 대상 = 영상이 수집된 브랜드(brand_stats). 샵 통계 없는 브랜드 우선, 다음 조회수순.
-  // (기존엔 brand_tracking.tracked=true만 봤는데 영상수집이 tracked를 안 켜서 대상이 0 → 미수집이었음)
-  const due = await sql<{ brand_name: string }>`
-    SELECT bs.brand_name FROM brand_stats bs
-    LEFT JOIN brand_shop_stats bss ON bss.brand_name = bs.brand_name
-    WHERE bs.brand_name IS NOT NULL
-      AND bs.brand_name NOT IN (SELECT value FROM blocklist WHERE kind='brand')
-    ORDER BY bss.updated_at ASC NULLS FIRST, bs.total_views DESC NULLS LAST
-    LIMIT ${maxShop}`;
-
-  // 이미 running인 샵 잡(브랜드·국가)은 다시 안 띄움 — 중복 run/비용 폭증 방지.
+  // 2) 현재 running 샵 잡 — 백프레셔용(적재가 못 따라오면 킥 중단해 무한 누적 방지).
   const runningShop = await sql<{ brand_name: string; region: string | null }>`
     SELECT brand_name, region FROM collect_jobs WHERE kind='shop' AND status='running'`;
   const runningSet = new Set(runningShop.rows.map((r) => `${r.brand_name}|${(r.region || "US").toUpperCase()}`));
+  const runningCount = runningShop.rows.length;
+
+  // 아직 안 한 브랜드 수(진행률 표시).
+  const rem = await sql<{ n: number }>`
+    SELECT count(*)::int AS n FROM brand_stats bs
+    WHERE bs.brand_name IS NOT NULL
+      AND bs.brand_name NOT IN (SELECT value FROM blocklist WHERE kind='brand')
+      AND bs.brand_name NOT IN (SELECT brand_name FROM brand_shop_stats)`;
+  const remaining = rem.rows[0]?.n ?? 0;
 
   let kicked = 0;
   const errors: string[] = [];
-  for (const b of due.rows) {
-    for (const cc of countries) {
-      if (runningSet.has(`${b.brand_name}|${cc}`)) continue; // 이미 도는 중 → 스킵
-      try {
-        const runId = await startShopRun(b.brand_name, webhook, cc);
-        if (runId) {
-          // 수집 국가는 collect_jobs.region에 저장 → pollJobs가 ingestProducts에 국가로 전달.
-          await sql`INSERT INTO collect_jobs (run_id, brand_name, kind, region) VALUES (${runId}, ${b.brand_name}, 'shop', ${cc}) ON CONFLICT (run_id) DO NOTHING`;
-          await sql`INSERT INTO collection_runs (kind, target, status) VALUES ('kick_shop', ${`${b.brand_name}·${cc}`}, 'started')`;
-          kicked += 1;
-        } else if (errors.length < 5) {
-          errors.push(`${b.brand_name}·${cc}: Apify runId 없음(응답 이상)`);
+  let dueCount = 0;
+  if (runningCount < maxRunning) {
+    // 3) 새 브랜드 킥 — 이미 running/수집완료 브랜드 제외 → 매 호출 새 브랜드로 진행.
+    const due = await sql<{ brand_name: string }>`
+      SELECT bs.brand_name FROM brand_stats bs
+      LEFT JOIN brand_shop_stats bss ON lower(bss.brand_name) = lower(bs.brand_name)
+      WHERE bs.brand_name IS NOT NULL
+        AND bs.brand_name NOT IN (SELECT value FROM blocklist WHERE kind='brand')
+        AND bs.brand_name NOT IN (SELECT DISTINCT brand_name FROM collect_jobs WHERE kind='shop' AND status='running')
+        AND bss.brand_name IS NULL
+      ORDER BY bs.total_views DESC NULLS LAST
+      LIMIT ${maxShop}`;
+    dueCount = due.rows.length;
+    for (const b of due.rows) {
+      for (const cc of countries) {
+        if (runningSet.has(`${b.brand_name}|${cc}`)) continue;
+        try {
+          const runId = await startShopRun(b.brand_name, webhook, cc);
+          if (runId) {
+            await sql`INSERT INTO collect_jobs (run_id, brand_name, kind, region) VALUES (${runId}, ${b.brand_name}, 'shop', ${cc}) ON CONFLICT (run_id) DO NOTHING`;
+            await sql`INSERT INTO collection_runs (kind, target, status) VALUES ('kick_shop', ${`${b.brand_name}·${cc}`}, 'started')`;
+            kicked += 1;
+          } else if (errors.length < 5) {
+            errors.push(`${b.brand_name}·${cc}: Apify runId 없음(응답 이상)`);
+          }
+        } catch (e) {
+          if (errors.length < 5) errors.push(`${b.brand_name}·${cc}: ${String(e instanceof Error ? e.message : e).slice(0, 140)}`);
+          await sql`INSERT INTO collection_runs (kind, target, status, error) VALUES ('kick_shop', ${`${b.brand_name}·${cc}`}, 'error', ${String(e).slice(0, 200)})`;
         }
-      } catch (e) {
-        if (errors.length < 5) errors.push(`${b.brand_name}·${cc}: ${String(e instanceof Error ? e.message : e).slice(0, 140)}`);
-        await sql`INSERT INTO collection_runs (kind, target, status, error) VALUES ('kick_shop', ${`${b.brand_name}·${cc}`}, 'error', ${String(e).slice(0, 200)})`;
       }
     }
   }
-  return { configured: true, mode: "async", polledDone: poll.done, ingested: poll.ingested, kicked, dueCount: due.rows.length, countries, errors };
+  return { configured: true, mode: "async", polledDone: poll.done, ingested: poll.ingested, kicked, dueCount, countries, errors, running: runningCount, remaining };
 }
