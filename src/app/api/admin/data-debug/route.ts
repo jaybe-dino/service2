@@ -15,12 +15,15 @@ export async function GET() {
   let dbHost = "(미설정)";
   try { dbHost = rawUrl ? new URL(rawUrl).host : "(미설정)"; } catch { dbHost = "(파싱실패)"; }
   try {
-    const [cnt, byC, sample, bss, block] = await Promise.all([
+    const [cnt, byC, sample, bss, block, bstats, vids, jobs] = await Promise.all([
       sql`SELECT count(*)::int AS n FROM products`,
       sql`SELECT coalesce(country,'(null)') AS country, count(*)::int AS n FROM products GROUP BY country ORDER BY n DESC`,
       sql`SELECT product_id, brand_name, title, price, sold_count, commission_rate, country FROM products ORDER BY collected_at DESC LIMIT 5`,
       sql`SELECT count(*)::int AS n FROM brand_shop_stats`,
       sql`SELECT count(*)::int AS n FROM blocklist WHERE kind='brand'`,
+      sql`SELECT count(*)::int AS n FROM brand_stats`,
+      sql`SELECT count(*)::int AS n FROM videos`,
+      sql`SELECT kind, status, count(*)::int AS n FROM collect_jobs GROUP BY kind, status ORDER BY kind, status`,
     ]);
     return NextResponse.json({
       dbHost,
@@ -29,7 +32,10 @@ export async function GET() {
       sample: sample.rows,
       brandShopStatsCount: bss.rows[0]?.n ?? 0,
       blocklistBrandCount: block.rows[0]?.n ?? 0,
-      note: "productsCount가 0이면 적재가 이 DB에 안 됨(다른 DB/트랜잭션). >0인데 /products가 0이면 blocklist 또는 쿼리 이슈.",
+      brandStatsCount: bstats.rows[0]?.n ?? 0,   // 샵 수집 대상 브랜드 수(0이면 대상 없음)
+      videosCount: vids.rows[0]?.n ?? 0,
+      collectJobs: jobs.rows,                     // kind(video/shop)·status별 잡 수
+      note: "brandStatsCount>0이어야 샵 수집 대상이 생김. collectJobs에 shop 잡이 있는지 확인.",
     });
   } catch (e) {
     return NextResponse.json({ error: String(e).slice(0, 300) }, { status: 500 });

@@ -404,12 +404,14 @@ export async function runShopCollection(opts: { maxShop?: number; baseUrl?: stri
 
   const poll = await pollJobs(2 * countries.length); // video/shop 공용 폴링(국가수만큼 여유)
 
-  // 아직 샵 통계가 없는 추적 브랜드 우선, 없으면 오래된 순
+  // 샵 수집 대상 = 영상이 수집된 브랜드(brand_stats). 샵 통계 없는 브랜드 우선, 다음 조회수순.
+  // (기존엔 brand_tracking.tracked=true만 봤는데 영상수집이 tracked를 안 켜서 대상이 0 → 미수집이었음)
   const due = await sql<{ brand_name: string }>`
-    SELECT bt.brand_name FROM brand_tracking bt
-    LEFT JOIN brand_shop_stats bss ON bss.brand_name = bt.brand_name
-    WHERE bt.tracked = true
-    ORDER BY bss.updated_at ASC NULLS FIRST, bt.brand_name ASC
+    SELECT bs.brand_name FROM brand_stats bs
+    LEFT JOIN brand_shop_stats bss ON bss.brand_name = bs.brand_name
+    WHERE bs.brand_name IS NOT NULL
+      AND bs.brand_name NOT IN (SELECT value FROM blocklist WHERE kind='brand')
+    ORDER BY bss.updated_at ASC NULLS FIRST, bs.total_views DESC NULLS LAST
     LIMIT ${maxShop}`;
 
   let kicked = 0;
