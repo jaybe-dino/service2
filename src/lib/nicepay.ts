@@ -60,8 +60,10 @@ export function encryptCardData(c: CardInput): string {
   const cardNo = c.cardNo.replace(/\D/g, "");
   const plain = `cardNo=${cardNo}&expYear=${c.expYear}&expMonth=${c.expMonth}&idNo=${c.idNo}&cardPw=${c.cardPw}`;
   if (envEncMode() === "A2") {
-    const key = Buffer.from(SECRET_KEY.slice(0, 32), "utf8"); // 32 bytes (AES-256)
-    const cipher = crypto.createCipheriv("aes-256-ecb", key, null);
+    // NICEpay AES-256 스펙: AES/CBC/PKCS5, 키=SecretKey(32byte), IV=SecretKey 앞16자, hex.
+    const key = Buffer.from(SECRET_KEY.slice(0, 32), "utf8");
+    const iv = Buffer.from(SECRET_KEY.slice(0, 16), "utf8");
+    const cipher = crypto.createCipheriv("aes-256-cbc", key, iv);
     cipher.setAutoPadding(true);
     return Buffer.concat([cipher.update(plain, "utf8"), cipher.final()]).toString("hex");
   }
