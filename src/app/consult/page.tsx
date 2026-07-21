@@ -2,7 +2,7 @@
 
 // GloveK 틱톡샵 멀티몰 입점 상담 랜딩(이벤트). 좌: 트랙 소개+소개서 / 우: 브랜드 정보 폼.
 // 신청 성공 시 1:1 미팅 신청 링크 자동 노출. 개인정보 수집 동의 필수. 저장: /api/consult.
-import { useState } from "react";
+import { useState, Fragment } from "react";
 import Link from "next/link";
 import { Check, ArrowRight, Download, ShoppingBag, CalendarClock, Loader2 } from "lucide-react";
 import { MALL_TRACKS } from "@/data/ktrend/meta";
@@ -59,26 +59,28 @@ export default function ConsultPage() {
           <h1 className="mt-3 text-[26px] font-black leading-tight md:text-[34px]">틱톡샵 멀티몰 <span className="text-[#7C3AED]">GloveK</span> 입점 상담</h1>
           <p className="mt-2 text-[13px] text-slate-500">브랜드에 맞는 트랙으로, 초기 파일럿부터 자체 브랜드 채널 운영·메가 스케일업까지 함께합니다.</p>
 
-          {/* 플래그십 오퍼 — 온보딩 보장 트랙 */}
-          <div className="mt-6"><GuaranteeCard /></div>
-
+          {/* 순서: Live Focus → Guarantee(온보딩 보장) → Onboarding */}
           <div className="mt-6 space-y-4">
             {MALL_TRACKS.map((t) => (
-              <div key={t.id} className={`rounded-2xl border p-4 ${t.highlight ? "border-pink-200 bg-white shadow-sm" : "border-slate-200 bg-white"}`}>
-                <div className="flex items-center justify-between">
-                  <div className="text-[16px] font-black">{t.name}</div>
-                  <div className="text-right">
-                    <span className="text-[15px] font-black text-pink-500">{t.priceLabel}</span>
-                    {!t.inquiry && <span className="text-[11px] text-slate-400"> /월</span>}
+              <Fragment key={t.id}>
+                <div className={`rounded-2xl border p-4 ${t.highlight ? "border-pink-200 bg-white shadow-sm" : "border-slate-200 bg-white"}`}>
+                  <div className="flex items-center justify-between">
+                    <div className="text-[16px] font-black">{t.name}</div>
+                    <div className="text-right">
+                      <span className="text-[15px] font-black text-pink-500">{t.priceLabel}</span>
+                      {!t.inquiry && <span className="text-[11px] text-slate-400"> /월</span>}
+                    </div>
                   </div>
+                  <div className="text-[12px] text-slate-500">{t.tagline} · {t.commissionLabel}</div>
+                  <ul className="mt-2 grid gap-1">
+                    {t.features.map((x) => (
+                      <li key={x} className="flex gap-1.5 text-[12px] text-slate-600"><Check size={13} className="mt-0.5 shrink-0 text-pink-500" /> {x}</li>
+                    ))}
+                  </ul>
                 </div>
-                <div className="text-[12px] text-slate-500">{t.tagline} · {t.commissionLabel}</div>
-                <ul className="mt-2 grid gap-1">
-                  {t.features.map((x) => (
-                    <li key={x} className="flex gap-1.5 text-[12px] text-slate-600"><Check size={13} className="mt-0.5 shrink-0 text-pink-500" /> {x}</li>
-                  ))}
-                </ul>
-              </div>
+                {/* Live Focus 바로 다음에 개런티 카드 */}
+                {t.id === "live" && <GuaranteeCard />}
+              </Fragment>
             ))}
           </div>
 
