@@ -10,6 +10,10 @@ export async function GET() {
   if (!(await isAdminAuthed())) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   if (!isConfigured()) return NextResponse.json({ error: "DB 미설정" }, { status: 503 });
   await ensureSchema();
+  // 어느 DB에 붙는지(호스트만, 크리덴셜 제외) — 수집 DB와 조회 DB가 같은지 대조용.
+  const rawUrl = process.env.POSTGRES_URL || process.env.DATABASE_URL || "";
+  let dbHost = "(미설정)";
+  try { dbHost = rawUrl ? new URL(rawUrl).host : "(미설정)"; } catch { dbHost = "(파싱실패)"; }
   try {
     const [cnt, byC, sample, bss, block] = await Promise.all([
       sql`SELECT count(*)::int AS n FROM products`,
@@ -19,6 +23,7 @@ export async function GET() {
       sql`SELECT count(*)::int AS n FROM blocklist WHERE kind='brand'`,
     ]);
     return NextResponse.json({
+      dbHost,
       productsCount: cnt.rows[0]?.n ?? 0,
       byCountry: byC.rows,
       sample: sample.rows,
