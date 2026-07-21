@@ -59,6 +59,9 @@ export default function ConsultPage() {
           <h1 className="mt-3 text-[26px] font-black leading-tight md:text-[34px]">틱톡샵 멀티몰 <span className="text-[#7C3AED]">GloveK</span> 입점 상담</h1>
           <p className="mt-2 text-[13px] text-slate-500">브랜드에 맞는 트랙으로, 초기 파일럿부터 자체 브랜드 채널 운영·메가 스케일업까지 함께합니다.</p>
 
+          {/* 플래그십 오퍼 — 온보딩 보장 트랙 */}
+          <div className="mt-6"><GuaranteeCard /></div>
+
           <div className="mt-6 space-y-4">
             {MALL_TRACKS.map((t) => (
               <div key={t.id} className={`rounded-2xl border p-4 ${t.highlight ? "border-pink-200 bg-white shadow-sm" : "border-slate-200 bg-white"}`}>
@@ -164,6 +167,56 @@ export default function ConsultPage() {
       <SiteFooter />
 
       <style>{`.inp{width:100%;border:1px solid #e2e8f0;border-radius:10px;padding:9px 11px;font-size:13px;background:#fff}.inp:focus{outline:2px solid #7C3AED33;border-color:#7C3AED}`}</style>
+    </div>
+  );
+}
+
+// 온보딩 보장(Guarantee Track) 오퍼 카드 — 다크 그라디언트 + 가치 구성 표.
+function GuaranteeCard() {
+  const checks = ["인증/ 입점 · 물류 · 번역", "무가 라이브 월 6회", "무가 시딩 30개~", "최대 10개 제품 등록", "온보딩 보장"];
+  const breakdown: [string, string][] = [
+    ["시딩 40건×3만", "120만"],
+    ["라이브 8건×10만", "80만"],
+    ["인증·물류 관리", "100만"],
+    ["온보딩 보장 컨설팅", "100만"],
+  ];
+  return (
+    <div className="relative overflow-hidden rounded-3xl border border-pink-500/40 bg-gradient-to-br from-[#2b0f22] via-[#241026] to-[#180a1e] p-6 text-white shadow-xl">
+      <div className="flex items-start justify-between gap-3">
+        <h2 className="text-[24px] font-black tracking-tight text-[#ff3d8b] md:text-[26px]">Guarantee Track</h2>
+        <span className="shrink-0 rounded-full bg-[#ff2e88] px-3 py-1 text-[11px] font-bold text-white">온보딩 보장</span>
+      </div>
+
+      <div className="mt-3 flex flex-wrap items-end gap-x-2 gap-y-1">
+        <span className="text-[15px] font-semibold text-white/40 line-through">₩4,000,000</span>
+        <span className="text-[32px] font-black leading-none md:text-[36px]">₩1,000,000</span>
+        <span className="mb-1 text-[13px] text-white/60">/월</span>
+      </div>
+      <p className="mt-2 text-[12px] font-semibold text-white/70">+ 판매 수수료 10% · 최소 6개월 · 평균 온보딩 3개월</p>
+
+      <div className="mt-4 rounded-2xl border border-pink-400/30 bg-pink-500/10 p-4">
+        <p className="text-[13px] font-bold text-[#ff6aa6]">Glovek 입점 → 자체 브랜드 TikTok Shop 오픈까지 보장</p>
+        <p className="mt-1 text-[12px] text-white/70">6개월간 5개 조건 모두 달성 후 온보딩까지 마무리</p>
+      </div>
+
+      <div className="my-4 h-px bg-white/10" />
+      <p className="text-[13px] font-bold text-[#ff3d8b]">Live Focus × 2배 제공</p>
+
+      <div className="mt-3 grid gap-4 sm:grid-cols-2">
+        <ul className="space-y-2">
+          {checks.map((x) => (
+            <li key={x} className="flex items-start gap-2 text-[13px] text-white/90"><Check size={14} className="mt-0.5 shrink-0 text-[#ff3d8b]" /> {x}</li>
+          ))}
+        </ul>
+        <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+          <p className="text-[13px] font-black">₩4,000,000 상당 구성</p>
+          <ul className="mt-2 space-y-1.5 text-[12px]">
+            {breakdown.map(([k, v]) => (
+              <li key={k} className="flex justify-between gap-2"><span className="text-white/70">{k}</span><span className="font-bold">{v}</span></li>
+            ))}
+          </ul>
+        </div>
+      </div>
     </div>
   );
 }
