@@ -47,7 +47,8 @@ export default function AdminToolsPage() {
           <Btn label="샘플 제거" tone="danger" onClick={() => call("샘플 제거", "/api/admin/seed-products-sample", "POST", { clear: true })} />
         </Section>
         <Section title="진단">
-          <Btn label="제품 DB 확인 (data-debug)" tone="primary" onClick={() => call("제품 DB 확인 (data-debug)", "/api/admin/data-debug", "GET")} />
+          <Btn label="샵 잡 상태 (shop-jobs-debug)" tone="primary" onClick={() => call("샵 잡 상태 (shop-jobs-debug)", "/api/admin/shop-jobs-debug", "GET")} />
+          <Btn label="제품 DB 확인 (data-debug)" onClick={() => call("제품 DB 확인 (data-debug)", "/api/admin/data-debug", "GET")} />
           <Btn label="결제 설정 확인 (pay-config)" onClick={() => call("결제 설정 확인 (pay-config)", "/api/admin/pay-config", "GET")} />
         </Section>
       </div>
