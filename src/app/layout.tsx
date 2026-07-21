@@ -4,6 +4,7 @@ import { PlanProvider } from "@/components/ktrend/PlanContext";
 import { BookmarkProvider } from "@/components/ktrend/BookmarkContext";
 import TopBanner from "@/components/ktrend/TopBanner";
 import UtmTracker from "@/components/ktrend/UtmTracker";
+import MetaPixel from "@/components/ktrend/MetaPixel";
 
 const SITE_URL = "https://glovek.space";
 const TITLE = "Glovek — 틱톡 K-뷰티 콘텐츠·인플루언서 분석 SaaS";
@@ -131,6 +132,7 @@ export default function RootLayout({
         />
       </head>
       <body>
+        <MetaPixel />
         <PlanProvider>
           <BookmarkProvider>
             <UtmTracker />

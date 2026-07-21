@@ -8,6 +8,7 @@ import { Check, ArrowRight, Download, ShoppingBag, CalendarClock, Loader2 } from
 import { MALL_TRACKS } from "@/data/ktrend/meta";
 import SiteHeader from "@/components/ktrend/SiteHeader";
 import SiteFooter from "@/components/ktrend/SiteFooter";
+import { trackPixel } from "@/components/ktrend/MetaPixel";
 
 // env 우선, 없으면 기본값(제공받은 링크). 서비스 소개서 = 구글 슬라이드(보기).
 const DECK_URL = process.env.NEXT_PUBLIC_GLOVEK_DECK_URL
@@ -38,6 +39,8 @@ export default function ConsultPage() {
       });
       const d = await res.json();
       if (!res.ok || !d.ok) { setErr(d?.error ?? "신청에 실패했습니다."); setBusy(false); return; }
+      // 전환 이벤트: 상담 신청 완료 = Lead
+      trackPixel("Lead", { content_name: "consult", content_category: f.category, company: f.company });
       setDone({ meetingUrl: d.meetingUrl || MEETING_URL });
     } catch {
       setErr("신청 처리 중 오류가 발생했습니다.");
@@ -88,6 +91,7 @@ export default function ConsultPage() {
           <div className="mt-5">
             {DECK_URL ? (
               <a href={DECK_URL} target="_blank" rel="noopener noreferrer"
+                onClick={() => trackPixel("ViewContent", { content_name: "service_deck" })}
                 className="inline-flex items-center gap-2 rounded-xl border border-[#7C3AED]/40 bg-white px-4 py-2.5 text-[13px] font-bold text-[#7C3AED] hover:bg-[var(--accent-light)]">
                 <Download size={15} /> GloveK 멀티몰 서비스 소개서 보기
               </a>
@@ -109,6 +113,7 @@ export default function ConsultPage() {
                 <p className="mt-1 text-[13px] text-slate-500">아래 버튼으로 편한 시간에 1:1 미팅을 바로 예약해 주세요.</p>
                 {done.meetingUrl ? (
                   <a href={done.meetingUrl} target="_blank" rel="noopener noreferrer"
+                    onClick={() => trackPixel("Schedule", { content_name: "consult_meeting" })}
                     className="mt-5 inline-flex items-center gap-2 rounded-xl bg-[#7C3AED] px-5 py-3 text-[14px] font-bold text-white hover:opacity-95">
                     <CalendarClock size={16} /> 1:1 미팅 신청하기 <ArrowRight size={15} />
                   </a>
