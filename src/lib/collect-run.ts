@@ -182,29 +182,31 @@ async function recomputeBrandShopStats(brandName: string) {
       total_sold=EXCLUDED.total_sold, est_gmv=EXCLUDED.est_gmv, updated_at=now()`;
 }
 
-export async function ingestProducts(brandName: string, products: ShopProduct[]): Promise<number> {
+export async function ingestProducts(brandName: string, products: ShopProduct[], country = "US"): Promise<number> {
   await ensureSchema();
+  const cc = (country || "US").toUpperCase();
   const seen = new Set<string>();
   const rows = products.filter((p) => p.productId && !seen.has(p.productId) && seen.add(p.productId));
   if (rows.length) {
-    const COLS = 8;
+    const COLS = 9; // + country
     const CHUNK = 100;
     for (let i = 0; i < rows.length; i += CHUNK) {
       const chunk = rows.slice(i, i + CHUNK);
       const placeholders = chunk.map((_, j) => {
         const b = j * COLS;
-        return `($${b + 1},$${b + 2},$${b + 3},$${b + 4},$${b + 5},$${b + 6},$${b + 7},$${b + 8})`;
+        return `(${Array.from({ length: COLS }, (_, k) => `$${b + k + 1}`).join(",")})`;
       }).join(",");
       const params: unknown[] = [];
       for (const p of chunk) {
+        // product_id는 국가 프리픽스(US:...)로 저장 → 같은 상품이 국가별로 구분 저장.
         // brand_name은 검색한 브랜드로 고정(우리 브랜드와 매핑 보장)
-        params.push(p.productId, brandName, p.title, p.price, p.currency, p.soldCount, p.commissionRate, p.url);
+        params.push(`${cc}:${p.productId}`, brandName, p.title, p.price, p.currency, p.soldCount, p.commissionRate, p.url, cc);
       }
       await sql.query(
-        `INSERT INTO products (product_id, brand_name, title, price, currency, sold_count, commission_rate, url)
+        `INSERT INTO products (product_id, brand_name, title, price, currency, sold_count, commission_rate, url, country)
          VALUES ${placeholders}
          ON CONFLICT (product_id) DO UPDATE SET brand_name=EXCLUDED.brand_name, price=EXCLUDED.price,
-           sold_count=EXCLUDED.sold_count, commission_rate=EXCLUDED.commission_rate, collected_at=now()`,
+           sold_count=EXCLUDED.sold_count, commission_rate=EXCLUDED.commission_rate, country=EXCLUDED.country, collected_at=now()`,
         params,
       );
     }
@@ -270,7 +272,7 @@ async function pollJobs(maxPoll: number): Promise<{ ingested: number; done: numb
         let c = 0;
         if (j.kind === "shop") {
           const products = await fetchShopDataset(run.datasetId, j.brand_name);
-          c = await ingestProducts(j.brand_name, products);
+          c = await ingestProducts(j.brand_name, products, j.region || "US"); // region = 수집 국가
         } else {
           const vids = await fetchApifyDataset(run.datasetId, j.since_date);
           c = await ingestVideos(j.brand_name, vids, j.region);
@@ -396,8 +398,11 @@ export async function runShopCollection(opts: { maxShop?: number; baseUrl?: stri
   if (!shopConfigured()) return { configured: false, mode: "skipped", polledDone: 0, ingested: 0, kicked: 0, reason: "SHOP_ACTOR 미설정" };
   const webhook = ingestWebhook(opts.baseUrl);
   const maxShop = opts.maxShop ?? 3;
+  // 다국가: SHOP_COUNTRIES(콤마) 순회. 미설정 시 US 단일.
+  const countries = (process.env.SHOP_COUNTRIES || "US")
+    .split(",").map((s) => s.trim().toUpperCase()).filter(Boolean);
 
-  const poll = await pollJobs(2); // video/shop 공용 폴링
+  const poll = await pollJobs(2 * countries.length); // video/shop 공용 폴링(국가수만큼 여유)
 
   // 아직 샵 통계가 없는 추적 브랜드 우선, 없으면 오래된 순
   const due = await sql<{ brand_name: string }>`
@@ -409,13 +414,16 @@ export async function runShopCollection(opts: { maxShop?: number; baseUrl?: stri
 
   let kicked = 0;
   for (const b of due.rows) {
-    try {
-      const runId = await startShopRun(b.brand_name, webhook);
-      if (runId) await sql`INSERT INTO collect_jobs (run_id, brand_name, kind) VALUES (${runId}, ${b.brand_name}, 'shop') ON CONFLICT (run_id) DO NOTHING`;
-      await sql`INSERT INTO collection_runs (kind, target, status) VALUES ('kick_shop', ${b.brand_name}, 'started')`;
-      kicked += 1;
-    } catch (e) {
-      await sql`INSERT INTO collection_runs (kind, target, status, error) VALUES ('kick_shop', ${b.brand_name}, 'error', ${String(e).slice(0, 200)})`;
+    for (const cc of countries) {
+      try {
+        const runId = await startShopRun(b.brand_name, webhook, cc);
+        // 수집 국가는 collect_jobs.region에 저장 → pollJobs가 ingestProducts에 국가로 전달.
+        if (runId) await sql`INSERT INTO collect_jobs (run_id, brand_name, kind, region) VALUES (${runId}, ${b.brand_name}, 'shop', ${cc}) ON CONFLICT (run_id) DO NOTHING`;
+        await sql`INSERT INTO collection_runs (kind, target, status) VALUES ('kick_shop', ${`${b.brand_name}·${cc}`}, 'started')`;
+        kicked += 1;
+      } catch (e) {
+        await sql`INSERT INTO collection_runs (kind, target, status, error) VALUES ('kick_shop', ${`${b.brand_name}·${cc}`}, 'error', ${String(e).slice(0, 200)})`;
+      }
     }
   }
   return { configured: true, mode: "async", polledDone: poll.done, ingested: poll.ingested, kicked };

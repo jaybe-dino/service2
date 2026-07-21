@@ -18,16 +18,18 @@ export async function GET(req: Request) {
     const limit = Math.min(500, Math.max(1, Number(url.searchParams.get("limit") || 200)));
     const minPrice = Number(url.searchParams.get("minPrice") || "") || 0;
     const maxPrice = Number(url.searchParams.get("maxPrice") || "") || 0; // 0 = 상한없음
+    const country = (url.searchParams.get("country") || "").trim().toUpperCase(); // "" = 전체
 
     const r = await sql<{
       product_id: string; brand_name: string | null; title: string | null;
       price: string | number | null; currency: string | null;
-      sold_count: string | number | null; commission_rate: string | number | null; url: string | null;
+      sold_count: string | number | null; commission_rate: string | number | null; url: string | null; country: string | null;
     }>`
-      SELECT product_id, brand_name, title, price, currency, sold_count, commission_rate, url
+      SELECT product_id, brand_name, title, price, currency, sold_count, commission_rate, url, country
       FROM products
       WHERE (${q} = '' OR lower(coalesce(title,'')) LIKE ${"%" + q + "%"} OR lower(coalesce(brand_name,'')) LIKE ${"%" + q + "%"})
         AND (${brand} = '' OR lower(coalesce(brand_name,'')) = ${brand})
+        AND (${country} = '' OR upper(coalesce(country,'US')) = ${country})
         AND (brand_name IS NULL OR brand_name NOT IN (SELECT value FROM blocklist WHERE kind='brand'))
       ORDER BY collected_at DESC
       LIMIT 2000`;
@@ -45,6 +47,7 @@ export async function GET(req: Request) {
         gmv: Math.round(price * sold), // 추정
         commission: p.commission_rate != null ? Number(p.commission_rate) : null,
         url: p.url || "",
+        country: (p.country || "US").toUpperCase(),
       };
     });
     // 가격대(밴드) 필터

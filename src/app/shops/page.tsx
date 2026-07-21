@@ -6,6 +6,9 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import PageShell from "@/components/ktrend/PageShell";
 import { Search, Info, Store } from "lucide-react";
+import { COUNTRIES } from "@/data/ktrend/meta";
+
+const ACTIVE_COUNTRIES = COUNTRIES.filter((c) => c.active);
 
 interface Shop {
   name: string; products: number; sold: number; gmv: number;
@@ -22,17 +25,20 @@ export default function ShopsPage() {
   const [configured, setConfigured] = useState(true);
   const [q, setQ] = useState("");
   const [sort, setSort] = useState<Sort>("gmv");
+  const [country, setCountry] = useState<string>(""); // "" = 전체
 
   useEffect(() => {
     let alive = true;
     setLoading(true);
-    fetch(`/api/shops?sort=${sort}&limit=300`)
+    const params = new URLSearchParams({ sort, limit: "300" });
+    if (country) params.set("country", country);
+    fetch(`/api/shops?${params.toString()}`)
       .then((r) => r.json())
       .then((d) => { if (!alive) return; setShops(Array.isArray(d.shops) ? d.shops : []); setSummary(d.summary || null); setConfigured(d.configured !== false); })
       .catch(() => { if (alive) setShops([]); })
       .finally(() => { if (alive) setLoading(false); });
     return () => { alive = false; };
-  }, [sort]);
+  }, [sort, country]);
 
   const rows = useMemo(() => {
     const s = q.trim().toLowerCase();
@@ -64,11 +70,16 @@ export default function ShopsPage() {
         )}
 
         <div className="mb-3 flex flex-wrap items-center gap-2">
-          <div className="relative min-w-[200px] flex-1">
+          <div className="relative min-w-[180px] flex-1">
             <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
             <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="샵·브랜드 검색"
               className="w-full rounded-lg border border-[var(--border)] py-2 pl-9 pr-3 text-[13px]" />
           </div>
+          <select value={country} onChange={(e) => setCountry(e.target.value)}
+            className="rounded-lg border border-[var(--border)] px-2.5 py-2 text-[13px]">
+            <option value="">전체 국가</option>
+            {ACTIVE_COUNTRIES.map((c) => <option key={c.id} value={c.id}>{c.flag} {c.nameKo}</option>)}
+          </select>
           <div className="flex gap-1">
             {(["gmv", "sold", "products"] as Sort[]).map((s) => (
               <button key={s} onClick={() => setSort(s)}

@@ -244,11 +244,12 @@ export function mapShopItems(items: Array<Record<string, unknown>>, brandFallbac
     .filter((p): p is ShopProduct => p !== null);
 }
 
-// 비동기 Shop run 시작 (브랜드명/해시태그 기반 상품 검색)
-export async function startShopRun(brandName: string, webhookUrl?: string): Promise<string> {
+// 비동기 Shop run 시작 (브랜드명/해시태그 기반 상품 검색). country: 지역 타게팅(프록시+입력).
+export async function startShopRun(brandName: string, webhookUrl?: string, country?: string): Promise<string> {
   if (!shopConfigured()) throw new Error("SHOP_ACTOR/SCRAPER_API_KEY 미설정");
   const token = process.env.SCRAPER_API_KEY!;
   const actor = process.env.SHOP_ACTOR!;
+  const cc = (country || process.env.SHOP_COUNTRY || "").toUpperCase();
   let qs = `?token=${token}`;
   if (webhookUrl) {
     const webhooks = [{
@@ -259,12 +260,16 @@ export async function startShopRun(brandName: string, webhookUrl?: string): Prom
     qs += `&webhooks=${encodeURIComponent(Buffer.from(JSON.stringify(webhooks)).toString("base64"))}`;
   }
   // 검색 입력은 actor마다 키가 달라서(가장 흔한 실패 원인) 일반 키 '슈퍼셋'을 전달한다.
-  // 특정 actor 스키마에 정확히 맞추려면 SHOP_ACTOR_INPUT(JSON, {{keyword}} 치환)으로 완전 오버라이드.
+  // 특정 actor 스키마에 정확히 맞추려면 SHOP_ACTOR_INPUT(JSON, {{keyword}}/{{country}} 치환)으로 완전 오버라이드.
   const maxItems = Number(process.env.SHOP_MAX_ITEMS ?? 100);
   let body: Record<string, unknown>;
   if (process.env.SHOP_ACTOR_INPUT) {
     try {
-      body = JSON.parse(process.env.SHOP_ACTOR_INPUT.replace(/\{\{\s*keyword\s*\}\}/g, brandName));
+      body = JSON.parse(
+        process.env.SHOP_ACTOR_INPUT
+          .replace(/\{\{\s*keyword\s*\}\}/g, brandName)
+          .replace(/\{\{\s*country\s*\}\}/g, cc),
+      );
     } catch {
       body = { keyword: brandName };
     }
@@ -275,8 +280,9 @@ export async function startShopRun(brandName: string, webhookUrl?: string): Prom
       keywords: [brandName], searchQueries: [brandName],
       // 결과 수 상한 계열
       maxItems, maxResults: maxItems, resultsLimit: maxItems,
-      // 지역(선택) — 제공 시 전달. 미제공 시 프록시 exit IP를 따름.
-      ...(process.env.SHOP_COUNTRY ? { country: process.env.SHOP_COUNTRY } : {}),
+      // 지역 — actor 입력 키 계열 + 프록시 지역 타게팅(비US일 때).
+      ...(cc ? { country: cc, region: cc, market: cc } : {}),
+      ...(cc && cc !== "US" ? { proxyConfiguration: { useApifyProxy: true, apifyProxyCountry: cc } } : {}),
     };
   }
   const res = await fetch(`https://api.apify.com/v2/acts/${actor}/runs${qs}`, {

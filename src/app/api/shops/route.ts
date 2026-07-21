@@ -15,18 +15,27 @@ export async function GET(req: Request) {
     const q = (url.searchParams.get("q") || "").trim().toLowerCase();
     const sort = url.searchParams.get("sort") || "gmv"; // gmv | sold | products
     const limit = Math.min(500, Math.max(1, Number(url.searchParams.get("limit") || 200)));
+    const country = (url.searchParams.get("country") || "").trim().toUpperCase(); // "" = 전체
 
+    // products에서 (브랜드=샵) 단위 집계 — 국가 필터 지원(국가별 샵 랭킹).
     const r = await sql<{
       brand_name: string; products: number | string | null; avg_commission: string | number | null;
       total_sold: string | number | null; est_gmv: string | number | null;
       videos: number | string | null; total_views: string | number | null;
     }>`
-      SELECT s.brand_name, s.products, s.avg_commission, s.total_sold, s.est_gmv,
-             b.videos, b.total_views
-      FROM brand_shop_stats s
-      LEFT JOIN brand_stats b ON lower(b.brand_name) = lower(s.brand_name)
-      WHERE (${q} = '' OR lower(s.brand_name) LIKE ${"%" + q + "%"})
-        AND s.brand_name NOT IN (SELECT value FROM blocklist WHERE kind='brand')
+      SELECT p.brand_name,
+             count(*)::int AS products,
+             avg(p.commission_rate) AS avg_commission,
+             coalesce(sum(p.sold_count), 0) AS total_sold,
+             coalesce(sum(p.price * p.sold_count), 0) AS est_gmv,
+             max(b.videos) AS videos, max(b.total_views) AS total_views
+      FROM products p
+      LEFT JOIN brand_stats b ON lower(b.brand_name) = lower(p.brand_name)
+      WHERE p.brand_name IS NOT NULL
+        AND (${q} = '' OR lower(p.brand_name) LIKE ${"%" + q + "%"})
+        AND (${country} = '' OR upper(coalesce(p.country,'US')) = ${country})
+        AND p.brand_name NOT IN (SELECT value FROM blocklist WHERE kind='brand')
+      GROUP BY p.brand_name
       LIMIT 2000`;
 
     const shops = r.rows.map((s) => {
