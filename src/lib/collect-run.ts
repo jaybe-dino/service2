@@ -418,10 +418,16 @@ export async function runShopCollection(opts: { maxShop?: number; baseUrl?: stri
     ORDER BY bss.updated_at ASC NULLS FIRST, bs.total_views DESC NULLS LAST
     LIMIT ${maxShop}`;
 
+  // 이미 running인 샵 잡(브랜드·국가)은 다시 안 띄움 — 중복 run/비용 폭증 방지.
+  const runningShop = await sql<{ brand_name: string; region: string | null }>`
+    SELECT brand_name, region FROM collect_jobs WHERE kind='shop' AND status='running'`;
+  const runningSet = new Set(runningShop.rows.map((r) => `${r.brand_name}|${(r.region || "US").toUpperCase()}`));
+
   let kicked = 0;
   const errors: string[] = [];
   for (const b of due.rows) {
     for (const cc of countries) {
+      if (runningSet.has(`${b.brand_name}|${cc}`)) continue; // 이미 도는 중 → 스킵
       try {
         const runId = await startShopRun(b.brand_name, webhook, cc);
         if (runId) {

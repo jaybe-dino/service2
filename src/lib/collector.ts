@@ -224,21 +224,44 @@ function parseCommission(v: unknown): number | null {
   return n > 0 && n <= 1 ? Math.round(n * 1000) / 10 : Math.round(n * 10) / 10;
 }
 
+// 여러 키(중첩 "a.b" 경로 포함) 중 첫 유효값. actor마다 필드명이 달라 방어적으로 탐색.
+function pick(o: Record<string, unknown>, keys: string[]): unknown {
+  for (const k of keys) {
+    if (k.includes(".")) {
+      let cur: unknown = o;
+      for (const part of k.split(".")) {
+        if (cur && typeof cur === "object") cur = (cur as Record<string, unknown>)[part];
+        else { cur = undefined; break; }
+      }
+      if (cur != null && cur !== "") return cur;
+    } else if (o[k] != null && o[k] !== "") {
+      return o[k];
+    }
+  }
+  return undefined;
+}
+
 export function mapShopItems(items: Array<Record<string, unknown>>, brandFallback?: string): ShopProduct[] {
   return items
-    .map((it): ShopProduct | null => {
-      const productId = String(it.id ?? it.productId ?? it.product_id ?? "");
+    .map((o): ShopProduct | null => {
+      if (!o || typeof o !== "object") return null;
+      const url = String(pick(o, ["url", "productUrl", "product_url", "link", "detailUrl", "itemUrl", "product.url"]) ?? "");
+      let productId = String(pick(o, ["id", "productId", "product_id", "itemId", "item_id", "sku", "skuId", "goodsId", "goods_id", "product.id"]) ?? "");
+      // id가 없으면 url의 숫자ID나 url/제목에서 유도(아이템 유실 방지)
+      if (!productId) {
+        const m = url.match(/(\d{6,})/);
+        productId = m ? m[1] : (url || String(pick(o, ["title", "name"]) ?? "")).slice(0, 80);
+      }
       if (!productId) return null;
-      const priceRaw = it.price ?? it.salePrice ?? it.priceVal ?? (it as { priceInfo?: { price?: unknown } }).priceInfo?.price;
       return {
         productId,
-        brandName: String(it.brand ?? it.sellerName ?? it.shopName ?? brandFallback ?? "") || null,
-        title: String(it.title ?? it.name ?? it.productName ?? "") || null,
-        price: numOr(priceRaw),
-        currency: String(it.currency ?? "USD"),
-        soldCount: parseSold(it.soldCount ?? it.sales ?? it.sold ?? it.soldCountText),
-        commissionRate: parseCommission(it.commissionRate ?? it.commission ?? it.openCommissionRate ?? it.commission_rate),
-        url: String(it.url ?? it.productUrl ?? "") || null,
+        brandName: String(pick(o, ["brand", "brandName", "sellerName", "shopName", "seller_name", "shop_name", "seller.name", "shop.name"]) ?? brandFallback ?? "") || null,
+        title: String(pick(o, ["title", "name", "productName", "product_name", "goodsName", "goods_name", "desc", "product.title"]) ?? "") || null,
+        price: numOr(pick(o, ["price", "salePrice", "sale_price", "priceVal", "minPrice", "min_price", "priceInfo.price", "price.amount", "originalPrice", "lowestPrice"])),
+        currency: String(pick(o, ["currency", "currencyCode", "priceInfo.currency"]) ?? "USD"),
+        soldCount: parseSold(pick(o, ["soldCount", "sold_count", "sales", "sold", "soldCountText", "salesCount", "orderCount", "unitsSold", "units_sold", "soldNum"])),
+        commissionRate: parseCommission(pick(o, ["commissionRate", "commission", "openCommissionRate", "commission_rate", "commissionRateStr", "commissionPct"])),
+        url: url || null,
       };
     })
     .filter((p): p is ShopProduct => p !== null);
