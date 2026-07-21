@@ -7,6 +7,7 @@ import UtmTracker from "@/components/ktrend/UtmTracker";
 import MetaPixel from "@/components/ktrend/MetaPixel";
 
 const SITE_URL = "https://glovek.space";
+const META_PIXEL_ID = process.env.NEXT_PUBLIC_META_PIXEL_ID || "1726953618432069";
 const TITLE = "Glovek — 틱톡 K-뷰티 콘텐츠·인플루언서 분석 SaaS";
 const DESC =
   "K-뷰티 브랜드의 실제 틱톡 콘텐츠를 브랜드·콘텐츠·인플루언서별로 조회·분석하는 B2B SaaS. 바이럴 콘텐츠 레퍼런스, 인플루언서, 브랜드 성장 리포트를 제공합니다.";
@@ -130,8 +131,20 @@ export default function RootLayout({
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(JSON_LD) }}
         />
+        {/* Meta Pixel — head에 원본 그대로(소스에 노출·즉시 발화). SPA 라우트 PageView는 <MetaPixel/>. */}
+        <script
+          id="fb-pixel-base"
+          dangerouslySetInnerHTML={{
+            __html: `!function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,document,'script','https://connect.facebook.net/en_US/fbevents.js');fbq('init','${META_PIXEL_ID}');fbq('track','PageView');`,
+          }}
+        />
       </head>
       <body>
+        <noscript>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img height="1" width="1" style={{ display: "none" }} alt=""
+            src={`https://www.facebook.com/tr?id=${META_PIXEL_ID}&ev=PageView&noscript=1`} />
+        </noscript>
         <MetaPixel />
         <PlanProvider>
           <BookmarkProvider>
