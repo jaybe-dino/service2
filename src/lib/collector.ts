@@ -245,10 +245,19 @@ export function mapShopItems(items: Array<Record<string, unknown>>, brandFallbac
 }
 
 // 비동기 Shop run 시작 (브랜드명/해시태그 기반 상품 검색). country: 지역 타게팅(프록시+입력).
+// Apify actor id 정규화: URL 붙여넣기/슬래시(username/name)를 API 경로용 username~name 로 보정.
+function normalizeActor(raw: string): string {
+  let a = (raw || "").trim();
+  const m = a.match(/apify\.com\/([^/]+\/[^/?#]+)/i); // 전체 URL 붙여넣은 경우
+  if (m) a = m[1];
+  a = a.replace(/^\/+|\/+$/g, "");   // 앞뒤 슬래시 제거
+  return a.replace(/\//g, "~");       // username/name → username~name
+}
+
 export async function startShopRun(brandName: string, webhookUrl?: string, country?: string): Promise<string> {
   if (!shopConfigured()) throw new Error("SHOP_ACTOR/SCRAPER_API_KEY 미설정");
   const token = process.env.SCRAPER_API_KEY!;
-  const actor = process.env.SHOP_ACTOR!;
+  const actor = normalizeActor(process.env.SHOP_ACTOR!);
   const cc = (country || process.env.SHOP_COUNTRY || "").toUpperCase();
   let qs = `?token=${token}`;
   if (webhookUrl) {
@@ -290,7 +299,7 @@ export async function startShopRun(brandName: string, webhookUrl?: string, count
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
   });
-  if (!res.ok) throw new Error(`apify shop start ${res.status}`);
+  if (!res.ok) throw new Error(`apify shop start ${res.status} (actor=${actor})`);
   const data = (await res.json()) as { data?: { id?: string } };
   return data?.data?.id ?? "";
 }
