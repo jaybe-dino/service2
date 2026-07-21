@@ -390,7 +390,7 @@ export async function runCollection(opts: { maxPending?: number; maxRefresh?: nu
   return { configured, mode: "async", polledDone: poll.done, ingested: poll.ingested, kickedNew, kickedRefresh };
 }
 
-export interface ShopSummary { configured: boolean; mode: "async" | "skipped"; polledDone: number; ingested: number; kicked: number; reason?: string }
+export interface ShopSummary { configured: boolean; mode: "async" | "skipped"; polledDone: number; ingested: number; kicked: number; reason?: string; dueCount?: number; countries?: string[]; errors?: string[] }
 
 // A안 틱톡샵 상품 수집 사이클: 완료분 적재(폴링) + 미수집 브랜드 N개 shop run 시작.
 export async function runShopCollection(opts: { maxShop?: number; baseUrl?: string } = {}): Promise<ShopSummary> {
@@ -415,18 +415,24 @@ export async function runShopCollection(opts: { maxShop?: number; baseUrl?: stri
     LIMIT ${maxShop}`;
 
   let kicked = 0;
+  const errors: string[] = [];
   for (const b of due.rows) {
     for (const cc of countries) {
       try {
         const runId = await startShopRun(b.brand_name, webhook, cc);
-        // 수집 국가는 collect_jobs.region에 저장 → pollJobs가 ingestProducts에 국가로 전달.
-        if (runId) await sql`INSERT INTO collect_jobs (run_id, brand_name, kind, region) VALUES (${runId}, ${b.brand_name}, 'shop', ${cc}) ON CONFLICT (run_id) DO NOTHING`;
-        await sql`INSERT INTO collection_runs (kind, target, status) VALUES ('kick_shop', ${`${b.brand_name}·${cc}`}, 'started')`;
-        kicked += 1;
+        if (runId) {
+          // 수집 국가는 collect_jobs.region에 저장 → pollJobs가 ingestProducts에 국가로 전달.
+          await sql`INSERT INTO collect_jobs (run_id, brand_name, kind, region) VALUES (${runId}, ${b.brand_name}, 'shop', ${cc}) ON CONFLICT (run_id) DO NOTHING`;
+          await sql`INSERT INTO collection_runs (kind, target, status) VALUES ('kick_shop', ${`${b.brand_name}·${cc}`}, 'started')`;
+          kicked += 1;
+        } else if (errors.length < 5) {
+          errors.push(`${b.brand_name}·${cc}: Apify runId 없음(응답 이상)`);
+        }
       } catch (e) {
+        if (errors.length < 5) errors.push(`${b.brand_name}·${cc}: ${String(e instanceof Error ? e.message : e).slice(0, 140)}`);
         await sql`INSERT INTO collection_runs (kind, target, status, error) VALUES ('kick_shop', ${`${b.brand_name}·${cc}`}, 'error', ${String(e).slice(0, 200)})`;
       }
     }
   }
-  return { configured: true, mode: "async", polledDone: poll.done, ingested: poll.ingested, kicked };
+  return { configured: true, mode: "async", polledDone: poll.done, ingested: poll.ingested, kicked, dueCount: due.rows.length, countries, errors };
 }
