@@ -47,8 +47,10 @@ export async function POST(req: Request) {
   const registOrderId = buildOrderId(SERVICE_ORDER_PREFIX, plan.planInitial);
   const reg = await registerBillingKey({ encData, orderId: registOrderId });
   if (!reg.ok || !reg.bid) {
-    const msg = (reg.raw as { resultMsg?: string })?.resultMsg || "빌키 발급 실패";
-    return NextResponse.json({ ok: false, error: `카드 등록 실패: ${msg}` }, { status: 402 });
+    const r = reg.raw as { resultMsg?: string; resultCode?: string } | null;
+    const msg = r?.resultMsg || "빌키 발급 실패";
+    const code = r?.resultCode ? ` [${r.resultCode}]` : "";
+    return NextResponse.json({ ok: false, error: `카드 등록 실패:${code} ${msg}` }, { status: 402 });
   }
   const bid = reg.bid;
 

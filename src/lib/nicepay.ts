@@ -48,14 +48,24 @@ function basicAuth(): string {
   return "Basic " + Buffer.from(`${CLIENT_KEY}:${SECRET_KEY}`).toString("base64");
 }
 
-// 카드정보 → encData (빌키발급용). NICEpay 스펙: AES-128 ECB · PKCS5 · 키=SecretKey 앞16자 · hex.
+// 카드정보 → encData (빌키발급용). NICEpay 스펙: ECB · PKCS5 · hex.
+//   기본 AES-128(키=SecretKey 앞16자). NICEPAY_ENC_MODE=A2 이면 AES-256(키=SecretKey 앞32자) + encMode "A2".
 //   평문: cardNo=..&expYear=YY&expMonth=MM&idNo=(개인 생년월일 YYMMDD / 법인 사업자번호 10) &cardPw=(앞2자리)
 //   ⚠️ 카드정보는 이 함수에서 즉시 암호화만 하고 저장/로깅하지 않는다.
 export interface CardInput { cardNo: string; expYear: string; expMonth: string; idNo: string; cardPw: string }
+export function envEncMode(): string | undefined {
+  return (process.env.NICEPAY_ENC_MODE || "").toUpperCase() === "A2" ? "A2" : undefined;
+}
 export function encryptCardData(c: CardInput): string {
   const cardNo = c.cardNo.replace(/\D/g, "");
   const plain = `cardNo=${cardNo}&expYear=${c.expYear}&expMonth=${c.expMonth}&idNo=${c.idNo}&cardPw=${c.cardPw}`;
-  const key = Buffer.from(SECRET_KEY.slice(0, 16), "utf8"); // 16 bytes
+  if (envEncMode() === "A2") {
+    const key = Buffer.from(SECRET_KEY.slice(0, 32), "utf8"); // 32 bytes (AES-256)
+    const cipher = crypto.createCipheriv("aes-256-ecb", key, null);
+    cipher.setAutoPadding(true);
+    return Buffer.concat([cipher.update(plain, "utf8"), cipher.final()]).toString("hex");
+  }
+  const key = Buffer.from(SECRET_KEY.slice(0, 16), "utf8"); // 16 bytes (AES-128)
   const cipher = crypto.createCipheriv("aes-128-ecb", key, null);
   cipher.setAutoPadding(true); // PKCS5/PKCS7
   return Buffer.concat([cipher.update(plain, "utf8"), cipher.final()]).toString("hex");
@@ -132,15 +142,19 @@ export async function chargeByBillingKey({ bid, orderId, amount, goodsName }: { 
 export async function registerBillingKey({ encData, orderId, encMode }: { encData: string; orderId: string; encMode?: string }): Promise<{ ok: boolean; bid?: string; raw: unknown }> {
   if (!isConfigured()) return { ok: false, raw: null };
   try {
+    // AES-128(기본)은 encMode 미전송. AES-256이면 encMode="A2"(env NICEPAY_ENC_MODE=A2로 자동).
+    const mode = encMode || envEncMode();
     const res = await fetch(`${API_BASE}/v1/subscribe/regist`, {
       method: "POST",
       headers: { Authorization: basicAuth(), "Content-Type": "application/json" },
-      // AES-128(기본)은 encMode 미전송. AES-256이면 encMode="A2".
-      body: JSON.stringify({ encData, orderId, ...(encMode ? { encMode } : {}) }),
+      body: JSON.stringify({ encData, orderId, ...(mode ? { encMode: mode } : {}) }),
     });
-    const raw = (await res.json().catch(() => ({}))) as { resultCode?: string; BID?: string; bid?: string };
+    const raw = (await res.json().catch(() => ({}))) as { resultCode?: string; resultMsg?: string; BID?: string; bid?: string };
+    // 진단용 서버 로그(카드정보 없음 — NicePay 응답 코드/메시지만). 실패 원인 특정용.
+    if (raw.resultCode !== "0000") console.error("[nicepay] regist fail", raw.resultCode, raw.resultMsg, "base:", API_BASE, "encMode:", mode || "none");
     return { ok: raw.resultCode === "0000", bid: raw.BID || raw.bid, raw };
-  } catch {
+  } catch (e) {
+    console.error("[nicepay] regist exception", String(e));
     return { ok: false, raw: null };
   }
 }
