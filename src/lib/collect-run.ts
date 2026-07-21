@@ -205,8 +205,9 @@ export async function ingestProducts(brandName: string, products: ShopProduct[],
       await sql.query(
         `INSERT INTO products (product_id, brand_name, title, price, currency, sold_count, commission_rate, url, country)
          VALUES ${placeholders}
-         ON CONFLICT (product_id) DO UPDATE SET brand_name=EXCLUDED.brand_name, price=EXCLUDED.price,
-           sold_count=EXCLUDED.sold_count, commission_rate=EXCLUDED.commission_rate, country=EXCLUDED.country, collected_at=now()`,
+         ON CONFLICT (product_id) DO UPDATE SET brand_name=EXCLUDED.brand_name, title=EXCLUDED.title,
+           price=EXCLUDED.price, currency=EXCLUDED.currency, sold_count=EXCLUDED.sold_count,
+           commission_rate=EXCLUDED.commission_rate, url=EXCLUDED.url, country=EXCLUDED.country, collected_at=now()`,
         params,
       );
     }

@@ -241,6 +241,23 @@ function pick(o: Record<string, unknown>, keys: string[]): unknown {
   return undefined;
 }
 
+// 딥 서치: 필드명을 몰라도 (키, 값) 술어로 객체 어디서든 값을 찾음(중첩/특이 스키마 대응).
+function deepFind(root: unknown, match: (k: string, v: unknown) => boolean): unknown {
+  const stack: unknown[] = [root];
+  let seen = 0;
+  while (stack.length && seen < 4000) {
+    const cur = stack.pop();
+    seen++;
+    if (!cur || typeof cur !== "object") continue;
+    for (const [k, v] of Object.entries(cur as Record<string, unknown>)) {
+      if (match(k, v)) return v;
+      if (v && typeof v === "object") stack.push(v);
+    }
+  }
+  return undefined;
+}
+const NOT_TITLE = /seller|shop|brand|store|user|file|host|domain|nick|author|category|image|photo|thumb|logo/i;
+
 export function mapShopItems(items: Array<Record<string, unknown>>, brandFallback?: string): ShopProduct[] {
   return items
     .map((o): ShopProduct | null => {
@@ -253,14 +270,37 @@ export function mapShopItems(items: Array<Record<string, unknown>>, brandFallbac
         productId = m ? m[1] : (url || String(pick(o, ["title", "name"]) ?? "")).slice(0, 80);
       }
       if (!productId) return null;
+
+      // 1차: 명시 키. 2차(폴백): 키 이름 패턴으로 딥 서치(actor 스키마 몰라도 채움).
+      let title = String(pick(o, ["title", "name", "productName", "product_name", "goodsName", "goods_name", "desc", "product.title"]) ?? "");
+      if (!title || title.length < 2) {
+        const t = deepFind(o, (k, v) => /title|name|desc/i.test(k) && !NOT_TITLE.test(k) && typeof v === "string" && v.trim().length >= 3);
+        if (t) title = String(t);
+      }
+      let price = numOr(pick(o, ["price", "salePrice", "sale_price", "priceVal", "minPrice", "min_price", "priceInfo.price", "price.amount", "originalPrice", "lowestPrice"]));
+      if (price == null || price <= 0) {
+        const p = deepFind(o, (k, v) => /price|amount|(^|_)cost/i.test(k) && numOr(v) != null && (numOr(v) as number) > 0);
+        if (p != null) price = numOr(p);
+      }
+      let soldCount = parseSold(pick(o, ["soldCount", "sold_count", "sales", "sold", "soldCountText", "salesCount", "orderCount", "unitsSold", "units_sold", "soldNum"]));
+      if (!soldCount) {
+        const s = deepFind(o, (k, v) => /sold|sales|order.?count|units.?sold/i.test(k) && parseSold(v) > 0);
+        if (s != null) soldCount = parseSold(s);
+      }
+      let commissionRate = parseCommission(pick(o, ["commissionRate", "commission", "openCommissionRate", "commission_rate", "commissionRateStr", "commissionPct"]));
+      if (commissionRate == null) {
+        const c = deepFind(o, (k, v) => /commission/i.test(k) && numOr(v) != null);
+        if (c != null) commissionRate = parseCommission(c);
+      }
+
       return {
         productId,
         brandName: String(pick(o, ["brand", "brandName", "sellerName", "shopName", "seller_name", "shop_name", "seller.name", "shop.name"]) ?? brandFallback ?? "") || null,
-        title: String(pick(o, ["title", "name", "productName", "product_name", "goodsName", "goods_name", "desc", "product.title"]) ?? "") || null,
-        price: numOr(pick(o, ["price", "salePrice", "sale_price", "priceVal", "minPrice", "min_price", "priceInfo.price", "price.amount", "originalPrice", "lowestPrice"])),
+        title: title || null,
+        price,
         currency: String(pick(o, ["currency", "currencyCode", "priceInfo.currency"]) ?? "USD"),
-        soldCount: parseSold(pick(o, ["soldCount", "sold_count", "sales", "sold", "soldCountText", "salesCount", "orderCount", "unitsSold", "units_sold", "soldNum"])),
-        commissionRate: parseCommission(pick(o, ["commissionRate", "commission", "openCommissionRate", "commission_rate", "commissionRateStr", "commissionPct"])),
+        soldCount,
+        commissionRate,
         url: url || null,
       };
     })
