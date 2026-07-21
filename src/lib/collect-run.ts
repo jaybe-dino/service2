@@ -260,9 +260,12 @@ function ingestWebhook(baseUrl?: string): string | undefined {
 
 // 폴링(pull): 진행 중 run의 완료 여부를 직접 확인 → 끝났으면 dataset 가져와 적재.
 // (Apify→우리 webhook 인바운드가 막혀도 동작 — 아웃바운드만 사용)
-async function pollJobs(maxPoll: number): Promise<{ ingested: number; done: number }> {
+async function pollJobs(maxPoll: number, kind = ""): Promise<{ ingested: number; done: number }> {
+  // kind 지정 시 그 종류(shop/video)만 폴링 — 밀린 다른 종류 잡에 막히지 않게.
   const jobs = await sql<{ run_id: string; brand_name: string; since_date: string | null; kind: string; region: string | null }>`
-    SELECT run_id, brand_name, since_date, kind, region FROM collect_jobs WHERE status='running' ORDER BY created_at ASC LIMIT ${maxPoll}`;
+    SELECT run_id, brand_name, since_date, kind, region FROM collect_jobs
+    WHERE status='running' AND (${kind} = '' OR kind = ${kind})
+    ORDER BY created_at ASC LIMIT ${maxPoll}`;
   let ingested = 0;
   let done = 0;
   for (const j of jobs.rows) {
@@ -402,7 +405,8 @@ export async function runShopCollection(opts: { maxShop?: number; baseUrl?: stri
   const countries = (process.env.SHOP_COUNTRIES || "US")
     .split(",").map((s) => s.trim().toUpperCase()).filter(Boolean);
 
-  const poll = await pollJobs(2 * countries.length); // video/shop 공용 폴링(국가수만큼 여유)
+  // 샵 잡만 폴링(밀린 영상 잡에 안 막히게). 대기 중인 샵 run을 넉넉히 훑음.
+  const poll = await pollJobs(Math.max(12, maxShop * countries.length * 2), "shop");
 
   // 샵 수집 대상 = 영상이 수집된 브랜드(brand_stats). 샵 통계 없는 브랜드 우선, 다음 조회수순.
   // (기존엔 brand_tracking.tracked=true만 봤는데 영상수집이 tracked를 안 켜서 대상이 0 → 미수집이었음)
