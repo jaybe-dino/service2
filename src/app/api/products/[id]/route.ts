@@ -27,10 +27,10 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
     // 제품↔영상↔크리에이터 매칭: product_ref 직접 태그 우선, 없으면 브랜드 폴백.
     const [vids, creators] = brand
       ? await Promise.all([
-          sql<{ video_id: string; handle: string | null; views: string | number; likes: string | number; url: string | null; country: string | null; is_ad: boolean; is_shop: boolean; direct: boolean }>`
-            SELECT video_id, handle, views, likes, url, country, is_ad, is_shop, (product_ref = ${rawId}) AS direct FROM videos
+          sql<{ video_id: string; handle: string | null; views: string | number; likes: string | number; url: string | null; country: string | null; is_ad: boolean; is_shop: boolean; posted_at: string | null; direct: boolean }>`
+            SELECT video_id, handle, views, likes, url, country, is_ad, is_shop, posted_at, (product_ref = ${rawId}) AS direct FROM videos
             WHERE product_ref = ${rawId} OR lower(coalesce(brand_name,'')) = lower(${brand})
-            ORDER BY (product_ref = ${rawId}) DESC, views DESC LIMIT 12`,
+            ORDER BY (product_ref = ${rawId}) DESC, views DESC LIMIT 30`,
           sql<{ handle: string; videos: number; total_views: string | number; max_views: string | number; direct: boolean }>`
             SELECT handle, count(*)::int AS videos, sum(views)::bigint AS total_views, max(views)::bigint AS max_views, bool_or(product_ref = ${rawId}) AS direct
             FROM videos WHERE (product_ref = ${rawId} OR lower(coalesce(brand_name,'')) = lower(${brand})) AND handle IS NOT NULL AND handle <> ''
@@ -47,7 +47,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
         id: p.product_id, brand, title: p.title || "", price, currency: p.currency || "USD", sold,
         gmv: Math.round(price * sold), commission: p.commission_rate != null ? Number(p.commission_rate) : null, url: p.url || "",
       },
-      relatedVideos: vids.rows.map((v) => ({ id: v.video_id, handle: v.handle || "", views: Number(v.views) || 0, likes: Number(v.likes) || 0, url: v.url || "", country: v.country || "", isAd: !!v.is_ad, isShop: !!v.is_shop, direct: !!v.direct })),
+      relatedVideos: vids.rows.map((v) => ({ id: v.video_id, handle: v.handle || "", views: Number(v.views) || 0, likes: Number(v.likes) || 0, url: v.url || "", country: v.country || "", isAd: !!v.is_ad, isShop: !!v.is_shop, postedAt: v.posted_at ? String(v.posted_at).slice(0, 10) : "", direct: !!v.direct })),
       relatedCreators: creators.rows.map((c) => ({ handle: c.handle, videos: Number(c.videos) || 0, totalViews: Number(c.total_views) || 0, maxViews: Number(c.max_views) || 0, direct: !!c.direct })),
     });
   } catch (e) {

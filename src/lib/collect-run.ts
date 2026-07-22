@@ -316,6 +316,11 @@ export async function runCollection(opts: { maxPending?: number; maxRefresh?: nu
   const TIME_BUDGET_MS = 45_000;
   const outOfTime = () => Date.now() - startedAt > TIME_BUDGET_MS;
 
+  // 0) 스톨 잡 리핑: 오래 running인 영상 잡 격리(재시도 상한과 함께 무한 누적 방지)
+  const staleMin = Math.max(20, Number(process.env.COLLECT_JOB_TIMEOUT_MIN ?? 120));
+  await sql`UPDATE collect_jobs SET status='failed', updated_at=now()
+            WHERE (kind IS NULL OR kind <> 'shop') AND status='running' AND created_at < now() - make_interval(mins => ${staleMin})`;
+
   // 0) 진행 중 run 결과 먼저 적재 (폴링) — 타임아웃 방지 위해 한 번에 maxPoll개만
   const poll = await pollJobs(maxPoll);
 
@@ -409,6 +414,15 @@ export async function runShopCollection(opts: { maxShop?: number; baseUrl?: stri
   // 폴링 상한(60초 내 완료되게 고정) + 백프레셔 상한(running이 이보다 많으면 킥 중단).
   const maxPoll = Math.max(6, Math.min(25, Number(process.env.SHOP_MAX_POLL ?? 12)));
   const maxRunning = Math.max(10, Number(process.env.SHOP_MAX_RUNNING ?? 40));
+  // 완료 후 재시도 대기(일): 이 기간엔 재킥 안 함 → 매 호출 새 브랜드로 전진(무한 재시도 방지).
+  const retryDays = Math.max(1, Number(process.env.SHOP_RETRY_DAYS ?? 3));
+  // 스톨 잡 타임아웃(분): running으로 이 시간 넘게 방치된 잡은 실패 처리 → 백프레셔 데드락 해소.
+  const staleMin = Math.max(20, Number(process.env.SHOP_JOB_TIMEOUT_MIN ?? 90));
+
+  // 0) 스톨 잡 리핑: 오래 running인 샵 잡을 실패로 격리(Apify가 응답 안 하거나 webhook 유실 대비).
+  //    → runningCount가 maxRunning에 눌려 새 킥이 영구 차단되는 것을 방지.
+  await sql`UPDATE collect_jobs SET status='failed', updated_at=now()
+            WHERE kind='shop' AND status='running' AND created_at < now() - make_interval(mins => ${staleMin})`;
 
   // 1) 완료된 샵 잡 적재(밀린 영상 잡에 안 막히게 샵만).
   const poll = await pollJobs(maxPoll, "shop");
@@ -419,12 +433,17 @@ export async function runShopCollection(opts: { maxShop?: number; baseUrl?: stri
   const runningSet = new Set(runningShop.rows.map((r) => `${r.brand_name}|${(r.region || "US").toUpperCase()}`));
   const runningCount = runningShop.rows.length;
 
-  // 아직 안 한 브랜드 수(진행률 표시).
+  // 최근 시도(성공/0건/실패 무관) 브랜드는 재시도 대기 → '전부 수집' 큐가 실제로 소진되도록.
+  // (0건 반환 브랜드가 brand_shop_stats에 안 남아 매 호출 재킥되던 문제 해소)
+  // 아직 안 한 브랜드 수(진행률 표시) — 수집완료도 최근시도도 아닌 브랜드.
   const rem = await sql<{ n: number }>`
     SELECT count(*)::int AS n FROM brand_stats bs
     WHERE bs.brand_name IS NOT NULL
       AND bs.brand_name NOT IN (SELECT value FROM blocklist WHERE kind='brand')
-      AND bs.brand_name NOT IN (SELECT brand_name FROM brand_shop_stats)`;
+      AND bs.brand_name NOT IN (SELECT brand_name FROM brand_shop_stats)
+      AND bs.brand_name NOT IN (
+        SELECT DISTINCT brand_name FROM collect_jobs
+        WHERE kind='shop' AND status IN ('done','failed') AND updated_at > now() - make_interval(days => ${retryDays}))`;
   const remaining = rem.rows[0]?.n ?? 0;
 
   let kicked = 0;
@@ -438,6 +457,9 @@ export async function runShopCollection(opts: { maxShop?: number; baseUrl?: stri
       WHERE bs.brand_name IS NOT NULL
         AND bs.brand_name NOT IN (SELECT value FROM blocklist WHERE kind='brand')
         AND bs.brand_name NOT IN (SELECT DISTINCT brand_name FROM collect_jobs WHERE kind='shop' AND status='running')
+        AND bs.brand_name NOT IN (
+          SELECT DISTINCT brand_name FROM collect_jobs
+          WHERE kind='shop' AND status IN ('done','failed') AND updated_at > now() - make_interval(days => ${retryDays}))
         AND bss.brand_name IS NULL
       ORDER BY bs.total_views DESC NULLS LAST
       LIMIT ${maxShop}`;
