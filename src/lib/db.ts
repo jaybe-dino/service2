@@ -120,6 +120,9 @@ export function ensureSchema(): Promise<void> {
       await sql`ALTER TABLE videos ADD COLUMN IF NOT EXISTS country text NOT NULL DEFAULT 'US'`;
       // 크리에이터 티어(mega|macro|micro) — 팔로워 기반(수집 소스 제공 시). 없으면 조회수로 근사.
       await sql`ALTER TABLE videos ADD COLUMN IF NOT EXISTS tier text`;
+      // 영상이 태그한 TikTok Shop 상품ID(있으면 제품↔영상 정밀 매칭). 인덱스로 조회 가속.
+      await sql`ALTER TABLE videos ADD COLUMN IF NOT EXISTS product_ref text`;
+      await sql`CREATE INDEX IF NOT EXISTS idx_videos_product_ref ON videos(product_ref)`;
       // 브랜드별 수집 주기/추적 관리
       await sql`CREATE TABLE IF NOT EXISTS brand_tracking (
         brand_name text PRIMARY KEY,

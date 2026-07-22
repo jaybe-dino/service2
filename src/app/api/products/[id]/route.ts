@@ -22,28 +22,33 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
     const sold = Number(p.sold_count) || 0;
 
     const brand = p.brand_name || "";
-    // 제품(브랜드)을 홍보한 콘텐츠·크리에이터 매칭. (영상↔제품 직접 태그는 P2, 현재는 브랜드 기준)
+    // 제품ID(국가 프리픽스 제거) — 영상 product_ref(원시 상품ID)와 직접 매칭용.
+    const rawId = id.includes(":") ? id.slice(id.indexOf(":") + 1) : id;
+    // 제품↔영상↔크리에이터 매칭: product_ref 직접 태그 우선, 없으면 브랜드 폴백.
     const [vids, creators] = brand
       ? await Promise.all([
-          sql<{ video_id: string; handle: string | null; views: string | number; likes: string | number; url: string | null; country: string | null; is_ad: boolean; is_shop: boolean }>`
-            SELECT video_id, handle, views, likes, url, country, is_ad, is_shop FROM videos
-            WHERE lower(coalesce(brand_name,'')) = lower(${brand})
-            ORDER BY views DESC LIMIT 12`,
-          sql<{ handle: string; videos: number; total_views: string | number; max_views: string | number }>`
-            SELECT handle, count(*)::int AS videos, sum(views)::bigint AS total_views, max(views)::bigint AS max_views
-            FROM videos WHERE lower(coalesce(brand_name,'')) = lower(${brand}) AND handle IS NOT NULL AND handle <> ''
-            GROUP BY handle ORDER BY total_views DESC LIMIT 12`,
+          sql<{ video_id: string; handle: string | null; views: string | number; likes: string | number; url: string | null; country: string | null; is_ad: boolean; is_shop: boolean; direct: boolean }>`
+            SELECT video_id, handle, views, likes, url, country, is_ad, is_shop, (product_ref = ${rawId}) AS direct FROM videos
+            WHERE product_ref = ${rawId} OR lower(coalesce(brand_name,'')) = lower(${brand})
+            ORDER BY (product_ref = ${rawId}) DESC, views DESC LIMIT 12`,
+          sql<{ handle: string; videos: number; total_views: string | number; max_views: string | number; direct: boolean }>`
+            SELECT handle, count(*)::int AS videos, sum(views)::bigint AS total_views, max(views)::bigint AS max_views, bool_or(product_ref = ${rawId}) AS direct
+            FROM videos WHERE (product_ref = ${rawId} OR lower(coalesce(brand_name,'')) = lower(${brand})) AND handle IS NOT NULL AND handle <> ''
+            GROUP BY handle ORDER BY bool_or(product_ref = ${rawId}) DESC, total_views DESC LIMIT 12`,
         ])
       : [{ rows: [] as never[] }, { rows: [] as never[] }];
 
+    const directCount = (vids.rows as { direct?: boolean }[]).filter((v) => v.direct).length;
+
     return NextResponse.json({
       configured: true,
+      matchMode: directCount > 0 ? "direct" : "brand", // 직접 상품태그 매칭 여부
       product: {
         id: p.product_id, brand, title: p.title || "", price, currency: p.currency || "USD", sold,
         gmv: Math.round(price * sold), commission: p.commission_rate != null ? Number(p.commission_rate) : null, url: p.url || "",
       },
-      relatedVideos: vids.rows.map((v) => ({ id: v.video_id, handle: v.handle || "", views: Number(v.views) || 0, likes: Number(v.likes) || 0, url: v.url || "", country: v.country || "", isAd: !!v.is_ad, isShop: !!v.is_shop })),
-      relatedCreators: creators.rows.map((c) => ({ handle: c.handle, videos: Number(c.videos) || 0, totalViews: Number(c.total_views) || 0, maxViews: Number(c.max_views) || 0 })),
+      relatedVideos: vids.rows.map((v) => ({ id: v.video_id, handle: v.handle || "", views: Number(v.views) || 0, likes: Number(v.likes) || 0, url: v.url || "", country: v.country || "", isAd: !!v.is_ad, isShop: !!v.is_shop, direct: !!v.direct })),
+      relatedCreators: creators.rows.map((c) => ({ handle: c.handle, videos: Number(c.videos) || 0, totalViews: Number(c.total_views) || 0, maxViews: Number(c.max_views) || 0, direct: !!c.direct })),
     });
   } catch (e) {
     return NextResponse.json({ error: String(e).slice(0, 160) }, { status: 500 });

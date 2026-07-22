@@ -15,6 +15,17 @@ export interface CollectedVideo {
   isShop: boolean;
   date: string; // YYYY-MM-DD
   url: string;
+  productRef?: string | null; // 영상이 태그한 TikTok Shop 상품ID(있으면 제품↔영상 정밀 매칭)
+}
+
+// 영상 item에서 TikTok Shop 상품ID 추출(앵커/링크). 없으면 null → 브랜드 매칭으로 폴백.
+function extractProductRef(it: Record<string, unknown>): string | null {
+  // 1) 상품/샵/앵커 관련 키의 URL 문자열에서 숫자ID
+  const urlVal = deepFind(it, (k, v) => typeof v === "string" && /product|shop|anchor|goods/i.test(k) && /(shop\.tiktok|\/product\/|\/view\/product|goods_id|product_id)/i.test(v));
+  if (typeof urlVal === "string") { const m = urlVal.match(/(\d{8,})/); if (m) return m[1]; }
+  // 2) productId/goodsId 계열 필드
+  const idVal = deepFind(it, (k, v) => /^(product|goods)_?id$/i.test(k) && (typeof v === "string" || typeof v === "number") && String(v).length >= 6);
+  return idVal != null ? String(idVal) : null;
 }
 
 export interface CollectInput {
@@ -71,6 +82,7 @@ export function mapApifyItems(items: Array<Record<string, unknown>>, sinceDate?:
         isShop: Boolean(it.isSponsored ?? false),
         date: created,
         url: String(it.webVideoUrl ?? `https://www.tiktok.com/@${author}/video/${id}`),
+        productRef: extractProductRef(it),
       };
     })
     .filter((v): v is CollectedVideo => v !== null)

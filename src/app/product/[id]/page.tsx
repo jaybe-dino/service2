@@ -9,10 +9,14 @@ import PageShell from "@/components/ktrend/PageShell";
 import { Info, ExternalLink, Wand2, ArrowLeft, Package } from "lucide-react";
 
 interface Detail {
+  matchMode?: "direct" | "brand";
   product: { id: string; brand: string; title: string; price: number; currency: string; sold: number; gmv: number; commission: number | null; url: string };
-  relatedVideos: { id: string; handle: string; views: number; likes: number; url: string; country: string; isAd: boolean; isShop: boolean }[];
-  relatedCreators: { handle: string; videos: number; totalViews: number; maxViews: number }[];
+  relatedVideos: { id: string; handle: string; views: number; likes: number; url: string; country: string; isAd: boolean; isShop: boolean; direct?: boolean }[];
+  relatedCreators: { handle: string; videos: number; totalViews: number; maxViews: number; direct?: boolean }[];
 }
+const DirectBadge = () => (
+  <span className="ml-1.5 inline-flex items-center rounded-full bg-emerald-100 px-1.5 py-0.5 text-[9px] font-bold text-emerald-700">직접 태그</span>
+);
 const fmt = (n: number) => n.toLocaleString();
 
 export default function ProductDetailPage() {
@@ -83,7 +87,7 @@ export default function ProductDetailPage() {
             </div>
 
             <div className="mt-5">
-              <h2 className="mb-2 text-[14px] font-black">관련 크리에이터 <span className="text-[11px] font-normal text-[var(--muted)]">· 이 브랜드를 홍보한 인플루언서</span></h2>
+              <h2 className="mb-2 text-[14px] font-black">관련 크리에이터 <span className="text-[11px] font-normal text-[var(--muted)]">· {d.matchMode === "direct" ? "이 제품을 직접 태그한 인플루언서" : "이 브랜드를 홍보한 인플루언서"}</span></h2>
               {(!d.relatedCreators || d.relatedCreators.length === 0) ? (
                 <p className="rounded-lg border border-dashed border-[var(--border)] p-6 text-center text-[12px] text-[var(--muted)]">매칭된 크리에이터가 아직 없습니다.</p>
               ) : (
@@ -94,7 +98,7 @@ export default function ProductDetailPage() {
                       {d.relatedCreators.map((c, i) => (
                         <tr key={c.handle} className="border-t border-slate-100">
                           <td className="p-2.5 text-slate-400">{i + 1}</td>
-                          <td className="p-2.5 font-semibold"><Link href={`/influencer/${encodeURIComponent(c.handle)}`} className="hover:text-[var(--accent)]">@{c.handle}</Link></td>
+                          <td className="p-2.5 font-semibold"><Link href={`/influencer/${encodeURIComponent(c.handle)}`} className="hover:text-[var(--accent)]">@{c.handle}</Link>{c.direct && <DirectBadge />}</td>
                           <td className="p-2.5 text-right">{fmt(c.videos)}</td>
                           <td className="p-2.5 text-right font-bold text-[var(--accent)]">{fmt(c.totalViews)}</td>
                           <td className="p-2.5 text-right text-[var(--muted)]">{fmt(c.maxViews)}</td>
@@ -107,7 +111,7 @@ export default function ProductDetailPage() {
             </div>
 
             <div className="mt-5">
-              <h2 className="mb-2 text-[14px] font-black">관련 영상 <span className="text-[11px] font-normal text-[var(--muted)]">· 같은 브랜드 (영상↔제품 직접 매칭은 확장 예정)</span></h2>
+              <h2 className="mb-2 text-[14px] font-black">관련 영상 <span className="text-[11px] font-normal text-[var(--muted)]">· {d.matchMode === "direct" ? "제품 직접 태그 우선 + 브랜드" : "같은 브랜드"}</span></h2>
               {d.relatedVideos.length === 0 ? (
                 <p className="rounded-lg border border-dashed border-[var(--border)] p-6 text-center text-[12px] text-[var(--muted)]">관련 영상이 아직 없습니다.</p>
               ) : (
@@ -117,7 +121,7 @@ export default function ProductDetailPage() {
                     <tbody>
                       {d.relatedVideos.map((v) => (
                         <tr key={v.id} className="border-t border-slate-100">
-                          <td className="p-2.5 font-semibold">{v.handle ? <Link href={`/influencer/${encodeURIComponent(v.handle)}`} className="hover:text-[var(--accent)]">@{v.handle}</Link> : "—"}</td>
+                          <td className="p-2.5 font-semibold">{v.handle ? <Link href={`/influencer/${encodeURIComponent(v.handle)}`} className="hover:text-[var(--accent)]">@{v.handle}</Link> : "—"}{v.direct && <DirectBadge />}</td>
                           <td className="p-2.5 text-right">{fmt(v.views)}</td>
                           <td className="p-2.5 text-[var(--muted)]">{v.country}</td>
                           <td className="p-2.5">{v.url && <a href={v.url} target="_blank" rel="noopener noreferrer" className="text-slate-400 hover:text-[var(--accent)]"><ExternalLink size={13} /></a>}</td>
