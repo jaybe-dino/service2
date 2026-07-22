@@ -10,7 +10,8 @@ import { Info, ExternalLink, Wand2, ArrowLeft, Package } from "lucide-react";
 
 interface Detail {
   product: { id: string; brand: string; title: string; price: number; currency: string; sold: number; gmv: number; commission: number | null; url: string };
-  relatedVideos: { id: string; handle: string; views: number; url: string; country: string }[];
+  relatedVideos: { id: string; handle: string; views: number; likes: number; url: string; country: string; isAd: boolean; isShop: boolean }[];
+  relatedCreators: { handle: string; videos: number; totalViews: number; maxViews: number }[];
 }
 const fmt = (n: number) => n.toLocaleString();
 
@@ -79,6 +80,30 @@ export default function ProductDetailPage() {
               <div className="mt-2 flex h-24 items-center justify-center rounded-lg bg-slate-50 text-[11px] text-[var(--muted)]">
                 일별 판매수 스냅샷이 누적되면 매출·판매량 추이와 성장률이 표시됩니다.
               </div>
+            </div>
+
+            <div className="mt-5">
+              <h2 className="mb-2 text-[14px] font-black">관련 크리에이터 <span className="text-[11px] font-normal text-[var(--muted)]">· 이 브랜드를 홍보한 인플루언서</span></h2>
+              {(!d.relatedCreators || d.relatedCreators.length === 0) ? (
+                <p className="rounded-lg border border-dashed border-[var(--border)] p-6 text-center text-[12px] text-[var(--muted)]">매칭된 크리에이터가 아직 없습니다.</p>
+              ) : (
+                <div className="overflow-x-auto rounded-xl border border-[var(--border)]">
+                  <table className="w-full text-left text-[12px]">
+                    <thead className="bg-slate-50 text-[11px] text-[var(--muted)]"><tr><th className="p-2.5">#</th><th className="p-2.5">크리에이터</th><th className="p-2.5 text-right">영상수</th><th className="p-2.5 text-right">총 조회수</th><th className="p-2.5 text-right">최고 조회수</th></tr></thead>
+                    <tbody>
+                      {d.relatedCreators.map((c, i) => (
+                        <tr key={c.handle} className="border-t border-slate-100">
+                          <td className="p-2.5 text-slate-400">{i + 1}</td>
+                          <td className="p-2.5 font-semibold"><Link href={`/influencer/${encodeURIComponent(c.handle)}`} className="hover:text-[var(--accent)]">@{c.handle}</Link></td>
+                          <td className="p-2.5 text-right">{fmt(c.videos)}</td>
+                          <td className="p-2.5 text-right font-bold text-[var(--accent)]">{fmt(c.totalViews)}</td>
+                          <td className="p-2.5 text-right text-[var(--muted)]">{fmt(c.maxViews)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
 
             <div className="mt-5">

@@ -22,12 +22,19 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
     const sold = Number(p.sold_count) || 0;
 
     const brand = p.brand_name || "";
-    const vids = brand
-      ? await sql<{ video_id: string; handle: string | null; views: string | number; url: string | null; country: string | null }>`
-          SELECT video_id, handle, views, url, country FROM videos
-          WHERE lower(coalesce(brand_name,'')) = lower(${brand})
-          ORDER BY views DESC LIMIT 12`
-      : { rows: [] as { video_id: string; handle: string | null; views: string | number; url: string | null; country: string | null }[] };
+    // 제품(브랜드)을 홍보한 콘텐츠·크리에이터 매칭. (영상↔제품 직접 태그는 P2, 현재는 브랜드 기준)
+    const [vids, creators] = brand
+      ? await Promise.all([
+          sql<{ video_id: string; handle: string | null; views: string | number; likes: string | number; url: string | null; country: string | null; is_ad: boolean; is_shop: boolean }>`
+            SELECT video_id, handle, views, likes, url, country, is_ad, is_shop FROM videos
+            WHERE lower(coalesce(brand_name,'')) = lower(${brand})
+            ORDER BY views DESC LIMIT 12`,
+          sql<{ handle: string; videos: number; total_views: string | number; max_views: string | number }>`
+            SELECT handle, count(*)::int AS videos, sum(views)::bigint AS total_views, max(views)::bigint AS max_views
+            FROM videos WHERE lower(coalesce(brand_name,'')) = lower(${brand}) AND handle IS NOT NULL AND handle <> ''
+            GROUP BY handle ORDER BY total_views DESC LIMIT 12`,
+        ])
+      : [{ rows: [] as never[] }, { rows: [] as never[] }];
 
     return NextResponse.json({
       configured: true,
@@ -35,7 +42,8 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
         id: p.product_id, brand, title: p.title || "", price, currency: p.currency || "USD", sold,
         gmv: Math.round(price * sold), commission: p.commission_rate != null ? Number(p.commission_rate) : null, url: p.url || "",
       },
-      relatedVideos: vids.rows.map((v) => ({ id: v.video_id, handle: v.handle || "", views: Number(v.views) || 0, url: v.url || "", country: v.country || "" })),
+      relatedVideos: vids.rows.map((v) => ({ id: v.video_id, handle: v.handle || "", views: Number(v.views) || 0, likes: Number(v.likes) || 0, url: v.url || "", country: v.country || "", isAd: !!v.is_ad, isShop: !!v.is_shop })),
+      relatedCreators: creators.rows.map((c) => ({ handle: c.handle, videos: Number(c.videos) || 0, totalViews: Number(c.total_views) || 0, maxViews: Number(c.max_views) || 0 })),
     });
   } catch (e) {
     return NextResponse.json({ error: String(e).slice(0, 160) }, { status: 500 });
