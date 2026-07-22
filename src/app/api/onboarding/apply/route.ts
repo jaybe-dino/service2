@@ -66,11 +66,15 @@ export async function POST(req: Request) {
       note: String(body?.note ?? "").trim().slice(0, 2000),
     };
     const payload = { ...base, details };
-    await sql`UPDATE onboarding_applications
-              SET name=${details.managerName || details.repName}, brand=${brand}, contact=${contact}, email=${details.email},
-                  phase='completed', status=CASE WHEN status='paid' THEN 'paid' ELSE 'details_submitted' END,
-                  payload=${JSON.stringify(payload)}::jsonb, updated_at=now()
-              WHERE id=${id}`;
+    // upsert — 신청 행이 없어도(자가체크 스킵/결제만) 추가정보가 유실되지 않게 생성/갱신.
+    await sql`INSERT INTO onboarding_applications (id, user_id, name, brand, contact, email, phase, status, payload, updated_at)
+              VALUES (${id}, ${me.id}, ${details.managerName || details.repName}, ${brand}, ${contact}, ${details.email},
+                      'completed', 'details_submitted', ${JSON.stringify(payload)}::jsonb, now())
+              ON CONFLICT (id) DO UPDATE SET
+                name=EXCLUDED.name, brand=EXCLUDED.brand, contact=EXCLUDED.contact, email=EXCLUDED.email,
+                phase='completed',
+                status=CASE WHEN onboarding_applications.status='paid' THEN 'paid' ELSE 'details_submitted' END,
+                payload=${JSON.stringify(payload)}::jsonb, updated_at=now()`;
     return NextResponse.json({ ok: true, id });
   }
 
@@ -82,6 +86,12 @@ export async function GET() {
   if (!dbConfigured()) return NextResponse.json({ ok: false, error: "DB 미설정" }, { status: 503 });
   if (!(await isAdminAuthed())) return NextResponse.json({ ok: false, error: "권한 없음" }, { status: 403 });
   await ensureSchema();
+  // 백필: 결제(mall_subscriptions)했지만 신청 행이 없던 사용자 → 어드민 목록에 뜨게 stub 생성.
+  await sql`INSERT INTO onboarding_applications (id, user_id, name, brand, email, track, phase, status, amount, dino_linked, updated_at)
+            SELECT ${"onb_"} || ms.user_id, ms.user_id, u.name, u.brand, u.email, ms.track, 'details', 'paid', ms.amount, true, now()
+            FROM mall_subscriptions ms JOIN users u ON u.id = ms.user_id
+            WHERE NOT EXISTS (SELECT 1 FROM onboarding_applications oa WHERE oa.id = ${"onb_"} || ms.user_id)
+            ON CONFLICT (id) DO NOTHING`;
   const { rows } = await sql`
     SELECT id, user_id, name, brand, contact, email, track, grade, recommended_track, countries, term,
            amount, phase, referral_code, status, order_id, payload,

@@ -114,8 +114,11 @@ export async function POST(req: Request) {
             VALUES (${me.id}, ${track}, ${bid}, ${recurringAmount}, 'active', ${nextAt}, ${periodDays}, now())
             ON CONFLICT (user_id) DO UPDATE SET track=EXCLUDED.track, bid=EXCLUDED.bid, amount=EXCLUDED.amount,
               status='active', next_charge_at=EXCLUDED.next_charge_at, period_days=EXCLUDED.period_days, failures=0, updated_at=now()`;
-  await sql`UPDATE onboarding_applications SET status='paid', track=${track}, phase='details', dino_linked=true,
-            term=${term}, amount=${recurringAmount}, updated_at=now() WHERE user_id=${me.id}`;
+  // 결제 시 신청 행 보장(없으면 생성) — 자가체크 없이 결제해도 어드민에 뜨고 추가정보가 붙는다.
+  await sql`INSERT INTO onboarding_applications (id, user_id, name, brand, email, track, phase, status, term, amount, dino_linked, updated_at)
+            VALUES (${`onb_${me.id}`}, ${me.id}, ${me.name}, ${me.brand ?? null}, ${me.email}, ${track}, 'details', 'paid', ${term}, ${recurringAmount}, true, now())
+            ON CONFLICT (id) DO UPDATE SET status='paid', track=EXCLUDED.track, phase='details', dino_linked=true,
+              term=EXCLUDED.term, amount=EXCLUDED.amount, updated_at=now()`;
 
   return NextResponse.json({ ok: true, track, firstCharge, recurringAmount, firstFree: skipFirst, nextChargeAt: nextAt, periodDays });
 }
