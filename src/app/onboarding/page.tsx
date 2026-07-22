@@ -567,7 +567,7 @@ function OnboardingInner() {
                 {user && (
                   <div className="mt-4 space-y-2 rounded-lg border border-[var(--border)] p-3">
                     <div className="text-[11px] font-bold">카드 등록 (정기결제)</div>
-                    <input inputMode="numeric" maxLength={16} value={card.cardNo.replace(/(.{4})/g, "$1 ").trim()}
+                    <input inputMode="numeric" maxLength={19} value={card.cardNo.replace(/(.{4})/g, "$1 ").trim()}
                       onChange={(e) => setCard((p) => ({ ...p, cardNo: e.target.value.replace(/\D/g, "").slice(0, 16) }))}
                       placeholder="카드번호 0000 0000 0000 0000" className="w-full rounded-md border border-[var(--border)] px-2.5 py-2 text-[12px] tracking-wider" />
                     <div className="grid grid-cols-3 gap-2">
