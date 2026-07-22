@@ -100,9 +100,9 @@ export async function POST(req: Request) {
       const msg = (pay.raw as { resultMsg?: string })?.resultMsg || "첫 결제 승인 실패";
       return NextResponse.json({ ok: false, error: `첫 결제 실패: ${msg}` }, { status: 402 });
     }
+    await sql`UPDATE orders SET status='paid', tid=${pay.tid} WHERE order_id=${chargeOrderId}`; // tid 먼저(원장 유실 대비)
     await sql`INSERT INTO payments (payment_id, order_id, amount, raw)
               VALUES (${pay.tid}, ${chargeOrderId}, ${firstCharge}, ${JSON.stringify(pay.raw)}::jsonb) ON CONFLICT (payment_id) DO NOTHING`;
-    await sql`UPDATE orders SET status='paid' WHERE order_id=${chargeOrderId}`;
     if (promoOk) { // 6개월 약정 첫달 제외 적용
       await redeemPromo(promoCode, me.id);
       await sql`INSERT INTO collection_runs (kind, target, status) VALUES ('promo_first_month_off', ${track}, ${promoCode})`;

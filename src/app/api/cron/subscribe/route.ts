@@ -44,8 +44,8 @@ async function handle(req: Request) {
                 VALUES (${orderId}, ${s.user_id}, 'pro', ${s.amount}, ${PAY_PLANS.pro.goodsName}, 'created', 'subscribe', ${s.period_days})`;
       const r = await chargeByBillingKey({ bid: s.bid, orderId, amount: s.amount, goodsName: PAY_PLANS.pro.goodsName });
       if (r.ok && r.tid) {
+        await sql`UPDATE orders SET status='paid', tid=${r.tid} WHERE order_id=${orderId}`; // tid 먼저(원장 유실 대비)
         await sql`INSERT INTO payments (payment_id, order_id, amount, raw) VALUES (${r.tid}, ${orderId}, ${s.amount}, ${JSON.stringify(r.raw)}::jsonb) ON CONFLICT (payment_id) DO NOTHING`;
-        await sql`UPDATE orders SET status='paid' WHERE order_id=${orderId}`;
         await sql`UPDATE users SET pro_until = GREATEST(pro_until, ${now}) + ${periodMs} WHERE id=${s.user_id}`;
         await sql`UPDATE subscriptions SET status='active', failures=0, updated_at=now() WHERE user_id=${s.user_id}`; // next_charge_at은 선점에서 전진됨
         charged += 1;
@@ -77,8 +77,8 @@ async function handle(req: Request) {
                 VALUES (${orderId}, ${s.user_id}, ${s.track}, ${s.amount}, ${plan.goodsName}, 'created', 'mall', ${s.period_days})`;
       const r = await chargeByBillingKey({ bid: s.bid, orderId, amount: s.amount, goodsName: plan.goodsName });
       if (r.ok && r.tid) {
+        await sql`UPDATE orders SET status='paid', tid=${r.tid} WHERE order_id=${orderId}`; // tid 먼저(원장 유실 대비)
         await sql`INSERT INTO payments (payment_id, order_id, amount, raw) VALUES (${r.tid}, ${orderId}, ${s.amount}, ${JSON.stringify(r.raw)}::jsonb) ON CONFLICT (payment_id) DO NOTHING`;
-        await sql`UPDATE orders SET status='paid' WHERE order_id=${orderId}`;
         await sql`UPDATE mall_subscriptions SET status='active', failures=0, updated_at=now() WHERE user_id=${s.user_id}`;
         mallCharged += 1;
       } else {

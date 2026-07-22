@@ -69,6 +69,8 @@ export function ensureSchema(): Promise<void> {
       await sql`ALTER TABLE orders ADD COLUMN IF NOT EXISTS charge_amount integer`;
       // 다음 자동청구까지 기간(일). 월구독 30, 6개월 약정 180.
       await sql`ALTER TABLE orders ADD COLUMN IF NOT EXISTS period_days integer NOT NULL DEFAULT 30`;
+      // NicePay 거래ID(tid) — 결제 성공 시 orders에 먼저 기록해 payments 원장 유실 시 복구 근거.
+      await sql`ALTER TABLE orders ADD COLUMN IF NOT EXISTS tid text`;
       // payment_id(tid) UNIQUE = 멱등성. raw 7년 보관(audit).
       await sql`CREATE TABLE IF NOT EXISTS payments (
         payment_id text PRIMARY KEY,

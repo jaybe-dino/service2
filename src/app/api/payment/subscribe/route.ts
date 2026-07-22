@@ -65,10 +65,10 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: `첫 결제 실패: ${msg}` }, { status: 402 });
   }
 
-  // 3) 결제·구독 원장 저장 + 엔타이틀먼트
+  // 3) 결제·구독 원장 저장 + 엔타이틀먼트 — orders에 tid 먼저(원장 유실 대비).
+  await sql`UPDATE orders SET status='paid', tid=${pay.tid} WHERE order_id=${chargeOrderId}`;
   await sql`INSERT INTO payments (payment_id, order_id, amount, raw)
             VALUES (${pay.tid}, ${chargeOrderId}, ${amount}, ${JSON.stringify(pay.raw)}::jsonb) ON CONFLICT (payment_id) DO NOTHING`;
-  await sql`UPDATE orders SET status='paid' WHERE order_id=${chargeOrderId}`;
   const now = Date.now();
   await sql`INSERT INTO subscriptions (user_id, bid, plan, amount, status, next_charge_at, period_days, updated_at)
             VALUES (${me.id}, ${bid}, ${planKey}, ${amount}, 'active', ${now + periodMs}, ${plan.periodDays ?? 30}, now())

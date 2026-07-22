@@ -51,9 +51,9 @@ export async function POST(req: Request) {
       await sql`UPDATE orders SET status='failed' WHERE order_id=${orderId}`;
       return go("fail");
     }
+    await sql`UPDATE orders SET status='paid', tid=${tid} WHERE order_id=${orderId}`; // tid 먼저(원장 유실 대비)
     await sql`INSERT INTO payments (payment_id, order_id, amount, raw)
               VALUES (${tid}, ${orderId}, ${amt}, ${JSON.stringify(ap.raw)}::jsonb) ON CONFLICT (payment_id) DO NOTHING`;
-    await sql`UPDATE orders SET status='paid' WHERE order_id=${orderId}`;
     // 2) 빌링키(다음 달부터 자동청구용) — 빌링 결제창이 돌려준 bid 사용. 없으면 자동갱신 없이 첫 달만 보장.
     //    ⚠️ 일반결제 tid로는 빌키 발급 불가(NICEpay 스펙). 자동청구하려면 빌링(카드등록) 결제창으로 bid 확보 필요.
     const bid = bidForm || ap.bid || null;
@@ -79,9 +79,9 @@ export async function POST(req: Request) {
     // 1) 첫 달 결제 승인(캡처)
     const ap = await approvePayment({ tid, amount: amt });
     if (!ap.ok) { await sql`UPDATE orders SET status='failed' WHERE order_id=${orderId}`; return fail(); }
+    await sql`UPDATE orders SET status='paid', tid=${tid} WHERE order_id=${orderId}`; // tid 먼저(원장 유실 대비)
     await sql`INSERT INTO payments (payment_id, order_id, amount, raw)
               VALUES (${tid}, ${orderId}, ${amt}, ${JSON.stringify(ap.raw)}::jsonb) ON CONFLICT (payment_id) DO NOTHING`;
-    await sql`UPDATE orders SET status='paid' WHERE order_id=${orderId}`;
     // 2) 빌링키(다음 달부터 자동청구용) — 빌링 결제창이 돌려준 bid 사용. 없으면 자동갱신 없이 첫 달만 보장.
     const bid = bidForm || ap.bid || null;
     const nextAt = Date.now() + periodMs;
@@ -111,10 +111,10 @@ export async function POST(req: Request) {
   }
 
   // 멱등 결제 원장 (payment_id UNIQUE) + 7년 보관용 raw
+  await sql`UPDATE orders SET status='paid', tid=${tid} WHERE order_id=${orderId}`; // tid 먼저(원장 유실 대비)
   await sql`INSERT INTO payments (payment_id, order_id, amount, raw)
             VALUES (${tid}, ${orderId}, ${amount}, ${JSON.stringify(result.raw)}::jsonb)
             ON CONFLICT (payment_id) DO NOTHING`;
-  await sql`UPDATE orders SET status='paid' WHERE order_id=${orderId}`;
 
   // 유저 엔타이틀먼트: pro_until 을 (현재값과 now 중 큰 값) + 기간 만큼 연장
   const periodMs = (PAY_PLANS.pro.periodDays ?? 30) * 86_400_000;
