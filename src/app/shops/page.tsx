@@ -122,7 +122,7 @@ export default function ShopsPage() {
                   <tr key={s.name} className="border-t border-slate-100 hover:bg-slate-50/60">
                     <td className="p-2.5 text-slate-400">{i + 1}</td>
                     <td className="p-2.5 font-semibold">
-                      <Link href={`/brand/${encodeURIComponent(s.name)}`} className="hover:text-[var(--accent)]">{s.name}</Link>
+                      <Link href={`/shop/${encodeURIComponent(s.name)}`} className="hover:text-[var(--accent)]">{s.name}</Link>
                     </td>
                     <td className="p-2.5 text-right">{fmt(s.products)}</td>
                     <td className="p-2.5 text-right">{fmt(s.sold)}</td>
