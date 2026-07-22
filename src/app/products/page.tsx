@@ -38,7 +38,7 @@ export default function ProductsPage() {
     let alive = true;
     setLoading(true);
     const b = band >= 0 ? PRICE_BANDS[band] : null;
-    const params = new URLSearchParams({ sort, limit: "300" });
+    const params = new URLSearchParams({ sort, limit: "500" });
     if (b) { params.set("minPrice", String(b.min)); if (b.max != null) params.set("maxPrice", String(b.max)); }
     if (country) params.set("country", country);
     fetch(`/api/products?${params.toString()}`)

@@ -40,9 +40,27 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
 
     const directCount = (vids.rows as { direct?: boolean }[]).filter((v) => v.direct).length;
 
+    // kalodata식 판매 추이/성장률 — 일별 스냅샷(product_snapshots) 최근 30일.
+    const snaps = await sql<{ snap_date: string; sold_count: string | number; est_gmv: string | number }>`
+      SELECT snap_date, sold_count, est_gmv FROM product_snapshots
+      WHERE product_id = ${id} AND snap_date >= CURRENT_DATE - 30 ORDER BY snap_date ASC`;
+    const series = snaps.rows.map((s) => ({ date: String(s.snap_date).slice(0, 10), sold: Number(s.sold_count) || 0, gmv: Math.round(Number(s.est_gmv) || 0) }));
+    let trend: { series: typeof series; soldGrowth: number; soldGrowthPct: number | null; days: number } | null = null;
+    if (series.length >= 2) {
+      const first = series[0], last = series[series.length - 1];
+      const soldGrowth = last.sold - first.sold;
+      trend = {
+        series,
+        soldGrowth,
+        soldGrowthPct: first.sold > 0 ? Math.round((soldGrowth / first.sold) * 1000) / 10 : null,
+        days: series.length,
+      };
+    }
+
     return NextResponse.json({
       configured: true,
       matchMode: directCount > 0 ? "direct" : "brand", // 직접 상품태그 매칭 여부
+      trend,
       product: {
         id: p.product_id, brand, title: p.title || "", price, currency: p.currency || "USD", sold,
         gmv: Math.round(price * sold), commission: p.commission_rate != null ? Number(p.commission_rate) : null, url: p.url || "",

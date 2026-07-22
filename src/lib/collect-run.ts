@@ -211,6 +211,24 @@ export async function ingestProducts(brandName: string, products: ShopProduct[],
            commission_rate=EXCLUDED.commission_rate, url=EXCLUDED.url, country=EXCLUDED.country, collected_at=now()`,
         params,
       );
+      // 일별 스냅샷 적재 — kalodata식 판매 추이/성장률 산출 기반. 하루 1행/제품(당일은 최신값 갱신).
+      const SCOLS = 4;
+      const snapPlace = chunk.map((_, j) => {
+        const b = j * SCOLS;
+        return `($${b + 1}, CURRENT_DATE, $${b + 2}, $${b + 3}, $${b + 4})`;
+      }).join(",");
+      const snapParams: unknown[] = [];
+      for (const p of chunk) {
+        const price = p.price ?? 0;
+        const sold = p.soldCount ?? 0;
+        snapParams.push(`${cc}:${p.productId}`, sold, p.price, Number(price) * Number(sold));
+      }
+      await sql.query(
+        `INSERT INTO product_snapshots (product_id, snap_date, sold_count, price, est_gmv)
+         VALUES ${snapPlace}
+         ON CONFLICT (product_id, snap_date) DO UPDATE SET sold_count=EXCLUDED.sold_count, price=EXCLUDED.price, est_gmv=EXCLUDED.est_gmv`,
+        snapParams,
+      );
     }
     await recomputeBrandShopStats(brandName);
   }
@@ -433,39 +451,44 @@ export async function runShopCollection(opts: { maxShop?: number; baseUrl?: stri
   const runningSet = new Set(runningShop.rows.map((r) => `${r.brand_name}|${(r.region || "US").toUpperCase()}`));
   const runningCount = runningShop.rows.length;
 
-  // 최근 시도(성공/0건/실패 무관) 브랜드는 재시도 대기 → '전부 수집' 큐가 실제로 소진되도록.
-  // (0건 반환 브랜드가 brand_shop_stats에 안 남아 매 호출 재킥되던 문제 해소)
-  // 아직 안 한 브랜드 수(진행률 표시) — 수집완료도 최근시도도 아닌 브랜드.
-  const rem = await sql<{ n: number }>`
-    SELECT count(*)::int AS n FROM brand_stats bs
-    WHERE bs.brand_name IS NOT NULL
-      AND bs.brand_name NOT IN (SELECT value FROM blocklist WHERE kind='brand')
-      AND bs.brand_name NOT IN (SELECT brand_name FROM brand_shop_stats)
-      AND bs.brand_name NOT IN (
-        SELECT DISTINCT brand_name FROM collect_jobs
-        WHERE kind='shop' AND status IN ('done','failed') AND updated_at > now() - make_interval(days => ${retryDays}))`;
+  // 국가별 관리: (브랜드×국가) 단위로 '아직 상품 없음' 조합을 진행률로 계산.
+  // '수집됨' = 그 국가에 products 행이 존재(brand_shop_stats는 국가 무관 집계라 기준으로 부적합).
+  // '재시도 대기' = 그 (브랜드,국가) shop 잡을 최근(retryDays 내) done/failed로 시도함.
+  const rem = await sql.query<{ n: number }>(
+    `SELECT count(*)::int AS n FROM brand_stats bs
+     CROSS JOIN unnest($1::text[]) AS cc
+     WHERE bs.brand_name IS NOT NULL
+       AND bs.brand_name NOT IN (SELECT value FROM blocklist WHERE kind='brand')
+       AND NOT EXISTS (SELECT 1 FROM products p WHERE lower(p.brand_name)=lower(bs.brand_name) AND upper(coalesce(p.country,'US'))=cc)
+       AND NOT EXISTS (SELECT 1 FROM collect_jobs cj WHERE cj.kind='shop' AND lower(cj.brand_name)=lower(bs.brand_name)
+                         AND upper(coalesce(cj.region,'US'))=cc AND cj.status IN ('done','failed') AND cj.updated_at > now() - make_interval(days => $2))`,
+    [countries, retryDays],
+  );
   const remaining = rem.rows[0]?.n ?? 0;
 
   let kicked = 0;
   const errors: string[] = [];
   let dueCount = 0;
   if (runningCount < maxRunning) {
-    // 3) 새 브랜드 킥 — 이미 running/수집완료 브랜드 제외 → 매 호출 새 브랜드로 진행.
-    const due = await sql<{ brand_name: string }>`
-      SELECT bs.brand_name FROM brand_stats bs
-      LEFT JOIN brand_shop_stats bss ON lower(bss.brand_name) = lower(bs.brand_name)
-      WHERE bs.brand_name IS NOT NULL
-        AND bs.brand_name NOT IN (SELECT value FROM blocklist WHERE kind='brand')
-        AND bs.brand_name NOT IN (SELECT DISTINCT brand_name FROM collect_jobs WHERE kind='shop' AND status='running')
-        AND bs.brand_name NOT IN (
-          SELECT DISTINCT brand_name FROM collect_jobs
-          WHERE kind='shop' AND status IN ('done','failed') AND updated_at > now() - make_interval(days => ${retryDays}))
-        AND bss.brand_name IS NULL
-      ORDER BY bs.total_views DESC NULLS LAST
-      LIMIT ${maxShop}`;
-    dueCount = due.rows.length;
-    for (const b of due.rows) {
-      for (const cc of countries) {
+    // 3) 국가별로 독립 진행 — 각 국가에서 '그 국가에 아직 상품 없는' 브랜드를 킥.
+    //    (예전엔 한 국가만 수집돼도 brand_shop_stats 때문에 다른 국가가 영구 스킵되던 문제 해소)
+    const perCountry = Math.max(1, Math.ceil(maxShop / countries.length));
+    for (const cc of countries) {
+      if (kicked >= maxShop) break;
+      const due = await sql<{ brand_name: string }>`
+        SELECT bs.brand_name FROM brand_stats bs
+        WHERE bs.brand_name IS NOT NULL
+          AND bs.brand_name NOT IN (SELECT value FROM blocklist WHERE kind='brand')
+          AND NOT EXISTS (SELECT 1 FROM products p WHERE lower(p.brand_name)=lower(bs.brand_name) AND upper(coalesce(p.country,'US'))=${cc})
+          AND NOT EXISTS (SELECT 1 FROM collect_jobs cj WHERE cj.kind='shop' AND lower(cj.brand_name)=lower(bs.brand_name)
+                            AND upper(coalesce(cj.region,'US'))=${cc} AND cj.status='running')
+          AND NOT EXISTS (SELECT 1 FROM collect_jobs cj WHERE cj.kind='shop' AND lower(cj.brand_name)=lower(bs.brand_name)
+                            AND upper(coalesce(cj.region,'US'))=${cc} AND cj.status IN ('done','failed') AND cj.updated_at > now() - make_interval(days => ${retryDays}))
+        ORDER BY bs.total_views DESC NULLS LAST
+        LIMIT ${perCountry}`;
+      dueCount += due.rows.length;
+      for (const b of due.rows) {
+        if (kicked >= maxShop) break;
         if (runningSet.has(`${b.brand_name}|${cc}`)) continue;
         try {
           const runId = await startShopRun(b.brand_name, webhook, cc);

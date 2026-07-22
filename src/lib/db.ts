@@ -260,6 +260,16 @@ export function ensureSchema(): Promise<void> {
         est_gmv numeric NOT NULL DEFAULT 0,
         updated_at timestamptz NOT NULL DEFAULT now()
       )`;
+      // 제품 일별 스냅샷 (kalodata식 매출·판매 추이/성장률 산출용). 하루 1행/제품.
+      await sql`CREATE TABLE IF NOT EXISTS product_snapshots (
+        product_id text NOT NULL,
+        snap_date date NOT NULL,
+        sold_count bigint NOT NULL DEFAULT 0,
+        price numeric,
+        est_gmv numeric NOT NULL DEFAULT 0,
+        PRIMARY KEY (product_id, snap_date)
+      )`;
+      await sql`CREATE INDEX IF NOT EXISTS idx_product_snapshots_date ON product_snapshots(snap_date)`;
       // 틱톡샵 온보딩 신청 (롤백 가능 트랙) — 최소 정보 + 결제 상태 추적
       await sql`CREATE TABLE IF NOT EXISTS onboarding_applications (
         id text PRIMARY KEY,

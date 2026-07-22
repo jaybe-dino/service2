@@ -339,13 +339,13 @@ export async function startShopRun(brandName: string, webhookUrl?: string, count
     const webhooks = [{
       eventTypes: ["ACTOR.RUN.SUCCEEDED"],
       requestUrl: webhookUrl,
-      payloadTemplate: JSON.stringify({ brandName, datasetId: "{{resource.defaultDatasetId}}", kind: "shop" }),
+      payloadTemplate: JSON.stringify({ brandName, region: cc || "US", datasetId: "{{resource.defaultDatasetId}}", kind: "shop" }),
     }];
     qs += `&webhooks=${encodeURIComponent(Buffer.from(JSON.stringify(webhooks)).toString("base64"))}`;
   }
   // 검색 입력은 actor마다 키가 달라서(가장 흔한 실패 원인) 일반 키 '슈퍼셋'을 전달한다.
   // 특정 actor 스키마에 정확히 맞추려면 SHOP_ACTOR_INPUT(JSON, {{keyword}}/{{country}} 치환)으로 완전 오버라이드.
-  const maxItems = Number(process.env.SHOP_MAX_ITEMS ?? 100);
+  const maxItems = Number(process.env.SHOP_MAX_ITEMS ?? 500); // 브랜드당 상품 확보량↑(env로 조절)
   let body: Record<string, unknown>;
   if (process.env.SHOP_ACTOR_INPUT) {
     try {
@@ -362,8 +362,9 @@ export async function startShopRun(brandName: string, webhookUrl?: string, count
       // 검색어 계열 (actor별로 하나만 사용됨, 나머지는 무시)
       keyword: brandName, search: brandName, query: brandName,
       keywords: [brandName], searchQueries: [brandName],
-      // 결과 수 상한 계열
-      maxItems, maxResults: maxItems, resultsLimit: maxItems,
+      // 결과 수 상한 계열 (actor마다 키가 달라 슈퍼셋으로 전달 — 미사용 키는 무시됨)
+      maxItems, maxResults: maxItems, resultsLimit: maxItems, limit: maxItems,
+      count: maxItems, maxProducts: maxItems, maxProductsPerSearch: maxItems, resultsPerPage: maxItems,
       // 지역 — actor 입력 키 계열 + 프록시 지역 타게팅(비US일 때).
       ...(cc ? { country: cc, region: cc, market: cc } : {}),
       ...(cc && cc !== "US" ? { proxyConfiguration: { useApifyProxy: true, apifyProxyCountry: cc } } : {}),

@@ -33,15 +33,29 @@ export async function POST(req: Request) {
             ${s(b.message, 2000)}, ${agreed}, ${s(b.source, 60) || "consult-landing"})
     RETURNING id`;
 
-  // Slack 알림(설정 시) — 조용한 유실 방지, 비용 0.
+  // Slack 알림(SLACK_WEBHOOK_URL 설정 시) — 새 상담 문의를 실시간 통지. 조용한 유실 방지, 비용 0.
   const hook = process.env.SLACK_WEBHOOK_URL;
   if (hook) {
+    const adminUrl = process.env.NEXT_PUBLIC_SITE_URL ? `${process.env.NEXT_PUBLIC_SITE_URL.replace(/\/$/, "")}/admin` : "";
+    const lines = [
+      `:incoming_envelope: *새 입점 상담 문의* (#${rows[0]?.id})`,
+      `• 회사/브랜드: *${company}*`,
+      `• 담당자: ${managerName}`,
+      `• 이메일: ${email}`,
+      `• 연락처: ${contact}`,
+      b.brandUrl ? `• 브랜드 URL: ${s(b.brandUrl, 200)}` : null,
+      b.category ? `• 카테고리: ${s(b.category, 40)}` : null,
+      b.overseas ? `• 해외 경험: ${s(b.overseas, 40)}` : null,
+      b.message ? `• 내용: ${s(b.message, 500)}` : null,
+      `• 유입: ${s(b.source, 60) || "consult-landing"}`,
+      adminUrl ? `<${adminUrl}|어드민에서 보기>` : null,
+    ].filter(Boolean).join("\n");
     try {
       await fetch(hook, {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text: `📩 [GloveK 입점 상담] ${company} · ${managerName} · ${email} · ${contact}${b.category ? ` · ${s(b.category, 40)}` : ""}` }),
+        body: JSON.stringify({ text: lines }),
       });
-    } catch { /* 통지 실패 무시 */ }
+    } catch { /* 통지 실패 무시 — 문의 저장은 이미 완료 */ }
   }
 
   // 신청 성공 시 1:1 미팅 링크를 반환(자동 노출용). 값은 env로 주입.

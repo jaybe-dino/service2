@@ -6,13 +6,16 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import PageShell from "@/components/ktrend/PageShell";
-import { Info, ExternalLink, Wand2, ArrowLeft, Package, Play, Heart, Eye, Megaphone, ShoppingBag, Users, Film, TrendingUp } from "lucide-react";
+import { Info, ExternalLink, Wand2, ArrowLeft, Package, Play, Heart, Eye, Megaphone, ShoppingBag, Users, Film, TrendingUp, ArrowUpRight, ArrowDownRight } from "lucide-react";
 import { COUNTRIES } from "@/data/ktrend/meta";
 
 interface VideoRow { id: string; handle: string; views: number; likes: number; url: string; country: string; isAd: boolean; isShop: boolean; postedAt?: string; direct?: boolean }
 interface CreatorRow { handle: string; videos: number; totalViews: number; maxViews: number; direct?: boolean }
+interface TrendPoint { date: string; sold: number; gmv: number }
+interface Trend { series: TrendPoint[]; soldGrowth: number; soldGrowthPct: number | null; days: number }
 interface Detail {
   matchMode?: "direct" | "brand";
+  trend?: Trend | null;
   product: { id: string; brand: string; title: string; price: number; currency: string; sold: number; gmv: number; commission: number | null; url: string };
   relatedVideos: VideoRow[];
   relatedCreators: CreatorRow[];
@@ -104,6 +107,26 @@ export default function ProductDetailPage() {
               </div>
             </div>
 
+            {/* ── 판매 추이 (kalodata식) ── */}
+            <div className="mt-4 rounded-2xl border border-[var(--border)] p-4">
+              <div className="flex items-center justify-between">
+                <h2 className="text-[14px] font-black">판매 추이 <span className="text-[11px] font-normal text-[var(--muted)]">· 최근 {d.trend?.days ?? 0}일 스냅샷</span></h2>
+                {d.trend && d.trend.soldGrowth !== 0 && (
+                  <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-bold ${d.trend.soldGrowth > 0 ? "bg-emerald-100 text-emerald-700" : "bg-rose-100 text-rose-600"}`}>
+                    {d.trend.soldGrowth > 0 ? <ArrowUpRight size={12} /> : <ArrowDownRight size={12} />}
+                    +{fmt(Math.abs(d.trend.soldGrowth))} 판매{d.trend.soldGrowthPct != null ? ` (${d.trend.soldGrowth > 0 ? "+" : "-"}${Math.abs(d.trend.soldGrowthPct)}%)` : ""}
+                  </span>
+                )}
+              </div>
+              {d.trend && d.trend.series.length >= 2 ? (
+                <Sparkline series={d.trend.series} />
+              ) : (
+                <div className="mt-2 flex h-20 items-center justify-center rounded-lg bg-slate-50 text-[11px] text-[var(--muted)]">
+                  일별 스냅샷이 2일 이상 누적되면 판매·GMV 추이와 성장률이 표시됩니다.
+                </div>
+              )}
+            </div>
+
             {/* ── 콘텐츠 성과 요약 ── */}
             <div className="mt-4 grid grid-cols-3 gap-2.5">
               <MiniStat icon={<Users size={14} />} label="크리에이터" value={fmt(d.relatedCreators?.length || 0)} />
@@ -164,6 +187,33 @@ export default function ProductDetailPage() {
         ) : null}
       </div>
     </PageShell>
+  );
+}
+
+function Sparkline({ series }: { series: TrendPoint[] }) {
+  const W = 600, H = 64, pad = 4;
+  const vals = series.map((s) => s.sold);
+  const min = Math.min(...vals), max = Math.max(...vals);
+  const span = max - min || 1;
+  const n = series.length;
+  const x = (i: number) => pad + (i / Math.max(1, n - 1)) * (W - pad * 2);
+  const y = (v: number) => H - pad - ((v - min) / span) * (H - pad * 2);
+  const line = series.map((s, i) => `${i === 0 ? "M" : "L"}${x(i).toFixed(1)},${y(s.sold).toFixed(1)}`).join(" ");
+  const area = `${line} L${x(n - 1).toFixed(1)},${H - pad} L${x(0).toFixed(1)},${H - pad} Z`;
+  const up = vals[n - 1] >= vals[0];
+  const stroke = up ? "#059669" : "#e11d48";
+  return (
+    <div className="mt-2">
+      <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" className="h-16 w-full">
+        <path d={area} fill={stroke} opacity={0.08} />
+        <path d={line} fill="none" stroke={stroke} strokeWidth={2} strokeLinejoin="round" strokeLinecap="round" />
+      </svg>
+      <div className="mt-1 flex justify-between text-[10px] text-[var(--muted)]">
+        <span>{series[0].date}</span>
+        <span>판매 누적 {series[0].sold.toLocaleString()} → {series[n - 1].sold.toLocaleString()}</span>
+        <span>{series[n - 1].date}</span>
+      </div>
+    </div>
   );
 }
 

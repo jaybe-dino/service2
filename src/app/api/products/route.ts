@@ -15,7 +15,7 @@ export async function GET(req: Request) {
     const q = (url.searchParams.get("q") || "").trim().toLowerCase();
     const brand = (url.searchParams.get("brand") || "").trim().toLowerCase();
     const sort = url.searchParams.get("sort") || "gmv"; // gmv | sold | price
-    const limit = Math.min(500, Math.max(1, Number(url.searchParams.get("limit") || 200)));
+    const limit = Math.min(1000, Math.max(1, Number(url.searchParams.get("limit") || 200)));
     const minPrice = Number(url.searchParams.get("minPrice") || "") || 0;
     const maxPrice = Number(url.searchParams.get("maxPrice") || "") || 0; // 0 = 상한없음
     const country = (url.searchParams.get("country") || "").trim().toUpperCase(); // "" = 전체
@@ -32,7 +32,7 @@ export async function GET(req: Request) {
         AND (${country} = '' OR upper(coalesce(country,'US')) = ${country})
         AND (brand_name IS NULL OR brand_name NOT IN (SELECT value FROM blocklist WHERE kind='brand'))
       ORDER BY collected_at DESC
-      LIMIT 2000`;
+      LIMIT 5000`;
 
     const products = r.rows.map((p) => {
       const price = Number(p.price) || 0;
