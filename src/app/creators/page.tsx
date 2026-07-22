@@ -103,7 +103,7 @@ export default function CreatorsPage() {
                   <tr key={c.handle} className="group border-t border-slate-100 hover:bg-[var(--accent-light)]/40">
                     <td className="p-2.5 pl-3"><span className={`grid h-6 w-6 place-items-center rounded-full text-[11px] font-black ${i === 0 ? "bg-amber-400 text-white" : i === 1 ? "bg-slate-300 text-white" : i === 2 ? "bg-amber-700 text-white" : "text-slate-400"}`}>{i + 1}</span></td>
                     <td className="p-2.5">
-                      <Link href={`/influencer/${encodeURIComponent(c.handle)}`} className="font-semibold group-hover:text-[var(--accent)]">@{c.handle}</Link>
+                      <Link href={`/creator/${encodeURIComponent(c.handle)}`} className="font-semibold group-hover:text-[var(--accent)]">@{c.handle}</Link>
                       {c.brands.length > 0 && <div className="mt-0.5 truncate text-[10px] text-[var(--muted)]">{c.brands.slice(0, 3).join(" · ")}</div>}
                     </td>
                     <td className="whitespace-nowrap p-2.5 text-right">{compact(c.videos)}</td>

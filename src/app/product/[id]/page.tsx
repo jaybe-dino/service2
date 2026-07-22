@@ -149,7 +149,7 @@ export default function ProductDetailPage() {
                       {d.relatedCreators.map((c, i) => (
                         <tr key={c.handle} className="border-t border-slate-100 hover:bg-slate-50/60">
                           <td className="p-2.5"><span className={`inline-flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold ${i < 3 ? "bg-amber-100 text-amber-700" : "text-slate-400"}`}>{i + 1}</span></td>
-                          <td className="p-2.5 font-semibold"><span className="inline-flex items-center gap-1.5"><Link href={`/influencer/${encodeURIComponent(c.handle)}`} className="hover:text-[var(--accent)]">@{c.handle}</Link>{c.direct && <DirectBadge />}</span></td>
+                          <td className="p-2.5 font-semibold"><span className="inline-flex items-center gap-1.5"><Link href={`/creator/${encodeURIComponent(c.handle)}`} className="hover:text-[var(--accent)]">@{c.handle}</Link>{c.direct && <DirectBadge />}</span></td>
                           <td className="p-2.5 text-right">{fmt(c.videos)}</td>
                           <td className="p-2.5 text-right font-bold text-[var(--accent)]">{compact(c.totalViews)}</td>
                           <td className="p-2.5 text-right text-[var(--muted)]">{compact(c.maxViews)}</td>
