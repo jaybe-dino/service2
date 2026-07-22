@@ -54,8 +54,8 @@ export default function ConsultPage() {
       <SiteHeader />
 
       <div className="mx-auto grid w-full max-w-[1200px] flex-1 gap-6 px-4 py-8 lg:grid-cols-2 lg:gap-10 lg:py-12">
-        {/* ── 소개 (데스크톱 오른쪽) ── */}
-        <section className="lg:order-2">
+        {/* ── 소개 (모바일: 폼 아래 / 데스크톱: 오른쪽) ── */}
+        <section className="order-2 lg:order-2">
           <span className="inline-flex items-center gap-1 rounded-full bg-[var(--accent-light)]/60 px-3 py-1 text-[11px] font-bold text-[#7C3AED]">
             <ShoppingBag size={12} /> TikTok Shop 멀티몰
           </span>
@@ -103,8 +103,8 @@ export default function ConsultPage() {
           </div>
         </section>
 
-        {/* ── 브랜드 정보 입력 (데스크톱 왼쪽) ── */}
-        <section className="lg:order-1">
+        {/* ── 브랜드 정보 입력 (모바일: 최상단 / 데스크톱: 왼쪽) ── */}
+        <section className="order-1 lg:order-1">
           <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
             {done ? (
               <div className="py-6 text-center">

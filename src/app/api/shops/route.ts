@@ -21,16 +21,20 @@ export async function GET(req: Request) {
     const r = await sql<{
       brand_name: string; products: number | string | null; avg_commission: string | number | null;
       total_sold: string | number | null; est_gmv: string | number | null;
-      videos: number | string | null; total_views: string | number | null;
+      videos: number | string | null; total_views: string | number | null; sold_growth: string | number | null;
     }>`
       SELECT p.brand_name,
              count(*)::int AS products,
              avg(p.commission_rate) AS avg_commission,
              coalesce(sum(p.sold_count), 0) AS total_sold,
              coalesce(sum(p.price * p.sold_count), 0) AS est_gmv,
+             coalesce(sum(CASE WHEN sp.sold_past IS NOT NULL THEN p.sold_count - sp.sold_past ELSE 0 END), 0) AS sold_growth,
              max(b.videos) AS videos, max(b.total_views) AS total_views
       FROM products p
       LEFT JOIN brand_stats b ON lower(b.brand_name) = lower(p.brand_name)
+      LEFT JOIN LATERAL (SELECT ps.sold_count AS sold_past FROM product_snapshots ps
+                         WHERE ps.product_id = p.product_id AND ps.snap_date <= CURRENT_DATE - 7
+                         ORDER BY ps.snap_date DESC LIMIT 1) sp ON true
       WHERE p.brand_name IS NOT NULL
         AND (${q} = '' OR lower(p.brand_name) LIKE ${"%" + q + "%"})
         AND (${country} = '' OR upper(coalesce(p.country,'US')) = ${country})
@@ -51,6 +55,7 @@ export async function GET(req: Request) {
         commission: s.avg_commission != null ? Math.round(Number(s.avg_commission) * 10) / 10 : null,
         videos: Number(s.videos) || 0,
         views: Number(s.total_views) || 0,
+        soldGrowth: Math.round(Number(s.sold_growth) || 0),
       };
     });
     shops.sort((a, b) =>

@@ -136,6 +136,15 @@ async function upsertVideos(brandName: string, vids: CollectedVideo[], rules: Cr
          product_ref=COALESCE(EXCLUDED.product_ref, videos.product_ref), collected_at=now()`,
       params,
     );
+    // 영상 일별 스냅샷 — 바이럴 급상승(조회수 증분) 산출 기반. 하루 1행/영상(당일은 최신값 갱신).
+    const vsPlace = chunk.map((_, j) => `($${j * 2 + 1}, CURRENT_DATE, $${j * 2 + 2})`).join(",");
+    const vsParams: unknown[] = [];
+    for (const v of chunk) vsParams.push(v.videoId, v.views);
+    await sql.query(
+      `INSERT INTO video_snapshots (video_id, snap_date, views) VALUES ${vsPlace}
+       ON CONFLICT (video_id, snap_date) DO UPDATE SET views=EXCLUDED.views`,
+      vsParams,
+    );
   }
   return rows.length;
 }

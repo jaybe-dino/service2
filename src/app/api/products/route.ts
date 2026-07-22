@@ -1,11 +1,13 @@
 import { NextResponse } from "next/server";
 import { sql, ensureSchema, isConfigured } from "@/lib/db";
+import { classifyProduct, type CategoryId } from "@/lib/ktrend/classify";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 // 제품(SKU) 랭킹 — products 테이블 기반. 추정 GMV = price × sold_count.
-// 신규(롤백 가능) 기능: 메뉴 비노출, /products 페이지 전용. 기존 라우트 미변경.
+// 신규(롤백 가능): 메뉴 비노출, /products 페이지 전용. 기존 라우트 미변경.
+// 성장률: product_snapshots(일별)로 최근 N일 판매 증분 산출(스냅샷 누적 시 채워짐).
 // ⚠️ price×sold는 공개 스크랩 기반 '추정치'(정확치 아님) — 화면에서 명확히 라벨.
 export async function GET(req: Request) {
   if (!isConfigured()) return NextResponse.json({ configured: false, products: [], count: 0 });
@@ -14,29 +16,40 @@ export async function GET(req: Request) {
     const url = new URL(req.url);
     const q = (url.searchParams.get("q") || "").trim().toLowerCase();
     const brand = (url.searchParams.get("brand") || "").trim().toLowerCase();
-    const sort = url.searchParams.get("sort") || "gmv"; // gmv | sold | price
+    const sort = url.searchParams.get("sort") || "gmv"; // gmv | sold | price | growth
     const limit = Math.min(1000, Math.max(1, Number(url.searchParams.get("limit") || 200)));
     const minPrice = Number(url.searchParams.get("minPrice") || "") || 0;
     const maxPrice = Number(url.searchParams.get("maxPrice") || "") || 0; // 0 = 상한없음
     const country = (url.searchParams.get("country") || "").trim().toUpperCase(); // "" = 전체
+    const category = (url.searchParams.get("category") || "").trim().toLowerCase() as CategoryId | ""; // "" = 전체
+    const minCommission = Number(url.searchParams.get("minCommission") || "") || 0; // % 하한
+    const minSold = Number(url.searchParams.get("minSold") || "") || 0;
+    const period = Math.max(1, Math.min(90, Number(url.searchParams.get("period") || 7))); // 성장률 기간(일)
 
+    // 성장률: 각 제품의 period일 전 스냅샷 판매수 조인(LATERAL). 없으면 null → '집계중'.
     const r = await sql<{
       product_id: string; brand_name: string | null; title: string | null;
       price: string | number | null; currency: string | null;
       sold_count: string | number | null; commission_rate: string | number | null; url: string | null; country: string | null;
+      sold_past: string | number | null;
     }>`
-      SELECT product_id, brand_name, title, price, currency, sold_count, commission_rate, url, country
-      FROM products
-      WHERE (${q} = '' OR lower(coalesce(title,'')) LIKE ${"%" + q + "%"} OR lower(coalesce(brand_name,'')) LIKE ${"%" + q + "%"})
-        AND (${brand} = '' OR lower(coalesce(brand_name,'')) = ${brand})
-        AND (${country} = '' OR upper(coalesce(country,'US')) = ${country})
-        AND (brand_name IS NULL OR brand_name NOT IN (SELECT value FROM blocklist WHERE kind='brand'))
-      ORDER BY collected_at DESC
+      SELECT p.product_id, p.brand_name, p.title, p.price, p.currency, p.sold_count, p.commission_rate, p.url, p.country,
+             (SELECT ps.sold_count FROM product_snapshots ps
+              WHERE ps.product_id = p.product_id AND ps.snap_date <= CURRENT_DATE - ${period}
+              ORDER BY ps.snap_date DESC LIMIT 1) AS sold_past
+      FROM products p
+      WHERE (${q} = '' OR lower(coalesce(p.title,'')) LIKE ${"%" + q + "%"} OR lower(coalesce(p.brand_name,'')) LIKE ${"%" + q + "%"})
+        AND (${brand} = '' OR lower(coalesce(p.brand_name,'')) = ${brand})
+        AND (${country} = '' OR upper(coalesce(p.country,'US')) = ${country})
+        AND (p.brand_name IS NULL OR p.brand_name NOT IN (SELECT value FROM blocklist WHERE kind='brand'))
+      ORDER BY p.collected_at DESC
       LIMIT 5000`;
 
-    const products = r.rows.map((p) => {
+    const mapped = r.rows.map((p) => {
       const price = Number(p.price) || 0;
       const sold = Number(p.sold_count) || 0;
+      const soldPast = p.sold_past != null ? Number(p.sold_past) : null;
+      const growth = soldPast != null ? sold - soldPast : null;
       return {
         id: p.product_id,
         brand: p.brand_name || "",
@@ -48,17 +61,26 @@ export async function GET(req: Request) {
         commission: p.commission_rate != null ? Number(p.commission_rate) : null,
         url: p.url || "",
         country: (p.country || "US").toUpperCase(),
+        category: classifyProduct(p.title),
+        growth,
+        growthPct: growth != null && soldPast && soldPast > 0 ? Math.round((growth / soldPast) * 1000) / 10 : null,
       };
     });
-    // 가격대(밴드) 필터
-    const filtered = products.filter((p) =>
-      (minPrice <= 0 || p.price >= minPrice) && (maxPrice <= 0 || p.price < maxPrice),
+
+    // 필터: 가격대·카테고리·커미션·판매량
+    const filtered = mapped.filter((p) =>
+      (minPrice <= 0 || p.price >= minPrice) && (maxPrice <= 0 || p.price < maxPrice) &&
+      (!category || p.category === category) &&
+      (minCommission <= 0 || (p.commission ?? 0) >= minCommission) &&
+      (minSold <= 0 || p.sold >= minSold),
     );
     filtered.sort((a, b) =>
-      sort === "sold" ? b.sold - a.sold : sort === "price" ? b.price - a.price : b.gmv - a.gmv,
+      sort === "sold" ? b.sold - a.sold
+        : sort === "price" ? b.price - a.price
+        : sort === "growth" ? (b.growth ?? -1) - (a.growth ?? -1)
+        : b.gmv - a.gmv,
     );
 
-    // 요약 KPI (kalodata식 상단 지표)
     const totalGmv = filtered.reduce((s, p) => s + p.gmv, 0);
     const totalSold = filtered.reduce((s, p) => s + p.sold, 0);
     const avgPrice = filtered.length ? Math.round((filtered.reduce((s, p) => s + p.price, 0) / filtered.length) * 100) / 100 : 0;

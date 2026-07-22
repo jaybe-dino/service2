@@ -5,14 +5,15 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import PageShell from "@/components/ktrend/PageShell";
-import { Search, Info, Store } from "lucide-react";
+import { Search, Info, Store, ArrowUpRight, ArrowDownRight } from "lucide-react";
 import { COUNTRIES } from "@/data/ktrend/meta";
 
 const ACTIVE_COUNTRIES = COUNTRIES.filter((c) => c.active);
+const compact = (n: number) => (n >= 1_000_000 ? (n / 1_000_000).toFixed(n >= 10_000_000 ? 0 : 1) + "M" : n >= 1_000 ? (n / 1_000).toFixed(n >= 10_000 ? 0 : 1) + "K" : String(n));
 
 interface Shop {
   name: string; products: number; sold: number; gmv: number;
-  avgPrice: number; commission: number | null; videos: number; views: number;
+  avgPrice: number; commission: number | null; videos: number; views: number; soldGrowth?: number;
 }
 interface Summary { count: number; totalGmv: number; totalProducts: number; avgPrice: number }
 type Sort = "gmv" | "sold" | "products";
@@ -109,6 +110,7 @@ export default function ShopsPage() {
                   <th className="p-2.5">샵(브랜드)</th>
                   <th className="p-2.5 text-right">제품수</th>
                   <th className="p-2.5 text-right">판매량</th>
+                  <th className="p-2.5 text-right">급상승(7일)</th>
                   <th className="p-2.5 text-right">추정 GMV</th>
                   <th className="p-2.5 text-right">객단가</th>
                   <th className="p-2.5 text-right">커미션</th>
@@ -124,6 +126,12 @@ export default function ShopsPage() {
                     </td>
                     <td className="p-2.5 text-right">{fmt(s.products)}</td>
                     <td className="p-2.5 text-right">{fmt(s.sold)}</td>
+                    <td className="whitespace-nowrap p-2.5 text-right">
+                      {!s.soldGrowth ? <span className="text-[11px] text-slate-300" title="스냅샷 누적 후 산출">집계중</span>
+                        : <span className={`inline-flex items-center gap-0.5 font-semibold ${s.soldGrowth > 0 ? "text-emerald-600" : "text-rose-500"}`}>
+                            {s.soldGrowth > 0 ? <ArrowUpRight size={12} /> : <ArrowDownRight size={12} />}{compact(Math.abs(s.soldGrowth))}
+                          </span>}
+                    </td>
                     <td className="p-2.5 text-right font-bold text-[var(--accent)]">${fmt(s.gmv)}</td>
                     <td className="p-2.5 text-right">${fmt(s.avgPrice)}</td>
                     <td className="p-2.5 text-right">{s.commission != null ? `${s.commission}%` : "—"}</td>
