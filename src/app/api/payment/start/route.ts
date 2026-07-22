@@ -58,9 +58,11 @@ export async function POST(req: Request) {
   await sql`INSERT INTO orders (order_id, user_id, plan, amount, charge_amount, period_days, goods_name, status, kind)
             VALUES (${orderId}, ${me.id}, ${planKey}, ${authAmount}, ${chargeAmount}, ${periodDays}, ${price.goodsName}, 'created', ${mode})`;
 
-  // 몰 입점 신청서에 약정/금액 동기화
+  // 몰 입점 신청서에 약정/금액 동기화 — 행이 없으면 생성(upsert)해 유실 방지.
   if (mode === "mall") {
-    await sql`UPDATE onboarding_applications SET term=${term}, amount=${chargeAmount}, order_id=${orderId}, updated_at=now() WHERE user_id=${me.id}`;
+    await sql`INSERT INTO onboarding_applications (id, user_id, name, brand, email, track, term, amount, order_id, phase, status, updated_at)
+              VALUES (${`onb_${me.id}`}, ${me.id}, ${me.name}, ${me.brand ?? null}, ${me.email}, ${planKey}, ${term}, ${chargeAmount}, ${orderId}, 'track_select', 'submitted', now())
+              ON CONFLICT (id) DO UPDATE SET term=EXCLUDED.term, amount=EXCLUDED.amount, order_id=${orderId}, updated_at=now()`;
   }
 
   const host = req.headers.get("x-forwarded-host") ?? req.headers.get("host");

@@ -20,64 +20,80 @@ async function handle(req: Request) {
   if (!isConfigured()) return NextResponse.json({ error: "DB 미설정" }, { status: 503 });
   await ensureSchema();
 
-  const now = Date.now();
-  const due = await sql<{ user_id: string; bid: string; amount: number; failures: number; period_days: number }>`
-    SELECT user_id, bid, amount, failures, period_days FROM subscriptions
-    WHERE bid IS NOT NULL AND status IN ('trial','active') AND next_charge_at <= ${now}
-    ORDER BY next_charge_at ASC LIMIT 20`;
+  // 동시 실행 차단(중복 청구 방지) — advisory lock. 못 잡으면 다른 실행이 도는 중 → 스킵.
+  const lock = await sql<{ locked: boolean }>`SELECT pg_try_advisory_lock(918273645) AS locked`;
+  if (!lock.rows[0]?.locked) return NextResponse.json({ ok: true, skipped: "another cron run in progress" });
 
-  let charged = 0;
-  let failed = 0;
-  for (const s of due.rows) {
-    const periodMs = (Number(s.period_days) || 30) * 86_400_000; // 구독별 주기(6개월 약정=180)
-    const orderId = buildOrderId(SERVICE_ORDER_PREFIX, "Pro");
-    await sql`INSERT INTO orders (order_id, user_id, plan, amount, goods_name, status, kind, period_days)
-              VALUES (${orderId}, ${s.user_id}, 'pro', ${s.amount}, ${PAY_PLANS.pro.goodsName}, 'created', 'subscribe', ${s.period_days})`;
-    const r = await chargeByBillingKey({ bid: s.bid, orderId, amount: s.amount, goodsName: PAY_PLANS.pro.goodsName });
-    if (r.ok && r.tid) {
-      await sql`INSERT INTO payments (payment_id, order_id, amount, raw) VALUES (${r.tid}, ${orderId}, ${s.amount}, ${JSON.stringify(r.raw)}::jsonb) ON CONFLICT (payment_id) DO NOTHING`;
-      await sql`UPDATE orders SET status='paid' WHERE order_id=${orderId}`;
-      await sql`UPDATE users SET pro_until = GREATEST(pro_until, ${now}) + ${periodMs} WHERE id=${s.user_id}`;
-      await sql`UPDATE subscriptions SET status='active', failures=0, next_charge_at = ${now + periodMs}, updated_at=now() WHERE user_id=${s.user_id}`;
-      charged += 1;
-    } else {
-      await sql`UPDATE orders SET status='failed' WHERE order_id=${orderId}`;
-      const f = (s.failures ?? 0) + 1;
-      const status = f >= BILLING_FAILURE_THRESHOLD ? "past_due" : "active";
-      // 재시도 위해 다음날 다시 시도
-      await sql`UPDATE subscriptions SET failures=${f}, status=${status}, next_charge_at=${now + 86_400_000}, updated_at=now() WHERE user_id=${s.user_id}`;
-      failed += 1;
-    }
-  }
-  // ── 몰 입점 트랙 정기결제 (Pro와 분리, pro_until 미반영) ──
-  const mallDue = await sql<{ user_id: string; track: string; bid: string; amount: number; failures: number; period_days: number }>`
-    SELECT user_id, track, bid, amount, failures, period_days FROM mall_subscriptions
-    WHERE bid IS NOT NULL AND status IN ('active') AND next_charge_at <= ${now}
-    ORDER BY next_charge_at ASC LIMIT 20`;
-  let mallCharged = 0;
-  let mallFailed = 0;
-  for (const s of mallDue.rows) {
-    const plan = PAY_PLANS[s.track] ?? PAY_PLANS.live; // 미확인 트랙 폴백(ready 제거)
-    const period = (Number(s.period_days) || 30) * 86_400_000; // 구독별 주기(6개월 약정=180)
-    const orderId = buildOrderId(SERVICE_ORDER_PREFIX, plan.planInitial);
-    await sql`INSERT INTO orders (order_id, user_id, plan, amount, goods_name, status, kind, period_days)
-              VALUES (${orderId}, ${s.user_id}, ${s.track}, ${s.amount}, ${plan.goodsName}, 'created', 'mall', ${s.period_days})`;
-    const r = await chargeByBillingKey({ bid: s.bid, orderId, amount: s.amount, goodsName: plan.goodsName });
-    if (r.ok && r.tid) {
-      await sql`INSERT INTO payments (payment_id, order_id, amount, raw) VALUES (${r.tid}, ${orderId}, ${s.amount}, ${JSON.stringify(r.raw)}::jsonb) ON CONFLICT (payment_id) DO NOTHING`;
-      await sql`UPDATE orders SET status='paid' WHERE order_id=${orderId}`;
-      await sql`UPDATE mall_subscriptions SET status='active', failures=0, next_charge_at=${now + period}, updated_at=now() WHERE user_id=${s.user_id}`;
-      mallCharged += 1;
-    } else {
-      await sql`UPDATE orders SET status='failed' WHERE order_id=${orderId}`;
-      const f = (s.failures ?? 0) + 1;
-      const status = f >= BILLING_FAILURE_THRESHOLD ? "past_due" : "active";
-      await sql`UPDATE mall_subscriptions SET failures=${f}, status=${status}, next_charge_at=${now + 86_400_000}, updated_at=now() WHERE user_id=${s.user_id}`;
-      mallFailed += 1;
-    }
-  }
+  try {
+    const now = Date.now();
+    const due = await sql<{ user_id: string; bid: string; amount: number; failures: number; period_days: number; next_charge_at: number }>`
+      SELECT user_id, bid, amount, failures, period_days, next_charge_at FROM subscriptions
+      WHERE bid IS NOT NULL AND status IN ('trial','active') AND next_charge_at <= ${now}
+      ORDER BY next_charge_at ASC LIMIT 20`;
 
-  return NextResponse.json({ ok: true, due: due.rows.length, charged, failed, mallDue: mallDue.rows.length, mallCharged, mallFailed });
+    let charged = 0;
+    let failed = 0;
+    for (const s of due.rows) {
+      const periodMs = (Number(s.period_days) || 30) * 86_400_000; // 구독별 주기(6개월 약정=180)
+      // 선점: 청구 전에 next_charge_at을 먼저 전진(조건부) → 크래시/중복 시 재청구 방지.
+      const claim = await sql`UPDATE subscriptions SET next_charge_at=${now + periodMs}, updated_at=now()
+                              WHERE user_id=${s.user_id} AND next_charge_at=${s.next_charge_at}`;
+      if (claim.rowCount === 0) continue; // 이미 다른 경로가 처리 → 스킵
+      const orderId = buildOrderId(SERVICE_ORDER_PREFIX, "Pro");
+      await sql`INSERT INTO orders (order_id, user_id, plan, amount, goods_name, status, kind, period_days)
+                VALUES (${orderId}, ${s.user_id}, 'pro', ${s.amount}, ${PAY_PLANS.pro.goodsName}, 'created', 'subscribe', ${s.period_days})`;
+      const r = await chargeByBillingKey({ bid: s.bid, orderId, amount: s.amount, goodsName: PAY_PLANS.pro.goodsName });
+      if (r.ok && r.tid) {
+        await sql`INSERT INTO payments (payment_id, order_id, amount, raw) VALUES (${r.tid}, ${orderId}, ${s.amount}, ${JSON.stringify(r.raw)}::jsonb) ON CONFLICT (payment_id) DO NOTHING`;
+        await sql`UPDATE orders SET status='paid' WHERE order_id=${orderId}`;
+        await sql`UPDATE users SET pro_until = GREATEST(pro_until, ${now}) + ${periodMs} WHERE id=${s.user_id}`;
+        await sql`UPDATE subscriptions SET status='active', failures=0, updated_at=now() WHERE user_id=${s.user_id}`; // next_charge_at은 선점에서 전진됨
+        charged += 1;
+      } else {
+        await sql`UPDATE orders SET status='failed' WHERE order_id=${orderId}`;
+        const f = (s.failures ?? 0) + 1;
+        const status = f >= BILLING_FAILURE_THRESHOLD ? "past_due" : "active";
+        // 청구 실패 → 다음날 재시도(선점값 덮어씀).
+        await sql`UPDATE subscriptions SET failures=${f}, status=${status}, next_charge_at=${now + 86_400_000}, updated_at=now() WHERE user_id=${s.user_id}`;
+        failed += 1;
+      }
+    }
+
+    // ── 몰 입점 트랙 정기결제 (Pro와 분리, pro_until 미반영) ──
+    const mallDue = await sql<{ user_id: string; track: string; bid: string; amount: number; failures: number; period_days: number; next_charge_at: number }>`
+      SELECT user_id, track, bid, amount, failures, period_days, next_charge_at FROM mall_subscriptions
+      WHERE bid IS NOT NULL AND status IN ('active') AND next_charge_at <= ${now}
+      ORDER BY next_charge_at ASC LIMIT 20`;
+    let mallCharged = 0;
+    let mallFailed = 0;
+    for (const s of mallDue.rows) {
+      const plan = PAY_PLANS[s.track] ?? PAY_PLANS.live; // 미확인 트랙 폴백(ready 제거)
+      const period = (Number(s.period_days) || 30) * 86_400_000; // 구독별 주기(6개월 약정=180)
+      const claim = await sql`UPDATE mall_subscriptions SET next_charge_at=${now + period}, updated_at=now()
+                              WHERE user_id=${s.user_id} AND next_charge_at=${s.next_charge_at}`;
+      if (claim.rowCount === 0) continue;
+      const orderId = buildOrderId(SERVICE_ORDER_PREFIX, plan.planInitial);
+      await sql`INSERT INTO orders (order_id, user_id, plan, amount, goods_name, status, kind, period_days)
+                VALUES (${orderId}, ${s.user_id}, ${s.track}, ${s.amount}, ${plan.goodsName}, 'created', 'mall', ${s.period_days})`;
+      const r = await chargeByBillingKey({ bid: s.bid, orderId, amount: s.amount, goodsName: plan.goodsName });
+      if (r.ok && r.tid) {
+        await sql`INSERT INTO payments (payment_id, order_id, amount, raw) VALUES (${r.tid}, ${orderId}, ${s.amount}, ${JSON.stringify(r.raw)}::jsonb) ON CONFLICT (payment_id) DO NOTHING`;
+        await sql`UPDATE orders SET status='paid' WHERE order_id=${orderId}`;
+        await sql`UPDATE mall_subscriptions SET status='active', failures=0, updated_at=now() WHERE user_id=${s.user_id}`;
+        mallCharged += 1;
+      } else {
+        await sql`UPDATE orders SET status='failed' WHERE order_id=${orderId}`;
+        const f = (s.failures ?? 0) + 1;
+        const status = f >= BILLING_FAILURE_THRESHOLD ? "past_due" : "active";
+        await sql`UPDATE mall_subscriptions SET failures=${f}, status=${status}, next_charge_at=${now + 86_400_000}, updated_at=now() WHERE user_id=${s.user_id}`;
+        mallFailed += 1;
+      }
+    }
+
+    return NextResponse.json({ ok: true, due: due.rows.length, charged, failed, mallDue: mallDue.rows.length, mallCharged, mallFailed });
+  } finally {
+    await sql`SELECT pg_advisory_unlock(918273645)`;
+  }
 }
 
 export async function GET(req: Request) { return handle(req); }

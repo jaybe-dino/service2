@@ -90,7 +90,11 @@ export async function POST(req: Request) {
               VALUES (${order.user_id}, ${track}, ${bid}, ${amt}, 'active', ${nextAt}, ${pdays}, now())
               ON CONFLICT (user_id) DO UPDATE SET track=EXCLUDED.track, bid=EXCLUDED.bid, amount=EXCLUDED.amount, status='active', next_charge_at=EXCLUDED.next_charge_at, period_days=EXCLUDED.period_days, failures=0, updated_at=now()`;
     // 결제 완료 → 신청 paid, 디노 물류 연동 플래그 ON. PHASE 4(정보입력)는 사이트에서 이어서.
-    await sql`UPDATE onboarding_applications SET status='paid', track=${track}, phase='details', dino_linked=true, order_id=${orderId}, updated_at=now() WHERE user_id=${order.user_id}`;
+    // 신청 행 보장(없으면 users 정보로 생성) — 결제만 하고 자가체크 안 한 경우 유실/미표시 방지.
+    await sql`INSERT INTO onboarding_applications (id, user_id, name, brand, email, status, track, phase, dino_linked, order_id, updated_at)
+              SELECT ${`onb_${order.user_id}`}, ${order.user_id}, u.name, u.brand, u.email, 'paid', ${track}, 'details', true, ${orderId}, now()
+              FROM users u WHERE u.id = ${order.user_id}
+              ON CONFLICT (id) DO UPDATE SET status='paid', track=EXCLUDED.track, phase='details', dino_linked=true, order_id=${orderId}, updated_at=now()`;
     return NextResponse.redirect(`${base}/onboarding?paid=1`, 303);
   }
 

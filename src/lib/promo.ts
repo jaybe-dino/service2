@@ -22,12 +22,17 @@ export async function validatePromo(codeRaw: string, userId: string): Promise<Pr
   }
 }
 
-// 사용 처리 — used_count++ + 사용자 리뎀션 기록(멱등).
-export async function redeemPromo(code: string, userId: string): Promise<void> {
+// 사용 처리 — 사용자 리뎀션 기록(멱등) 먼저 → 성공 시에만 used_count++.
+// 리뎀션 기록이 재사용 방지의 근거라, 실패를 '무시'하지 않고 로깅한다(코드 무한 재사용 방지).
+export async function redeemPromo(code: string, userId: string): Promise<boolean> {
   const c = String(code || "").trim().toUpperCase();
-  if (!c) return;
+  if (!c) return false;
   try {
     await sql`INSERT INTO promo_redemptions (code, user_id) VALUES (${c}, ${userId}) ON CONFLICT (code, user_id) DO NOTHING`;
     await sql`UPDATE promo_codes SET used_count = used_count + 1 WHERE code=${c}`;
-  } catch { /* 무시 */ }
+    return true;
+  } catch (e) {
+    console.error("[promo] redeem 실패 — 재사용 방지 기록 누락 가능", c, userId, String(e).slice(0, 160));
+    return false;
+  }
 }
