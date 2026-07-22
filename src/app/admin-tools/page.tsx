@@ -51,6 +51,10 @@ export default function AdminToolsPage() {
           <Btn label="제품 DB 확인 (data-debug)" onClick={() => call("제품 DB 확인 (data-debug)", "/api/admin/data-debug", "GET")} />
           <Btn label="결제 설정 확인 (pay-config)" onClick={() => call("결제 설정 확인 (pay-config)", "/api/admin/pay-config", "GET")} />
         </Section>
+        <Section title="상담·문의 알림 (Slack)">
+          <Btn label="Slack 설정 확인" onClick={() => call("Slack 설정 확인", "/api/admin/slack-test", "GET")} />
+          <Btn label="Slack 테스트 발송" tone="primary" onClick={() => call("Slack 테스트 발송", "/api/admin/slack-test", "POST")} />
+        </Section>
       </div>
 
       <div className="mt-6">
