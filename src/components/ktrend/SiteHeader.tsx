@@ -18,7 +18,7 @@ const NAV: { href: string; label: string; title?: string; desc?: string; sub?: {
     { href: "/plans/mall", label: "틱톡샵 멀티몰 입점", desc: "Live Focus · Onboarding 트랙" },
   ] },
   { href: "/tts/qna", label: "FAQ", title: "FAQ", desc: "틱톡샵 입점·서비스 자주 묻는 질문(QnA)" },
-  { href: "/consult", label: "1:1 상담", title: "1:1 상담", desc: "틱톡샵 멀티몰 입점 1:1 상담 신청" },
+  { href: "/consult1", label: "1:1 상담", title: "1:1 상담", desc: "틱톡샵 멀티몰 입점 1:1 상담 신청" },
 ];
 
 const PLAN_LABEL: Record<PlanId, string> = {

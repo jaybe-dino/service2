@@ -286,7 +286,7 @@ function PaidOnly() {
     <div className="kt-card p-8 text-center">
       <ShoppingBag className="mx-auto text-[var(--muted)]" />
       <p className="mt-2 text-[13px] font-bold">틱톡샵 입점 결제 후 이용할 수 있어요</p>
-      <Link href="/consult" className="kt-btn kt-btn-primary mt-3 px-4 py-2 text-[12px]">입점 상담·신청</Link>
+      <Link href="/consult1" className="kt-btn kt-btn-primary mt-3 px-4 py-2 text-[12px]">입점 상담·신청</Link>
     </div>
   );
 }
