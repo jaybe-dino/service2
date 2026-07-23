@@ -42,10 +42,8 @@ export default function MyPage() {
   const { brands, influencers } = useBookmarks();
   const router = useRouter();
   const [sub, setSub] = useState<Sub | null>(null);
-  const [canceling, setCanceling] = useState(false);
   const [proposals, setProposals] = useState<Proposal[] | null>(null);
   const [onb, setOnb] = useState<{ application: OnbApp | null; mallSub: MallSub | null; orders: MallOrder[] } | null>(null);
-  const [cancelingMall, setCancelingMall] = useState(false);
   const [section, setSection] = useState<Section>("account");
 
   const loadProposals = () => {
@@ -73,26 +71,11 @@ export default function MyPage() {
     else if (t === "proposals") setSection("proposals");
   }, []);
 
-  const cancelMall = async () => {
-    if (!confirm("틱톡샵 입점 정기결제를 해지하시겠습니까?\n현재 결제 주기 종료까지는 유지됩니다.")) return;
-    setCancelingMall(true);
-    const r = await fetch("/api/onboarding/cancel", { method: "POST" });
-    setCancelingMall(false);
-    if (r.ok) loadOnb();
-  };
   const withdraw = async (id: number) => {
     if (!confirm("이 제안을 철회하시겠습니까?")) return;
     await fetch("/api/proposals", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id }) });
     loadProposals();
   };
-  const cancelSub = async () => {
-    if (!confirm("정기결제를 해지하시겠습니까?\n남은 Pro 이용 기간은 그대로 유지됩니다.")) return;
-    setCanceling(true);
-    const r = await fetch("/api/payment/cancel", { method: "POST" });
-    setCanceling(false);
-    if (r.ok) setSub((s) => (s ? { ...s, status: "canceled" } : s));
-  };
-
   if (!user) {
     return (
       <PageShell>
@@ -165,10 +148,7 @@ export default function MyPage() {
                       <>
                         <p className="mt-1 text-[11px] text-[var(--muted)]">{trialDays > 0 ? `Pro 이용 중 · 약 ${trialDays}일 남음` : "Pro 이용 중"}</p>
                         {sub && sub.status !== "canceled" && (
-                          <>
-                            <p className="mt-1 text-[10px] text-[var(--muted)]">{sub.status === "trial" ? "무료 체험 중 · " : "정기결제 중 · "}다음 결제 {new Date(sub.next_charge_at).toLocaleDateString("ko-KR")} · ₩{sub.amount.toLocaleString()}</p>
-                            <button onClick={cancelSub} disabled={canceling} className="mt-2 w-full rounded-md border border-[var(--border)] py-1.5 text-[11px] font-semibold text-[var(--muted)] hover:border-rose-300 hover:text-rose-600 disabled:opacity-50">{canceling ? "해지 중…" : "정기결제 해지"}</button>
-                          </>
+                          <p className="mt-1 text-[10px] text-[var(--muted)]">{sub.status === "trial" ? "무료 체험 중 · " : "정기결제 중 · "}다음 결제 {new Date(sub.next_charge_at).toLocaleDateString("ko-KR")} · ₩{sub.amount.toLocaleString()}</p>
                         )}
                         {sub && sub.status === "canceled" && <p className="mt-1 text-[10px] text-rose-500">자동결제 해지됨 · 기간 종료까지 이용 가능</p>}
                       </>
@@ -203,7 +183,7 @@ export default function MyPage() {
             )}
 
             {section === "onb-basic" && (
-              paid ? <OnbBasicSection onb={onb!} cancelMall={cancelMall} cancelingMall={cancelingMall} initial={details} defaultEmail={user.email} onSaved={loadOnb} goProducts={() => setSection("onb-products")} /> : <PaidOnly />
+              paid ? <OnbBasicSection onb={onb!} initial={details} defaultEmail={user.email} onSaved={loadOnb} goProducts={() => setSection("onb-products")} /> : <PaidOnly />
             )}
 
             {section === "onb-products" && (
@@ -247,9 +227,9 @@ export default function MyPage() {
 }
 
 // 입점 기본정보 섹션 — 요약 + 기본정보 폼 + 정기결제/결제내역
-function OnbBasicSection({ onb, cancelMall, cancelingMall, initial, defaultEmail, onSaved, goProducts }: {
+function OnbBasicSection({ onb, initial, defaultEmail, onSaved, goProducts }: {
   onb: { application: OnbApp | null; mallSub: MallSub | null; orders: MallOrder[] };
-  cancelMall: () => void; cancelingMall: boolean; initial: OnbDetails; defaultEmail?: string; onSaved: () => void; goProducts: () => void;
+  initial: OnbDetails; defaultEmail?: string; onSaved: () => void; goProducts: () => void;
 }) {
   const a = onb.application;
   const cs = (a?.countries ?? "").split(",").filter(Boolean);
@@ -271,16 +251,14 @@ function OnbBasicSection({ onb, cancelMall, cancelingMall, initial, defaultEmail
       {/* 기본정보 입력 */}
       <OnboardingBasicInfo initial={initial as BasicInfo} defaultEmail={defaultEmail} onSaved={onSaved} />
 
-      {/* 정기결제 */}
+      {/* 정기결제 상태 */}
       {onb.mallSub && (
         <div className="kt-card flex flex-wrap items-center gap-2 p-4 text-[11px]">
           <span className="font-semibold">정기결제</span>
           {onb.mallSub.status === "canceled" ? <span className="text-rose-500">해지됨 · 기간 종료까지 유지</span> : (
-            <>
-              <span className="text-[var(--muted)]">다음 결제 {new Date(Number(onb.mallSub.next_charge_at)).toLocaleDateString("ko-KR")} · {wonF(onb.mallSub.amount)}</span>
-              <button onClick={cancelMall} disabled={cancelingMall} className="ml-auto rounded-md border border-[var(--border)] px-2.5 py-1 font-semibold text-[var(--muted)] hover:border-rose-300 hover:text-rose-600 disabled:opacity-50">{cancelingMall ? "해지 중…" : "정기결제 해지"}</button>
-            </>
+            <span className="text-[var(--muted)]">다음 결제 {new Date(Number(onb.mallSub.next_charge_at)).toLocaleDateString("ko-KR")} · {wonF(onb.mallSub.amount)}</span>
           )}
+          <span className="ml-auto text-[10px] text-[var(--muted)]">해지는 담당 매니저를 통해 안내드립니다.</span>
         </div>
       )}
 
