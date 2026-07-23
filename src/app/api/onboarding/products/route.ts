@@ -15,12 +15,11 @@ interface ProductIn {
   cert?: OnbFile | null;
   photos?: OnbFile[];
   label?: { productName?: boolean; netQuantity?: boolean; directions?: boolean; ingredients?: boolean; contact?: boolean };
-  contactTypes?: string[];
+  contact?: { address?: string; phone?: string; website?: string };
   realPhoto?: boolean;
 }
 
 const s = (v: unknown, max = 200) => (v == null ? "" : String(v).slice(0, max));
-const CONTACT_TYPES = new Set(["address", "phone", "website"]);
 
 function sanitizeFile(f: unknown, owned: Set<string>): OnbFile | null {
   if (!f || typeof f !== "object") return null;
@@ -57,7 +56,7 @@ export async function POST(req: Request) {
   }
 
   const body = (await req.json().catch(() => ({}))) as { products?: ProductIn[] };
-  const inputs = Array.isArray(body.products) ? body.products.slice(0, 100) : [];
+  const inputs = Array.isArray(body.products) ? body.products.slice(0, 5) : []; // 최대 5개
 
   // 참조된 파일 id가 본인 소유인지 검증(타인 파일 참조 차단)
   const refIds = new Set<string>();
@@ -82,7 +81,11 @@ export async function POST(req: Request) {
       productName: !!p.label?.productName, netQuantity: !!p.label?.netQuantity, directions: !!p.label?.directions,
       ingredients: !!p.label?.ingredients, contact: !!p.label?.contact,
     },
-    contactTypes: (Array.isArray(p.contactTypes) ? p.contactTypes : []).map((x) => s(x, 20)).filter((x) => CONTACT_TYPES.has(x)),
+    contact: {
+      address: s(p.contact?.address, 300),
+      phone: s(p.contact?.phone, 60),
+      website: s(p.contact?.website, 300),
+    },
     realPhoto: !!p.realPhoto,
   }));
 

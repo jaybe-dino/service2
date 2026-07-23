@@ -46,7 +46,7 @@ const proSource = (m: { pro_until: number; sub_status?: string | null; promo_cod
 };
 
 interface OnbFile { id: string; filename: string }
-interface OnbProduct { nameKo?: string; nameEn?: string; cat?: string; price?: string; cost?: string; netWeight?: string; netUnit?: string; packWeight?: string; w?: string; h?: string; d?: string; desc?: string; cert?: OnbFile | null }
+interface OnbProduct { nameKo?: string; nameEn?: string; cat?: string; price?: string; cost?: string; netWeight?: string; netUnit?: string; packWeight?: string; w?: string; h?: string; d?: string; desc?: string; cert?: OnbFile | null; photos?: OnbFile[]; label?: { productName?: boolean; netQuantity?: boolean; directions?: boolean; ingredients?: boolean; contact?: boolean }; contact?: { address?: string; phone?: string; website?: string }; realPhoto?: boolean }
 interface OnbPayload {
   checks?: Record<string, boolean>; yes?: number; countries?: string[]; certs?: Record<string, string>; referral?: string;
   details?: {
@@ -1356,6 +1356,32 @@ function OnbDetailModal({ a, onClose }: { a: OnbApp; onClose: () => void }) {
                     </div>
                     {pr.desc && <p className="mt-1 text-[10px] leading-relaxed text-[var(--muted)]">{pr.desc}</p>}
                     {pr.cert && <p className="mt-1 text-[10px]">인증서류: <a href={`/api/onboarding/file/${pr.cert.id}`} target="_blank" rel="noreferrer" className="font-semibold text-[var(--accent)] hover:underline">{pr.cert.filename} ↓</a></p>}
+                    {/* 라벨/실물 사진 */}
+                    {(pr.photos?.length ?? 0) > 0 && (
+                      <p className="mt-1 flex flex-wrap items-center gap-1.5 text-[10px]">
+                        <span className="text-[var(--muted)]">라벨/실물 사진({pr.photos!.length}):</span>
+                        {pr.photos!.map((ph) => (
+                          <a key={ph.id} href={`/api/onboarding/file/${ph.id}`} target="_blank" rel="noreferrer" className="rounded bg-slate-100 px-1.5 py-0.5 font-semibold text-[var(--accent)] hover:underline">{ph.filename} ↓</a>
+                        ))}
+                      </p>
+                    )}
+                    {/* 라벨 필수 표시 체크 */}
+                    {pr.label && (
+                      <div className="mt-1 flex flex-wrap gap-1">
+                        {[["productName", "Product Name"], ["netQuantity", "Net Quantity"], ["directions", "Directions"], ["ingredients", "Ingredients"], ["contact", "Contact"]].map(([k, lbl]) => (
+                          <span key={k} className={`rounded px-1.5 py-0.5 text-[9px] font-bold ${pr.label?.[k as keyof typeof pr.label] ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-400"}`}>{pr.label?.[k as keyof typeof pr.label] ? "✓" : "·"} {lbl}</span>
+                        ))}
+                        <span className={`rounded px-1.5 py-0.5 text-[9px] font-bold ${pr.realPhoto ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-400"}`}>{pr.realPhoto ? "✓" : "·"} 실물사진</span>
+                      </div>
+                    )}
+                    {/* 연락처 정보(텍스트) */}
+                    {(pr.contact?.address || pr.contact?.phone || pr.contact?.website) && (
+                      <div className="mt-1 grid gap-0.5 text-[10px] text-[var(--muted)]">
+                        {pr.contact?.address && <span>주소: <b className="text-[var(--fg)]">{pr.contact.address}</b></span>}
+                        {pr.contact?.phone && <span>전화: <b className="text-[var(--fg)]">{pr.contact.phone}</b></span>}
+                        {pr.contact?.website && <span>웹사이트: <b className="text-[var(--fg)]">{pr.contact.website}</b></span>}
+                      </div>
+                    )}
                   </div>
                 ))}
                 {!det.products?.length && <p className="text-[var(--muted)]">—</p>}
@@ -1373,7 +1399,7 @@ function OnbDetailModal({ a, onClose }: { a: OnbApp; onClose: () => void }) {
           ) : (
             <div className="rounded-lg bg-amber-50 px-3 py-2 text-[11px] text-amber-700">아직 상세 정보(브랜드·제품·정산)는 제출되지 않았습니다.</div>
           )}
-          <p className="text-[10px] text-[var(--muted)]">※ 사업자등록증·제품 사진 등 파일은 1:1 미팅/이메일로 별도 수령합니다.</p>
+          <p className="text-[10px] text-[var(--muted)]">※ 제품별 서류·사진은 사용자가 마이페이지에서 직접 등록·수정하며, 위 링크로 열람할 수 있습니다.</p>
         </div>
       </div>
     </div>

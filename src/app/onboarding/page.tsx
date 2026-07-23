@@ -133,16 +133,12 @@ function OnboardingInner() {
         if (Array.isArray(det.products) && det.products.length) setProducts(det.products);
         if (det.bizRegFile) setBizRegFile(det.bizRegFile);
       }
-      // 이미 정보 제출 완료 → 완료/현황 화면 (다시 폼 띄우지 않음)
-      if (app.phase === "completed" || app.status === "details_submitted") {
-        setCompleted({ track: app.track, countries: cs, grade: app.grade ?? "-", email: det?.email ?? "",
-          missing: missingCerts(cs, app.payload?.certs ?? {}) });
-        setStep(4); scrollTop();
-      } else if (paid || app.status === "paid" || app.phase === "details") {
-        // 결제 완료, 정보입력 미완 → PHASE 4
-        setStep(3); scrollTop();
+      // 결제 완료(정보입력 미완/완료 무관) → 정보 관리는 마이페이지에서. 온보딩 인라인 정보입력 폐지.
+      if (paid || app.status === "paid" || app.status === "details_submitted" || app.phase === "details" || app.phase === "completed") {
+        router.replace("/mypage?tab=basic");
       }
     })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // 로그인 정보 프리필
@@ -212,11 +208,11 @@ function OnboardingInner() {
       const data = await res.json();
       setBusy(false);
       if (!res.ok || !data.ok) {
-        if (data?.configured === false) { setStep(3); scrollTop(); return; } // 결제 모듈 미설정 → 정보입력으로
+        if (data?.configured === false) { router.push("/mypage?tab=basic"); return; } // 결제 모듈 미설정 → 마이페이지 기본정보로
         setMsg(data?.error ?? "결제에 실패했습니다."); return;
       }
-      setMsg(data.firstFree ? "프로모 코드가 적용됐습니다." : "결제가 완료됐습니다.");
-      setStep(3); scrollTop(); // 정보입력으로
+      // 결제 완료 → 정보입력은 마이페이지 '입점 기본정보' 영역에서 진행(온보딩 내 인라인 입력 폐지)
+      router.push("/mypage?tab=basic");
     } catch { setBusy(false); setMsg("결제 처리 중 오류가 발생했습니다."); }
   };
 

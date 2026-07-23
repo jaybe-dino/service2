@@ -7,15 +7,17 @@ import { Package, Plus, Trash2, Upload, Loader2, Check, FileText, ImageIcon, X }
 
 interface OnbFile { id: string; filename: string }
 interface LabelChecks { productName?: boolean; netQuantity?: boolean; directions?: boolean; ingredients?: boolean; contact?: boolean }
+interface ContactInfo { address?: string; phone?: string; website?: string }
 export interface ProductDoc {
   nameKo?: string; nameEn?: string; cat?: string; price?: string;
   cert?: OnbFile | null;
   photos?: OnbFile[];
   label?: LabelChecks;
-  contactTypes?: string[];
+  contact?: ContactInfo;
   realPhoto?: boolean;
 }
 
+const MAX_PRODUCTS = 5;
 const LABEL_FIELDS: { key: keyof LabelChecks; en: string; ko: string }[] = [
   { key: "productName", en: "Product Name", ko: "제품명" },
   { key: "netQuantity", en: "Net Quantity", ko: "내용량" },
@@ -23,23 +25,23 @@ const LABEL_FIELDS: { key: keyof LabelChecks; en: string; ko: string }[] = [
   { key: "ingredients", en: "Full Ingredient List", ko: "전성분" },
   { key: "contact", en: "Contact Information", ko: "연락처 정보" },
 ];
-const CONTACT_TYPES: { key: string; label: string }[] = [
-  { key: "address", label: "주소 (Address)" },
-  { key: "phone", label: "전화번호 (Phone)" },
-  { key: "website", label: "웹사이트 (Website)" },
+const CONTACT_FIELDS: { key: keyof ContactInfo; label: string; placeholder: string }[] = [
+  { key: "address", label: "주소 (Address)", placeholder: "예: 123 Main St, Seoul, Korea" },
+  { key: "phone", label: "전화번호 (Phone)", placeholder: "예: +82-2-000-0000" },
+  { key: "website", label: "웹사이트 (Website)", placeholder: "예: https://brand.com" },
 ];
 
-const emptyProduct = (): ProductDoc => ({ nameKo: "", nameEn: "", cat: "", price: "", cert: null, photos: [], label: {}, contactTypes: [], realPhoto: false });
+const emptyProduct = (): ProductDoc => ({ nameKo: "", nameEn: "", cat: "", price: "", cert: null, photos: [], label: {}, contact: {}, realPhoto: false });
 
 export default function OnboardingProductDocs({ initial, onSaved }: { initial: ProductDoc[]; onSaved?: () => void }) {
-  const [products, setProducts] = useState<ProductDoc[]>(initial.length ? initial.map((p) => ({ ...emptyProduct(), ...p, label: { ...p.label }, photos: p.photos ?? [], contactTypes: p.contactTypes ?? [] })) : [emptyProduct()]);
+  const [products, setProducts] = useState<ProductDoc[]>(initial.length ? initial.map((p) => ({ ...emptyProduct(), ...p, label: { ...p.label }, photos: p.photos ?? [], contact: { ...p.contact } })) : [emptyProduct()]);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [uploading, setUploading] = useState<string | null>(null);
 
   const update = (i: number, patch: Partial<ProductDoc>) => setProducts((ps) => ps.map((p, j) => (j === i ? { ...p, ...patch } : p)));
-  const addProduct = () => setProducts((ps) => [...ps, emptyProduct()]);
+  const addProduct = () => setProducts((ps) => (ps.length >= MAX_PRODUCTS ? ps : [...ps, emptyProduct()]));
   const removeProduct = (i: number) => setProducts((ps) => ps.filter((_, j) => j !== i));
 
   async function upload(file: File, kind: "product_cert" | "product_photo", productIndex: number): Promise<OnbFile | null> {
@@ -68,10 +70,7 @@ export default function OnboardingProductDocs({ initial, onSaved }: { initial: P
   };
   const removePhoto = (i: number, id: string) => update(i, { photos: (products[i].photos ?? []).filter((p) => p.id !== id) });
   const toggleLabel = (i: number, key: keyof LabelChecks) => update(i, { label: { ...products[i].label, [key]: !products[i].label?.[key] } });
-  const toggleContact = (i: number, key: string) => {
-    const cur = products[i].contactTypes ?? [];
-    update(i, { contactTypes: cur.includes(key) ? cur.filter((x) => x !== key) : [...cur, key] });
-  };
+  const setContact = (i: number, key: keyof ContactInfo, val: string) => update(i, { contact: { ...products[i].contact, [key]: val } });
 
   const save = async () => {
     setSaving(true); setErr(null); setSaved(false);
@@ -164,13 +163,13 @@ export default function OnboardingProductDocs({ initial, onSaved }: { initial: P
                       </button>
                     ))}
                   </div>
-                  <div className="mt-2 text-[10px] font-bold text-[var(--fg)]">연락처 정보 유형 (1개 이상 포함)</div>
-                  <div className="mt-1 flex flex-wrap gap-1.5">
-                    {CONTACT_TYPES.map((ct) => (
-                      <button key={ct.key} type="button" onClick={() => toggleContact(i, ct.key)}
-                        className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-semibold ${(p.contactTypes ?? []).includes(ct.key) ? "border-emerald-300 bg-emerald-50 text-emerald-700" : "border-[var(--border)] text-[var(--muted)]"}`}>
-                        {(p.contactTypes ?? []).includes(ct.key) && <Check size={10} />} {ct.label}
-                      </button>
+                  <div className="mt-2 text-[10px] font-bold text-[var(--fg)]">연락처 정보 (아래 중 1개 이상 입력)</div>
+                  <div className="mt-1 grid gap-1.5">
+                    {CONTACT_FIELDS.map((cf) => (
+                      <div key={cf.key} className="flex items-center gap-2">
+                        <span className="w-24 shrink-0 text-[10px] font-semibold text-[var(--muted)]">{cf.label}</span>
+                        <input value={p.contact?.[cf.key] ?? ""} onChange={(e) => setContact(i, cf.key, e.target.value)} className="di flex-1" placeholder={cf.placeholder} />
+                      </div>
                     ))}
                   </div>
                   <label className="mt-2 flex items-center gap-1.5 text-[10px] font-semibold text-[var(--fg)]">
@@ -184,7 +183,9 @@ export default function OnboardingProductDocs({ initial, onSaved }: { initial: P
         })}
       </div>
 
-      <button onClick={addProduct} className="mt-3 inline-flex items-center gap-1 rounded-lg border border-dashed border-[var(--border)] px-3 py-2 text-[12px] font-semibold text-[var(--muted)] hover:border-[var(--accent)] hover:text-[var(--accent)]"><Plus size={14} /> 제품 추가</button>
+      {products.length < MAX_PRODUCTS && (
+        <button onClick={addProduct} className="mt-3 inline-flex items-center gap-1 rounded-lg border border-dashed border-[var(--border)] px-3 py-2 text-[12px] font-semibold text-[var(--muted)] hover:border-[var(--accent)] hover:text-[var(--accent)]"><Plus size={14} /> 제품 추가 <span className="text-[10px] opacity-70">({products.length}/{MAX_PRODUCTS})</span></button>
+      )}
 
       {err && <p className="mt-3 rounded-lg bg-rose-50 px-3 py-2 text-[11px] font-semibold text-rose-600">{err}</p>}
 

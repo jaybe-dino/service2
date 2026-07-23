@@ -46,6 +46,37 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true, id, grade: g.grade, recommended: g.recommended });
   }
 
+  // 기본정보만 저장(제품 배열은 보존) — 마이페이지 '입점 기본정보' 영역에서 사용.
+  if (stage === "basic") {
+    const brand = String(body?.brand ?? "").trim().slice(0, 200);
+    const contact = String(body?.contact ?? "").trim().slice(0, 120);
+    if (!brand || !contact) return NextResponse.json({ ok: false, error: "브랜드명과 연락처는 필수입니다." }, { status: 400 });
+    const prevDetails = (base.details && typeof base.details === "object" ? base.details : {}) as Record<string, unknown>;
+    const details = {
+      ...prevDetails, // 제품 배열 등 기존 값 보존
+      brandKo: brand,
+      brandEn: String(body?.brandEn ?? "").trim().slice(0, 200),
+      bizNo: String(body?.bizNo ?? "").trim().slice(0, 40),
+      repName: String(body?.repName ?? "").trim().slice(0, 80),
+      managerName: String(body?.managerName ?? "").trim().slice(0, 80),
+      contact,
+      email: String(body?.email ?? me.email).trim().slice(0, 200),
+      settlement: body?.settlement ?? prevDetails.settlement ?? {},
+      bizRegFile: body?.bizRegFile ?? prevDetails.bizRegFile ?? null,
+      note: String(body?.note ?? "").trim().slice(0, 2000),
+    };
+    const payload = { ...base, details };
+    await sql`INSERT INTO onboarding_applications (id, user_id, name, brand, contact, email, phase, status, payload, updated_at)
+              VALUES (${id}, ${me.id}, ${details.managerName || details.repName}, ${brand}, ${contact}, ${details.email},
+                      'completed', 'details_submitted', ${JSON.stringify(payload)}::jsonb, now())
+              ON CONFLICT (id) DO UPDATE SET
+                name=EXCLUDED.name, brand=EXCLUDED.brand, contact=EXCLUDED.contact, email=EXCLUDED.email,
+                phase=CASE WHEN onboarding_applications.status='paid' THEN 'completed' ELSE onboarding_applications.phase END,
+                status=CASE WHEN onboarding_applications.status='paid' THEN 'paid' ELSE 'details_submitted' END,
+                payload=${JSON.stringify(payload)}::jsonb, updated_at=now()`;
+    return NextResponse.json({ ok: true, id });
+  }
+
   if (stage === "details") {
     const brand = String(body?.brand ?? "").trim().slice(0, 200);
     const contact = String(body?.contact ?? "").trim().slice(0, 120);
