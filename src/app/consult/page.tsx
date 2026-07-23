@@ -8,6 +8,7 @@ import { Check, FileText, Loader2, ArrowRight } from "lucide-react";
 import SiteHeader from "@/components/ktrend/SiteHeader";
 import SiteFooter from "@/components/ktrend/SiteFooter";
 import { trackPixel } from "@/components/ktrend/MetaPixel";
+import { parseUtmFromSearch, storeFirstTouchUtm, getStoredUtm, type Utm } from "@/lib/utm";
 
 const DECK_URL = process.env.NEXT_PUBLIC_GLOVEK_DECK_URL
   || "https://docs.google.com/presentation/d/1zUGsHZ9pIbupXZsGTdDx1okGRJX5Sdwg/edit?usp=sharing&ouid=105353575394213431265&rtpof=true&sd=true";
@@ -16,18 +17,22 @@ const CATEGORIES = ["스킨케어", "메이크업", "헤어케어", "바디·퍼
 
 export default function ConsultDeckPage() {
   const [f, setF] = useState({ company: "", category: "", managerName: "", email: "", contact: "" });
-  const [agree, setAgree] = useState(false);
+  const [agree, setAgree] = useState(true); // 필수 동의 기본 체크
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [done, setDone] = useState(false);
   const set = (k: keyof typeof f) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => setF((p) => ({ ...p, [k]: e.target.value }));
 
-  // 입력 퍼널 추적(비식별) — 1번 모델과 동일
+  // 입력 퍼널 추적(비식별) — 1번 모델과 동일 + 유입(UTM) 기록
   const sidRef = useRef<string>("");
+  const utmRef = useRef<{ utm: Utm; landing: string; referrer: string }>({ utm: {}, landing: "", referrer: "" });
   const stateRef = useRef({ f, agree });
   stateRef.current = { f, agree };
   useEffect(() => {
     sidRef.current = (typeof crypto !== "undefined" && crypto.randomUUID) ? crypto.randomUUID() : `s-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    const cur = parseUtmFromSearch(window.location.search);
+    storeFirstTouchUtm(cur); // 첫 유입 보존
+    utmRef.current = { utm: { ...getStoredUtm(), ...cur }, landing: window.location.pathname + window.location.search, referrer: document.referrer || "" };
     const onHide = () => { if (document.visibilityState === "hidden") sendTrack(false, true); };
     document.addEventListener("visibilitychange", onHide);
     return () => document.removeEventListener("visibilitychange", onHide);
@@ -44,7 +49,8 @@ export default function ConsultDeckPage() {
     const st = stateRef.current;
     const fields = filledFields(st);
     if (!completed && !fields.length) return;
-    const payload = JSON.stringify({ sid, fields, lastField: fields[fields.length - 1], category: st.f.category || undefined, agreed: st.agree, completed });
+    const { utm, landing, referrer } = utmRef.current;
+    const payload = JSON.stringify({ sid, fields, lastField: fields[fields.length - 1], category: st.f.category || undefined, agreed: st.agree, completed, utm, landing, referrer });
     try {
       if (beacon && navigator.sendBeacon) { navigator.sendBeacon("/api/consult/track", new Blob([payload], { type: "application/json" })); return; }
       fetch("/api/consult/track", { method: "POST", headers: { "Content-Type": "application/json" }, body: payload, keepalive: true }).catch(() => {});
@@ -76,18 +82,9 @@ export default function ConsultDeckPage() {
     <div className="flex min-h-screen flex-col bg-gradient-to-b from-[#faf7ff] to-white text-slate-800">
       <SiteHeader />
 
-      <div className="mx-auto grid w-full max-w-[1200px] flex-1 gap-6 px-4 py-8 lg:grid-cols-2 lg:gap-10 lg:py-12">
-        {/* ── 소개 (모바일: 폼 아래 / 데스크톱: 오른쪽) ── */}
-        <section className="order-2 lg:order-2">
-          <span className="inline-flex items-center gap-1 rounded-full bg-[var(--accent-light)]/60 px-3 py-1 text-[11px] font-bold text-[#7C3AED]">
-            <FileText size={12} /> GloveK 서비스 소개서
-          </span>
-          <h1 className="mt-3 text-[26px] font-black leading-tight md:text-[34px]">GloveK <span className="text-[#7C3AED]">서비스 소개서</span></h1>
-          <p className="mt-2 text-[13px] text-slate-500">정보를 남겨 주시면 GloveK 서비스 소개서를 바로 확인하실 수 있습니다. 담당자가 확인 후 필요한 안내를 도와드립니다.</p>
-        </section>
-
-        {/* ── 소개서 받기 폼 (모바일: 최상단 / 데스크톱: 왼쪽) ── */}
-        <section className="order-1 lg:order-1">
+      <div className="mx-auto w-full max-w-[520px] flex-1 px-4 py-8 lg:py-12">
+        {/* ── 소개서 받기 폼 ── */}
+        <section>
           <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
             {done ? (
               <div className="py-6 text-center">

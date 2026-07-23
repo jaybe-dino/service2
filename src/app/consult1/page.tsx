@@ -9,6 +9,7 @@ import { MALL_TRACKS } from "@/data/ktrend/meta";
 import SiteHeader from "@/components/ktrend/SiteHeader";
 import SiteFooter from "@/components/ktrend/SiteFooter";
 import { trackPixel } from "@/components/ktrend/MetaPixel";
+import { parseUtmFromSearch, storeFirstTouchUtm, getStoredUtm, type Utm } from "@/lib/utm";
 
 // env 우선, 없으면 기본값(제공받은 링크). 서비스 소개서 = 구글 슬라이드(보기).
 const DECK_URL = process.env.NEXT_PUBLIC_GLOVEK_DECK_URL
@@ -28,10 +29,14 @@ export default function ConsultPage() {
 
   // ── 입력 퍼널 추적(비식별): 어느 필드까지 채웠는지만 서버에 upsert. PII 값은 전송 안 함 ──
   const sidRef = useRef<string>("");
+  const utmRef = useRef<{ utm: Utm; landing: string; referrer: string }>({ utm: {}, landing: "", referrer: "" });
   const stateRef = useRef({ f, agree, done: false });
   stateRef.current = { f, agree, done: !!done };
   useEffect(() => {
     sidRef.current = (typeof crypto !== "undefined" && crypto.randomUUID) ? crypto.randomUUID() : `s-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    const cur = parseUtmFromSearch(window.location.search);
+    storeFirstTouchUtm(cur);
+    utmRef.current = { utm: { ...getStoredUtm(), ...cur }, landing: window.location.pathname + window.location.search, referrer: document.referrer || "" };
     const onHide = () => { if (document.visibilityState === "hidden") sendTrack(false, true); };
     document.addEventListener("visibilitychange", onHide);
     return () => document.removeEventListener("visibilitychange", onHide);
@@ -48,7 +53,8 @@ export default function ConsultPage() {
     const st = stateRef.current;
     const fields = filledFields(st);
     if (!completed && !fields.length) return; // 아무것도 안 채웠으면 기록 안 함
-    const payload = JSON.stringify({ sid, fields, lastField: fields[fields.length - 1], category: st.f.category || undefined, agreed: st.agree, completed });
+    const { utm, landing, referrer } = utmRef.current;
+    const payload = JSON.stringify({ sid, fields, lastField: fields[fields.length - 1], category: st.f.category || undefined, agreed: st.agree, completed, utm, landing, referrer });
     try {
       if (beacon && navigator.sendBeacon) { navigator.sendBeacon("/api/consult/track", new Blob([payload], { type: "application/json" })); return; }
       fetch("/api/consult/track", { method: "POST", headers: { "Content-Type": "application/json" }, body: payload, keepalive: true }).catch(() => {});

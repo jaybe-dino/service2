@@ -34,7 +34,13 @@ const KIND_LABEL: Record<string, string> = {
 };
 
 const won = (n: number) => "₩" + Number(n || 0).toLocaleString();
-const dt = (s: string | null) => (s ? s.slice(0, 16).replace("T", " ") : "—");
+// 한국시간(KST) 표기. 숫자면 epoch(ms), 아니면 ISO 문자열로 파싱.
+const dt = (s: string | number | null) => {
+  if (s == null || s === "") return "—";
+  const d = new Date(typeof s === "number" || /^\d+$/.test(String(s)) ? Number(s) : String(s));
+  if (isNaN(d.getTime())) return String(s).slice(0, 16).replace("T", " ");
+  return d.toLocaleString("ko-KR", { timeZone: "Asia/Seoul", year: "2-digit", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hour12: false });
+};
 const proState = (until: number) => (Number(until) > Date.now() ? `Pro ~${new Date(Number(until)).toISOString().slice(0, 10)}` : "—");
 const proSource = (m: { pro_until: number; sub_status?: string | null; promo_code?: string | null; invite_count?: number; paid_total?: number }) => {
   if (Number(m.pro_until) <= Date.now()) return "—";
@@ -69,7 +75,8 @@ interface FunnelData {
   totals: { sessions: number; completed: number; abandoned: number; completionRate: number };
   funnel: { key: string; label: string; reached: number; pct: number }[];
   dropoff: { field: string | null; label: string; count: number }[];
-  recent: { sid: string; fieldCount: number; lastField: string; category: string; agreed: boolean; completed: boolean; mobile: boolean; updatedAt: string }[];
+  sources: { source: string; medium: string; campaign: string; sessions: number; started: number; completed: number; completionRate: number }[];
+  recent: { sid: string; fieldCount: number; lastField: string; category: string; agreed: boolean; completed: boolean; mobile: boolean; source: string; medium: string; campaign: string; landing: string; updatedAt: string }[];
 }
 interface PromoRow { code: string; plan: string; trial_days: number; max_uses: number; used_count: number; active: boolean; created_at: string }
 interface ConsultRow { id: number; company: string; brand_url: string | null; category: string | null; overseas: string | null; manager_name: string; email: string; contact: string; message: string | null; agreed: boolean; status: string; created_at: string }
@@ -724,10 +731,37 @@ export default function AdminPage() {
                 </div>
               )}
 
-              <Table head={["세션", "입력 필드수", "마지막 입력", "카테고리", "약관동의", "완료", "기기", "시각"]}>
+              {/* 유입 소스별(UTM) — 광고 캠페인별 도달·완료율 */}
+              {funnel.sources && funnel.sources.length > 0 && (
+                <div className="rounded-xl border border-[var(--border)] p-4">
+                  <div className="mb-2 text-[13px] font-black">유입 소스별 <span className="text-[11px] font-normal text-[var(--muted)]">· UTM source·medium·campaign 기준 (광고별 완료율)</span></div>
+                  <div className="overflow-x-auto">
+                    <table className="w-full min-w-[520px] text-[11px]">
+                      <thead><tr className="border-b border-[var(--border)] text-left text-[10px] uppercase text-[var(--muted)]">{["소스", "매체", "캠페인", "세션", "입력시작", "완료", "완료율"].map((h) => <th key={h} className="p-2">{h}</th>)}</tr></thead>
+                      <tbody>
+                        {funnel.sources.map((s, i) => (
+                          <tr key={i} className="border-b border-[var(--border)] last:border-0">
+                            <td className="p-2 font-semibold">{s.source}</td>
+                            <td className="p-2 text-[var(--muted)]">{s.medium || "—"}</td>
+                            <td className="p-2 text-[var(--muted)]">{s.campaign || "—"}</td>
+                            <td className="p-2">{s.sessions}</td>
+                            <td className="p-2">{s.started}</td>
+                            <td className="p-2 font-bold text-emerald-600">{s.completed}</td>
+                            <td className="p-2"><span className={`rounded px-1.5 py-0.5 font-bold ${s.completionRate >= 20 ? "bg-emerald-50 text-emerald-700" : s.completionRate > 0 ? "bg-amber-50 text-amber-700" : "bg-rose-50 text-rose-600"}`}>{s.completionRate}%</span></td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  <p className="mt-2 text-[10px] text-[var(--muted)]">완료율 0%인데 세션이 많은 소스 = 광고 클릭은 오지만 입력 안 함(랜딩·폼 점검 필요).</p>
+                </div>
+              )}
+
+              <Table head={["세션", "유입(소스/캠페인)", "필드수", "마지막 입력", "카테고리", "동의", "완료", "기기", "시각(KST)"]}>
                 {funnel.recent.map((r) => (
                   <tr key={r.sid} className="border-b border-[var(--border)] last:border-0">
                     <td className="p-2 font-mono text-[10px] text-[var(--muted)]">{r.sid}</td>
+                    <td className="p-2 text-[10px]"><b>{r.source}</b>{r.campaign ? <span className="text-[var(--muted)]"> · {r.campaign}</span> : ""}</td>
                     <td className="p-2">{r.fieldCount}</td>
                     <td className="p-2">{r.lastField}</td>
                     <td className="p-2 text-[10px]">{r.category}</td>
@@ -737,7 +771,7 @@ export default function AdminPage() {
                     <td className="p-2 text-[var(--muted)]">{dt(r.updatedAt)}</td>
                   </tr>
                 ))}
-                {!funnel.recent.length && <EmptyRow cols={8} text="입력 기록 없음" />}
+                {!funnel.recent.length && <EmptyRow cols={9} text="입력 기록 없음" />}
               </Table>
             </>
           )}

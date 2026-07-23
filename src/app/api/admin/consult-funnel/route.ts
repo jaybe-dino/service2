@@ -16,6 +16,10 @@ const STEPS = [
   { key: "agreed", label: "약관동의" },
 ];
 
+function refHost(ref: string): string {
+  try { const h = new URL(ref).hostname.replace(/^www\./, ""); return h || "(direct)"; } catch { return "(direct)"; }
+}
+
 export async function GET() {
   if (!(await isAdminAuthed())) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   if (!isConfigured()) return NextResponse.json({ error: "DB 미설정" }, { status: 503 });
@@ -48,10 +52,24 @@ export async function GET() {
     const labelOf: Record<string, string> = Object.fromEntries(STEPS.map((s) => [s.key, s.label]));
     const dropoff = dropRows.rows.map((r) => ({ field: r.last_field, label: r.last_field ? (labelOf[r.last_field] ?? r.last_field) : "(없음)", count: Number(r.n) || 0 }));
 
-    // 최근 세션(비식별)
-    const recent = await sql<{ sid: string; field_count: number; last_field: string | null; category: string | null; agreed: boolean; completed: boolean; ua: string | null; updated_at: string }>`
-      SELECT sid, field_count, last_field, category, agreed, completed, ua, updated_at
-      FROM consult_progress ORDER BY updated_at DESC LIMIT 60`;
+    // 유입 소스별(UTM source + medium/campaign) 도달·완료율 — '광고는 도는데 왜 입력 안 하나' 분석용
+    const srcRows = await sql<{ source: string | null; medium: string | null; campaign: string | null; sessions: number; started: number; completed: number }>`
+      SELECT coalesce(utm_source, '(direct)') AS source, coalesce(utm_medium,'') AS medium, coalesce(utm_campaign,'') AS campaign,
+             count(*)::int AS sessions,
+             count(*) FILTER (WHERE field_count > 0)::int AS started,
+             count(*) FILTER (WHERE completed)::int AS completed
+      FROM consult_progress WHERE updated_at > now() - interval '90 days'
+      GROUP BY 1,2,3 ORDER BY sessions DESC LIMIT 40`;
+    const sources = srcRows.rows.map((r) => ({
+      source: r.source || "(direct)", medium: r.medium || "", campaign: r.campaign || "",
+      sessions: Number(r.sessions) || 0, started: Number(r.started) || 0, completed: Number(r.completed) || 0,
+      completionRate: Number(r.sessions) ? Math.round((Number(r.completed) / Number(r.sessions)) * 1000) / 10 : 0,
+    }));
+
+    // 최근 세션(비식별) + 유입 정보
+    const recent = await sql<{ sid: string; field_count: number; last_field: string | null; category: string | null; agreed: boolean; completed: boolean; ua: string | null; updated_at: string; utm_source: string | null; utm_medium: string | null; utm_campaign: string | null; referrer: string | null; landing: string | null }>`
+      SELECT sid, field_count, last_field, category, agreed, completed, ua, updated_at, utm_source, utm_medium, utm_campaign, referrer, landing
+      FROM consult_progress ORDER BY updated_at DESC LIMIT 80`;
     const sessionsRecent = recent.rows.map((r) => ({
       sid: r.sid.slice(0, 8),
       fieldCount: Number(r.field_count) || 0,
@@ -60,13 +78,17 @@ export async function GET() {
       agreed: !!r.agreed,
       completed: !!r.completed,
       mobile: /Mobi|Android|iPhone/i.test(r.ua || ""),
+      source: r.utm_source || (r.referrer ? refHost(r.referrer) : "(direct)"),
+      medium: r.utm_medium || "",
+      campaign: r.utm_campaign || "",
+      landing: r.landing || "",
       updatedAt: r.updated_at,
     }));
 
     return NextResponse.json({
       configured: true,
       totals: { sessions, completed: Number(a.completed) || 0, abandoned: Number(a.abandoned) || 0, completionRate: sessions ? Math.round(((Number(a.completed) || 0) / sessions) * 1000) / 10 : 0 },
-      funnel, dropoff, recent: sessionsRecent,
+      funnel, dropoff, sources, recent: sessionsRecent,
     });
   } catch (e) {
     return NextResponse.json({ configured: true, error: String(e).slice(0, 160), funnel: [], recent: [] });

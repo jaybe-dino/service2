@@ -374,6 +374,13 @@ export function ensureSchema(): Promise<void> {
         updated_at timestamptz NOT NULL DEFAULT now()
       )`;
       await sql`CREATE INDEX IF NOT EXISTS idx_consult_progress_updated ON consult_progress(updated_at DESC)`;
+      // 유입(UTM) — 어떤 광고/캠페인에서 왔는지 + 랜딩 경로. 퍼널 드롭오프를 소스별로 분석.
+      await sql`ALTER TABLE consult_progress ADD COLUMN IF NOT EXISTS utm_source text`;
+      await sql`ALTER TABLE consult_progress ADD COLUMN IF NOT EXISTS utm_medium text`;
+      await sql`ALTER TABLE consult_progress ADD COLUMN IF NOT EXISTS utm_campaign text`;
+      await sql`ALTER TABLE consult_progress ADD COLUMN IF NOT EXISTS utm_content text`;
+      await sql`ALTER TABLE consult_progress ADD COLUMN IF NOT EXISTS utm_term text`;
+      await sql`ALTER TABLE consult_progress ADD COLUMN IF NOT EXISTS landing text`;
       // Remake Studio(프로토타입) — 업로드 제품 이미지(외부 영상모델이 가져갈 공개 URL) + 생성 잡 추적
       await sql`CREATE TABLE IF NOT EXISTS remake_assets (
         id text PRIMARY KEY,
