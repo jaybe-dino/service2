@@ -358,6 +358,22 @@ export function ensureSchema(): Promise<void> {
         status text NOT NULL DEFAULT 'new',
         created_at timestamptz NOT NULL DEFAULT now()
       )`;
+      // 상담 폼 입력 퍼널 추적 — 어느 필드까지 채웠는지(드롭오프 분석). PII 값은 저장하지 않고
+      // '채운 필드 키'만 기록(비식별). 완료 건의 상세는 consult_requests에 존재.
+      await sql`CREATE TABLE IF NOT EXISTS consult_progress (
+        sid text PRIMARY KEY,
+        fields jsonb NOT NULL DEFAULT '[]'::jsonb,
+        last_field text,
+        field_count int NOT NULL DEFAULT 0,
+        category text,
+        agreed boolean NOT NULL DEFAULT false,
+        completed boolean NOT NULL DEFAULT false,
+        ua text,
+        referrer text,
+        created_at timestamptz NOT NULL DEFAULT now(),
+        updated_at timestamptz NOT NULL DEFAULT now()
+      )`;
+      await sql`CREATE INDEX IF NOT EXISTS idx_consult_progress_updated ON consult_progress(updated_at DESC)`;
       // Remake Studio(프로토타입) — 업로드 제품 이미지(외부 영상모델이 가져갈 공개 URL) + 생성 잡 추적
       await sql`CREATE TABLE IF NOT EXISTS remake_assets (
         id text PRIMARY KEY,

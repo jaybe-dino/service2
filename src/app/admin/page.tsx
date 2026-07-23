@@ -64,7 +64,13 @@ interface OnbApp {
 }
 const TRACK_LABEL: Record<string, string> = { ready: "Start", live: "Live Focus", onboarding: "Onboarding" };
 interface Referrer { code: string; login_id: string; name: string | null; created_ms: number; signups: number; paid_users: number; revenue: number; rate: number; commission: number }
-type Tab = "members" | "payments" | "inquiries" | "consult" | "promo" | "onboarding" | "referrers" | "collect" | "influencers" | "brands" | "utm" | "rules";
+type Tab = "members" | "payments" | "inquiries" | "consult" | "funnel" | "promo" | "onboarding" | "referrers" | "collect" | "influencers" | "brands" | "utm" | "rules";
+interface FunnelData {
+  totals: { sessions: number; completed: number; abandoned: number; completionRate: number };
+  funnel: { key: string; label: string; reached: number; pct: number }[];
+  dropoff: { field: string | null; label: string; count: number }[];
+  recent: { sid: string; fieldCount: number; lastField: string; category: string; agreed: boolean; completed: boolean; mobile: boolean; updatedAt: string }[];
+}
 interface PromoRow { code: string; plan: string; trial_days: number; max_uses: number; used_count: number; active: boolean; created_at: string }
 interface ConsultRow { id: number; company: string; brand_url: string | null; category: string | null; overseas: string | null; manager_name: string; email: string; contact: string; message: string | null; agreed: boolean; status: string; created_at: string }
 interface UtmRow { key: string; visits: number; signups: number }
@@ -82,6 +88,7 @@ export default function AdminPage() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [inquiries, setInquiries] = useState<Inquiry[]>([]);
   const [consult, setConsult] = useState<ConsultRow[]>([]);
+  const [funnel, setFunnel] = useState<FunnelData | null>(null);
   const [cancelling, setCancelling] = useState<string | null>(null);
   const [promos, setPromos] = useState<PromoRow[]>([]);
   const [newPromo, setNewPromo] = useState({ code: "", max_uses: 0 });
@@ -157,6 +164,10 @@ export default function AdminPage() {
     const refs = await fetch("/api/admin/referrers", { cache: "no-store" }).then((x) => x.json()).catch(() => null);
     if (refs?.ok) setReferrers(refs.items ?? []);
   };
+  const loadFunnel = async () => {
+    const fn = await fetch("/api/admin/consult-funnel", { cache: "no-store" }).then((x) => x.json()).catch(() => null);
+    if (fn && !fn.error) setFunnel(fn as FunnelData);
+  };
   const loadTuning = async () => {
     const t = await fetch("/api/admin/collect-tuning", { cache: "no-store" }).then((x) => x.json()).catch(() => null);
     if (t?.ok) setTuning(t.tuning);
@@ -177,6 +188,7 @@ export default function AdminPage() {
     if (tab === "referrers") k("referrers", loadReferrers);
     if (tab === "collect") k("tuning", loadTuning);
     if (tab === "promo") k("promo", loadPromos);
+    if (tab === "funnel") k("funnel", loadFunnel);
   }, [authed, tab]);
   // 새로고침: overview + 현재 탭 부가데이터
   const refresh = () => {
@@ -184,6 +196,7 @@ export default function AdminPage() {
     if (tab === "onboarding") loadOnb();
     if (tab === "referrers") loadReferrers();
     if (tab === "collect") loadTuning();
+    if (tab === "funnel") loadFunnel();
   };
   const saveTuning = async () => {
     if (!tuning) return;
@@ -498,6 +511,7 @@ export default function AdminPage() {
     { id: "payments", label: "결제현황", icon: <CreditCard size={13} /> },
     { id: "inquiries", label: "문의·제안", icon: <Inbox size={13} /> },
     { id: "consult", label: "1:1 상담신청", icon: <Inbox size={13} /> },
+    { id: "funnel", label: "상담 입력 퍼널", icon: <SlidersHorizontal size={13} /> },
     { id: "promo", label: "프로모 코드", icon: <Gift size={13} /> },
     { id: "onboarding", label: "틱톡샵 온보딩", icon: <ShoppingBag size={13} /> },
     { id: "referrers", label: "추천인", icon: <Gift size={13} /> },
@@ -660,6 +674,74 @@ export default function AdminPage() {
           ))}
           {!consult.length && <EmptyRow cols={10} text="상담 신청 없음" />}
         </Table>
+      )}
+
+      {tab === "funnel" && (
+        <div className="space-y-4">
+          <p className="text-[12px] text-[var(--muted)]">상담 폼에서 방문자가 <b>어느 필드까지 입력하고 이탈하는지</b> 추적합니다(비식별 · 최근 90일). 완료 건의 상세는 “1:1 상담신청” 탭에 있습니다.</p>
+
+          {!funnel ? (
+            <div className="rounded-xl border border-[var(--border)] p-6 text-center text-[12px] text-[var(--muted)]">불러오는 중… (데이터가 없으면 아직 방문/입력 기록이 없는 것입니다)</div>
+          ) : (
+            <>
+              <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
+                {[
+                  { l: "입력 시작 세션", v: funnel.totals.sessions },
+                  { l: "제출 완료", v: funnel.totals.completed },
+                  { l: "중도 이탈", v: funnel.totals.abandoned },
+                  { l: "완료율", v: `${funnel.totals.completionRate}%` },
+                ].map((s) => (
+                  <div key={s.l} className="rounded-xl border border-[var(--border)] p-3">
+                    <div className="text-[10px] text-[var(--muted)]">{s.l}</div>
+                    <div className="mt-0.5 text-[18px] font-black">{s.v}</div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="rounded-xl border border-[var(--border)] p-4">
+                <div className="mb-2 text-[13px] font-black">필드별 도달률</div>
+                <div className="space-y-1.5">
+                  {funnel.funnel.map((f) => (
+                    <div key={f.key} className="flex items-center gap-2">
+                      <div className="w-28 shrink-0 text-[11px] text-[var(--muted)]">{f.label}</div>
+                      <div className="h-4 flex-1 overflow-hidden rounded bg-slate-100">
+                        <div className="flex h-full items-center rounded bg-[var(--accent)] px-1.5 text-[9px] font-bold text-white" style={{ width: `${Math.max(f.pct, 3)}%` }}>{f.pct >= 8 ? `${f.pct}%` : ""}</div>
+                      </div>
+                      <div className="w-24 shrink-0 text-right text-[11px] font-semibold">{f.reached}명 · {f.pct}%</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {funnel.dropoff.length > 0 && (
+                <div className="rounded-xl border border-[var(--border)] p-4">
+                  <div className="mb-2 text-[13px] font-black">이탈 지점 <span className="text-[11px] font-normal text-[var(--muted)]">· 마지막으로 입력한 필드</span></div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {funnel.dropoff.map((d) => (
+                      <span key={d.field ?? "none"} className="rounded-full bg-rose-50 px-2.5 py-1 text-[11px] font-semibold text-rose-600">{d.label} 에서 {d.count}명 이탈</span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <Table head={["세션", "입력 필드수", "마지막 입력", "카테고리", "약관동의", "완료", "기기", "시각"]}>
+                {funnel.recent.map((r) => (
+                  <tr key={r.sid} className="border-b border-[var(--border)] last:border-0">
+                    <td className="p-2 font-mono text-[10px] text-[var(--muted)]">{r.sid}</td>
+                    <td className="p-2">{r.fieldCount}</td>
+                    <td className="p-2">{r.lastField}</td>
+                    <td className="p-2 text-[10px]">{r.category}</td>
+                    <td className="p-2">{r.agreed ? "✓" : "—"}</td>
+                    <td className="p-2">{r.completed ? <span className="rounded bg-emerald-50 px-1.5 py-0.5 text-[10px] font-bold text-emerald-600">완료</span> : <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-semibold text-slate-500">이탈</span>}</td>
+                    <td className="p-2 text-[10px]">{r.mobile ? "📱 모바일" : "💻 PC"}</td>
+                    <td className="p-2 text-[var(--muted)]">{dt(r.updatedAt)}</td>
+                  </tr>
+                ))}
+                {!funnel.recent.length && <EmptyRow cols={8} text="입력 기록 없음" />}
+              </Table>
+            </>
+          )}
+        </div>
       )}
 
       {tab === "promo" && (

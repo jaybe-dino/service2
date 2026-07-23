@@ -2,7 +2,7 @@
 
 // GloveK 틱톡샵 멀티몰 입점 상담 랜딩(이벤트). 좌: 트랙 소개+소개서 / 우: 브랜드 정보 폼.
 // 신청 성공 시 1:1 미팅 신청 링크 자동 노출. 개인정보 수집 동의 필수. 저장: /api/consult.
-import { useState, Fragment } from "react";
+import { useState, useEffect, useRef, Fragment } from "react";
 import Link from "next/link";
 import { Check, ArrowRight, Download, ShoppingBag, CalendarClock, Loader2 } from "lucide-react";
 import { MALL_TRACKS } from "@/data/ktrend/meta";
@@ -17,15 +17,43 @@ const MEETING_URL = process.env.NEXT_PUBLIC_GLOVEK_MEETING_URL
   || "https://scheduler.zoom.us/nwa36f2letmqfr4bht4pgtzve0/tpartners2";
 
 const CATEGORIES = ["스킨케어", "메이크업", "헤어케어", "바디·퍼스널케어", "이너뷰티/건기식", "패션·잡화", "푸드", "기타"];
-const OVERSEAS = ["없음", "아마존·쇼피 등 경험 있음", "TikTok Shop 경험 있음", "기타"];
 
 export default function ConsultPage() {
-  const [f, setF] = useState({ company: "", brandUrl: "", category: "", overseas: "", managerName: "", email: "", contact: "", message: "" });
+  const [f, setF] = useState({ company: "", category: "", managerName: "", email: "", contact: "", message: "" });
   const [agree, setAgree] = useState(false);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [done, setDone] = useState<{ meetingUrl: string } | null>(null);
   const set = (k: keyof typeof f) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => setF((p) => ({ ...p, [k]: e.target.value }));
+
+  // ── 입력 퍼널 추적(비식별): 어느 필드까지 채웠는지만 서버에 upsert. PII 값은 전송 안 함 ──
+  const sidRef = useRef<string>("");
+  const stateRef = useRef({ f, agree, done: false });
+  stateRef.current = { f, agree, done: !!done };
+  useEffect(() => {
+    sidRef.current = (typeof crypto !== "undefined" && crypto.randomUUID) ? crypto.randomUUID() : `s-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    const onHide = () => { if (document.visibilityState === "hidden") sendTrack(false, true); };
+    document.addEventListener("visibilitychange", onHide);
+    return () => document.removeEventListener("visibilitychange", onHide);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  const filledFields = (st: typeof stateRef.current) => {
+    const keys: string[] = [];
+    (["company", "category", "managerName", "email", "contact", "message"] as const).forEach((k) => { if (String(st.f[k] || "").trim()) keys.push(k); });
+    if (st.agree) keys.push("agreed");
+    return keys;
+  };
+  const sendTrack = (completed = false, beacon = false) => {
+    const sid = sidRef.current; if (!sid) return;
+    const st = stateRef.current;
+    const fields = filledFields(st);
+    if (!completed && !fields.length) return; // 아무것도 안 채웠으면 기록 안 함
+    const payload = JSON.stringify({ sid, fields, lastField: fields[fields.length - 1], category: st.f.category || undefined, agreed: st.agree, completed });
+    try {
+      if (beacon && navigator.sendBeacon) { navigator.sendBeacon("/api/consult/track", new Blob([payload], { type: "application/json" })); return; }
+      fetch("/api/consult/track", { method: "POST", headers: { "Content-Type": "application/json" }, body: payload, keepalive: true }).catch(() => {});
+    } catch { /* best-effort */ }
+  };
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -41,6 +69,7 @@ export default function ConsultPage() {
       if (!res.ok || !d.ok) { setErr(d?.error ?? "신청에 실패했습니다."); setBusy(false); return; }
       // 전환 이벤트: 상담 신청 완료 = Lead
       trackPixel("Lead", { content_name: "consult", content_category: f.category, company: f.company });
+      sendTrack(true); // 퍼널: 완료 마킹
       setDone({ meetingUrl: d.meetingUrl || MEETING_URL });
     } catch {
       setErr("신청 처리 중 오류가 발생했습니다.");
@@ -59,7 +88,7 @@ export default function ConsultPage() {
           <span className="inline-flex items-center gap-1 rounded-full bg-[var(--accent-light)]/60 px-3 py-1 text-[11px] font-bold text-[#7C3AED]">
             <ShoppingBag size={12} /> TikTok Shop 멀티몰
           </span>
-          <h1 className="mt-3 text-[26px] font-black leading-tight md:text-[34px]">틱톡샵 멀티몰 <span className="text-[#7C3AED]">GloveK</span> 입점 상담</h1>
+          <h1 className="mt-3 text-[26px] font-black leading-tight md:text-[34px]">틱톡샵 <span className="text-[#7C3AED]">상담</span></h1>
           <p className="mt-2 text-[13px] text-slate-500">브랜드에 맞는 트랙으로, 초기 파일럿부터 자체 브랜드 채널 운영·메가 스케일업까지 함께합니다.</p>
 
           {/* 순서: Live Focus → Guarantee(온보딩 보장) → Onboarding */}
@@ -126,32 +155,23 @@ export default function ConsultPage() {
                 <h2 className="text-[18px] font-black">브랜드 정보 입력</h2>
                 <p className="mb-4 mt-1 text-[12px] text-slate-500">담당자가 확인 후 1:1 상담을 도와드립니다. <span className="text-rose-500">*</span> 필수</p>
                 <div className="grid gap-3">
-                  <Field label="회사명" req><input required value={f.company} onChange={set("company")} className="inp" placeholder="(주)글로우랩" /></Field>
-                  <Field label="브랜드 링크"><input value={f.brandUrl} onChange={set("brandUrl")} className="inp" placeholder="브랜드 홈페이지/인스타/스마트스토어 URL" /></Field>
+                  <Field label="회사명/브랜드명" req><input required value={f.company} onChange={set("company")} onBlur={() => sendTrack()} className="inp" placeholder="(주)글로우랩 / 브랜드명" /></Field>
+                  <Field label="카테고리" req>
+                    <select required value={f.category} onChange={set("category")} onBlur={() => sendTrack()} className="inp">
+                      <option value="">선택</option>
+                      {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
+                    </select>
+                  </Field>
+                  <Field label="담당자 성함" req><input required value={f.managerName} onChange={set("managerName")} onBlur={() => sendTrack()} className="inp" placeholder="홍길동" /></Field>
                   <div className="grid grid-cols-2 gap-3">
-                    <Field label="카테고리" req>
-                      <select required value={f.category} onChange={set("category")} className="inp">
-                        <option value="">선택</option>
-                        {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
-                      </select>
-                    </Field>
-                    <Field label="해외 판매 경험" req>
-                      <select required value={f.overseas} onChange={set("overseas")} className="inp">
-                        <option value="">선택</option>
-                        {OVERSEAS.map((c) => <option key={c} value={c}>{c}</option>)}
-                      </select>
-                    </Field>
+                    <Field label="이메일" req><input required type="email" value={f.email} onChange={set("email")} onBlur={() => sendTrack()} className="inp" placeholder="name@brand.com" /></Field>
+                    <Field label="연락처" req><input required value={f.contact} onChange={set("contact")} onBlur={() => sendTrack()} className="inp" placeholder="010-0000-0000" /></Field>
                   </div>
-                  <Field label="담당자 성함" req><input required value={f.managerName} onChange={set("managerName")} className="inp" placeholder="홍길동" /></Field>
-                  <div className="grid grid-cols-2 gap-3">
-                    <Field label="이메일" req><input required type="email" value={f.email} onChange={set("email")} className="inp" placeholder="name@brand.com" /></Field>
-                    <Field label="연락처" req><input required value={f.contact} onChange={set("contact")} className="inp" placeholder="010-0000-0000" /></Field>
-                  </div>
-                  <Field label="기타 문의 내용"><textarea value={f.message} onChange={set("message")} rows={3} className="inp resize-none" placeholder="문의하실 내용을 자유롭게 남겨 주세요 (선택)" /></Field>
+                  <Field label="기타 문의 내용"><textarea value={f.message} onChange={set("message")} onBlur={() => sendTrack()} rows={3} className="inp resize-none" placeholder="문의하실 내용을 자유롭게 남겨 주세요 (선택)" /></Field>
                 </div>
 
                 <label className="mt-4 flex items-start gap-2 text-[12px] text-slate-600">
-                  <input type="checkbox" checked={agree} onChange={(e) => setAgree(e.target.checked)} className="mt-0.5" />
+                  <input type="checkbox" checked={agree} onChange={(e) => { setAgree(e.target.checked); setTimeout(() => sendTrack(), 0); }} className="mt-0.5" />
                   <span>
                     <b>[필수]</b> 개인정보 수집·이용에 동의합니다. (수집항목: 회사명·담당자·이메일·연락처 등 / 목적: 입점 상담 / 보유: 상담 종료 후 1년)
                     {" "}<Link href="/privacy" target="_blank" className="text-[#7C3AED] underline">전문 보기</Link>
