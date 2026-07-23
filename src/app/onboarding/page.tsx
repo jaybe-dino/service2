@@ -70,6 +70,7 @@ function OnboardingInner() {
   const [promoCode, setPromoCode] = useState("");
   const [promoApplied, setPromoApplied] = useState(false);
   const [promoMsg, setPromoMsg] = useState("");
+  const [paidFree, setPaidFree] = useState(false); // 결제완료 화면: 프로모 첫 결제 무료 여부
 
   // PHASE 4
   const [d, setD] = useState({
@@ -208,11 +209,12 @@ function OnboardingInner() {
       const data = await res.json();
       setBusy(false);
       if (!res.ok || !data.ok) {
-        if (data?.configured === false) { router.push("/mypage?tab=basic"); return; } // 결제 모듈 미설정 → 마이페이지 기본정보로
+        if (data?.configured === false) { setPaidFree(false); goStep(3); return; } // 결제 모듈 미설정 → 완료 화면
         setMsg(data?.error ?? "결제에 실패했습니다."); return;
       }
-      // 결제 완료 → 정보입력은 마이페이지 '입점 기본정보' 영역에서 진행(온보딩 내 인라인 입력 폐지)
-      router.push("/mypage?tab=basic");
+      // 결제 완료 → '결제완료' 화면을 한 번 보여주고, 버튼으로 마이페이지 기본정보 입력으로 이동
+      setPaidFree(!!data.firstFree);
+      goStep(3);
     } catch { setBusy(false); setMsg("결제 처리 중 오류가 발생했습니다."); }
   };
 
@@ -594,94 +596,28 @@ function OnboardingInner() {
         )}
 
         {/* ───────── PHASE 4 ───────── */}
-        {step === 3 && track && (
-          <div className="mt-5 space-y-4">
-            <div className="rounded-xl bg-emerald-50 px-4 py-3 text-[12px] font-semibold text-emerald-700">
-              결제가 완료되었습니다. 미팅 전 브랜드·제품 정보를 입력해 주세요. (입력 정보는 1:1 온보딩 미팅 전략 수립에 활용됩니다)
-            </div>
-            <div className="kt-card p-6">
-              <h2 className="text-[15px] font-black">① 브랜드 기본 정보</h2>
-              <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                <Field label="브랜드명 (국문) *" value={d.brandKo} onChange={(v) => setD({ ...d, brandKo: v })} />
-                <Field label="브랜드명 (영문)" value={d.brandEn} onChange={(v) => setD({ ...d, brandEn: v })} />
-                <Field label="사업자등록번호" value={d.bizNo} onChange={(v) => setD({ ...d, bizNo: v })} placeholder="000-00-00000" />
-                <Field label="대표자명" value={d.repName} onChange={(v) => setD({ ...d, repName: v })} />
-                <Field label="담당자명" value={d.managerName} onChange={(v) => setD({ ...d, managerName: v })} />
-                <Field label="담당자 연락처 *" value={d.contact} onChange={(v) => setD({ ...d, contact: v })} placeholder="010-0000-0000" />
-                <Field label="담당자 이메일 *" value={d.email} onChange={(v) => setD({ ...d, email: v })} placeholder="brand@company.com" />
-                <Select label="미팅 선호 방식" value={d.meetingType} onChange={(v) => setD({ ...d, meetingType: v })} options={["대면", "Zoom", "Google Meet"]} />
-              </div>
-              <div className="mt-3">
-                <span className="mb-1 block text-[11px] font-semibold text-[var(--muted)]">미팅 가능 시간대</span>
-                <div className="flex flex-wrap gap-2">
-                  {["오전 9~12시", "오후 1~3시", "오후 3~6시"].map((s) => {
-                    const on = slots.includes(s);
-                    return <button key={s} onClick={() => setSlots((p) => on ? p.filter((x) => x !== s) : [...p, s])}
-                      className={`rounded-full border px-3 py-1.5 text-[11px] font-semibold ${on ? "border-[var(--accent)] bg-[var(--accent-light)] text-[var(--accent)]" : "border-[var(--border)] text-[var(--muted)]"}`}>{s}</button>;
-                  })}
+        {/* ───────── 결제 완료 (한 번 노출 → 버튼으로 마이페이지 기본정보 입력) ───────── */}
+        {step === 3 && (
+          <div className="mt-6">
+            <div className="kt-card p-7 text-center">
+              <PartyPopper className="mx-auto text-pink-500" size={44} />
+              <h2 className="mt-3 text-[22px] font-black">결제가 완료되었습니다!</h2>
+              <p className="mt-2 text-[13px] text-[var(--muted)]">{paidFree ? "프로모 코드가 적용되어 첫 결제가 처리되었습니다." : "틱톡샵 입점 결제가 정상적으로 처리되었습니다."}</p>
+              {track && (
+                <div className="mt-3 flex flex-wrap justify-center gap-2 text-[12px]">
+                  <span className="rounded-full bg-[var(--accent-light)] px-3 py-1 font-bold text-[var(--accent)]">{MALL_TRACK_MAP[track].name}</span>
+                  {payCountries.length > 0 && <span className="rounded-full bg-slate-100 px-3 py-1 font-semibold">진출 국가: {payCountries.map((c) => ONB_COUNTRY_MAP[c]?.nameKo ?? c).join(", ")}</span>}
                 </div>
+              )}
+              <div className="mx-auto mt-5 max-w-md rounded-xl bg-slate-50 p-4 text-left text-[12px] text-[var(--muted)]">
+                <div className="font-bold text-[var(--fg)]">다음 단계</div>
+                <p className="mt-1 leading-relaxed">마이페이지 <b className="text-[var(--fg)]">입점 기본정보</b>에서 브랜드·사업자·정산 정보를 입력하고, <b className="text-[var(--fg)]">제품 서류·정보</b>에서 인증서·라벨/실물 사진을 등록해 주세요. 입력 정보는 1:1 온보딩 미팅 전략 수립에 활용됩니다.</p>
               </div>
-              <div className="mt-3">
-                <FileField
-                  label="사업자등록증 (PDF·JPG·PNG · 최대 4MB · 선택)"
-                  value={bizRegFile}
-                  busy={uploading === "biz"}
-                  onPick={async (f) => { setUploading("biz"); const u = await uploadOnbFile(f, "biz_reg"); if (u) setBizRegFile(u); setUploading(null); }}
-                  onClear={() => setBizRegFile(null)}
-                />
-              </div>
-              <p className="mt-2 text-[10px] text-[var(--muted)]">※ 큰 파일이나 추가 서류는 1:1 미팅 시 제출하거나 담당자 이메일로 전달해 주세요.</p>
-            </div>
-
-            <div className="kt-card p-6">
-              <div className="flex items-center justify-between">
-                <h2 className="text-[15px] font-black">② 제품 정보 <span className="text-[11px] font-semibold text-[var(--muted)]">(최대 {limit === 10 ? "무제한" : `${limit}개`})</span></h2>
-                {products.length < limit && <button onClick={() => setProducts((p) => [...p, emptyProduct()])} className="inline-flex items-center gap-1 text-[11px] font-bold text-[var(--accent)]"><Plus size={13} /> 제품 추가</button>}
-              </div>
-              <div className="mt-4 space-y-4">
-                {products.map((p, idx) => (
-                  <div key={idx} className="rounded-xl border border-[var(--border)] p-4">
-                    <div className="mb-2 flex items-center justify-between">
-                      <span className="text-[12px] font-bold">제품 {idx + 1}</span>
-                      {products.length > 1 && <button onClick={() => setProducts((ps) => ps.filter((_, i) => i !== idx))} className="text-rose-500"><Trash2 size={14} /></button>}
-                    </div>
-                    <div className="grid gap-3 sm:grid-cols-2">
-                      <Field label="제품명 (국문)" value={p.nameKo} onChange={(v) => setProducts((ps) => ps.map((x, i) => i === idx ? { ...x, nameKo: v } : x))} />
-                      <Field label="제품명 (영문)" value={p.nameEn} onChange={(v) => setProducts((ps) => ps.map((x, i) => i === idx ? { ...x, nameEn: v } : x))} />
-                      <Select label="카테고리" value={p.cat} onChange={(v) => setProducts((ps) => ps.map((x, i) => i === idx ? { ...x, cat: v } : x))} options={PRODUCT_CATS} />
-                      <Field label="소비자가 (원)" value={p.price} onChange={(v) => setProducts((ps) => ps.map((x, i) => i === idx ? { ...x, price: v } : x))} />
-                      <Field label="원가 (원)" value={p.cost} onChange={(v) => setProducts((ps) => ps.map((x, i) => i === idx ? { ...x, cost: v } : x))} />
-                      <Field label="포장 후 무게 (g)" value={p.packWeight} onChange={(v) => setProducts((ps) => ps.map((x, i) => i === idx ? { ...x, packWeight: v } : x))} />
-                    </div>
-                    <textarea value={p.desc} onChange={(e) => setProducts((ps) => ps.map((x, i) => i === idx ? { ...x, desc: e.target.value } : x))}
-                      rows={2} placeholder="제품 상세 설명 (성분·효능·사용법)"
-                      className="mt-3 w-full rounded-lg border border-[var(--border)] px-3 py-2 text-[12px]" />
-                    <div className="mt-2">
-                      <FileField
-                        label="인증서류 (PDF·JPG·PNG · 최대 4MB · 선택)"
-                        value={p.cert ?? null}
-                        busy={uploading === `p${idx}`}
-                        onPick={async (f) => { setUploading(`p${idx}`); const u = await uploadOnbFile(f, "product_cert", idx); if (u) setProducts((ps) => ps.map((x, i) => i === idx ? { ...x, cert: u } : x)); setUploading(null); }}
-                        onClear={() => setProducts((ps) => ps.map((x, i) => i === idx ? { ...x, cert: null } : x))}
-                      />
-                    </div>
-                  </div>
-                ))}
+              <div className="mt-6 flex flex-wrap justify-center gap-2">
+                <button onClick={() => router.push("/mypage?tab=basic")} className="kt-btn kt-btn-primary px-5 py-2.5 text-[13px]">기본정보 입력하러 가기 <ArrowRight size={15} /></button>
+                <Link href="/mypage" className="kt-btn kt-btn-outline px-5 py-2.5 text-[13px]">마이페이지</Link>
               </div>
             </div>
-
-            <div className="kt-card p-6">
-              <h2 className="text-[15px] font-black">③ 정산 계좌</h2>
-              <div className="mt-4 grid gap-3 sm:grid-cols-3">
-                <Select label="은행" value={d.bank} onChange={(v) => setD({ ...d, bank: v })} options={BANKS} />
-                <Field label="계좌번호" value={d.acct} onChange={(v) => setD({ ...d, acct: v })} />
-                <Field label="예금주" value={d.holder} onChange={(v) => setD({ ...d, holder: v })} />
-              </div>
-            </div>
-
-            <button onClick={submitDetails} disabled={busy} className="kt-btn kt-btn-primary w-full py-3 text-[13px] disabled:opacity-50">
-              {busy ? <Loader2 size={15} className="animate-spin" /> : <Check size={15} />} 제출하고 신청 완료
-            </button>
           </div>
         )}
 
