@@ -21,7 +21,7 @@ export async function POST(req: Request) {
   const kind = String(form.get("kind") ?? "");
   const productIndex = form.get("productIndex") != null ? Number(form.get("productIndex")) : null;
   if (!(file instanceof File)) return NextResponse.json({ ok: false, error: "파일이 없습니다." }, { status: 400 });
-  if (!["biz_reg", "product_cert"].includes(kind)) return NextResponse.json({ ok: false, error: "잘못된 종류" }, { status: 400 });
+  if (!["biz_reg", "product_cert", "product_photo"].includes(kind)) return NextResponse.json({ ok: false, error: "잘못된 종류" }, { status: 400 });
   if (!OK_MIME.includes(file.type)) return NextResponse.json({ ok: false, error: "PDF·JPG·PNG만 업로드할 수 있습니다." }, { status: 400 });
   if (file.size > MAX) return NextResponse.json({ ok: false, error: "파일은 최대 4MB까지 업로드할 수 있습니다." }, { status: 400 });
 
