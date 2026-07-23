@@ -159,7 +159,6 @@ export default function MyPage() {
           const st = ONB_STATUS[a.status] ?? { label: a.status, cls: "bg-slate-100 text-slate-500" };
           const acct = det?.settlement?.acct ?? "";
           const acctMask = acct ? `${det?.settlement?.bank ?? ""} ****${acct.slice(-4)}` : "—";
-          const products = det?.products ?? [];
           return (
             <>
             <div className="mt-4 kt-card p-5">
@@ -228,12 +227,14 @@ export default function MyPage() {
               )}
               <p className="mt-2 text-[10px] text-[var(--muted)]">파트별 추가 결제·옵션이 필요한 경우 담당 매니저를 통해 안내드리며, 결제 시 위 내역에 함께 표시됩니다.</p>
             </div>
-
-            {/* 제품별 서류·정보 관리 (결제한 입점 사용자 — 직접 입력·수정) */}
-            <OnboardingProductDocs initial={products as ProductDoc[]} onSaved={loadOnb} />
             </>
           );
         })()}
+
+        {/* 제품별 서류·정보 관리 — 결제(입점)한 사용자는 여기서 직접 입력·수정(온보딩 재진입 불필요) */}
+        {onb && (onb.application || onb.mallSub || (onb.orders?.length ?? 0) > 0) && (
+          <OnboardingProductDocs initial={(onb.application?.payload?.details?.products ?? []) as ProductDoc[]} onSaved={loadOnb} />
+        )}
 
         {/* 사용 현황 */}
         <div className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-3">

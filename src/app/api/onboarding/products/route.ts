@@ -35,10 +35,26 @@ export async function POST(req: Request) {
   if (!me) return NextResponse.json({ ok: false, error: "로그인이 필요합니다." }, { status: 401 });
   await ensureSchema();
 
-  // 입점(결제) 신청이 있는 사용자만 (paid/details_submitted/self_checked 등 존재 시)
-  const appRows = await sql<{ payload: unknown; status: string }>`
+  // 입점(결제) 신청 행 확보. 없으면 결제 증빙(몰 구독/결제내역)이 있는 사용자에 한해 스텁 생성.
+  // (구버전 결제로 신청행이 유실된 사용자도 마이페이지에서 바로 제품정보 저장 가능하게)
+  let appRows = await sql<{ payload: unknown; status: string }>`
     SELECT payload, status FROM onboarding_applications WHERE user_id=${me.id} LIMIT 1`;
-  if (!appRows.rows.length) return NextResponse.json({ ok: false, error: "입점 신청 정보가 없습니다." }, { status: 403 });
+  if (!appRows.rows.length) {
+    const paidEvidence = await sql<{ n: number }>`
+      SELECT (
+        (SELECT count(*) FROM mall_subscriptions WHERE user_id=${me.id})
+        + (SELECT count(*) FROM orders WHERE user_id=${me.id} AND kind='mall' AND status='paid')
+      )::int AS n`;
+    if (!(paidEvidence.rows[0]?.n > 0)) {
+      return NextResponse.json({ ok: false, error: "입점 결제 정보가 없습니다." }, { status: 403 });
+    }
+    await sql`INSERT INTO onboarding_applications (id, user_id, email, status, phase, payload, updated_at)
+              VALUES (${`onb_${me.id}`}, ${me.id}, ${me.email ?? ""}, 'paid', 'details', '{}'::jsonb, now())
+              ON CONFLICT (id) DO NOTHING`;
+    appRows = await sql<{ payload: unknown; status: string }>`
+      SELECT payload, status FROM onboarding_applications WHERE user_id=${me.id} LIMIT 1`;
+    if (!appRows.rows.length) return NextResponse.json({ ok: false, error: "신청 정보 생성 실패" }, { status: 500 });
+  }
 
   const body = (await req.json().catch(() => ({}))) as { products?: ProductIn[] };
   const inputs = Array.isArray(body.products) ? body.products.slice(0, 100) : [];
