@@ -44,7 +44,7 @@ export const DEFAULT_TUNING: CollectTuning = {
   refreshLimit: Number(process.env.COLLECT_REFRESH_LIMIT ?? 100),
   maxPending: Number(process.env.COLLECT_MAX_PENDING ?? 4),
   maxRefresh: Number(process.env.COLLECT_MAX_REFRESH ?? 6),
-  maxPoll: Number(process.env.COLLECT_MAX_POLL ?? 2),
+  maxPoll: Number(process.env.COLLECT_MAX_POLL ?? 4), // 킥 속도(신규4+갱신6) 대비 회수 속도 — 웹훅 차단 환경에서 잡이 리퍼에 먹히지 않게
 };
 const clampPos = (n: unknown, def: number, max: number) => {
   const v = Math.round(Number(n));
@@ -194,6 +194,9 @@ async function recomputeBrandShopStats(brandName: string) {
 
 export async function ingestProducts(brandName: string, products: ShopProduct[], country = "US"): Promise<number> {
   await ensureSchema();
+  // 블락 브랜드는 적재하지 않음(수집 킥은 걸러도 진행 중이던 run이 웹훅/폴링으로 들어올 수 있음)
+  const blocked = await getBlocked();
+  if (blocked.brands.has(brandName)) return 0;
   const cc = (country || "US").toUpperCase();
   const seen = new Set<string>();
   const rows = products.filter((p) => p.productId && !seen.has(p.productId) && seen.add(p.productId));

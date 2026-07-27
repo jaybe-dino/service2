@@ -29,11 +29,13 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
       ? await Promise.all([
           sql<{ video_id: string; handle: string | null; views: string | number; likes: string | number; url: string | null; country: string | null; is_ad: boolean; is_shop: boolean; posted_at: string | null; direct: boolean }>`
             SELECT video_id, handle, views, likes, url, country, is_ad, is_shop, posted_at, (product_ref = ${rawId}) AS direct FROM videos
-            WHERE product_ref = ${rawId} OR lower(coalesce(brand_name,'')) = lower(${brand})
+            WHERE (product_ref = ${rawId} OR lower(coalesce(brand_name,'')) = lower(${brand}))
+              AND (handle IS NULL OR handle NOT IN (SELECT value FROM blocklist WHERE kind='handle'))
             ORDER BY (product_ref = ${rawId}) DESC, views DESC LIMIT 30`,
           sql<{ handle: string; videos: number; total_views: string | number; max_views: string | number; direct: boolean }>`
             SELECT handle, count(*)::int AS videos, sum(views)::bigint AS total_views, max(views)::bigint AS max_views, bool_or(product_ref = ${rawId}) AS direct
             FROM videos WHERE (product_ref = ${rawId} OR lower(coalesce(brand_name,'')) = lower(${brand})) AND handle IS NOT NULL AND handle <> ''
+              AND handle NOT IN (SELECT value FROM blocklist WHERE kind='handle')
             GROUP BY handle ORDER BY bool_or(product_ref = ${rawId}) DESC, total_views DESC LIMIT 12`,
         ])
       : [{ rows: [] as never[] }, { rows: [] as never[] }];

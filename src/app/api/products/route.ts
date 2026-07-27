@@ -35,7 +35,7 @@ export async function GET(req: Request) {
     }>`
       SELECT p.product_id, p.brand_name, p.title, p.price, p.currency, p.sold_count, p.commission_rate, p.url, p.country,
              (SELECT ps.sold_count FROM product_snapshots ps
-              WHERE ps.product_id = p.product_id AND ps.snap_date <= CURRENT_DATE - ${period}
+              WHERE ps.product_id = p.product_id AND ps.snap_date <= CURRENT_DATE - ${period}::int
               ORDER BY ps.snap_date DESC LIMIT 1) AS sold_past
       FROM products p
       WHERE (${q} = '' OR lower(coalesce(p.title,'')) LIKE ${"%" + q + "%"} OR lower(coalesce(p.brand_name,'')) LIKE ${"%" + q + "%"})

@@ -34,7 +34,7 @@ export async function POST(req: Request) {
   const body = await req.json().catch(() => null);
   const kind = KINDS.includes(body?.kind) ? body.kind : "marketing";
   const me = await getCurrentUser();
-  const userEmail = me?.email ?? (body?.email ?? "").trim().toLowerCase() ?? null;
+  const userEmail = me?.email ?? (String(body?.email ?? "").trim().toLowerCase() || null);
   await ensureSchema();
   await sql`INSERT INTO inquiries (kind, user_email, payload)
             VALUES (${kind}, ${userEmail}, ${JSON.stringify(body ?? {})}::jsonb)`;

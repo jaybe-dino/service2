@@ -20,9 +20,12 @@ export interface CollectedVideo {
 
 // 영상 item에서 TikTok Shop 상품ID 추출(앵커/링크). 없으면 null → 브랜드 매칭으로 폴백.
 function extractProductRef(it: Record<string, unknown>): string | null {
-  // 1) 상품/샵/앵커 관련 키의 URL 문자열에서 숫자ID
-  const urlVal = deepFind(it, (k, v) => typeof v === "string" && /product|shop|anchor|goods/i.test(k) && /(shop\.tiktok|\/product\/|\/view\/product|goods_id|product_id)/i.test(v));
-  if (typeof urlVal === "string") { const m = urlVal.match(/(\d{8,})/); if (m) return m[1]; }
+  // 1) 상품 URL 패턴에 '앵커된' 숫자ID만 추출 — 첫 숫자런을 잡으면 셀러/샵ID가 섞여 매칭이 오염됨.
+  const urlVal = deepFind(it, (k, v) => typeof v === "string" && /product|shop|anchor|goods/i.test(k) && /(\/product\/|\/view\/product|goods_id=|product_id=)/i.test(v));
+  if (typeof urlVal === "string") {
+    const m = urlVal.match(/\/(?:view\/)?product\/(\d{8,})/i) || urlVal.match(/[?&](?:product_id|goods_id)=(\d{8,})/i);
+    if (m) return m[1];
+  }
   // 2) productId/goodsId 계열 필드
   const idVal = deepFind(it, (k, v) => /^(product|goods)_?id$/i.test(k) && (typeof v === "string" || typeof v === "number") && String(v).length >= 6);
   return idVal != null ? String(idVal) : null;
@@ -339,7 +342,7 @@ export async function startShopRun(brandName: string, webhookUrl?: string, count
     const webhooks = [{
       eventTypes: ["ACTOR.RUN.SUCCEEDED"],
       requestUrl: webhookUrl,
-      payloadTemplate: JSON.stringify({ brandName, region: cc || "US", datasetId: "{{resource.defaultDatasetId}}", kind: "shop" }),
+      payloadTemplate: JSON.stringify({ brandName, region: cc || "US", datasetId: "{{resource.defaultDatasetId}}", runId: "{{resource.id}}", kind: "shop" }),
     }];
     qs += `&webhooks=${encodeURIComponent(Buffer.from(JSON.stringify(webhooks)).toString("base64"))}`;
   }

@@ -18,7 +18,8 @@ import {
 } from "@/lib/onboarding";
 
 const won = (n: number) => "₩" + Math.round(n).toLocaleString();
-const STEPS = ["자가체크", "트랙 선택", "국가·결제", "정보입력", "완료"];
+// 정보입력은 결제 후 마이페이지에서 진행 — 온보딩 스텝은 결제완료까지.
+const STEPS = ["자가체크", "트랙 선택", "국가·결제", "결제완료"];
 const PRODUCT_CATS = ["스킨케어", "색조", "헤어케어", "이너뷰티", "푸드", "기타"];
 const BANKS = ["국민", "신한", "우리", "하나", "농협", "기업", "카카오뱅크", "토스뱅크", "SC제일", "씨티", "기타"];
 const productLimit = (t: MallTrackId) => (t === "live" ? 5 : 10);
@@ -134,8 +135,9 @@ function OnboardingInner() {
         if (Array.isArray(det.products) && det.products.length) setProducts(det.products);
         if (det.bizRegFile) setBizRegFile(det.bizRegFile);
       }
-      // 결제 완료(정보입력 미완/완료 무관) → 정보 관리는 마이페이지에서. 온보딩 인라인 정보입력 폐지.
-      if (paid || app.status === "paid" || app.status === "details_submitted" || app.phase === "details" || app.phase === "completed") {
+      // 결제 완료 사용자만 마이페이지로(정보 관리는 마이페이지에서). 미결제(자가체크/구제출) 사용자는
+      // 트랙선택→결제 플로우를 계속 진행할 수 있어야 하므로 바운스하지 않는다.
+      if (paid || app.status === "paid") {
         router.replace("/mypage?tab=basic");
       }
     })();

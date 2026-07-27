@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import crypto from "crypto";
 import { sql, ensureSchema, isConfigured } from "@/lib/db";
 import { isAdminAuthed } from "@/lib/admin-auth";
 import { hashPassword } from "@/lib/auth";
@@ -9,7 +10,7 @@ export const dynamic = "force-dynamic";
 function tempPassword(): string {
   const s = "abcdefghjkmnpqrstuvwxyz23456789";
   let p = "";
-  for (let i = 0; i < 10; i++) p += s[Math.floor(Math.random() * s.length)];
+  for (let i = 0; i < 10; i++) p += s[crypto.randomInt(s.length)]; // 암호학적 난수(추측 방지)
   return p;
 }
 

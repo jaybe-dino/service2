@@ -94,7 +94,8 @@ export default function MyPage() {
 
   const trialDays = Math.ceil(trialMsLeft / 86_400_000);
   const planLabel = plan === "enterprise" ? "Enterprise" : plan === "pro" ? "Pro" : isPro ? "Pro 체험" : "Basic";
-  const paid = !!(onb && (onb.application || onb.mallSub || (onb.orders?.length ?? 0) > 0));
+  // 결제 판정: 신청행 존재만으로는 부족(무료 자가체크도 행 생성) — status=paid이거나 몰 구독/결제내역이 있어야 함.
+  const paid = !!(onb && (onb.application?.status === "paid" || onb.mallSub || (onb.orders?.length ?? 0) > 0));
   const details = onb?.application?.payload?.details ?? {};
   const products = (details.products ?? []) as ProductDoc[];
 
@@ -148,7 +149,7 @@ export default function MyPage() {
                       <>
                         <p className="mt-1 text-[11px] text-[var(--muted)]">{trialDays > 0 ? `Pro 이용 중 · 약 ${trialDays}일 남음` : "Pro 이용 중"}</p>
                         {sub && sub.status !== "canceled" && (
-                          <p className="mt-1 text-[10px] text-[var(--muted)]">{sub.status === "trial" ? "무료 체험 중 · " : "정기결제 중 · "}다음 결제 {new Date(sub.next_charge_at).toLocaleDateString("ko-KR")} · ₩{sub.amount.toLocaleString()}</p>
+                          <p className="mt-1 text-[10px] text-[var(--muted)]">{sub.status === "trial" ? "무료 체험 중 · " : "정기결제 중 · "}다음 결제 {new Date(Number(sub.next_charge_at)).toLocaleDateString("ko-KR")} · ₩{Number(sub.amount).toLocaleString()}</p>
                         )}
                         {sub && sub.status === "canceled" && <p className="mt-1 text-[10px] text-rose-500">자동결제 해지됨 · 기간 종료까지 이용 가능</p>}
                       </>
@@ -233,7 +234,10 @@ function OnbBasicSection({ onb, initial, defaultEmail, onSaved, goProducts }: {
 }) {
   const a = onb.application;
   const cs = (a?.countries ?? "").split(",").filter(Boolean);
-  const st = a ? (ONB_STATUS[a.status] ?? { label: a.status, cls: "bg-slate-100 text-slate-500" }) : { label: "결제 확인됨", cls: "bg-amber-50 text-amber-700" };
+  // 결제(paid)이면서 정보입력까지 끝난(phase=completed) 경우 '신청 완료'로 표시(상태값은 paid 유지가 정책).
+  const st = a
+    ? (a.status === "paid" && a.phase === "completed" ? ONB_STATUS.details_submitted : ONB_STATUS[a.status] ?? { label: a.status, cls: "bg-slate-100 text-slate-500" })
+    : { label: "결제 확인됨", cls: "bg-amber-50 text-amber-700" };
   return (
     <>
       {/* 요약 */}

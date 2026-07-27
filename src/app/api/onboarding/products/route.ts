@@ -34,25 +34,27 @@ export async function POST(req: Request) {
   if (!me) return NextResponse.json({ ok: false, error: "로그인이 필요합니다." }, { status: 401 });
   await ensureSchema();
 
-  // 입점(결제) 신청 행 확보. 없으면 결제 증빙(몰 구독/결제내역)이 있는 사용자에 한해 스텁 생성.
-  // (구버전 결제로 신청행이 유실된 사용자도 마이페이지에서 바로 제품정보 저장 가능하게)
+  // 입점(결제) 신청 행 확보 + 결제 게이트.
+  // 행이 없거나 status가 paid가 아니면(자가체크만 한 무료 사용자 포함) 결제 증빙(몰 구독/결제내역)을 요구.
   let appRows = await sql<{ payload: unknown; status: string }>`
     SELECT payload, status FROM onboarding_applications WHERE user_id=${me.id} LIMIT 1`;
-  if (!appRows.rows.length) {
+  if (!appRows.rows.length || appRows.rows[0].status !== "paid") {
     const paidEvidence = await sql<{ n: number }>`
       SELECT (
         (SELECT count(*) FROM mall_subscriptions WHERE user_id=${me.id})
         + (SELECT count(*) FROM orders WHERE user_id=${me.id} AND kind='mall' AND status='paid')
       )::int AS n`;
-    if (!(paidEvidence.rows[0]?.n > 0)) {
-      return NextResponse.json({ ok: false, error: "입점 결제 정보가 없습니다." }, { status: 403 });
+    if (!((paidEvidence.rows[0]?.n ?? 0) > 0)) {
+      return NextResponse.json({ ok: false, error: "입점 결제 후 이용할 수 있습니다." }, { status: 403 });
     }
-    await sql`INSERT INTO onboarding_applications (id, user_id, email, status, phase, payload, updated_at)
-              VALUES (${`onb_${me.id}`}, ${me.id}, ${me.email ?? ""}, 'paid', 'details', '{}'::jsonb, now())
-              ON CONFLICT (id) DO NOTHING`;
-    appRows = await sql<{ payload: unknown; status: string }>`
-      SELECT payload, status FROM onboarding_applications WHERE user_id=${me.id} LIMIT 1`;
-    if (!appRows.rows.length) return NextResponse.json({ ok: false, error: "신청 정보 생성 실패" }, { status: 500 });
+    if (!appRows.rows.length) {
+      await sql`INSERT INTO onboarding_applications (id, user_id, email, status, phase, payload, updated_at)
+                VALUES (${`onb_${me.id}`}, ${me.id}, ${me.email ?? ""}, 'paid', 'details', '{}'::jsonb, now())
+                ON CONFLICT (id) DO NOTHING`;
+      appRows = await sql<{ payload: unknown; status: string }>`
+        SELECT payload, status FROM onboarding_applications WHERE user_id=${me.id} LIMIT 1`;
+      if (!appRows.rows.length) return NextResponse.json({ ok: false, error: "신청 정보 생성 실패" }, { status: 500 });
+    }
   }
 
   const body = (await req.json().catch(() => ({}))) as { products?: ProductIn[] };

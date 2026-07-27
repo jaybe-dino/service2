@@ -58,7 +58,7 @@ export default function CheckoutPage() {
     <PageShell>
       <div className="mx-auto max-w-md">
         <h1 className="mb-1 text-[22px] font-black tracking-tight">Pro 구독 시작</h1>
-        <p className="mb-5 text-[12px] text-[var(--muted)]">카드 등록 즉시 이용 · <b className="text-[var(--accent)]">매월(30일) {wonFmt(PRO_AMT)} 자동결제</b> (언제든 해지)</p>
+        <p className="mb-5 text-[12px] text-[var(--muted)]">카드 등록 즉시 이용 · <b className="text-[var(--accent)]">매월(30일) {wonFmt(PRO_AMT)} 자동결제</b> (해지는 고객센터·담당 매니저 안내)</p>
         {PAY_TEST_MODE && <p className="mb-4 rounded-md bg-amber-50 px-3 py-2 text-[11px] font-bold text-amber-700">⚠️ 결제 테스트 모드</p>}
         {isTest && <p className="mb-4 rounded-md bg-amber-50 px-3 py-2 text-[11px] font-bold text-amber-700">🧪 테스트 결제 — 실제 청구 {wonFmt(displayAmt)} (정가 {wonFmt(PRO_AMT)}의 1/10000)</p>}
 
@@ -81,7 +81,7 @@ export default function CheckoutPage() {
           <div className="kt-card p-6 text-center">
             <div className="mx-auto grid h-12 w-12 place-items-center rounded-full bg-emerald-50 text-emerald-500"><Check size={26} /></div>
             <p className="mt-3 text-[15px] font-black">구독이 시작됐습니다</p>
-            <p className="mt-1 text-[12px] text-[var(--muted)]">Pro가 활성화되었고 30일마다 자동결제됩니다. 마이페이지에서 언제든 해지할 수 있어요.</p>
+            <p className="mt-1 text-[12px] text-[var(--muted)]">Pro가 활성화되었고 30일마다 자동결제됩니다. 해지가 필요하면 고객센터 또는 담당 매니저에게 요청해 주세요.</p>
           </div>
         ) : (
           <div className="kt-card p-6">
@@ -126,7 +126,7 @@ export default function CheckoutPage() {
             <button onClick={pay} disabled={busy} className="kt-btn kt-btn-primary mt-4 w-full py-2.5 text-[12px] disabled:opacity-50">
               {busy ? <Loader2 size={14} className="animate-spin" /> : <CreditCard size={14} />} {busy ? "처리 중…" : `${wonFmt(displayAmt)} 결제하고 Pro 시작`}
             </button>
-            <p className="mt-2 text-center text-[9px] text-[var(--muted)]">등록 즉시 첫 결제되며 이후 30일마다 자동결제됩니다. 마이페이지에서 해지 가능.</p>
+            <p className="mt-2 text-center text-[9px] text-[var(--muted)]">등록 즉시 첫 결제되며 이후 30일마다 자동결제됩니다. 해지는 고객센터·담당 매니저를 통해 처리됩니다.</p>
           </div>
         )}
       </div>

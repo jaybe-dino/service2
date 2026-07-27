@@ -23,8 +23,9 @@ export async function POST(req: Request) {
   const id = `onb_${me.id}`;
 
   // 기존 페이로드 병합 (단계별 누적)
-  const prev = await sql`SELECT payload FROM onboarding_applications WHERE id=${id} LIMIT 1`;
+  const prev = await sql`SELECT payload, status FROM onboarding_applications WHERE id=${id} LIMIT 1`;
   const base = (prev.rows[0]?.payload as Record<string, unknown>) ?? {};
+  const prevStatus = String(prev.rows[0]?.status ?? "");
 
   if (stage === "self_check") {
     const checks = (body?.checks ?? {}) as Record<string, boolean>;
@@ -46,11 +47,20 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true, id, grade: g.grade, recommended: g.recommended });
   }
 
-  // 기본정보만 저장(제품 배열은 보존) — 마이페이지 '입점 기본정보' 영역에서 사용.
+  // 기본정보만 저장(제품 배열은 보존) — 마이페이지 '입점 기본정보' 영역에서 사용. 결제 사용자 전용.
   if (stage === "basic") {
     const brand = String(body?.brand ?? "").trim().slice(0, 200);
     const contact = String(body?.contact ?? "").trim().slice(0, 120);
     if (!brand || !contact) return NextResponse.json({ ok: false, error: "브랜드명과 연락처는 필수입니다." }, { status: 400 });
+    // 결제 증빙 확인 — 미결제(자가체크) 사용자가 status를 덮어쓰는 것 방지(결제 플로우 잠금 버그의 근원).
+    if (prevStatus !== "paid") {
+      const ev = await sql<{ n: number }>`
+        SELECT ((SELECT count(*) FROM mall_subscriptions WHERE user_id=${me.id})
+              + (SELECT count(*) FROM orders WHERE user_id=${me.id} AND kind='mall' AND status='paid'))::int AS n`;
+      if (!((ev.rows[0]?.n ?? 0) > 0)) {
+        return NextResponse.json({ ok: false, error: "입점 결제 후 이용할 수 있습니다." }, { status: 403 });
+      }
+    }
     const prevDetails = (base.details && typeof base.details === "object" ? base.details : {}) as Record<string, unknown>;
     const details = {
       ...prevDetails, // 제품 배열 등 기존 값 보존

@@ -12,7 +12,9 @@ export async function GET(_req: Request, ctx: { params: Promise<{ name: string }
   try {
     await ensureSchema();
     const { name: raw } = await ctx.params;
-    const name = decodeURIComponent(raw);
+    // Next 15 route params는 이미 디코드됨 — 이중 디코드 시 '%' 포함 이름에서 URIError. 안전 폴백.
+    let name = raw;
+    try { name = decodeURIComponent(raw); } catch { name = raw; }
 
     // 제품 전체(집계 + 카테고리/국가 분해용)
     const prodRows = await sql<{ product_id: string; title: string | null; price: string | number | null; sold_count: string | number | null; commission_rate: string | number | null; url: string | null; country: string | null }>`

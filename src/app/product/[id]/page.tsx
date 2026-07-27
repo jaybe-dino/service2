@@ -114,7 +114,7 @@ export default function ProductDetailPage() {
                 {d.trend && d.trend.soldGrowth !== 0 && (
                   <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-bold ${d.trend.soldGrowth > 0 ? "bg-emerald-100 text-emerald-700" : "bg-rose-100 text-rose-600"}`}>
                     {d.trend.soldGrowth > 0 ? <ArrowUpRight size={12} /> : <ArrowDownRight size={12} />}
-                    +{fmt(Math.abs(d.trend.soldGrowth))} 판매{d.trend.soldGrowthPct != null ? ` (${d.trend.soldGrowth > 0 ? "+" : "-"}${Math.abs(d.trend.soldGrowthPct)}%)` : ""}
+                    {d.trend.soldGrowth > 0 ? "+" : "-"}{fmt(Math.abs(d.trend.soldGrowth))} 판매{d.trend.soldGrowthPct != null ? ` (${d.trend.soldGrowth > 0 ? "+" : "-"}${Math.abs(d.trend.soldGrowthPct)}%)` : ""}
                   </span>
                 )}
               </div>

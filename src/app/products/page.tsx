@@ -39,6 +39,15 @@ export default function ProductsPage() {
   const [category, setCategory] = useState<CategoryId | "">(""); // "" = 전체
   const [minCommission, setMinCommission] = useState<number>(0);
 
+  // /category, /shop 상세에서 넘어오는 ?category= / ?q= 딥링크 반영(마운트 1회)
+  useEffect(() => {
+    const sp = new URLSearchParams(window.location.search);
+    const c = sp.get("category");
+    if (c && (CAT_IDS as string[]).includes(c)) setCategory(c as CategoryId);
+    const qq = sp.get("q");
+    if (qq) setQ(qq);
+  }, []);
+
   useEffect(() => {
     let alive = true;
     setLoading(true);

@@ -20,8 +20,9 @@ export async function POST(req: Request) {
     const agreed = b.agreed === true;
     const completed = b.completed === true;
     const ua = (req.headers.get("user-agent") || "").slice(0, 200);
-    // 외부 유입 referrer는 클라이언트 document.referrer 우선(요청 헤더는 페이지 자신이라 무의미)
-    const referrer = (b.referrer ? String(b.referrer) : (req.headers.get("referer") || "")).slice(0, 300);
+    // 외부 유입 referrer는 클라이언트 document.referrer 우선(요청 헤더는 페이지 자신이라 무의미).
+    // 빈 문자열은 NULL로 — COALESCE first-touch가 ''에 점유되지 않게.
+    const referrer = (b.referrer ? String(b.referrer) : (req.headers.get("referer") || "")).slice(0, 300) || null;
     const u = (b.utm && typeof b.utm === "object" ? b.utm : {}) as Record<string, unknown>;
     const uv = (k: string) => { const v = u[k]; return v ? String(v).slice(0, 120) : null; };
     const utmSource = uv("source"), utmMedium = uv("medium"), utmCampaign = uv("campaign"), utmContent = uv("content"), utmTerm = uv("term");

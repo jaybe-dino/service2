@@ -56,7 +56,7 @@ export async function POST(req: Request) {
               VALUES (${tid}, ${orderId}, ${amt}, ${JSON.stringify(ap.raw)}::jsonb) ON CONFLICT (payment_id) DO NOTHING`;
     // 2) 빌링키(다음 달부터 자동청구용) — 빌링 결제창이 돌려준 bid 사용. 없으면 자동갱신 없이 첫 달만 보장.
     //    ⚠️ 일반결제 tid로는 빌키 발급 불가(NICEpay 스펙). 자동청구하려면 빌링(카드등록) 결제창으로 bid 확보 필요.
-    const bid = bidForm || ap.bid || null;
+    const bid = ap.bid || bidForm || null; // 서버(NicePay 조회) bid 우선 — 폼 값 주입 방지
     const nextAt = Date.now() + periodMs;
     const pdays = Number(order.period_days) || 30;
     await sql`INSERT INTO subscriptions (user_id, bid, plan, amount, status, next_charge_at, period_days, updated_at)
@@ -83,7 +83,7 @@ export async function POST(req: Request) {
     await sql`INSERT INTO payments (payment_id, order_id, amount, raw)
               VALUES (${tid}, ${orderId}, ${amt}, ${JSON.stringify(ap.raw)}::jsonb) ON CONFLICT (payment_id) DO NOTHING`;
     // 2) 빌링키(다음 달부터 자동청구용) — 빌링 결제창이 돌려준 bid 사용. 없으면 자동갱신 없이 첫 달만 보장.
-    const bid = bidForm || ap.bid || null;
+    const bid = ap.bid || bidForm || null; // 서버(NicePay 조회) bid 우선 — 폼 값 주입 방지
     const nextAt = Date.now() + periodMs;
     const pdays = Number(order.period_days) || 30;
     await sql`INSERT INTO mall_subscriptions (user_id, track, bid, amount, status, next_charge_at, period_days, updated_at)

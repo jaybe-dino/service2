@@ -48,9 +48,11 @@ export default function ConsultDeckPage() {
     const sid = sidRef.current; if (!sid) return;
     const st = stateRef.current;
     const fields = filledFields(st);
-    if (!completed && !fields.length) return;
+    // 동의는 기본 체크 상태라 '입력 시작' 판정/마지막 입력에서 제외 — 실제 타이핑한 필드 기준.
+    const real = fields.filter((k) => k !== "agreed");
+    if (!completed && !real.length) return;
     const { utm, landing, referrer } = utmRef.current;
-    const payload = JSON.stringify({ sid, fields, lastField: fields[fields.length - 1], category: st.f.category || undefined, agreed: st.agree, completed, utm, landing, referrer });
+    const payload = JSON.stringify({ sid, fields, lastField: real[real.length - 1] ?? "agreed", category: st.f.category || undefined, agreed: st.agree, completed, utm, landing, referrer });
     try {
       if (beacon && navigator.sendBeacon) { navigator.sendBeacon("/api/consult/track", new Blob([payload], { type: "application/json" })); return; }
       fetch("/api/consult/track", { method: "POST", headers: { "Content-Type": "application/json" }, body: payload, keepalive: true }).catch(() => {});

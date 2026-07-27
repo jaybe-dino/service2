@@ -21,6 +21,8 @@ export async function POST(req: Request) {
 
   const body = (await req.json().catch(() => ({}))) as { plan?: string; card?: Partial<CardInput>; test?: string };
   const planKey = String(body.plan ?? "pro");
+  // 이 엔드포인트는 Pro SaaS 전용 — 몰 트랙(live/onboarding)은 subscribe-mall에서만(문의 게이트·동적 요금 우회 방지).
+  if (planKey !== "pro") return NextResponse.json({ ok: false, error: "결제 불가 플랜" }, { status: 400 });
   const plan = PAY_PLANS[planKey];
   if (!plan) return NextResponse.json({ ok: false, error: "결제 불가 플랜" }, { status: 400 });
 

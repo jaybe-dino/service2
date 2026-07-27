@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { isConfigured } from "@/lib/db";
+import { isConfigured, sql } from "@/lib/db";
 import { fetchApifyDataset, fetchShopDataset } from "@/lib/collector";
 import { ingestVideos, ingestProducts } from "@/lib/collect-run";
 
@@ -40,6 +40,12 @@ export async function POST(req: Request) {
   const region = String(body.region ?? "US").trim().toUpperCase() || "US";
   const datasetId = body.datasetId || body.resource?.defaultDatasetId;
   const kind = String(body.kind ?? "").trim().toLowerCase();
+  const runId = typeof (body as { runId?: unknown }).runId === "string" && /^[A-Za-z0-9._-]{6,40}$/.test(String((body as { runId?: unknown }).runId)) ? String((body as { runId?: unknown }).runId) : null;
+  // 적재 후 잡 완료 마킹 — 폴링이 같은 dataset을 재적재(이중 fetch·백프레셔 왜곡)하지 않게.
+  const markDone = async (collected: number) => {
+    if (!runId) return;
+    try { await sql`UPDATE collect_jobs SET status='done', collected=${collected}, updated_at=now() WHERE run_id=${runId} AND status='running'`; } catch { /* 마킹 실패는 폴링이 보완 */ }
+  };
 
   // 미치환 템플릿/테스트 webhook/누락 → 200 ignored (500 대신). 실제 적재는 크론 폴링이 담당.
   if (!brandName || !validDatasetId(datasetId)) {
@@ -50,10 +56,12 @@ export async function POST(req: Request) {
     if (kind === "shop") {
       const products = await fetchShopDataset(datasetId, brandName);
       const collected = await ingestProducts(brandName, products, region);
+      await markDone(collected);
       return NextResponse.json({ ok: true, kind: "shop", brand: brandName, collected });
     }
     const vids = await fetchApifyDataset(datasetId);
     const collected = await ingestVideos(brandName, vids, region);
+    await markDone(collected);
     return NextResponse.json({ ok: true, brand: brandName, collected });
   } catch (e) {
     return NextResponse.json({ ok: false, error: String(e).slice(0, 200) }, { status: 500 });

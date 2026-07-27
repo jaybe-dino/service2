@@ -11,7 +11,9 @@ export async function GET(_req: Request, ctx: { params: Promise<{ handle: string
   try {
     await ensureSchema();
     const { handle: raw } = await ctx.params;
-    const handle = decodeURIComponent(raw);
+    // Next 15 route params는 이미 디코드됨 — 이중 디코드 시 '%' 포함 핸들에서 URIError. 안전 폴백.
+    let handle = raw;
+    try { handle = decodeURIComponent(raw); } catch { handle = raw; }
 
     const base = await sql<{ videos: string | number; total_views: string | number; avg_views: string | number; max_views: string | number; brands: string[] | null; shop_videos: string | number; ad_videos: string | number }>`
       SELECT count(*)::int AS videos, coalesce(sum(views),0)::bigint AS total_views,

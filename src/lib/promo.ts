@@ -28,8 +28,11 @@ export async function redeemPromo(code: string, userId: string): Promise<boolean
   const c = String(code || "").trim().toUpperCase();
   if (!c) return false;
   try {
-    await sql`INSERT INTO promo_redemptions (code, user_id) VALUES (${c}, ${userId}) ON CONFLICT (code, user_id) DO NOTHING`;
-    await sql`UPDATE promo_codes SET used_count = used_count + 1 WHERE code=${c}`;
+    const ins = await sql`INSERT INTO promo_redemptions (code, user_id) VALUES (${c}, ${userId}) ON CONFLICT (code, user_id) DO NOTHING`;
+    // 실제 신규 리뎀션일 때만 카운트(재시도/더블클릭 중복 증가 방지) + 상한 초과 방지(0=무제한)
+    if (ins.rowCount) {
+      await sql`UPDATE promo_codes SET used_count = used_count + 1 WHERE code=${c} AND (max_uses = 0 OR used_count < max_uses)`;
+    }
     return true;
   } catch (e) {
     console.error("[promo] redeem 실패 — 재사용 방지 기록 누락 가능", c, userId, String(e).slice(0, 160));

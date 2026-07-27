@@ -4,8 +4,10 @@ import { SignJWT, jwtVerify } from "jose";
 import { sql, ensureSchema, type DbUser } from "./db";
 
 const COOKIE = "ktrend_session";
+// 프로덕션에서 SESSION_SECRET 미설정 시 부팅마다 랜덤 시크릿(로그인 무효화되지만 위조는 차단).
 const secret = new TextEncoder().encode(
-  process.env.SESSION_SECRET || "dev-insecure-secret-change-me",
+  process.env.SESSION_SECRET
+    || (process.env.NODE_ENV === "production" ? crypto.randomUUID() : "dev-insecure-secret-change-me"),
 );
 
 export async function hashPassword(pw: string): Promise<string> {

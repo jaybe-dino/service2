@@ -25,7 +25,7 @@ export async function GET(req: Request) {
     }>`
       SELECT v.video_id, v.handle, v.brand_name, v.views, v.likes, v.url, v.country, v.is_ad, v.is_shop, v.posted_at, v.product_ref,
              (SELECT vs.views FROM video_snapshots vs
-              WHERE vs.video_id = v.video_id AND vs.snap_date <= CURRENT_DATE - ${period}
+              WHERE vs.video_id = v.video_id AND vs.snap_date <= CURRENT_DATE - ${period}::int
               ORDER BY vs.snap_date DESC LIMIT 1) AS views_past
       FROM videos v
       WHERE (v.brand_name IS NULL OR v.brand_name NOT IN (SELECT value FROM blocklist WHERE kind='brand'))

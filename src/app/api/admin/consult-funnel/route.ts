@@ -31,7 +31,7 @@ export async function GET() {
              count(*) FILTER (WHERE NOT completed AND field_count > 0)::int AS abandoned,
              count(*) FILTER (WHERE fields ? 'company')::int AS f_company,
              count(*) FILTER (WHERE fields ? 'category')::int AS f_category,
-             count(*) FILTER (WHERE fields ? 'managerName')::int AS f_managerName,
+             count(*) FILTER (WHERE fields ? 'managerName')::int AS "f_managerName",
              count(*) FILTER (WHERE fields ? 'email')::int AS f_email,
              count(*) FILTER (WHERE fields ? 'contact')::int AS f_contact,
              count(*) FILTER (WHERE fields ? 'message')::int AS f_message,
@@ -69,7 +69,7 @@ export async function GET() {
     // 최근 세션(비식별) + 유입 정보
     const recent = await sql<{ sid: string; field_count: number; last_field: string | null; category: string | null; agreed: boolean; completed: boolean; ua: string | null; updated_at: string; utm_source: string | null; utm_medium: string | null; utm_campaign: string | null; referrer: string | null; landing: string | null }>`
       SELECT sid, field_count, last_field, category, agreed, completed, ua, updated_at, utm_source, utm_medium, utm_campaign, referrer, landing
-      FROM consult_progress ORDER BY updated_at DESC LIMIT 80`;
+      FROM consult_progress WHERE updated_at > now() - interval '90 days' ORDER BY updated_at DESC LIMIT 80`;
     const sessionsRecent = recent.rows.map((r) => ({
       sid: r.sid.slice(0, 8),
       fieldCount: Number(r.field_count) || 0,
