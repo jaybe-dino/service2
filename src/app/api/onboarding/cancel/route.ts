@@ -1,7 +1,8 @@
-import { NextResponse } from "next/server";
+import { NextResponse, after } from "next/server";
 import { sql, ensureSchema, isConfigured } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
 import { expireBillingKey } from "@/lib/nicepay";
+import { sendIngest } from "@/lib/admin-ingest";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -17,5 +18,8 @@ export async function POST() {
   if (!sub || sub.status === "canceled") return NextResponse.json({ ok: true, alreadyCanceled: true });
   if (sub.bid) await expireBillingKey(sub.bid);
   await sql`UPDATE mall_subscriptions SET status='canceled', updated_at=now() WHERE user_id=${me.id}`;
+  // 운영 어드민 인제스트(payment: cancel) — 응답 이후 비차단 전송
+  const date = new Date().toISOString().slice(0, 10);
+  after(() => sendIngest("payment", `cancel:${me.id}:${date}`, { email: me.email, pay_kind: "cancel", glovek_user_id: me.id }));
   return NextResponse.json({ ok: true });
 }

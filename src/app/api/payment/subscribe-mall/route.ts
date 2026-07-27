@@ -1,5 +1,6 @@
-import { NextResponse } from "next/server";
+import { NextResponse, after } from "next/server";
 import { sql, ensureSchema, isConfigured as dbConfigured } from "@/lib/db";
+import { sendIngest } from "@/lib/admin-ingest";
 import { getCurrentUser } from "@/lib/auth";
 import {
   isConfigured as payConfigured, encryptCardData, registerBillingKey, chargeByBillingKey,
@@ -87,6 +88,7 @@ export async function POST(req: Request) {
   const nextAt = now + periodDays * 86_400_000;
 
   // 2) 첫 청구 — 프로모 월간이면 스킵(무료), 그 외엔 firstCharge 청구.
+  let payTid: string | null = null;
   if (skipFirst) {
     await redeemPromo(promoCode, me.id); // 첫 달 무료
     await sql`INSERT INTO collection_runs (kind, target, status) VALUES ('promo_first_free', ${track}, ${promoCode})`;
@@ -100,6 +102,7 @@ export async function POST(req: Request) {
       const msg = (pay.raw as { resultMsg?: string })?.resultMsg || "첫 결제 승인 실패";
       return NextResponse.json({ ok: false, error: `첫 결제 실패: ${msg}` }, { status: 402 });
     }
+    payTid = pay.tid;
     await sql`UPDATE orders SET status='paid', tid=${pay.tid} WHERE order_id=${chargeOrderId}`; // tid 먼저(원장 유실 대비)
     await sql`INSERT INTO payments (payment_id, order_id, amount, raw)
               VALUES (${pay.tid}, ${chargeOrderId}, ${firstCharge}, ${JSON.stringify(pay.raw)}::jsonb) ON CONFLICT (payment_id) DO NOTHING`;
@@ -119,6 +122,17 @@ export async function POST(req: Request) {
             VALUES (${`onb_${me.id}`}, ${me.id}, ${me.name}, ${me.brand ?? null}, ${me.email}, ${track}, 'details', 'paid', ${term}, ${recurringAmount}, ${countries.join(",")}, true, now())
             ON CONFLICT (id) DO UPDATE SET status='paid', track=EXCLUDED.track, phase='details', dino_linked=true,
               term=EXCLUDED.term, amount=EXCLUDED.amount, countries=EXCLUDED.countries, updated_at=now()`;
+
+  // 운영 어드민 인제스트(payment: subscribe_first) — 응답 이후 비차단 전송
+  const idem = payTid ? `pay:${payTid}` : `pay:${registOrderId}`; // 프로모 첫달무료는 tid 없음 → 등록 주문번호로
+  after(() => sendIngest("payment", idem, {
+    email: me.email,
+    pay_kind: "subscribe_first",
+    plan: track === "live" ? "live_focus_490k" : track,
+    amount: firstCharge,
+    pg_ref: payTid ?? registOrderId,
+    glovek_user_id: me.id,
+  }));
 
   return NextResponse.json({ ok: true, track, firstCharge, recurringAmount, firstFree: skipFirst, nextChargeAt: nextAt, periodDays });
 }

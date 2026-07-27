@@ -1,5 +1,6 @@
-import { NextResponse } from "next/server";
+import { NextResponse, after } from "next/server";
 import { sql, ensureSchema, isConfigured } from "@/lib/db";
+import { sendIngest } from "@/lib/admin-ingest";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -32,6 +33,16 @@ export async function POST(req: Request) {
     VALUES (${company}, ${s(b.brandUrl)}, ${s(b.category, 80)}, ${s(b.overseas, 80)}, ${managerName}, ${email}, ${s(b.contact, 60)},
             ${s(b.message, 2000)}, ${agreed}, ${s(b.source, 60) || "consult-landing"})
     RETURNING id`;
+
+  // 운영 어드민 인제스트(lead) — 응답 이후 비차단 전송(실패해도 접수 플로우 무관)
+  const leadId = rows[0]?.id;
+  if (leadId != null) {
+    after(() => sendIngest("lead", `consult:${leadId}`, {
+      email, phone: contact, brand_name: company, contact_name: managerName,
+      category: s(b.category, 80) || undefined, source: "glovek_consult",
+      message: s(b.message, 2000) || undefined, source_ref: String(leadId),
+    }));
+  }
 
   // Slack 알림(SLACK_WEBHOOK_URL 설정 시) — 새 상담 문의를 실시간 통지. 조용한 유실 방지, 비용 0.
   const hook = process.env.SLACK_WEBHOOK_URL;

@@ -1,6 +1,7 @@
-import { NextResponse } from "next/server";
+import { NextResponse, after } from "next/server";
 import { sql, ensureSchema, isConfigured } from "@/lib/db";
 import { hashPassword, createSession, publicUser } from "@/lib/auth";
+import { sendIngest } from "@/lib/admin-ingest";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -42,6 +43,16 @@ export async function POST(req: Request) {
   if (utm.source || utm.medium || utm.campaign) {
     await sql`INSERT INTO utm_events (kind, source, medium, campaign, content, term, user_id, user_email)
       VALUES ('signup', ${cut(utm.source)}, ${cut(utm.medium)}, ${cut(utm.campaign)}, ${cut(utm.content)}, ${cut(utm.term)}, ${id}, ${email})`;
+  }
+
+  // 운영 어드민 인제스트(lead: 추천인 경유 가입) — 응답 이후 비차단 전송
+  if (referredBy) {
+    const refCode = referredBy;
+    after(() => sendIngest("lead", `signup:${id}`, {
+      email, brand_name: brand, contact_name: name, source: "referrer",
+      message: `추천인 코드 ${refCode} 경유 가입`, source_ref: id,
+      utm: { source: cut(utm.source) ?? "", medium: cut(utm.medium) ?? "", campaign: cut(utm.campaign) ?? "", content: cut(utm.content) ?? "", term: cut(utm.term) ?? "" },
+    }));
   }
 
   await createSession(id, email);

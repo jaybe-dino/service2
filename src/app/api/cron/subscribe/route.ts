@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { sql, ensureSchema, isConfigured } from "@/lib/db";
 import { chargeByBillingKey, buildOrderId, SERVICE_ORDER_PREFIX, BILLING_FAILURE_THRESHOLD } from "@/lib/nicepay";
 import { PAY_PLANS } from "@/lib/payments";
+import { sendIngest } from "@/lib/admin-ingest";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -26,10 +27,11 @@ async function handle(req: Request) {
 
   try {
     const now = Date.now();
-    const due = await sql<{ user_id: string; bid: string; amount: number; failures: number; period_days: number; next_charge_at: number }>`
-      SELECT user_id, bid, amount, failures, period_days, next_charge_at FROM subscriptions
-      WHERE bid IS NOT NULL AND status IN ('trial','active') AND next_charge_at <= ${now}
-      ORDER BY next_charge_at ASC LIMIT 20`;
+    const due = await sql<{ user_id: string; bid: string; amount: number; failures: number; period_days: number; next_charge_at: number; email: string | null }>`
+      SELECT s.user_id, s.bid, s.amount, s.failures, s.period_days, s.next_charge_at, u.email FROM subscriptions s
+      LEFT JOIN users u ON u.id = s.user_id
+      WHERE s.bid IS NOT NULL AND s.status IN ('trial','active') AND s.next_charge_at <= ${now}
+      ORDER BY s.next_charge_at ASC LIMIT 20`;
 
     let charged = 0;
     let failed = 0;
@@ -49,6 +51,7 @@ async function handle(req: Request) {
         await sql`UPDATE users SET pro_until = GREATEST(pro_until, ${now}) + ${periodMs} WHERE id=${s.user_id}`;
         await sql`UPDATE subscriptions SET status='active', failures=0, updated_at=now() WHERE user_id=${s.user_id}`; // next_charge_at은 선점에서 전진됨
         charged += 1;
+        await sendIngest("payment", `pay:${r.tid}`, { email: s.email ?? undefined, pay_kind: "subscribe_renew", result: "ok", pg_ref: r.tid });
       } else {
         await sql`UPDATE orders SET status='failed' WHERE order_id=${orderId}`;
         const f = (s.failures ?? 0) + 1;
@@ -56,14 +59,16 @@ async function handle(req: Request) {
         // 청구 실패 → 다음날 재시도(선점값 덮어씀).
         await sql`UPDATE subscriptions SET failures=${f}, status=${status}, next_charge_at=${now + 86_400_000}, updated_at=now() WHERE user_id=${s.user_id}`;
         failed += 1;
+        await sendIngest("payment", `pay:${orderId}`, { email: s.email ?? undefined, pay_kind: "subscribe_renew", result: "fail", pg_ref: orderId });
       }
     }
 
     // ── 몰 입점 트랙 정기결제 (Pro와 분리, pro_until 미반영) ──
-    const mallDue = await sql<{ user_id: string; track: string; bid: string; amount: number; failures: number; period_days: number; next_charge_at: number }>`
-      SELECT user_id, track, bid, amount, failures, period_days, next_charge_at FROM mall_subscriptions
-      WHERE bid IS NOT NULL AND status IN ('active') AND next_charge_at <= ${now}
-      ORDER BY next_charge_at ASC LIMIT 20`;
+    const mallDue = await sql<{ user_id: string; track: string; bid: string; amount: number; failures: number; period_days: number; next_charge_at: number; email: string | null }>`
+      SELECT m.user_id, m.track, m.bid, m.amount, m.failures, m.period_days, m.next_charge_at, u.email FROM mall_subscriptions m
+      LEFT JOIN users u ON u.id = m.user_id
+      WHERE m.bid IS NOT NULL AND m.status IN ('active') AND m.next_charge_at <= ${now}
+      ORDER BY m.next_charge_at ASC LIMIT 20`;
     let mallCharged = 0;
     let mallFailed = 0;
     for (const s of mallDue.rows) {
@@ -81,12 +86,14 @@ async function handle(req: Request) {
         await sql`INSERT INTO payments (payment_id, order_id, amount, raw) VALUES (${r.tid}, ${orderId}, ${s.amount}, ${JSON.stringify(r.raw)}::jsonb) ON CONFLICT (payment_id) DO NOTHING`;
         await sql`UPDATE mall_subscriptions SET status='active', failures=0, updated_at=now() WHERE user_id=${s.user_id}`;
         mallCharged += 1;
+        await sendIngest("payment", `pay:${r.tid}`, { email: s.email ?? undefined, pay_kind: "subscribe_renew", result: "ok", pg_ref: r.tid });
       } else {
         await sql`UPDATE orders SET status='failed' WHERE order_id=${orderId}`;
         const f = (s.failures ?? 0) + 1;
         const status = f >= BILLING_FAILURE_THRESHOLD ? "past_due" : "active";
         await sql`UPDATE mall_subscriptions SET failures=${f}, status=${status}, next_charge_at=${now + 86_400_000}, updated_at=now() WHERE user_id=${s.user_id}`;
         mallFailed += 1;
+        await sendIngest("payment", `pay:${orderId}`, { email: s.email ?? undefined, pay_kind: "subscribe_renew", result: "fail", pg_ref: orderId });
       }
     }
 

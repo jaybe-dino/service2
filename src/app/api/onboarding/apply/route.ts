@@ -1,8 +1,9 @@
-import { NextResponse } from "next/server";
+import { NextResponse, after } from "next/server";
 import { sql, ensureSchema, isConfigured as dbConfigured } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
 import { isAdminAuthed } from "@/lib/admin-auth";
-import { gradeFromChecks, SELF_CHECK_QUESTIONS } from "@/lib/onboarding";
+import { gradeFromChecks, missingCerts, SELF_CHECK_QUESTIONS } from "@/lib/onboarding";
+import { sendIngest } from "@/lib/admin-ingest";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -44,6 +45,18 @@ export async function POST(req: Request) {
                 phase=CASE WHEN onboarding_applications.status='paid' THEN onboarding_applications.phase ELSE 'track_select' END,
                 status=CASE WHEN onboarding_applications.status='paid' THEN 'paid' ELSE 'self_checked' END,
                 payload=${JSON.stringify(payload)}::jsonb, updated_at=now()`;
+    // 운영 어드민 인제스트(diagnosis) — 응답 이후 비차단 전송
+    const epoch = Date.now();
+    after(() => sendIngest("diagnosis", `diag:${id}:${epoch}`, {
+      email: me.email,
+      grade: g.grade,
+      rec_track: g.recommended,
+      countries,
+      checks,
+      missing_certs: missingCerts(countries, certs).map((m) => m.label),
+      glovek_onb_id: id,
+      source_ref: id,
+    }));
     return NextResponse.json({ ok: true, id, grade: g.grade, recommended: g.recommended });
   }
 

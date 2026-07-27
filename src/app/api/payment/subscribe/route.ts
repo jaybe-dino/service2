@@ -1,6 +1,7 @@
-import { NextResponse } from "next/server";
+import { NextResponse, after } from "next/server";
 import { sql, ensureSchema, isConfigured as dbConfigured } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
+import { sendIngest } from "@/lib/admin-ingest";
 import {
   isConfigured as payConfigured, encryptCardData, registerBillingKey, chargeByBillingKey,
   buildOrderId, SERVICE_ORDER_PREFIX, type CardInput,
@@ -77,6 +78,12 @@ export async function POST(req: Request) {
             ON CONFLICT (user_id) DO UPDATE SET bid=EXCLUDED.bid, plan=EXCLUDED.plan, amount=EXCLUDED.amount,
               status='active', next_charge_at=EXCLUDED.next_charge_at, period_days=EXCLUDED.period_days, failures=0, updated_at=now()`;
   await sql`UPDATE users SET pro_until = GREATEST(pro_until, ${now}) + ${periodMs} WHERE id=${me.id}`;
+
+  // 운영 어드민 인제스트(payment: subscribe_first) — 응답 이후 비차단 전송
+  const payTid = pay.tid;
+  after(() => sendIngest("payment", `pay:${payTid}`, {
+    email: me.email, pay_kind: "subscribe_first", plan: "pro_89k", amount, pg_ref: payTid, glovek_user_id: me.id,
+  }));
 
   return NextResponse.json({ ok: true, plan: planKey, amount, nextChargeAt: now + periodMs });
 }
