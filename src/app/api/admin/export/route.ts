@@ -119,5 +119,59 @@ export async function GET(req: Request) {
       toCsv(["id", "kind", "email", "company", "target", "budget", "message", "status", "admin_response", "created_at"], rows));
   }
 
-  return new Response("type=payments | shopstats | members | consults | inquiries", { status: 400 });
+  // 입점 신청(온보딩) 상세 — 기업이 제출한 기본정보 전체(1행=1신청). 서류는 다운로드 링크로.
+  if (type === "onboarding") {
+    const r = await sql<{ id: string; email: string | null; name: string | null; brand: string | null; contact: string | null; track: string | null; grade: string | null; countries: string | null; term: string | null; amount: number | null; status: string; phase: string | null; referral_code: string | null; payload: { details?: Record<string, unknown> } | null; created_at: string; updated_at: string }>`
+      SELECT id, email, name, brand, contact, track, grade, countries, term, amount, status, phase, referral_code, payload, created_at, updated_at
+      FROM onboarding_applications ORDER BY updated_at DESC LIMIT 10000`;
+    const rows = r.rows.map((x) => {
+      const d = (x.payload?.details ?? {}) as Record<string, unknown>;
+      const settle = (d.settlement ?? {}) as Record<string, unknown>;
+      const bizReg = d.bizRegFile as { id?: string; filename?: string } | null;
+      const products = Array.isArray(d.products) ? d.products : [];
+      return [
+        x.id, x.email ?? "", (d.brandKo as string) ?? x.brand ?? "", (d.brandEn as string) ?? "",
+        (d.bizNo as string) ?? "", (d.repName as string) ?? "", (d.managerName as string) ?? x.name ?? "",
+        (d.contact as string) ?? x.contact ?? "",
+        x.track ?? "", x.grade ?? "", x.countries ?? "", x.term ?? "", x.amount ?? "",
+        x.status, x.phase ?? "", x.referral_code ?? "",
+        `${settle.bank ?? ""} ${settle.acct ?? ""} ${settle.holder ?? ""}`.trim(),
+        bizReg?.id ? `https://glovek.space/api/onboarding/file/${bizReg.id}` : "",
+        products.length, (d.note as string) ?? "", KST(x.created_at), KST(x.updated_at),
+      ];
+    });
+    return csvResponse(`glovek-onboarding-${stamp}.csv`,
+      toCsv(["id", "email", "brand_ko", "brand_en", "biz_no", "rep_name", "manager_name", "contact", "track", "grade", "countries", "term", "amount", "status", "phase", "referral_code", "settlement", "bizreg_file_url", "product_count", "note", "created_at", "updated_at"], rows));
+  }
+
+  // 제품별 서류·정보 — 기업이 제출한 제품 상세(1행=1제품). 인증서/사진은 다운로드 링크(관리자 로그인 필요).
+  if (type === "onboarding-products") {
+    const r = await sql<{ id: string; email: string | null; brand: string | null; payload: { details?: { brandKo?: string; products?: Record<string, unknown>[] } } | null }>`
+      SELECT id, email, brand, payload FROM onboarding_applications ORDER BY updated_at DESC LIMIT 10000`;
+    const rows: unknown[][] = [];
+    for (const x of r.rows) {
+      const d = x.payload?.details ?? {};
+      const products = Array.isArray(d.products) ? d.products : [];
+      products.forEach((p, i) => {
+        const cert = p.cert as { id?: string } | null;
+        const photos = Array.isArray(p.photos) ? (p.photos as { id?: string }[]) : [];
+        const label = (p.label ?? {}) as Record<string, boolean>;
+        const contact = (p.contact ?? {}) as Record<string, string>;
+        const fileUrl = (id?: string) => (id ? `https://glovek.space/api/onboarding/file/${id}` : "");
+        rows.push([
+          x.email ?? "", d.brandKo ?? x.brand ?? "", i + 1,
+          (p.nameKo as string) ?? "", (p.nameEn as string) ?? "", (p.cat as string) ?? "", (p.price as string) ?? "",
+          fileUrl(cert?.id ?? undefined),
+          photos.map((ph) => fileUrl(ph.id)).filter(Boolean).join(" "),
+          ["productName", "netQuantity", "directions", "ingredients", "contact"].filter((k) => label[k]).join("|"),
+          contact.address ?? "", contact.phone ?? "", contact.website ?? "",
+          p.realPhoto ? "Y" : "N",
+        ]);
+      });
+    }
+    return csvResponse(`glovek-onboarding-products-${stamp}.csv`,
+      toCsv(["email", "brand", "no", "name_ko", "name_en", "category", "price", "cert_url", "photo_urls", "label_checks", "contact_address", "contact_phone", "contact_website", "real_photo"], rows));
+  }
+
+  return new Response("type=payments | shopstats | members | consults | inquiries | onboarding | onboarding-products", { status: 400 });
 }

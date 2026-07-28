@@ -1,6 +1,7 @@
 import { NextResponse, after } from "next/server";
 import { sql, ensureSchema, isConfigured as dbConfigured } from "@/lib/db";
 import { sendIngest } from "@/lib/admin-ingest";
+import { syncOnboardingToAdmin } from "@/lib/onboarding-sync";
 import { getCurrentUser } from "@/lib/auth";
 import {
   isConfigured as payConfigured, encryptCardData, registerBillingKey, chargeByBillingKey,
@@ -133,6 +134,8 @@ export async function POST(req: Request) {
     pg_ref: payTid ?? registOrderId,
     glovek_user_id: me.id,
   }));
+  // 결제로 신청행이 생성/갱신됨 → 온보딩 스냅샷도 동기화(트랙·국가·금액 반영)
+  after(() => syncOnboardingToAdmin(me.id));
 
   return NextResponse.json({ ok: true, track, firstCharge, recurringAmount, firstFree: skipFirst, nextChargeAt: nextAt, periodDays });
 }

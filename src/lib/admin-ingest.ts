@@ -5,7 +5,7 @@
 //  - 미설정(ADMIN_INGEST_URL 없음) 시 no-op. 실패해도 사용자 플로우는 막지 않는다(fire-and-forget).
 //  - 재시도: 최초 실패 후 1회. 400/401은 즉시 중단(스펙).
 
-export type IngestEvent = "lead" | "diagnosis" | "payment";
+export type IngestEvent = "lead" | "diagnosis" | "payment" | "onboarding";
 
 function ingestSecret(): string {
   // 전용 변수 우선 — INGEST_SECRET은 Apify 인바운드 웹훅 인증에도 쓰여 겸용 시 값이 공유됨.

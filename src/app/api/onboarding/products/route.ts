@@ -1,6 +1,7 @@
-import { NextResponse } from "next/server";
+import { NextResponse, after } from "next/server";
 import { sql, ensureSchema, isConfigured as dbConfigured } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
+import { syncOnboardingToAdmin } from "@/lib/onboarding-sync";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -97,5 +98,7 @@ export async function POST(req: Request) {
   payload.details = details;
 
   await sql`UPDATE onboarding_applications SET payload=${JSON.stringify(payload)}::jsonb, updated_at=now() WHERE user_id=${me.id}`;
+  // 운영 어드민 인제스트(onboarding 스냅샷) — 제품 서류·정보 포함 전체 동기화(응답 후 비차단)
+  after(() => syncOnboardingToAdmin(me.id));
   return NextResponse.json({ ok: true, count: products.length });
 }

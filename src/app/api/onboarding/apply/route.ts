@@ -4,6 +4,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { isAdminAuthed } from "@/lib/admin-auth";
 import { gradeFromChecks, missingCerts, SELF_CHECK_QUESTIONS } from "@/lib/onboarding";
 import { sendIngest } from "@/lib/admin-ingest";
+import { syncOnboardingToAdmin } from "@/lib/onboarding-sync";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -97,6 +98,8 @@ export async function POST(req: Request) {
                 phase=CASE WHEN onboarding_applications.status='paid' THEN 'completed' ELSE onboarding_applications.phase END,
                 status=CASE WHEN onboarding_applications.status='paid' THEN 'paid' ELSE 'details_submitted' END,
                 payload=${JSON.stringify(payload)}::jsonb, updated_at=now()`;
+    // 운영 어드민 인제스트(onboarding 스냅샷) — 기업 제출 데이터 전체 동기화(응답 후 비차단)
+    after(() => syncOnboardingToAdmin(me.id));
     return NextResponse.json({ ok: true, id });
   }
 
@@ -129,6 +132,8 @@ export async function POST(req: Request) {
                 phase='completed',
                 status=CASE WHEN onboarding_applications.status='paid' THEN 'paid' ELSE 'details_submitted' END,
                 payload=${JSON.stringify(payload)}::jsonb, updated_at=now()`;
+    // 운영 어드민 인제스트(onboarding 스냅샷) — 기업 제출 데이터 전체 동기화(응답 후 비차단)
+    after(() => syncOnboardingToAdmin(me.id));
     return NextResponse.json({ ok: true, id });
   }
 
