@@ -21,6 +21,16 @@ interface Member {
 interface Order {
   order_id: string; user_id: string; plan: string; amount: number; status: string; created_at: string; paid: boolean;
 }
+interface MemberDetail {
+  user: { id: string; email: string; name: string; brand: string | null; role: string | null; plan: string; pro_until: number | string; referred_by: string | null; markets: string | null; admin_note: string | null; created_at: string };
+  subscription: { plan: string; amount: number; status: string; next_charge_at: number | string; failures: number } | null;
+  mallSubscription: { track: string; amount: number; status: string; next_charge_at: number | string; failures: number } | null;
+  orders: { order_id: string; plan: string; amount: number; charge_amount: number | null; goods_name: string | null; status: string; kind: string; tid: string | null; created_at: string }[];
+  onboarding: { id: string; track: string | null; grade: string | null; countries: string | null; term: string | null; amount: number | null; status: string; phase: string | null; referral_code: string | null; payload: OnbPayload | null; updated_at: string } | null;
+  files: { id: string; kind: string; product_index: number | null; filename: string | null; mime: string | null; size: number | null; created_at: string }[];
+  inquiries: { id: number; kind: string; payload: Record<string, unknown> | null; status: string | null; response: string | null; created_at: string }[];
+  consults: { id: number; company: string; category: string | null; message: string | null; source: string | null; status: string; created_at: string }[];
+}
 interface Totals { users: number; payments: number; revenue: number; active_pro: number; }
 interface Inquiry { id: number; kind: string; user_email: string | null; payload: Record<string, unknown> | null; status?: string; response?: string | null; created_at: string; }
 interface BrandReq { id: number; brand_name: string; handle: string | null; source: string; status: string; collected: number; note: string | null; created_at: string; }
@@ -114,6 +124,15 @@ export default function AdminPage() {
   const [tracking, setTracking] = useState<Track[]>([]);
   const [onbApps, setOnbApps] = useState<OnbApp[]>([]);
   const [onbDetail, setOnbDetail] = useState<OnbApp | null>(null);
+  const [memberDetail, setMemberDetail] = useState<MemberDetail | null>(null);
+  const [memberLoading, setMemberLoading] = useState<string | null>(null);
+  const openMemberDetail = async (id: string) => {
+    setMemberLoading(id);
+    const r = await fetch(`/api/admin/member?id=${encodeURIComponent(id)}`, { cache: "no-store" }).then((x) => x.json()).catch(() => null);
+    setMemberLoading(null);
+    if (r?.ok) setMemberDetail(r as MemberDetail);
+    else setToast(r?.error ?? "회원 상세 로드 실패");
+  };
   const [referrers, setReferrers] = useState<Referrer[]>([]);
   const [refName, setRefName] = useState("");
   const [refLoginId, setRefLoginId] = useState("");
@@ -568,7 +587,7 @@ export default function AdminPage() {
             <button className="kt-btn kt-btn-primary px-3 py-1.5 text-[11px]">부여</button>
           </form>
 
-          <Table head={["이메일", "이름", "브랜드", "플랜", "결제액", "최근결제", "Pro 상태", "Pro 출처", "시장 열람", "가입일", "비번"]}>
+          <Table head={["이메일", "이름", "브랜드", "플랜", "결제액", "최근결제", "Pro 상태", "Pro 출처", "시장 열람", "가입일", "비번", "상세"]}>
             {members.map((m) => {
               const cur = new Set((m.markets ?? "").split(",").map((s) => s.trim().toUpperCase()).filter(Boolean));
               return (
@@ -604,10 +623,16 @@ export default function AdminPage() {
                 </td>
                 <td className="p-2 text-[var(--muted)]">{dt(m.created_at)}</td>
                 <td className="p-2"><button onClick={() => resetPw(m.email)} className="text-[10px] font-semibold text-[var(--accent)] hover:underline">초기화</button></td>
+                <td className="p-2">
+                  <button onClick={() => openMemberDetail(m.id)} disabled={memberLoading === m.id}
+                    className="rounded-md border border-[var(--accent)] px-2 py-1 text-[10px] font-bold text-[var(--accent)] hover:bg-[var(--accent-light)] disabled:opacity-50">
+                    {memberLoading === m.id ? "…" : "상세"}
+                  </button>
+                </td>
               </tr>
               );
             })}
-            {!members.length && <EmptyRow cols={11} text="가입 회원 없음" />}
+            {!members.length && <EmptyRow cols={12} text="가입 회원 없음" />}
           </Table>
         </>
       )}
@@ -1305,7 +1330,137 @@ export default function AdminPage() {
       )}
 
       {onbDetail && <OnbDetailModal a={onbDetail} onClose={() => setOnbDetail(null)} />}
+      {memberDetail && <MemberDetailModal d={memberDetail} onClose={() => setMemberDetail(null)} onSaved={() => { setToast("회원 정보 저장됨"); loadData(); }} />}
     </PageShell>
+  );
+}
+
+// 회원 상세 모달 — 프로필 편집(이름/브랜드/직무/플랜/관리자 메모) + 구독·결제·온보딩·문의 전체 이력.
+function MemberDetailModal({ d, onClose, onSaved }: { d: MemberDetail; onClose: () => void; onSaved: () => void }) {
+  const u = d.user;
+  const [f, setF] = useState({ name: u.name ?? "", brand: u.brand ?? "", role: u.role ?? "", plan: u.plan, adminNote: u.admin_note ?? "" });
+  const [saving, setSaving] = useState(false);
+  const save = async () => {
+    setSaving(true);
+    const r = await fetch("/api/admin/member", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: u.id, ...f }) });
+    setSaving(false);
+    if (r.ok) { onSaved(); onClose(); }
+  };
+  const proUntil = Number(u.pro_until) || 0;
+  const onbP = d.onboarding?.payload?.details;
+  const products = onbP?.products ?? [];
+  const inp = "w-full rounded-md border border-[var(--border)] px-2 py-1.5 text-[12px]";
+  return (
+    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/45 p-4" onClick={onClose}>
+      <div className="my-6 w-full max-w-3xl rounded-xl bg-white p-5 text-[var(--fg)] shadow-2xl" onClick={(e) => e.stopPropagation()}>
+        <div className="mb-3 flex items-center justify-between">
+          <h3 className="flex items-center gap-2 text-[15px] font-black">
+            회원 상세 <span className="text-[12px] font-semibold text-[var(--muted)]">{u.email}</span>
+            <span className="kt-badge-brand">{u.plan}</span>
+            {proUntil > Date.now() && <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-600">Pro ~{dt(proUntil)}</span>}
+          </h3>
+          <button onClick={onClose} className="text-[var(--muted)] hover:text-[var(--fg)]"><X size={18} /></button>
+        </div>
+
+        <div className="space-y-4 text-[12px]">
+          {/* 프로필 편집 */}
+          <Section title="프로필 (수정 가능)">
+            <div className="grid gap-2 sm:grid-cols-2">
+              <label className="block"><span className="mb-0.5 block text-[10px] text-[var(--muted)]">이름</span><input value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} className={inp} /></label>
+              <label className="block"><span className="mb-0.5 block text-[10px] text-[var(--muted)]">브랜드</span><input value={f.brand} onChange={(e) => setF({ ...f, brand: e.target.value })} className={inp} /></label>
+              <label className="block"><span className="mb-0.5 block text-[10px] text-[var(--muted)]">직무</span><input value={f.role} onChange={(e) => setF({ ...f, role: e.target.value })} className={inp} /></label>
+              <label className="block"><span className="mb-0.5 block text-[10px] text-[var(--muted)]">플랜</span>
+                <select value={f.plan} onChange={(e) => setF({ ...f, plan: e.target.value })} className={inp}>
+                  {["basic", "pro", "enterprise"].map((p) => <option key={p} value={p}>{p}</option>)}
+                </select>
+              </label>
+            </div>
+            <label className="mt-1 block"><span className="mb-0.5 block text-[10px] text-[var(--muted)]">관리자 메모 (사용자 미노출)</span>
+              <textarea value={f.adminNote} onChange={(e) => setF({ ...f, adminNote: e.target.value })} rows={2} className={`${inp} resize-none`} placeholder="영업/CS 메모" />
+            </label>
+            <div className="mt-1 grid gap-1 text-[10px] text-[var(--muted)] sm:grid-cols-3">
+              <span>가입일: {dt(u.created_at)}</span>
+              <span>추천인: {u.referred_by ?? "—"}</span>
+              <span>시장열람: {u.markets || "US(기본)"}</span>
+            </div>
+            <button onClick={save} disabled={saving} className="kt-btn kt-btn-primary mt-2 px-4 py-1.5 text-[11px] disabled:opacity-50">{saving ? "저장 중…" : "프로필 저장"}</button>
+          </Section>
+
+          {/* 구독 */}
+          <Section title="구독">
+            {d.subscription ? (
+              <KV k={`Pro (${d.subscription.status})`} v={`${won(d.subscription.amount)} · 다음결제 ${dt(Number(d.subscription.next_charge_at))} · 실패 ${d.subscription.failures}회`} />
+            ) : <KV k="Pro" v="구독 없음" />}
+            {d.mallSubscription ? (
+              <KV k={`몰 입점 ${d.mallSubscription.track} (${d.mallSubscription.status})`} v={`${won(d.mallSubscription.amount)} · 다음결제 ${dt(Number(d.mallSubscription.next_charge_at))} · 실패 ${d.mallSubscription.failures}회`} />
+            ) : <KV k="몰 입점" v="구독 없음" />}
+          </Section>
+
+          {/* 결제 내역 */}
+          <Section title={`결제 내역 (${d.orders.length})`}>
+            {d.orders.length === 0 ? <p className="text-[var(--muted)]">—</p> : (
+              <div className="max-h-40 space-y-1 overflow-y-auto">
+                {d.orders.map((o) => (
+                  <div key={o.order_id} className="flex flex-wrap items-center gap-2 text-[11px]">
+                    <span className="text-[var(--muted)]">{dt(o.created_at)}</span>
+                    <span>{o.goods_name ?? o.plan}</span>
+                    <span className="font-semibold">{won(o.charge_amount ?? o.amount)}</span>
+                    <span className={o.status === "paid" ? "text-emerald-600" : o.status === "failed" ? "text-rose-600" : "text-slate-400"}>{o.status}</span>
+                    <span className="rounded bg-slate-100 px-1 text-[9px]">{o.kind}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </Section>
+
+          {/* 온보딩 */}
+          <Section title="틱톡샵 온보딩">
+            {d.onboarding ? (
+              <>
+                <KV k="상태" v={`${d.onboarding.status} · ${d.onboarding.phase ?? "—"}`} />
+                <KV k="트랙/등급" v={`${d.onboarding.track ?? "—"} / ${d.onboarding.grade ?? "—"}`} />
+                <KV k="국가/약정/금액" v={`${d.onboarding.countries || "—"} / ${d.onboarding.term ?? "—"} / ${d.onboarding.amount ? won(d.onboarding.amount) : "—"}`} />
+                <KV k="제출 제품" v={`${products.length}개`} />
+                {d.files.length > 0 && (
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <span className="text-[var(--muted)]">파일({d.files.length}):</span>
+                    {d.files.map((fl) => (
+                      <a key={fl.id} href={`/api/onboarding/file/${fl.id}`} target="_blank" rel="noreferrer" className="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-semibold text-[var(--accent)] hover:underline">
+                        {fl.kind === "biz_reg" ? "사업자등록증" : fl.kind === "product_cert" ? `인증서${fl.product_index != null ? `#${fl.product_index + 1}` : ""}` : `사진${fl.product_index != null ? `#${fl.product_index + 1}` : ""}`} ↓
+                      </a>
+                    ))}
+                  </div>
+                )}
+              </>
+            ) : <p className="text-[var(--muted)]">온보딩 신청 없음</p>}
+          </Section>
+
+          {/* 문의·상담 이력 */}
+          <Section title={`문의·상담 이력 (문의 ${d.inquiries.length} · 상담 ${d.consults.length})`}>
+            {d.inquiries.length === 0 && d.consults.length === 0 ? <p className="text-[var(--muted)]">—</p> : (
+              <div className="max-h-40 space-y-1 overflow-y-auto text-[11px]">
+                {d.consults.map((c) => (
+                  <div key={`c${c.id}`} className="flex flex-wrap gap-2">
+                    <span className="text-[var(--muted)]">{dt(c.created_at)}</span>
+                    <span className="rounded bg-[var(--accent-light)] px-1 text-[9px] font-bold text-[var(--accent)]">상담</span>
+                    <span>{c.company}{c.category ? ` · ${c.category}` : ""}</span>
+                    <span className="text-[var(--muted)]">{(c.message ?? "").slice(0, 60)}</span>
+                  </div>
+                ))}
+                {d.inquiries.map((q) => (
+                  <div key={`i${q.id}`} className="flex flex-wrap gap-2">
+                    <span className="text-[var(--muted)]">{dt(q.created_at)}</span>
+                    <span className="rounded bg-slate-100 px-1 text-[9px] font-bold">{q.kind}</span>
+                    <span className="text-[var(--muted)]">{String((q.payload as Record<string, unknown>)?.message ?? "").slice(0, 60)}</span>
+                    {q.response && <span className="text-emerald-600">답변됨</span>}
+                  </div>
+                ))}
+              </div>
+            )}
+          </Section>
+        </div>
+      </div>
+    </div>
   );
 }
 
