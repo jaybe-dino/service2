@@ -47,8 +47,10 @@ export async function POST(req: Request) {
     const b = (body ?? {}) as Record<string, unknown>;
     const summary = [`[${KIND_LABEL[kind] ?? kind}]`, b.context ? `대상:${b.context}` : null, b.budget ? `예산:${b.budget}` : null, b.message ? String(b.message).slice(0, 500) : null]
       .filter(Boolean).join(" ");
+    const phoneDigits = String(b.phone ?? b.contact ?? "").replace(/\D/g, "");
     after(() => sendIngest("lead", `inq:${inqId}`, {
       email: userEmail || undefined,
+      phone: phoneDigits || undefined, // 스펙: 숫자만
       brand_name: b.company ? String(b.company) : undefined,
       category: kind,
       source: "glovek_inquiry",

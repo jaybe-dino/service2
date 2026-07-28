@@ -173,5 +173,16 @@ export async function GET(req: Request) {
       toCsv(["email", "brand", "no", "name_ko", "name_en", "category", "price", "cert_url", "photo_urls", "label_checks", "contact_address", "contact_phone", "contact_website", "real_photo"], rows));
   }
 
-  return new Response("type=payments | shopstats | members | consults | inquiries | onboarding | onboarding-products", { status: 400 });
+  // 추천인 코드 ↔ 영업 담당자 매핑 — tiktokadmin 연동 스펙의 glovek 제공 항목
+  if (type === "referrers") {
+    const r = await sql<{ code: string; name: string | null; login_id: string; created_at: string; signups: number }>`
+      SELECT r.code, r.name, r.login_id, r.created_at,
+             (SELECT count(*) FROM users u WHERE u.referred_by = r.code)::int AS signups
+      FROM referrers r ORDER BY r.created_at ASC LIMIT 5000`;
+    const rows = r.rows.map((x) => [x.code, x.name ?? "", x.login_id, Number(x.signups) || 0, KST(x.created_at)]);
+    return csvResponse(`glovek-referrers-${stamp}.csv`,
+      toCsv(["referral_code", "sales_rep_name", "login_id", "signups", "created_at"], rows));
+  }
+
+  return new Response("type=payments | shopstats | members | consults | inquiries | onboarding | onboarding-products | referrers", { status: 400 });
 }

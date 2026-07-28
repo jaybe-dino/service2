@@ -38,9 +38,15 @@ export async function POST(req: Request) {
   const leadId = rows[0]?.id;
   if (leadId != null) {
     after(() => sendIngest("lead", `consult:${leadId}`, {
-      email, phone: contact, brand_name: company, contact_name: managerName,
-      category: s(b.category, 80) || undefined, source: "glovek_consult",
-      message: s(b.message, 2000) || undefined, source_ref: String(leadId),
+      email,
+      phone: contact.replace(/\D/g, "") || undefined, // 스펙: 숫자만
+      brand_name: company,
+      brand_url: s(b.brandUrl, 300) || undefined,
+      contact_name: managerName,
+      category: s(b.category, 80) || undefined,
+      source: "glovek_consult",
+      message: s(b.message, 2000) || undefined,
+      source_ref: String(leadId),
     }));
   }
 

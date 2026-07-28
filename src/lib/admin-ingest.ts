@@ -28,7 +28,7 @@ export async function sendIngest(event: IngestEvent, idemKey: string, body: Reco
         signal: AbortSignal.timeout(4000), // 유저 응답 지연 방지(호출부는 after()로 응답 후 실행)
       });
       if (res.ok) return;
-      if (res.status === 400 || res.status === 401) {
+      if (res.status === 400 || res.status === 401 || res.status === 404) { // 스키마/인증/미구현 엔드포인트 → 재시도 무의미
         console.error("[ingest] 거부", event, idemKey, res.status, (await res.text().catch(() => "")).slice(0, 200));
         return;
       }

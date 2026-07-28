@@ -57,6 +57,9 @@ export default function AdminToolsPage() {
           <a href="/api/admin/export?type=inquiries" className="rounded-lg bg-pink-600 px-4 py-2.5 text-[13px] font-bold text-white">문의·제안 CSV</a>
           <a href="/api/admin/export?type=payments" className="rounded-lg border border-slate-300 px-4 py-2.5 text-[13px] font-bold text-slate-700">결제 내역 CSV</a>
           <a href="/api/admin/export?type=shopstats" className="rounded-lg border border-slate-300 px-4 py-2.5 text-[13px] font-bold text-slate-700">크롤러 성과 CSV</a>
+          <a href="/api/admin/export?type=onboarding" className="rounded-lg border border-slate-300 px-4 py-2.5 text-[13px] font-bold text-slate-700">입점 신청 상세 CSV</a>
+          <a href="/api/admin/export?type=onboarding-products" className="rounded-lg border border-slate-300 px-4 py-2.5 text-[13px] font-bold text-slate-700">제품 서류 CSV</a>
+          <a href="/api/admin/export?type=referrers" className="rounded-lg border border-slate-300 px-4 py-2.5 text-[13px] font-bold text-slate-700">추천인 매핑 CSV</a>
         </Section>
         <Section title="상담·문의 알림 (Slack)">
           <Btn label="Slack 설정 확인" onClick={() => call("Slack 설정 확인", "/api/admin/slack-test", "GET")} />

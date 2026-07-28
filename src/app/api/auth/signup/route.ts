@@ -50,6 +50,7 @@ export async function POST(req: Request) {
     const refCode = referredBy;
     after(() => sendIngest("lead", `signup:${id}`, {
       email, brand_name: brand, contact_name: name, source: "referrer",
+      referral_code: refCode, // 스펙 필드
       message: `추천인 코드 ${refCode} 경유 가입`, source_ref: id,
       utm: { source: cut(utm.source) ?? "", medium: cut(utm.medium) ?? "", campaign: cut(utm.campaign) ?? "", content: cut(utm.content) ?? "", term: cut(utm.term) ?? "" },
     }));

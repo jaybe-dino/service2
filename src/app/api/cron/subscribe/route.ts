@@ -51,7 +51,7 @@ async function handle(req: Request) {
         await sql`UPDATE users SET pro_until = GREATEST(pro_until, ${now}) + ${periodMs} WHERE id=${s.user_id}`;
         await sql`UPDATE subscriptions SET status='active', failures=0, updated_at=now() WHERE user_id=${s.user_id}`; // next_charge_at은 선점에서 전진됨
         charged += 1;
-        await sendIngest("payment", `pay:${r.tid}`, { email: s.email ?? undefined, pay_kind: "subscribe_renew", result: "ok", pg_ref: r.tid });
+        await sendIngest("payment", `pay:${r.tid}`, { email: s.email ?? undefined, pay_kind: "subscribe_renew", result: "ok", pg_ref: r.tid, glovek_user_id: s.user_id });
       } else {
         await sql`UPDATE orders SET status='failed' WHERE order_id=${orderId}`;
         const f = (s.failures ?? 0) + 1;
@@ -59,7 +59,7 @@ async function handle(req: Request) {
         // 청구 실패 → 다음날 재시도(선점값 덮어씀).
         await sql`UPDATE subscriptions SET failures=${f}, status=${status}, next_charge_at=${now + 86_400_000}, updated_at=now() WHERE user_id=${s.user_id}`;
         failed += 1;
-        await sendIngest("payment", `pay:${orderId}`, { email: s.email ?? undefined, pay_kind: "subscribe_renew", result: "fail", pg_ref: orderId });
+        await sendIngest("payment", `pay:${orderId}`, { email: s.email ?? undefined, pay_kind: "subscribe_renew", result: "fail", pg_ref: orderId, glovek_user_id: s.user_id });
       }
     }
 
@@ -86,14 +86,14 @@ async function handle(req: Request) {
         await sql`INSERT INTO payments (payment_id, order_id, amount, raw) VALUES (${r.tid}, ${orderId}, ${s.amount}, ${JSON.stringify(r.raw)}::jsonb) ON CONFLICT (payment_id) DO NOTHING`;
         await sql`UPDATE mall_subscriptions SET status='active', failures=0, updated_at=now() WHERE user_id=${s.user_id}`;
         mallCharged += 1;
-        await sendIngest("payment", `pay:${r.tid}`, { email: s.email ?? undefined, pay_kind: "subscribe_renew", result: "ok", pg_ref: r.tid });
+        await sendIngest("payment", `pay:${r.tid}`, { email: s.email ?? undefined, pay_kind: "subscribe_renew", result: "ok", pg_ref: r.tid, glovek_user_id: s.user_id });
       } else {
         await sql`UPDATE orders SET status='failed' WHERE order_id=${orderId}`;
         const f = (s.failures ?? 0) + 1;
         const status = f >= BILLING_FAILURE_THRESHOLD ? "past_due" : "active";
         await sql`UPDATE mall_subscriptions SET failures=${f}, status=${status}, next_charge_at=${now + 86_400_000}, updated_at=now() WHERE user_id=${s.user_id}`;
         mallFailed += 1;
-        await sendIngest("payment", `pay:${orderId}`, { email: s.email ?? undefined, pay_kind: "subscribe_renew", result: "fail", pg_ref: orderId });
+        await sendIngest("payment", `pay:${orderId}`, { email: s.email ?? undefined, pay_kind: "subscribe_renew", result: "fail", pg_ref: orderId, glovek_user_id: s.user_id });
       }
     }
 
