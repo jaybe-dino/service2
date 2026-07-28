@@ -52,9 +52,11 @@ export default function AdminToolsPage() {
           <Btn label="결제 설정 확인 (pay-config)" onClick={() => call("결제 설정 확인 (pay-config)", "/api/admin/pay-config", "GET")} />
         </Section>
         <Section title="CSV 내보내기">
-          <a href="/api/admin/export?type=payments" className="rounded-lg border border-slate-300 px-4 py-2.5 text-[13px] font-bold text-slate-700">결제 내역 CSV (전체)</a>
-          <a href="/api/admin/export?type=payments&kind=once" className="rounded-lg border border-slate-300 px-4 py-2.5 text-[13px] font-bold text-slate-700">결제 CSV (일회성만)</a>
-          <a href="/api/admin/export?type=shopstats" className="rounded-lg border border-slate-300 px-4 py-2.5 text-[13px] font-bold text-slate-700">크롤러 성과 CSV (브랜드샵)</a>
+          <a href="/api/admin/export?type=members" className="rounded-lg bg-pink-600 px-4 py-2.5 text-[13px] font-bold text-white">브랜드사(회원) CSV</a>
+          <a href="/api/admin/export?type=consults" className="rounded-lg bg-pink-600 px-4 py-2.5 text-[13px] font-bold text-white">1:1 상담신청 CSV</a>
+          <a href="/api/admin/export?type=inquiries" className="rounded-lg bg-pink-600 px-4 py-2.5 text-[13px] font-bold text-white">문의·제안 CSV</a>
+          <a href="/api/admin/export?type=payments" className="rounded-lg border border-slate-300 px-4 py-2.5 text-[13px] font-bold text-slate-700">결제 내역 CSV</a>
+          <a href="/api/admin/export?type=shopstats" className="rounded-lg border border-slate-300 px-4 py-2.5 text-[13px] font-bold text-slate-700">크롤러 성과 CSV</a>
         </Section>
         <Section title="상담·문의 알림 (Slack)">
           <Btn label="Slack 설정 확인" onClick={() => call("Slack 설정 확인", "/api/admin/slack-test", "GET")} />

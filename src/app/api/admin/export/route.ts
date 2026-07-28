@@ -75,5 +75,49 @@ export async function GET(req: Request) {
     return csvResponse(`glovek-shopstats-${stamp}.csv`, toCsv(["brand_url", "est_gmv", "collected_at", "brand_name"], rows));
   }
 
-  return new Response("type=payments 또는 type=shopstats", { status: 400 });
+  // 브랜드사(회원) 목록 — 어드민/외부 시스템 연동용
+  if (type === "members") {
+    const r = await sql<{ email: string; name: string; brand: string | null; role: string | null; plan: string; referred_by: string | null; created_at: string; pro_until: string | number }>`
+      SELECT email, name, brand, role, plan, referred_by, created_at, pro_until
+      FROM users ORDER BY created_at DESC LIMIT 10000`;
+    const rows = r.rows.map((x) => [
+      x.email, x.name, x.brand ?? "", x.role ?? "", x.plan,
+      Number(x.pro_until) > Date.now() ? "Y" : "N",
+      x.referred_by ?? "", KST(x.created_at),
+    ]);
+    return csvResponse(`glovek-members-${stamp}.csv`,
+      toCsv(["email", "name", "brand", "role", "plan", "pro_active", "referred_by", "signup_at"], rows));
+  }
+
+  // 1:1 상담 신청 (/consult·/consult1 랜딩 폼)
+  if (type === "consults") {
+    const r = await sql<{ id: number; company: string; manager_name: string; email: string; contact: string; category: string | null; overseas: string | null; message: string | null; source: string | null; status: string; created_at: string }>`
+      SELECT id, company, manager_name, email, contact, category, overseas, message, source, status, created_at
+      FROM consult_requests ORDER BY created_at DESC LIMIT 10000`;
+    const rows = r.rows.map((x) => [
+      x.id, x.company, x.manager_name, x.email, x.contact,
+      x.category ?? "", x.message ?? "", x.source ?? "", x.status, KST(x.created_at),
+    ]);
+    return csvResponse(`glovek-consults-${stamp}.csv`,
+      toCsv(["id", "company", "manager_name", "email", "contact", "category", "message", "source", "status", "created_at"], rows));
+  }
+
+  // 문의·제안 (마케팅 1:1 / 틱톡샵 온보딩 / 인플루언서 제안 / 도입 문의 모달)
+  if (type === "inquiries") {
+    const r = await sql<{ id: number; kind: string; user_email: string | null; payload: Record<string, unknown> | null; status: string | null; response: string | null; created_at: string }>`
+      SELECT id, kind, user_email, payload, status, response, created_at
+      FROM inquiries ORDER BY created_at DESC LIMIT 10000`;
+    const rows = r.rows.map((x) => {
+      const p = x.payload ?? {};
+      return [
+        x.id, x.kind, x.user_email ?? "",
+        (p.company as string) ?? "", (p.context as string) ?? "", (p.budget as string) ?? "",
+        (p.message as string) ?? "", x.status ?? "", x.response ?? "", KST(x.created_at),
+      ];
+    });
+    return csvResponse(`glovek-inquiries-${stamp}.csv`,
+      toCsv(["id", "kind", "email", "company", "target", "budget", "message", "status", "admin_response", "created_at"], rows));
+  }
+
+  return new Response("type=payments | shopstats | members | consults | inquiries", { status: 400 });
 }
