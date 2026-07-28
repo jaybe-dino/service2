@@ -51,6 +51,10 @@ export default function AdminToolsPage() {
           <Btn label="제품 DB 확인 (data-debug)" onClick={() => call("제품 DB 확인 (data-debug)", "/api/admin/data-debug", "GET")} />
           <Btn label="결제 설정 확인 (pay-config)" onClick={() => call("결제 설정 확인 (pay-config)", "/api/admin/pay-config", "GET")} />
         </Section>
+        <Section title="통합 익스포트 (어드민 연동)">
+          <a href="/api/admin/export-all" className="rounded-lg bg-slate-900 px-4 py-2.5 text-[13px] font-bold text-white">📦 전체 데이터 ZIP (glovek_export)</a>
+          <span className="self-center text-[11px] text-slate-400">전 테이블 CSV + payload 스키마 + 로직 원문 + ENV 가이드 + schema.sql</span>
+        </Section>
         <Section title="CSV 내보내기">
           <a href="/api/admin/export?type=members" className="rounded-lg bg-pink-600 px-4 py-2.5 text-[13px] font-bold text-white">브랜드사(회원) CSV</a>
           <a href="/api/admin/export?type=consults" className="rounded-lg bg-pink-600 px-4 py-2.5 text-[13px] font-bold text-white">1:1 상담신청 CSV</a>
