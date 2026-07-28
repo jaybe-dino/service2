@@ -26,10 +26,10 @@ interface MemberDetail {
   subscription: { plan: string; amount: number; status: string; next_charge_at: number | string; failures: number } | null;
   mallSubscription: { track: string; amount: number; status: string; next_charge_at: number | string; failures: number } | null;
   orders: { order_id: string; plan: string; amount: number; charge_amount: number | null; goods_name: string | null; status: string; kind: string; tid: string | null; created_at: string }[];
-  onboarding: { id: string; track: string | null; grade: string | null; countries: string | null; term: string | null; amount: number | null; status: string; phase: string | null; referral_code: string | null; payload: OnbPayload | null; updated_at: string } | null;
+  onboarding: { id: string; name: string | null; brand: string | null; contact: string | null; email: string | null; track: string | null; grade: string | null; countries: string | null; term: string | null; amount: number | null; status: string; phase: string | null; referral_code: string | null; payload: OnbPayload | null; updated_at: string } | null;
   files: { id: string; kind: string; product_index: number | null; filename: string | null; mime: string | null; size: number | null; created_at: string }[];
   inquiries: { id: number; kind: string; payload: Record<string, unknown> | null; status: string | null; response: string | null; created_at: string }[];
-  consults: { id: number; company: string; category: string | null; message: string | null; source: string | null; status: string; created_at: string }[];
+  consults: { id: number; company: string; manager_name: string | null; contact: string | null; category: string | null; message: string | null; source: string | null; status: string; created_at: string }[];
 }
 interface Totals { users: number; payments: number; revenue: number; active_pro: number; }
 interface Inquiry { id: number; kind: string; user_email: string | null; payload: Record<string, unknown> | null; status?: string; response?: string | null; created_at: string; }
@@ -1385,6 +1385,27 @@ function MemberDetailModal({ d, onClose, onSaved }: { d: MemberDetail; onClose: 
             </div>
             <button onClick={save} disabled={saving} className="kt-btn kt-btn-primary mt-2 px-4 py-1.5 text-[11px] disabled:opacity-50">{saving ? "저장 중…" : "프로필 저장"}</button>
           </Section>
+
+          {/* 연락처·사업자 정보 — 온보딩 제출값 우선, 없으면 상담 신청값 폴백 */}
+          {(() => {
+            const phone = onbP?.contact || d.onboarding?.contact || d.consults[0]?.contact || "";
+            const manager = onbP?.managerName || d.onboarding?.name || d.consults[0]?.manager_name || "";
+            const settle = onbP?.settlement;
+            return (
+              <Section title="연락처·사업자 정보">
+                <KV k="연락처" v={phone ? phone : "—"} />
+                <KV k="담당자" v={manager || "—"} />
+                <KV k="대표자" v={onbP?.repName || "—"} />
+                <KV k="이메일(제출)" v={onbP?.email || d.onboarding?.email || u.email} />
+                <KV k="브랜드(국/영)" v={`${onbP?.brandKo || d.onboarding?.brand || u.brand || "—"}${onbP?.brandEn ? ` / ${onbP.brandEn}` : ""}`} />
+                <KV k="사업자등록번호" v={onbP?.bizNo || "—"} />
+                <KV k="정산 계좌" v={settle?.acct ? `${settle.bank ?? ""} ${settle.acct} (${settle.holder ?? "—"})` : "—"} />
+                {!onbP && !d.onboarding && d.consults.length === 0 && (
+                  <p className="text-[10px] text-[var(--muted)]">※ 온보딩·상담 제출 이력이 없어 연락처 정보가 없습니다.</p>
+                )}
+              </Section>
+            );
+          })()}
 
           {/* 구독 */}
           <Section title="구독">

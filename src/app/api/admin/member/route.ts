@@ -25,10 +25,10 @@ export async function GET(req: Request) {
     sql`SELECT plan,amount,status,next_charge_at,failures,period_days,created_at FROM subscriptions WHERE user_id=${user.id} LIMIT 1`,
     sql`SELECT track,amount,status,next_charge_at,failures,period_days,created_at FROM mall_subscriptions WHERE user_id=${user.id} LIMIT 1`,
     sql`SELECT order_id,plan,amount,charge_amount,goods_name,status,kind,tid,created_at FROM orders WHERE user_id=${user.id} ORDER BY created_at DESC LIMIT 50`,
-    sql`SELECT id,track,grade,recommended_track,countries,term,amount,status,phase,referral_code,payload,updated_at FROM onboarding_applications WHERE user_id=${user.id} LIMIT 1`,
+    sql`SELECT id,name,brand,contact,email,track,grade,recommended_track,countries,term,amount,status,phase,referral_code,payload,updated_at FROM onboarding_applications WHERE user_id=${user.id} LIMIT 1`,
     sql`SELECT id,kind,product_index,filename,mime,size,created_at FROM onboarding_files WHERE user_id=${user.id} ORDER BY created_at DESC LIMIT 100`,
     sql`SELECT id,kind,payload,status,response,created_at FROM inquiries WHERE lower(coalesce(user_email,''))=lower(${user.email}) ORDER BY created_at DESC LIMIT 30`,
-    sql`SELECT id,company,category,message,source,status,created_at FROM consult_requests WHERE lower(email)=lower(${user.email}) ORDER BY created_at DESC LIMIT 30`,
+    sql`SELECT id,company,manager_name,contact,category,message,source,status,created_at FROM consult_requests WHERE lower(email)=lower(${user.email}) ORDER BY created_at DESC LIMIT 30`,
   ]);
 
   return NextResponse.json({
