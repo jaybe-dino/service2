@@ -99,7 +99,7 @@ export default function ConsultPage() {
 
           {/* 순서: Live Focus → Guarantee(온보딩 보장) → Onboarding */}
           <div className="mt-6 space-y-4">
-            {MALL_TRACKS.map((t) => (
+            {MALL_TRACKS.filter((t) => t.id !== "guarantee").map((t) => (
               <Fragment key={t.id}>
                 <div className={`rounded-2xl border p-4 ${t.highlight ? "border-pink-200 bg-white shadow-sm" : "border-slate-200 bg-white"}`}>
                   <div className="flex items-center justify-between">

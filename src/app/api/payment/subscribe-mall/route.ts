@@ -129,7 +129,7 @@ export async function POST(req: Request) {
   after(() => sendIngest("payment", idem, {
     email: me.email,
     pay_kind: "subscribe_first",
-    plan: track === "live" ? "live_focus_490k" : track,
+    plan: track === "live" ? "live_focus_490k" : track === "guarantee" ? "guarantee_1000k" : track,
     amount: firstCharge,
     pg_ref: payTid ?? registOrderId,
     glovek_user_id: me.id,

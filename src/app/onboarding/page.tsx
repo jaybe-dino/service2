@@ -527,7 +527,8 @@ function OnboardingInner() {
                 <h2 className="text-[15px] font-black">구독 방식</h2>
                 <div className="mt-3 space-y-2">
                   <TermOption active={term === "monthly"} onClick={() => setTerm("monthly")} title="월 구독" desc="언제든 해지 가능 (해지 신청 후 익월 중단)" />
-                  <TermOption active={term === "6month"} onClick={() => setTerm("6month")} title="6개월 약정" desc="20% 할인 · 6개월 합계 일시 결제 · 중도 해지 시 잔여 기간의 30% 위약금" />
+                  <TermOption active={term === "6month"} onClick={() => setTerm("6month")} title="6개월 약정"
+                    desc={track && MALL_TRACK_MAP[track]?.fixedPrice ? "6개월 합계 일시 결제 · 중도 해지 시 잔여 기간의 30% 위약금" : "20% 할인 · 6개월 합계 일시 결제 · 중도 해지 시 잔여 기간의 30% 위약금"} />
                 </div>
               </div>
             </div>
@@ -541,7 +542,7 @@ function OnboardingInner() {
                 </div>
                 {quote && (
                   <div className="mt-3 space-y-1.5 text-[12px]">
-                    <Row l={`기본료 ${won(quote.unitPrice)} × ${quote.countryCount}개국`} v={`${won(quote.base)}/월`} />
+                    <Row l={track && MALL_TRACK_MAP[track]?.fixedPrice ? "기본료 (고정 · 국가수 무관)" : `기본료 ${won(quote.unitPrice)} × ${quote.countryCount}개국`} v={`${won(quote.base)}/월`} />
                     {quote.multiRate > 0 && <Row l={`다국가 할인 (${Math.round(quote.multiRate * 100)}%)`} v={`- ${won(quote.multiDiscount)}`} minus />}
                     {quote.termRate > 0 && <Row l={`6개월 약정 할인 (${Math.round(quote.termRate * 100)}%)`} v={`- ${won(quote.termDiscountAmount)}/월`} minus />}
                     <Row l="할인 적용 월 환산액" v={`${won(quote.monthly)}/월`} />

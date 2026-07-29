@@ -7,11 +7,12 @@ export const PAY_PLANS: Record<string, { amount: number; goodsName: string; plan
   pro: { amount: testPrice(89000), goodsName: "Glovek Pro (월간)", planInitial: "Pro", periodDays: 30, trialDays: 0 },
   // GloveK 몰 입점 트랙 (월 정기결제). Live는 사이트 내 구독, Onboarding은 결제 후 apply.tpartners 이동.
   live: { amount: testPrice(490_000), goodsName: "Glovek Live Focus Track (월간)", planInitial: "Live", periodDays: 30, trialDays: 0 },
+  guarantee: { amount: testPrice(1_000_000), goodsName: "Glovek Guarantee Track (월간)", planInitial: "Grt", periodDays: 30, trialDays: 0 },
   onboarding: { amount: testPrice(3_000_000), goodsName: "Glovek Onboarding Track (월간)", planInitial: "Onb", periodDays: 30, trialDays: 0 },
 };
 
 // 몰 입점 트랙 결제 키 — start/return/cron 에서 일반 Pro 구독과 구분하는 데 사용
-export const MALL_PLAN_KEYS = ["live", "onboarding"] as const;
+export const MALL_PLAN_KEYS = ["live", "guarantee", "onboarding"] as const;
 export type MallPlanKey = (typeof MALL_PLAN_KEYS)[number];
 export function isMallPlan(key: string): key is MallPlanKey {
   return (MALL_PLAN_KEYS as readonly string[]).includes(key);

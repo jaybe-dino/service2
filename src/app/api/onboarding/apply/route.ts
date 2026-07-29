@@ -9,7 +9,7 @@ import { syncOnboardingToAdmin } from "@/lib/onboarding-sync";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const TRACKS = ["live", "onboarding"];
+const TRACKS = ["live", "guarantee", "onboarding"];
 
 // 온보딩 신청 저장 (사용자당 1건 upsert, 단계별 누적 병합).
 // stage="self_check": 자가체크/국가/인증/등급/추천 + 추천인코드

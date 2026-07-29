@@ -18,7 +18,7 @@ interface OnbDetails { bizNo?: string; brandKo?: string; brandEn?: string; repNa
 interface OnbApp { track: string | null; grade: string | null; countries: string | null; term: string | null; amount: number | null; phase: string | null; status: string; dino_linked: boolean; payload: { details?: OnbDetails } | null }
 interface MallSub { track: string; amount: number; status: string; next_charge_at: number }
 interface MallOrder { order_id: string; plan: string; charge_amount: number | null; amount: number; status: string; created_ms: number }
-const TRACK_LABEL: Record<string, string> = { ready: "Start Track", live: "Live Focus Track", onboarding: "Onboarding Track" };
+const TRACK_LABEL: Record<string, string> = { ready: "Start Track", live: "Live Focus Track", guarantee: "Guarantee Track", onboarding: "Onboarding Track" };
 const COUNTRY_KO: Record<string, string> = { US: "미국", VN: "베트남", TH: "태국", MY: "말레이시아", SG: "싱가포르" };
 const ONB_STATUS: Record<string, { label: string; cls: string }> = {
   self_checked: { label: "자가체크 완료", cls: "bg-slate-100 text-slate-500" },

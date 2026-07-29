@@ -101,10 +101,11 @@ export interface Quote {
 // 6개월 약정은 6개월 합계(월환산 × 6)를 한 번에 결제.
 export function computeQuote(trackId: MallTrackId, countryCount: number, term: SubTerm): Quote {
   const unitPrice = MALL_TRACK_MAP[trackId]?.price ?? 0;
+  const fixed = !!MALL_TRACK_MAP[trackId]?.fixedPrice; // Guarantee: 고정가 — 국가수 곱셈·할인 미적용
   const n = Math.max(1, countryCount);
-  const base = unitPrice * n;
-  const multiRate = multiCountryDiscount(n);
-  const termRate = termDiscount(term);
+  const base = fixed ? unitPrice : unitPrice * n;
+  const multiRate = fixed ? 0 : multiCountryDiscount(n);
+  const termRate = fixed ? 0 : termDiscount(term);
   const afterMulti = base * (1 - multiRate);
   const monthly = Math.round(afterMulti * (1 - termRate));
   const months = TERM_MONTHS[term];

@@ -62,7 +62,7 @@ const wonLabel = (n: number): string => "₩" + n.toLocaleString();
 
 // GloveK 몰 입점 트랙 — 메인은 Ready / Live Focus (사이트 내 구독 결제),
 // Onboarding Track은 결제 후 apply.tpartners 로 이동.
-export type MallTrackId = "live" | "onboarding";
+export type MallTrackId = "live" | "guarantee" | "onboarding";
 export interface MallTrack {
   id: MallTrackId;
   name: string;
@@ -76,6 +76,7 @@ export interface MallTrack {
   flow: "subscribe" | "apply";    // subscribe=사이트 내 구독 / apply=결제 후 apply.tpartners
   inquiry?: boolean;              // true면 금액 미표시·결제 없이 '가격 문의'로 처리
   minTermNote?: string;           // 권장 최소 이용 기간 안내
+  fixedPrice?: boolean;           // true면 고정가 — 국가수 곱셈·다국가/약정 할인 미적용 (Guarantee)
 }
 
 export const MALL_TRACKS: MallTrack[] = [
@@ -84,6 +85,12 @@ export const MALL_TRACKS: MallTrack[] = [
     price: testPrice(490_000), priceLabel: wonLabel(testPrice(490_000)), commissionLabel: "판매 수수료 10%",
     features: ["벤더 매칭 및 제안 (비독점)", "어필리에이트 캠페인 운영", "제품 상세페이지 번역 지원", "무가 라이브 커머스 지원 (월 4회)", "유가 시딩 캠페인 운영", "무가 시딩 캠페인 20개~", "최대 5개 제품 등록 가능"],
     highlight: true, dark: false, flow: "subscribe", minTermNote: "최소 6개월 권장",
+  },
+  {
+    id: "guarantee", name: "Guarantee Track", tagline: "온보딩 보장 — 입점부터 자체 브랜드 채널 오픈까지",
+    price: testPrice(1_000_000), priceLabel: wonLabel(testPrice(1_000_000)), commissionLabel: "판매 수수료 10%",
+    features: ["인증/입점 · 물류 · 번역 지원", "무가 라이브 커머스 월 6회", "무가 시딩 30개~", "최대 10개 제품 등록", "6개월 내 온보딩 보장", "Live Focus 구성 × 2배 제공"],
+    highlight: false, dark: true, flow: "subscribe", minTermNote: "최소 6개월 약정", fixedPrice: true,
   },
   {
     id: "onboarding", name: "Onboarding Track", tagline: "메가 스케일업 & 채널 독립",

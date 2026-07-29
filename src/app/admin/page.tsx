@@ -78,7 +78,7 @@ interface OnbApp {
   referral_code: string | null; status: string; order_id: string | null; payload: OnbPayload | null;
   created_ms: number; updated_ms: number;
 }
-const TRACK_LABEL: Record<string, string> = { ready: "Start", live: "Live Focus", onboarding: "Onboarding" };
+const TRACK_LABEL: Record<string, string> = { ready: "Start", live: "Live Focus", guarantee: "Guarantee", onboarding: "Onboarding" };
 interface Referrer { code: string; login_id: string; name: string | null; created_ms: number; signups: number; paid_users: number; revenue: number; rate: number; commission: number }
 type Tab = "members" | "payments" | "inquiries" | "consult" | "funnel" | "promo" | "onboarding" | "referrers" | "collect" | "influencers" | "brands" | "utm" | "rules";
 interface FunnelData {
