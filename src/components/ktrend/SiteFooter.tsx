@@ -51,7 +51,11 @@ export default function SiteFooter() {
         <div className="mt-8 border-t border-[var(--border)] pt-4 text-[10px] leading-relaxed text-[var(--muted)]">
           <p className="font-semibold text-[var(--fg)]">디노스튜디오 (DINOSTUDIO)</p>
           <p className="mt-1">
-            대표 허정발 · 서울특별시 서초구 서초대로48길 101, 그룹메가타워 2F ·
+            대표 허정발 · 사업자등록번호 688-87-01213 · 통신판매신고번호 제 2021-서울서초-2493 호
+          </p>
+          <p className="mt-1">
+            서울특별시 서초구 사임당로 26, 8층 802호 ·
+            전화 <a href="tel:010-5663-1273" className="hover:text-[var(--accent)]">010-5663-1273</a> ·
             이메일 <a href="mailto:chief@dinostudio.kr" className="hover:text-[var(--accent)]">chief@dinostudio.kr</a> ·
             <a href="https://dinostudio.kr" target="_blank" rel="noreferrer noopener" className="ml-1 hover:text-[var(--accent)]">dinostudio.kr</a>
           </p>

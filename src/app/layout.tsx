@@ -62,7 +62,7 @@ const JSON_LD = {
       email: "chief@dinostudio.kr",
       address: {
         "@type": "PostalAddress",
-        streetAddress: "서초대로48길 101, 그룹메가타워 2F",
+        streetAddress: "사임당로 26, 8층 802호",
         addressLocality: "서초구",
         addressRegion: "서울특별시",
         addressCountry: "KR",

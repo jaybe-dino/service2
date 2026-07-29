@@ -74,8 +74,8 @@ export default function PrivacyPage() {
           <Section h="7. 개인정보 보호책임자">
             <p className="text-[12px] leading-relaxed text-[var(--muted)]">
               개인정보 보호책임자: 디노스튜디오 대표 허정발<br />
-              연락처: chief@dinostudio.kr<br />
-              주소: 서울특별시 서초구 서초대로48길 101, 그룹메가타워 2F
+              연락처: chief@dinostudio.kr · 010-5663-1273<br />
+              주소: 서울특별시 서초구 사임당로 26, 8층 802호
             </p>
           </Section>
         </div>
