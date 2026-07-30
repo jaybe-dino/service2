@@ -9,6 +9,15 @@ export const dynamic = "force-dynamic";
 export async function GET() {
   if (!(await isAdminAuthed())) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   if (!isConfigured()) return NextResponse.json({ error: "DB 미설정" }, { status: 503 });
+  try {
+    return await loadOverview();
+  } catch (e) {
+    // SQL/런타임 오류를 HTML 500 대신 JSON으로 — 클라이언트가 빈 화면 대신 원인을 볼 수 있게.
+    return NextResponse.json({ error: "overview_failed", detail: String(e).slice(0, 300) }, { status: 500 });
+  }
+}
+
+async function loadOverview() {
   await ensureSchema();
 
   const members = await sql`
