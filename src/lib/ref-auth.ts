@@ -1,9 +1,10 @@
 import { cookies } from "next/headers";
 import { SignJWT, jwtVerify } from "jose";
+import { sessionSecret } from "./session-secret";
 
 // 추천인(파트너) 전용 세션 — 사용자/어드민 세션과 완전 분리
 const COOKIE = "glovek_ref";
-const secret = new TextEncoder().encode(process.env.SESSION_SECRET || "dev-insecure-secret-change-me");
+const secret = new TextEncoder().encode(sessionSecret());
 
 export async function createRefSession(code: string): Promise<void> {
   const token = await new SignJWT({ role: "ref", code })
