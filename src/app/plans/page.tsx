@@ -6,6 +6,7 @@ import { Check, Star, ShoppingBag, ArrowRight } from "lucide-react";
 import PageShell from "@/components/ktrend/PageShell";
 import { usePlan } from "@/components/ktrend/PlanContext";
 import { PLANS, ONBOARDING } from "@/data/ktrend/meta";
+import { PAY_REVIEW } from "@/data/ktrend/pay-review";
 
 const ANNUAL_OFF = 0.2; // 연간 결제 20% 할인 (2개월+ 무료)
 
@@ -24,7 +25,8 @@ function priceParts(price: string, annual: boolean): { main: string; sub: string
 
 export default function PlansPage() {
   const { plan } = usePlan();
-  const [annual, setAnnual] = useState(true);
+  // 심사 모드(3개월 초과 판매 불가)에서는 연간 옵션 자체를 숨기고 월간 고정.
+  const [annual, setAnnual] = useState(!PAY_REVIEW);
 
   return (
     <PageShell>
@@ -33,20 +35,22 @@ export default function PlansPage() {
         <p className="mt-2 text-[13px] leading-relaxed text-[var(--muted)]">
           콘텐츠·인플루언서·브랜드 분석 SaaS 구독입니다.
         </p>
-        <div className="mt-4 inline-flex items-center gap-1 rounded-full border border-[var(--border)] p-1 text-[11px] font-semibold">
-          <button
-            onClick={() => setAnnual(false)}
-            className={`rounded-full px-3 py-1 ${!annual ? "bg-[var(--accent)] text-white" : "text-[var(--muted)]"}`}
-          >
-            월간
-          </button>
-          <button
-            onClick={() => setAnnual(true)}
-            className={`flex items-center gap-1 rounded-full px-3 py-1 ${annual ? "bg-[var(--accent)] text-white" : "text-[var(--muted)]"}`}
-          >
-            연간 <span className={`rounded-full px-1.5 py-0.5 text-[8px] ${annual ? "bg-white/25" : "bg-emerald-100 text-emerald-700"}`}>20% OFF</span>
-          </button>
-        </div>
+        {!PAY_REVIEW && (
+          <div className="mt-4 inline-flex items-center gap-1 rounded-full border border-[var(--border)] p-1 text-[11px] font-semibold">
+            <button
+              onClick={() => setAnnual(false)}
+              className={`rounded-full px-3 py-1 ${!annual ? "bg-[var(--accent)] text-white" : "text-[var(--muted)]"}`}
+            >
+              월간
+            </button>
+            <button
+              onClick={() => setAnnual(true)}
+              className={`flex items-center gap-1 rounded-full px-3 py-1 ${annual ? "bg-[var(--accent)] text-white" : "text-[var(--muted)]"}`}
+            >
+              연간 <span className={`rounded-full px-1.5 py-0.5 text-[8px] ${annual ? "bg-white/25" : "bg-emerald-100 text-emerald-700"}`}>20% OFF</span>
+            </button>
+          </div>
+        )}
       </div>
 
       {/* 플랜 카드 */}

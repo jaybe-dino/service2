@@ -2,8 +2,9 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { ShoppingBag, ArrowRight, ArrowLeft } from "lucide-react";
 import PageShell from "@/components/ktrend/PageShell";
-import { MALL_TRACKS, ONBOARDING } from "@/data/ktrend/meta";
+import { MALL_TRACKS, MALL_TRACK_MAP, ONBOARDING } from "@/data/ktrend/meta";
 import { GRADE_GUIDE } from "@/lib/onboarding";
+import { PAY_REVIEW } from "@/data/ktrend/pay-review";
 
 export const metadata: Metadata = {
   title: "틱톡샵 멀티몰 입점 요금 — Glovek",
@@ -38,7 +39,7 @@ export default function MallPlansPage() {
                 </tr>
               </thead>
               <tbody>
-                {MALL_TRACKS.map((t) => {
+                {MALL_TRACKS.filter((t) => !(PAY_REVIEW && MALL_TRACK_MAP[t.id]?.fixedPrice)).map((t) => {
                   const grades = GRADE_GUIDE.filter((g) => g.recommended === t.id);
                   return (
                     <tr key={t.id} className="border-b border-[var(--border)] last:border-0">

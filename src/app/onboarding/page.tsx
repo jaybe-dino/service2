@@ -11,6 +11,7 @@ import PageShell from "@/components/ktrend/PageShell";
 import InquiryModal from "@/components/ktrend/InquiryModal";
 import { usePlan } from "@/components/ktrend/PlanContext";
 import { ONBOARDING, MALL_TRACKS, MALL_TRACK_MAP, PAY_TEST_MODE, type MallTrackId } from "@/data/ktrend/meta";
+import { PAY_REVIEW } from "@/data/ktrend/pay-review";
 import {
   SELF_CHECK_QUESTIONS, ONB_COUNTRIES, ONB_COUNTRY_MAP, COMMON_CERT,
   gradeFromChecks, missingCerts, computeQuote, ONB_TIMELINE, GRADE_GUIDE,
@@ -471,7 +472,7 @@ function OnboardingInner() {
               </button>
             )}
             <div className="mx-auto grid max-w-3xl gap-4 md:grid-cols-2">
-              {MALL_TRACKS.map((t) => {
+              {MALL_TRACKS.filter((t) => !(PAY_REVIEW && MALL_TRACK_MAP[t.id]?.fixedPrice)).map((t) => {
                 const rec = gradeInfo?.recommended === t.id;
                 const dim = !!gradeInfo && !rec; // 추천 외 트랙은 회색(비강조)
                 return (
@@ -527,8 +528,11 @@ function OnboardingInner() {
                 <h2 className="text-[15px] font-black">구독 방식</h2>
                 <div className="mt-3 space-y-2">
                   <TermOption active={term === "monthly"} onClick={() => setTerm("monthly")} title="월 구독" desc="언제든 해지 가능 (해지 신청 후 익월 중단)" />
-                  <TermOption active={term === "6month"} onClick={() => setTerm("6month")} title="6개월 약정"
-                    desc={track && MALL_TRACK_MAP[track]?.fixedPrice ? "6개월 합계 일시 결제 · 중도 해지 시 잔여 기간의 30% 위약금" : "20% 할인 · 6개월 합계 일시 결제 · 중도 해지 시 잔여 기간의 30% 위약금"} />
+                  {/* 심사 모드(3개월 초과 판매 불가)에서는 6개월 약정 숨김 */}
+                  {!PAY_REVIEW && (
+                    <TermOption active={term === "6month"} onClick={() => setTerm("6month")} title="6개월 약정"
+                      desc={track && MALL_TRACK_MAP[track]?.fixedPrice ? "6개월 합계 일시 결제 · 중도 해지 시 잔여 기간의 30% 위약금" : "20% 할인 · 6개월 합계 일시 결제 · 중도 해지 시 잔여 기간의 30% 위약금"} />
+                  )}
                 </div>
               </div>
             </div>
