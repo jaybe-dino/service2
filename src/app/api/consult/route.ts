@@ -37,6 +37,8 @@ export async function POST(req: Request) {
   // 운영 어드민 인제스트(lead) — 응답 이후 비차단 전송(실패해도 접수 플로우 무관)
   const leadId = rows[0]?.id;
   if (leadId != null) {
+    const u = (b.utm && typeof b.utm === "object" ? b.utm : {}) as Record<string, unknown>;
+    const utm = { source: s(u.source, 120), medium: s(u.medium, 120), campaign: s(u.campaign, 120), content: s(u.content, 120), term: s(u.term, 120) };
     after(() => sendIngest("lead", `consult:${leadId}`, {
       email,
       phone: contact.replace(/\D/g, "") || undefined, // 스펙: 숫자만
@@ -46,6 +48,7 @@ export async function POST(req: Request) {
       category: s(b.category, 80) || undefined,
       source: "glovek_consult",
       message: s(b.message, 2000) || undefined,
+      utm, // 스펙 2-1: 유입 UTM
       source_ref: String(leadId),
     }));
   }

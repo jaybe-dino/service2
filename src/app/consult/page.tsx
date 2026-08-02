@@ -67,7 +67,7 @@ export default function ConsultDeckPage() {
     try {
       const res = await fetch("/api/consult", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...f, agreed: agree, source: "deck-landing" }),
+        body: JSON.stringify({ ...f, agreed: agree, source: "deck-landing", utm: utmRef.current.utm }),
       });
       const d = await res.json();
       if (!res.ok || !d.ok) { setErr(d?.error ?? "신청에 실패했습니다."); setBusy(false); return; }
