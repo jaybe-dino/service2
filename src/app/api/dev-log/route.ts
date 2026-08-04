@@ -1,11 +1,13 @@
 import { NextResponse } from "next/server";
 import { sql, ensureSchema, isConfigured } from "@/lib/db";
+import { isAdminAuthed } from "@/lib/admin-auth";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-// 공개 — 개발 변경 로그(/dev-docs에서 사용). 최근 100건.
+// 관리자 전용 — 개발 변경 로그(/dev-docs에서 사용). 최근 100건.
 export async function GET() {
+  if (!(await isAdminAuthed())) return NextResponse.json({ error: "unauthorized", logs: [] }, { status: 401 });
   if (!isConfigured()) return NextResponse.json({ logs: [] });
   try {
     await ensureSchema();
