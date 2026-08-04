@@ -12,11 +12,12 @@ export async function GET(req: Request) {
     await ensureSchema();
     const url = new URL(req.url);
     const q = (url.searchParams.get("q") || "").trim().toLowerCase();
-    const sort = url.searchParams.get("sort") || "views"; // views | growth
+    const brand = (url.searchParams.get("brand") || "").trim().toLowerCase(); // 브랜드 정확 매칭(전체 콘텐츠)
+    const sort = url.searchParams.get("sort") || "views"; // views | growth | recent
     const country = (url.searchParams.get("country") || "").trim().toUpperCase();
     const onlyShop = url.searchParams.get("shop") === "1";
     const period = Math.max(1, Math.min(90, Number(url.searchParams.get("period") || 7)));
-    const limit = Math.min(200, Math.max(1, Number(url.searchParams.get("limit") || 100)));
+    const limit = Math.min(1000, Math.max(1, Number(url.searchParams.get("limit") || 100)));
 
     const r = await sql<{
       video_id: string; handle: string | null; brand_name: string | null; views: string | number; likes: string | number;
@@ -32,9 +33,10 @@ export async function GET(req: Request) {
         AND (v.handle IS NULL OR v.handle NOT IN (SELECT value FROM blocklist WHERE kind='handle'))
         AND (${country} = '' OR upper(coalesce(v.country,'US')) = ${country})
         AND (${onlyShop} = false OR v.is_shop = true)
+        AND (${brand} = '' OR lower(coalesce(v.brand_name,'')) = ${brand})
         AND (${q} = '' OR lower(coalesce(v.handle,'')) LIKE ${"%" + q + "%"} OR lower(coalesce(v.brand_name,'')) LIKE ${"%" + q + "%"})
       ORDER BY v.views DESC
-      LIMIT 1500`;
+      LIMIT 2000`;
 
     const videos = r.rows.map((v) => {
       const views = Number(v.views) || 0;
@@ -50,8 +52,9 @@ export async function GET(req: Request) {
       };
     });
     if (sort === "growth") videos.sort((a, b) => (b.growth ?? -1) - (a.growth ?? -1));
+    else if (sort === "recent") videos.sort((a, b) => (b.postedAt || "").localeCompare(a.postedAt || ""));
 
-    return NextResponse.json({ configured: true, count: videos.length, videos: videos.slice(0, limit) });
+    return NextResponse.json({ configured: true, count: videos.length, total: videos.length, videos: videos.slice(0, limit) });
   } catch (e) {
     return NextResponse.json({ configured: true, videos: [], error: String(e).slice(0, 160) });
   }

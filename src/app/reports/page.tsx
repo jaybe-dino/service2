@@ -16,6 +16,8 @@ const palette = ["#1A56DB", "#7C3AED", "#0E9F6E", "#F59E0B", "#EF4444"];
 const TIER_ORDER: InfluencerTier[] = ["mega", "macro", "micro"];
 
 interface MonthRow { m: string; views: number; uploads: number; revenue: number; eng: number; }
+interface DbVid { id: string; handle: string; views: number; likes: number; url: string; country: string; isAd: boolean; isShop: boolean; postedAt: string; hasProduct: boolean; engage: number }
+const cmp = (n: number) => (n >= 1_000_000 ? (n / 1_000_000).toFixed(n >= 10_000_000 ? 0 : 1) + "M" : n >= 1_000 ? (n / 1_000).toFixed(n >= 10_000 ? 0 : 1) + "K" : String(n));
 
 export default function ReportsPage() {
   const { plan, isAdmin } = usePlan();
@@ -42,6 +44,19 @@ export default function ReportsPage() {
       if (b && BRAND_MAP[b]) setBrandId(b);
     } catch { /* ignore */ }
   }, []);
+
+  // 수집된 전체 콘텐츠(DB videos) — 브랜드 정확 매칭. 정적 데모가 아니라 실제 크롤링분.
+  const [dbVids, setDbVids] = useState<DbVid[] | null>(null);
+  const [dbSort, setDbSort] = useState<"views" | "recent" | "growth">("views");
+  const [dbShow, setDbShow] = useState(24);
+  useEffect(() => {
+    if (!brand?.name) return;
+    let alive = true; setDbVids(null); setDbShow(24);
+    fetch(`/api/videos?brand=${encodeURIComponent(brand.name)}&limit=1000&sort=${dbSort}`)
+      .then((r) => r.json()).then((d) => { if (alive) setDbVids(Array.isArray(d.videos) ? d.videos : []); })
+      .catch(() => { if (alive) setDbVids([]); });
+    return () => { alive = false; };
+  }, [brand?.name, dbSort]);
 
   const stats = useMemo(() => {
     if (!content) return null;
@@ -426,6 +441,52 @@ export default function ReportsPage() {
           <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-4">
             {stats.topVideos.map((c) => (<ContentCard key={c.id} content={c} />))}
           </div>
+
+          {/* 수집된 전체 콘텐츠 (DB) — 실제 크롤링분 전량 */}
+          <div className="mt-8 flex flex-wrap items-center gap-2">
+            <h3 className="text-[13px] font-bold">수집된 전체 콘텐츠 <span className="text-[10px] font-normal text-[var(--muted)]">· {brand.name} 실제 크롤링분</span></h3>
+            {dbVids && <span className="rounded-full bg-[var(--accent-light)] px-2 py-0.5 text-[10px] font-bold text-[var(--accent)]">{dbVids.length.toLocaleString()}개</span>}
+            <div className="ml-auto flex gap-1">
+              {([["views", "조회수"], ["recent", "최신"], ["growth", "급상승"]] as const).map(([k, l]) => (
+                <button key={k} onClick={() => setDbSort(k)} className={`rounded-lg border px-2.5 py-1 text-[11px] font-semibold ${dbSort === k ? "border-[var(--accent)] bg-[var(--accent-light)] text-[var(--accent)]" : "border-[var(--border)] text-[var(--muted)]"}`}>{l}</button>
+              ))}
+            </div>
+          </div>
+          {dbVids === null ? (
+            <div className="py-8 text-center text-[12px] text-[var(--muted)]"><Loader2 size={14} className="mr-1 inline animate-spin" /> 수집 콘텐츠 불러오는 중…</div>
+          ) : dbVids.length === 0 ? (
+            <p className="mt-2 rounded-lg border border-dashed border-[var(--border)] p-6 text-center text-[12px] text-[var(--muted)]">이 브랜드로 수집된 콘텐츠가 아직 없습니다. (어드민 &gt; 브랜드 수집 &gt; 심층 크롤링으로 수집)</p>
+          ) : (
+            <>
+              <div className="mt-2 grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-4">
+                {dbVids.slice(0, dbShow).map((v) => (
+                  <a key={v.id} href={v.url || undefined} target="_blank" rel="noopener noreferrer" className="group flex flex-col rounded-xl border border-[var(--border)] bg-white p-3 transition hover:shadow-md">
+                    <div className="flex items-center justify-between">
+                      <span className="truncate text-[11px] font-bold group-hover:text-[var(--accent)]">@{v.handle || "unknown"}</span>
+                      <span className="text-[11px]">{v.country === "US" ? "🇺🇸" : v.country === "TH" ? "🇹🇭" : v.country === "VN" ? "🇻🇳" : v.country === "MY" ? "🇲🇾" : v.country === "SG" ? "🇸🇬" : "🌐"}</span>
+                    </div>
+                    <div className="mt-2 flex items-end gap-3">
+                      <div><div className="text-[9px] text-[var(--muted)]">조회수</div><div className="text-[15px] font-black leading-none">{cmp(v.views)}</div></div>
+                      <div><div className="text-[9px] text-[var(--muted)]">참여율</div><div className="text-[12px] font-bold leading-none text-[var(--accent)]">{v.engage}%</div></div>
+                    </div>
+                    <div className="mt-2 flex flex-wrap items-center gap-1">
+                      {v.hasProduct && <span className="rounded-full bg-emerald-100 px-1.5 py-0.5 text-[8px] font-bold text-emerald-700">제품태그</span>}
+                      {v.isAd && <span className="rounded-full bg-violet-100 px-1.5 py-0.5 text-[8px] font-bold text-violet-700">광고</span>}
+                      {v.isShop && <span className="rounded-full bg-sky-100 px-1.5 py-0.5 text-[8px] font-bold text-sky-700">샵</span>}
+                      {v.postedAt && <span className="text-[8px] text-slate-400">{v.postedAt}</span>}
+                    </div>
+                  </a>
+                ))}
+              </div>
+              {dbShow < dbVids.length && (
+                <div className="mt-4 text-center">
+                  <button onClick={() => setDbShow((n) => n + 48)} className="rounded-lg border border-[var(--border)] px-5 py-2 text-[12px] font-semibold text-[var(--muted)] hover:border-[var(--accent)] hover:text-[var(--accent)]">
+                    더 보기 ({dbVids.length - dbShow}개 남음)
+                  </button>
+                </div>
+              )}
+            </>
+          )}
         </>
       )}
       </ProGate>
