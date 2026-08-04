@@ -14,10 +14,13 @@ export async function POST(req: Request) {
   if (!isConfigured()) return NextResponse.json({ error: "DB 미설정" }, { status: 503 });
 
   const b = (await req.json().catch(() => ({}))) as {
-    brand?: string; handle?: string; hashtags?: string; countries?: string[]; regions?: string[]; limit?: number; backfillDays?: number;
+    brand?: string; handle?: string; hashtags?: string; countries?: string[]; regions?: string[];
+    limit?: number; backfillDays?: number; years?: number; scope?: string;
   };
   const brand = String(b.brand ?? "").trim();
   if (!brand) return NextResponse.json({ error: "brand(브랜드명) 필요" }, { status: 400 });
+  const scope = b.scope === "video" || b.scope === "shop" ? b.scope : "both";
+  const backfillDays = b.backfillDays ? Number(b.backfillDays) : (b.years ? Math.round(Number(b.years) * 365) : undefined);
 
   const proto = req.headers.get("x-forwarded-proto") ?? "https";
   const host = req.headers.get("x-forwarded-host") ?? req.headers.get("host");
@@ -31,7 +34,8 @@ export async function POST(req: Request) {
     regions: clean(b.regions),
     countries: clean(b.countries),
     limit: b.limit ? Number(b.limit) : undefined,
-    backfillDays: b.backfillDays ? Number(b.backfillDays) : undefined,
+    backfillDays,
+    scope: scope as "video" | "shop" | "both",
     baseUrl,
   });
   return NextResponse.json({ ok: true, ...summary });

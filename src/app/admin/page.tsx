@@ -440,21 +440,32 @@ export default function AdminPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [authed, autoRun, autoMin]);
 
-  // 지정 브랜드 심층 크롤링
+  // 지정 브랜드 심층 크롤링 (+필터)
   const [deepBrand, setDeepBrand] = useState("");
   const [deepHandle, setDeepHandle] = useState("");
+  const [deepHashtags, setDeepHashtags] = useState("");
+  const [deepScope, setDeepScope] = useState<"both" | "video" | "shop">("both");
+  const [deepYears, setDeepYears] = useState(2);
+  const [deepLimit, setDeepLimit] = useState(1500);
+  const [deepCountries, setDeepCountries] = useState<string[]>([]);
   const [deepBusy, setDeepBusy] = useState(false);
   const runDeepCrawl = async () => {
     if (!deepBrand.trim()) { setToast("브랜드명을 입력하세요"); return; }
     setDeepBusy(true);
     const r = await fetch("/api/admin/deep-crawl", {
       method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ brand: deepBrand.trim(), handle: deepHandle.trim() || undefined }),
+      body: JSON.stringify({
+        brand: deepBrand.trim(), handle: deepHandle.trim() || undefined,
+        hashtags: deepHashtags.trim() || undefined, scope: deepScope,
+        years: deepYears, limit: deepLimit,
+        countries: deepCountries.length ? deepCountries : undefined,
+        regions: deepCountries.length ? deepCountries : undefined,
+      }),
     }).then((x) => x.json()).catch(() => null);
     setDeepBusy(false);
     if (r?.ok) {
       setToast(`심층 수집 시작 — ${r.brand}: 영상 ${r.videoKicked}·샵 ${r.shopKicked} run${r.errors?.length ? ` · 경고 ${r.errors.length}` : ""}`);
-      setDeepBrand(""); setDeepHandle("");
+      setDeepBrand(""); setDeepHandle(""); setDeepHashtags("");
     } else setToast(r?.error ?? "심층 수집 실패");
   };
 
@@ -938,26 +949,66 @@ export default function AdminPage() {
 
       {tab === "collect" && (
         <>
-          {/* 지정 브랜드 심층 크롤링 — 큐 대기 없이 즉시 대량 백필(영상)+국가별 상품(샵) */}
+          {/* 지정 브랜드 심층 크롤링 — 큐 대기 없이 즉시, 필터 지정 */}
           <div className="mb-3 kt-card p-3">
             <div className="mb-2 flex items-center gap-1.5 text-[11px] font-bold"><Database size={13} className="text-[var(--accent)]" /> 지정 브랜드 심층 크롤링
-              <span className="rounded-full bg-[var(--accent-light)] px-2 py-0.5 text-[9px] font-bold text-[var(--accent)]">즉시 · 깊게</span></div>
+              <span className="rounded-full bg-[var(--accent-light)] px-2 py-0.5 text-[9px] font-bold text-[var(--accent)]">즉시 · 깊게 · 필터</span></div>
             <div className="flex flex-wrap items-end gap-2">
               <label className="block">
                 <span className="block text-[10px] font-semibold text-[var(--muted)]">브랜드명 *</span>
                 <input value={deepBrand} onChange={(e) => setDeepBrand(e.target.value)} onKeyDown={(e) => e.key === "Enter" && runDeepCrawl()}
-                  placeholder="예: Anua" className="mt-0.5 w-44 rounded-md border border-[var(--border)] px-2 py-1.5 text-[12px]" />
+                  placeholder="예: Anua" className="mt-0.5 w-40 rounded-md border border-[var(--border)] px-2 py-1.5 text-[12px]" />
               </label>
               <label className="block">
                 <span className="block text-[10px] font-semibold text-[var(--muted)]">틱톡 핸들(선택)</span>
-                <input value={deepHandle} onChange={(e) => setDeepHandle(e.target.value)} onKeyDown={(e) => e.key === "Enter" && runDeepCrawl()}
-                  placeholder="@handle" className="mt-0.5 w-36 rounded-md border border-[var(--border)] px-2 py-1.5 text-[12px]" />
+                <input value={deepHandle} onChange={(e) => setDeepHandle(e.target.value)}
+                  placeholder="@handle" className="mt-0.5 w-32 rounded-md border border-[var(--border)] px-2 py-1.5 text-[12px]" />
               </label>
-              <button onClick={runDeepCrawl} disabled={deepBusy} className="kt-btn kt-btn-primary px-4 py-2 text-[11px] disabled:opacity-50">
+              <label className="block">
+                <span className="block text-[10px] font-semibold text-[var(--muted)]">해시태그(선택, 쉼표)</span>
+                <input value={deepHashtags} onChange={(e) => setDeepHashtags(e.target.value)}
+                  placeholder="anua, anuareview" className="mt-0.5 w-40 rounded-md border border-[var(--border)] px-2 py-1.5 text-[12px]" />
+              </label>
+            </div>
+            <div className="mt-2 flex flex-wrap items-end gap-2">
+              <label className="block">
+                <span className="block text-[10px] font-semibold text-[var(--muted)]">수집 범위</span>
+                <select value={deepScope} onChange={(e) => setDeepScope(e.target.value as "both" | "video" | "shop")}
+                  className="mt-0.5 rounded-md border border-[var(--border)] px-2 py-1.5 text-[12px]">
+                  <option value="both">영상 + 샵</option>
+                  <option value="video">영상(크리에이터 콘텐츠)만</option>
+                  <option value="shop">샵(상품)만</option>
+                </select>
+              </label>
+              <label className="block">
+                <span className="block text-[10px] font-semibold text-[var(--muted)]">기간(년)</span>
+                <input type="number" min={0.5} step={0.5} value={deepYears} onChange={(e) => setDeepYears(Number(e.target.value))}
+                  className="mt-0.5 w-20 rounded-md border border-[var(--border)] px-2 py-1.5 text-[12px]" />
+              </label>
+              <label className="block">
+                <span className="block text-[10px] font-semibold text-[var(--muted)]">깊이(영상수)</span>
+                <input type="number" min={100} step={100} value={deepLimit} onChange={(e) => setDeepLimit(Number(e.target.value))}
+                  className="mt-0.5 w-24 rounded-md border border-[var(--border)] px-2 py-1.5 text-[12px]" />
+              </label>
+              <div className="block">
+                <span className="block text-[10px] font-semibold text-[var(--muted)]">국가(비우면 기본 설정)</span>
+                <div className="mt-0.5 flex flex-wrap gap-1">
+                  {GRANT_MARKETS.concat([{ id: "US", nameKo: "미국", flag: "🇺🇸" } as never]).map((co) => {
+                    const on = deepCountries.includes(co.id);
+                    return (
+                      <button key={co.id} type="button" onClick={() => setDeepCountries((cur) => on ? cur.filter((x) => x !== co.id) : [...cur, co.id])}
+                        className={`rounded-full border px-2 py-1 text-[10px] font-semibold ${on ? "border-[var(--accent)] bg-[var(--accent)] text-white" : "border-[var(--border)] text-[var(--muted)]"}`}>
+                        {co.flag}{co.id}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+              <button onClick={runDeepCrawl} disabled={deepBusy} className="kt-btn kt-btn-primary ml-auto px-4 py-2 text-[11px] disabled:opacity-50">
                 {deepBusy ? "시작 중…" : "심층 수집 시작"}
               </button>
             </div>
-            <p className="mt-2 text-[10px] text-[var(--muted)]">※ 최근 2년치 영상 대량 백필(지역별) + 국가별 상품을 즉시 킥합니다. 결과는 몇 분 내 자동 회수·적재됩니다(수집 지역/국가는 아래 설정 따름). Apify 사용량 유의.</p>
+            <p className="mt-2 text-[10px] text-[var(--muted)]">※ 지정 브랜드만 큐 대기 없이 즉시 킥. <b>영상(크리에이터 콘텐츠)만</b> 선택 시 샵은 건너뜁니다. 국가 미선택 시 아래 수집지역/SHOP_COUNTRIES 설정을 따릅니다. 결과는 몇 분 내 자동 회수·적재. Apify 사용량 유의.</p>
           </div>
 
           {/* 수집 강도(얕고 넓게) — DB 저장, 즉시 적용 */}

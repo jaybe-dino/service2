@@ -273,9 +273,11 @@ export interface DeepCrawlSummary {
 export async function deepCollectBrand(opts: {
   brandName: string; handle?: string | null; hashtags?: string | null;
   regions?: string[]; countries?: string[]; limit?: number; backfillDays?: number; baseUrl?: string;
+  scope?: "video" | "shop" | "both";
 }): Promise<DeepCrawlSummary> {
   await ensureSchema();
   const brand = String(opts.brandName || "").trim();
+  const scope = opts.scope ?? "both";
   const errors: string[] = [];
   const regions = (opts.regions?.length ? opts.regions : await getCollectRegions())
     .map((r) => r.toUpperCase());
@@ -297,8 +299,8 @@ export async function deepCollectBrand(opts: {
 
   let videoKicked = 0, shopKicked = 0;
 
-  // 1) 영상 — 지역별 깊은 백필
-  if (scraperConfigured()) {
+  // 1) 영상 — 지역별 깊은 백필 (scope에 video 포함 시)
+  if (scope !== "shop" && scraperConfigured()) {
     for (const region of regions) {
       try {
         const runId = await startApifyRun({ brandName: brand, handle: opts.handle, hashtags: opts.hashtags, backfillDays, limit, region }, webhook);
@@ -308,10 +310,10 @@ export async function deepCollectBrand(opts: {
         } else if (errors.length < 6) errors.push(`영상·${region}: runId 없음`);
       } catch (e) { if (errors.length < 6) errors.push(`영상·${region}: ${String(e instanceof Error ? e.message : e).slice(0, 120)}`); }
     }
-  } else errors.push("SCRAPER_API_KEY 미설정 — 영상 수집 스킵");
+  } else if (scope !== "shop" && !scraperConfigured()) errors.push("SCRAPER_API_KEY 미설정 — 영상 수집 스킵");
 
-  // 2) 샵 — 국가별 상품
-  if (shopConfigured()) {
+  // 2) 샵 — 국가별 상품 (scope에 shop 포함 시)
+  if (scope !== "video" && shopConfigured()) {
     for (const cc of countries) {
       try {
         const runId = await startShopRun(brand, webhook, cc);
@@ -321,7 +323,7 @@ export async function deepCollectBrand(opts: {
         } else if (errors.length < 6) errors.push(`샵·${cc}: runId 없음`);
       } catch (e) { if (errors.length < 6) errors.push(`샵·${cc}: ${String(e instanceof Error ? e.message : e).slice(0, 120)}`); }
     }
-  } else errors.push("SHOP_ACTOR 미설정 — 샵 수집 스킵");
+  } else if (scope !== "video" && !shopConfigured()) errors.push("SHOP_ACTOR 미설정 — 샵 수집 스킵");
 
   await sql`INSERT INTO collection_runs (kind, target, status, collected)
             VALUES ('deep_crawl', ${brand}, ${videoKicked + shopKicked > 0 ? 'started' : 'error'}, ${videoKicked + shopKicked})`;
