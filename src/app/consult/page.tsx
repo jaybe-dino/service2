@@ -11,7 +11,7 @@ import { trackPixel } from "@/components/ktrend/MetaPixel";
 import { parseUtmFromSearch, storeFirstTouchUtm, getStoredUtm, type Utm } from "@/lib/utm";
 
 const DECK_URL = process.env.NEXT_PUBLIC_GLOVEK_DECK_URL
-  || "https://docs.google.com/presentation/d/1zUGsHZ9pIbupXZsGTdDx1okGRJX5Sdwg/edit?usp=sharing&ouid=105353575394213431265&rtpof=true&sd=true";
+  || "https://docs.google.com/presentation/d/1zUGsHZ9pIbupXZsGTdDx1okGRJX5Sdwg/edit?usp=sharing&ouid=109035759419679315158&rtpof=true&sd=true";
 
 const CATEGORIES = ["스킨케어", "메이크업", "헤어케어", "바디·퍼스널케어", "이너뷰티/건기식", "패션·잡화", "푸드", "기타"];
 

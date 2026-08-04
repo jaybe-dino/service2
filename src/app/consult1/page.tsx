@@ -13,7 +13,7 @@ import { parseUtmFromSearch, storeFirstTouchUtm, getStoredUtm, type Utm } from "
 
 // env 우선, 없으면 기본값(제공받은 링크). 서비스 소개서 = 구글 슬라이드(보기).
 const DECK_URL = process.env.NEXT_PUBLIC_GLOVEK_DECK_URL
-  || "https://docs.google.com/presentation/d/1zUGsHZ9pIbupXZsGTdDx1okGRJX5Sdwg/edit?usp=sharing&ouid=105353575394213431265&rtpof=true&sd=true";
+  || "https://docs.google.com/presentation/d/1zUGsHZ9pIbupXZsGTdDx1okGRJX5Sdwg/edit?usp=sharing&ouid=109035759419679315158&rtpof=true&sd=true";
 const MEETING_URL = process.env.NEXT_PUBLIC_GLOVEK_MEETING_URL
   || "https://scheduler.zoom.us/nwa36f2letmqfr4bht4pgtzve0/tpartners2";
 
