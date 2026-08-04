@@ -264,6 +264,70 @@ export async function ingestVideos(brandName: string, vids: CollectedVideo[], re
   return c;
 }
 
+// ── 지정 브랜드 '심층' 수집 — 큐 대기 없이 즉시, 깊게(대량 백필) 킥 ──
+// 영상: 지역별 깊은 백필 run(대량 limit) · 샵: 국가별 상품 run. 결과는 기존 pollJobs가 회수.
+export interface DeepCrawlSummary {
+  configured: boolean; brand: string; videoKicked: number; shopKicked: number;
+  regions: string[]; countries: string[]; errors: string[]; reason?: string;
+}
+export async function deepCollectBrand(opts: {
+  brandName: string; handle?: string | null; hashtags?: string | null;
+  regions?: string[]; countries?: string[]; limit?: number; backfillDays?: number; baseUrl?: string;
+}): Promise<DeepCrawlSummary> {
+  await ensureSchema();
+  const brand = String(opts.brandName || "").trim();
+  const errors: string[] = [];
+  const regions = (opts.regions?.length ? opts.regions : await getCollectRegions())
+    .map((r) => r.toUpperCase());
+  const countries = (opts.countries?.length ? opts.countries
+    : (process.env.SHOP_COUNTRIES || "US").split(",").map((s) => s.trim().toUpperCase()).filter(Boolean));
+  const limit = Math.min(3000, Math.max(100, opts.limit ?? 1500)); // 심층 기본 1500(상한 3000)
+  const backfillDays = Math.min(1095, Math.max(30, opts.backfillDays ?? 730)); // 기본 2년
+  if (!brand) return { configured: false, brand, videoKicked: 0, shopKicked: 0, regions, countries, errors: ["brandName 필요"], reason: "brandName 필요" };
+
+  const webhook = ingestWebhook(opts.baseUrl);
+  const since = new Date(Date.now() - backfillDays * 86_400_000).toISOString().slice(0, 10);
+
+  // 추적 등록(향후 정기 갱신도 계속) + 요청 로그
+  await sql`INSERT INTO brand_tracking (brand_name, handle, hashtags, tracked, updated_at)
+            VALUES (${brand}, ${opts.handle ?? null}, ${opts.hashtags ?? null}, true, now())
+            ON CONFLICT (brand_name) DO UPDATE SET tracked=true,
+              handle=COALESCE(EXCLUDED.handle, brand_tracking.handle),
+              hashtags=COALESCE(EXCLUDED.hashtags, brand_tracking.hashtags), updated_at=now()`;
+
+  let videoKicked = 0, shopKicked = 0;
+
+  // 1) 영상 — 지역별 깊은 백필
+  if (scraperConfigured()) {
+    for (const region of regions) {
+      try {
+        const runId = await startApifyRun({ brandName: brand, handle: opts.handle, hashtags: opts.hashtags, backfillDays, limit, region }, webhook);
+        if (runId) {
+          await sql`INSERT INTO collect_jobs (run_id, brand_name, since_date, region, kind) VALUES (${runId}, ${brand}, ${since}, ${region}, 'video') ON CONFLICT (run_id) DO NOTHING`;
+          videoKicked += 1;
+        } else if (errors.length < 6) errors.push(`영상·${region}: runId 없음`);
+      } catch (e) { if (errors.length < 6) errors.push(`영상·${region}: ${String(e instanceof Error ? e.message : e).slice(0, 120)}`); }
+    }
+  } else errors.push("SCRAPER_API_KEY 미설정 — 영상 수집 스킵");
+
+  // 2) 샵 — 국가별 상품
+  if (shopConfigured()) {
+    for (const cc of countries) {
+      try {
+        const runId = await startShopRun(brand, webhook, cc);
+        if (runId) {
+          await sql`INSERT INTO collect_jobs (run_id, brand_name, kind, region) VALUES (${runId}, ${brand}, 'shop', ${cc}) ON CONFLICT (run_id) DO NOTHING`;
+          shopKicked += 1;
+        } else if (errors.length < 6) errors.push(`샵·${cc}: runId 없음`);
+      } catch (e) { if (errors.length < 6) errors.push(`샵·${cc}: ${String(e instanceof Error ? e.message : e).slice(0, 120)}`); }
+    }
+  } else errors.push("SHOP_ACTOR 미설정 — 샵 수집 스킵");
+
+  await sql`INSERT INTO collection_runs (kind, target, status, collected)
+            VALUES ('deep_crawl', ${brand}, ${videoKicked + shopKicked > 0 ? 'started' : 'error'}, ${videoKicked + shopKicked})`;
+  return { configured: scraperConfigured() || shopConfigured(), brand, videoKicked, shopKicked, regions, countries, errors };
+}
+
 async function cursor(): Promise<number> {
   const r = await sql`SELECT value FROM admin_settings WHERE key='collect_cursor' LIMIT 1`;
   return Number((r.rows[0]?.value as { idx?: number })?.idx ?? 0);

@@ -440,6 +440,24 @@ export default function AdminPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [authed, autoRun, autoMin]);
 
+  // 지정 브랜드 심층 크롤링
+  const [deepBrand, setDeepBrand] = useState("");
+  const [deepHandle, setDeepHandle] = useState("");
+  const [deepBusy, setDeepBusy] = useState(false);
+  const runDeepCrawl = async () => {
+    if (!deepBrand.trim()) { setToast("브랜드명을 입력하세요"); return; }
+    setDeepBusy(true);
+    const r = await fetch("/api/admin/deep-crawl", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ brand: deepBrand.trim(), handle: deepHandle.trim() || undefined }),
+    }).then((x) => x.json()).catch(() => null);
+    setDeepBusy(false);
+    if (r?.ok) {
+      setToast(`심층 수집 시작 — ${r.brand}: 영상 ${r.videoKicked}·샵 ${r.shopKicked} run${r.errors?.length ? ` · 경고 ${r.errors.length}` : ""}`);
+      setDeepBrand(""); setDeepHandle("");
+    } else setToast(r?.error ?? "심층 수집 실패");
+  };
+
   const runCollect = async (retryFailed = false) => {
     setCollecting(true);
     const t = new Date().toLocaleTimeString("ko-KR");
@@ -920,6 +938,28 @@ export default function AdminPage() {
 
       {tab === "collect" && (
         <>
+          {/* 지정 브랜드 심층 크롤링 — 큐 대기 없이 즉시 대량 백필(영상)+국가별 상품(샵) */}
+          <div className="mb-3 kt-card p-3">
+            <div className="mb-2 flex items-center gap-1.5 text-[11px] font-bold"><Database size={13} className="text-[var(--accent)]" /> 지정 브랜드 심층 크롤링
+              <span className="rounded-full bg-[var(--accent-light)] px-2 py-0.5 text-[9px] font-bold text-[var(--accent)]">즉시 · 깊게</span></div>
+            <div className="flex flex-wrap items-end gap-2">
+              <label className="block">
+                <span className="block text-[10px] font-semibold text-[var(--muted)]">브랜드명 *</span>
+                <input value={deepBrand} onChange={(e) => setDeepBrand(e.target.value)} onKeyDown={(e) => e.key === "Enter" && runDeepCrawl()}
+                  placeholder="예: Anua" className="mt-0.5 w-44 rounded-md border border-[var(--border)] px-2 py-1.5 text-[12px]" />
+              </label>
+              <label className="block">
+                <span className="block text-[10px] font-semibold text-[var(--muted)]">틱톡 핸들(선택)</span>
+                <input value={deepHandle} onChange={(e) => setDeepHandle(e.target.value)} onKeyDown={(e) => e.key === "Enter" && runDeepCrawl()}
+                  placeholder="@handle" className="mt-0.5 w-36 rounded-md border border-[var(--border)] px-2 py-1.5 text-[12px]" />
+              </label>
+              <button onClick={runDeepCrawl} disabled={deepBusy} className="kt-btn kt-btn-primary px-4 py-2 text-[11px] disabled:opacity-50">
+                {deepBusy ? "시작 중…" : "심층 수집 시작"}
+              </button>
+            </div>
+            <p className="mt-2 text-[10px] text-[var(--muted)]">※ 최근 2년치 영상 대량 백필(지역별) + 국가별 상품을 즉시 킥합니다. 결과는 몇 분 내 자동 회수·적재됩니다(수집 지역/국가는 아래 설정 따름). Apify 사용량 유의.</p>
+          </div>
+
           {/* 수집 강도(얕고 넓게) — DB 저장, 즉시 적용 */}
           {tuning && (
             <div className="mb-3 kt-card p-3">
