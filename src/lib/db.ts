@@ -344,6 +344,22 @@ export function ensureSchema(): Promise<void> {
       await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS markets text`;
       // 관리자 메모 — 회원 상세 관리(어드민 전용, 사용자 미노출)
       await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS admin_note text`;
+      // 개발 변경 로그 — 공개 개발문서(/dev-docs)에 노출. 매일 자정 크론이 배포 커밋을 자동 기록.
+      await sql`CREATE TABLE IF NOT EXISTS dev_changelog (
+        id serial PRIMARY KEY,
+        log_date date NOT NULL,
+        kind text NOT NULL DEFAULT 'deploy',   -- deploy | note
+        commit_sha text,
+        title text,
+        body text,
+        created_at timestamptz NOT NULL DEFAULT now()
+      )`;
+      await sql`CREATE INDEX IF NOT EXISTS idx_dev_changelog_created ON dev_changelog(created_at DESC)`;
+      // 최초 시드(빈 테이블일 때 1회) — 문서 공개 시작 로그
+      await sql`INSERT INTO dev_changelog (log_date, kind, title, body)
+                SELECT CURRENT_DATE, 'note', '개발 문서 최초 작성',
+                  '개발 현황·외부 API 문서 공개 시작. 이후 매일 자정(KST) 배포 커밋을 자동 기록합니다.'
+                WHERE NOT EXISTS (SELECT 1 FROM dev_changelog)`;
       // GloveK 입점 상담 신청(랜딩 이벤트) — 별도 저장.
       await sql`CREATE TABLE IF NOT EXISTS consult_requests (
         id serial PRIMARY KEY,
