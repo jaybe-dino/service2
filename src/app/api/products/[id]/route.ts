@@ -16,8 +16,8 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
     const pr = await sql<{
       product_id: string; brand_name: string | null; title: string | null;
       price: string | number | null; currency: string | null;
-      sold_count: string | number | null; commission_rate: string | number | null; url: string | null;
-    }>`SELECT product_id, brand_name, title, price, currency, sold_count, commission_rate, url
+      sold_count: string | number | null; commission_rate: string | number | null; url: string | null; image_url: string | null;
+    }>`SELECT product_id, brand_name, title, price, currency, sold_count, commission_rate, url, image_url
        FROM products WHERE product_id = ${id} LIMIT 1`;
     if (!pr.rows.length) return NextResponse.json({ error: "제품을 찾을 수 없습니다." }, { status: 404 });
     const p = pr.rows[0];
@@ -98,20 +98,20 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
     // 카테고리 내 순위 + 동일 카테고리 상위 제품 — 제목 분류(읽기 시 계산).
     // GMV 상위 후보를 제한 조회 후 JS 분류(카테고리 컬럼 미저장).
     let rankInCategory: { rank: number; total: number; capped: boolean } | null = null;
-    const similar: { id: string; title: string; brand: string; gmv: number; sold: number; country: string }[] = [];
+    const similar: { id: string; title: string; brand: string; gmv: number; sold: number; country: string; image: string }[] = [];
     const CAP = 1500;
-    const cand = await sql<{ product_id: string; title: string | null; brand_name: string | null; price: string | number | null; sold_count: string | number | null; country: string | null }>`
-      SELECT product_id, title, brand_name, price, sold_count, country FROM products
+    const cand = await sql<{ product_id: string; title: string | null; brand_name: string | null; price: string | number | null; sold_count: string | number | null; country: string | null; image_url: string | null }>`
+      SELECT product_id, title, brand_name, price, sold_count, country, image_url FROM products
       ORDER BY coalesce(price,0) * coalesce(sold_count,0) DESC LIMIT ${CAP}`;
     const sameCat = cand.rows
-      .map((r) => ({ id: r.product_id, title: r.title || "", brand: r.brand_name || "", gmv: Math.round((Number(r.price) || 0) * (Number(r.sold_count) || 0)), sold: Number(r.sold_count) || 0, country: (r.country || "").toUpperCase(), cat: classifyProduct(r.title) }))
+      .map((r) => ({ id: r.product_id, title: r.title || "", brand: r.brand_name || "", gmv: Math.round((Number(r.price) || 0) * (Number(r.sold_count) || 0)), sold: Number(r.sold_count) || 0, country: (r.country || "").toUpperCase(), image: r.image_url || "", cat: classifyProduct(r.title) }))
       .filter((r) => r.cat === category);
     if (sameCat.length) {
       const idx = sameCat.findIndex((r) => r.id === id);
       if (idx >= 0) rankInCategory = { rank: idx + 1, total: sameCat.length, capped: cand.rows.length >= CAP };
       for (const r of sameCat) {
         if (r.id === id || similar.length >= 6) continue;
-        similar.push({ id: r.id, title: r.title, brand: r.brand, gmv: r.gmv, sold: r.sold, country: r.country });
+        similar.push({ id: r.id, title: r.title, brand: r.brand, gmv: r.gmv, sold: r.sold, country: r.country, image: r.image });
       }
     }
 
@@ -125,7 +125,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
       rankInCategory,
       product: {
         id: p.product_id, brand, title: p.title || "", price, currency: p.currency || "USD", sold, country,
-        gmv, commission: p.commission_rate != null ? Number(p.commission_rate) : null, url: p.url || "",
+        gmv, commission: p.commission_rate != null ? Number(p.commission_rate) : null, url: p.url || "", image: p.image_url || "",
       },
       relatedVideos: vids.rows.map((v) => ({ id: v.video_id, handle: v.handle || "", views: Number(v.views) || 0, likes: Number(v.likes) || 0, url: v.url || "", country: v.country || "", isAd: !!v.is_ad, isShop: !!v.is_shop, postedAt: v.posted_at ? String(v.posted_at).slice(0, 10) : "", direct: !!v.direct })),
       // 하위호환: 기존 relatedCreators 필드 유지 + 확장 필드는 connectedCreators.

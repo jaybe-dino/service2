@@ -46,6 +46,7 @@ export async function POST(req: Request) {
       soldCount: sold,
       commissionRate: comm,
       url: "",
+      image: null,
     }));
     total += await ingestProducts(brand, products, country);
   }

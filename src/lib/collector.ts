@@ -207,6 +207,7 @@ export interface ShopProduct {
   soldCount: number;
   commissionRate: number | null; // %
   url: string | null;
+  image: string | null; // 썸네일 URL(있을 때만)
 }
 
 export function shopConfigured(): boolean {
@@ -308,6 +309,14 @@ export function mapShopItems(items: Array<Record<string, unknown>>, brandFallbac
         if (c != null) commissionRate = parseCommission(c);
       }
 
+      // 썸네일: 명시 키 → 폴백(키 이름에 image/cover/thumb + http(s) 문자열). 배열이면 첫 요소.
+      let image = String(pick(o, ["image", "imageUrl", "image_url", "cover", "coverUrl", "thumbnail", "thumb", "mainImage", "main_image", "picture", "img"]) ?? "");
+      if (!image) {
+        const found = deepFind(o, (k, v) => /image|cover|thumb|photo|picture|img/i.test(k) && ((typeof v === "string" && /^https?:\/\//.test(v)) || (Array.isArray(v) && typeof v[0] === "string" && /^https?:\/\//.test(v[0]))));
+        if (found) image = Array.isArray(found) ? String(found[0]) : String(found);
+      }
+      if (image && !/^https?:\/\//.test(image)) image = "";
+
       return {
         productId,
         brandName: String(pick(o, ["brand", "brandName", "sellerName", "shopName", "seller_name", "shop_name", "seller.name", "shop.name"]) ?? brandFallback ?? "") || null,
@@ -317,6 +326,7 @@ export function mapShopItems(items: Array<Record<string, unknown>>, brandFallbac
         soldCount,
         commissionRate,
         url: url || null,
+        image: image || null,
       };
     })
     .filter((p): p is ShopProduct => p !== null);

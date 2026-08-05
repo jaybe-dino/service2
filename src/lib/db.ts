@@ -258,6 +258,8 @@ export function ensureSchema(): Promise<void> {
       )`;
       // 다국가: 제품별 수집 국가(기본 US). product_id는 국가 프리픽스(US:...)로 저장돼 국가별 구분.
       await sql`ALTER TABLE products ADD COLUMN IF NOT EXISTS country text NOT NULL DEFAULT 'US'`;
+      // 제품 썸네일(수집 시 확보되면 저장). 없으면 브랜드 컬러 플레이스홀더 노출.
+      await sql`ALTER TABLE products ADD COLUMN IF NOT EXISTS image_url text`;
       // 브랜드별 틱톡샵 집계 (실 커미션율 평균 + 추정 GMV)
       await sql`CREATE TABLE IF NOT EXISTS brand_shop_stats (
         brand_name text PRIMARY KEY,

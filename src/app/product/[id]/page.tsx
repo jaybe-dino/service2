@@ -13,7 +13,7 @@ interface VideoRow { id: string; handle: string; views: number; likes: number; u
 interface ConnectedCreator { handle: string; videos: number; totalViews: number; maxViews: number; avgViews: number; engage: number; inducedGmv: number; fit: number; direct: boolean }
 interface TrendPoint { date: string; sold: number; gmv: number; price: number | null }
 interface Trend { series: TrendPoint[]; soldGrowth: number; soldGrowthPct: number | null; gmvGrowth: number; days: number; period: number }
-interface Similar { id: string; title: string; brand: string; gmv: number; sold: number; country: string }
+interface Similar { id: string; title: string; brand: string; gmv: number; sold: number; country: string; image?: string }
 interface Detail {
   matchMode?: "direct" | "brand";
   trend?: Trend | null;
@@ -21,7 +21,7 @@ interface Detail {
   category?: string;
   categoryLabel?: string;
   rankInCategory?: { rank: number; total: number; capped: boolean } | null;
-  product: { id: string; brand: string; title: string; price: number; currency: string; sold: number; gmv: number; commission: number | null; url: string; country?: string };
+  product: { id: string; brand: string; title: string; price: number; currency: string; sold: number; gmv: number; commission: number | null; url: string; country?: string; image?: string };
   relatedVideos: VideoRow[];
   connectedCreators?: ConnectedCreator[];
   similar?: Similar[];
@@ -110,12 +110,17 @@ export default function ProductDetailPage() {
             {/* ── 제품 헤더 ── */}
             <div className="overflow-hidden rounded-2xl border border-[var(--border)]">
               <div className="bg-gradient-to-br from-[var(--accent)]/8 to-transparent p-5">
-                <div className="flex flex-wrap items-center gap-2 text-[11px] font-semibold text-[var(--accent)]">
-                  {d.product.country && <span className="text-[13px]">{FLAG[d.product.country.toLowerCase()] || "🌐"}</span>}
-                  <Package size={13} /> {d.product.brand || "브랜드 미상"}
-                  {d.categoryLabel && <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-600">{d.categoryLabel}</span>}
+                <div className="flex items-start gap-3.5">
+                  <Thumb src={d.product.image} brand={d.product.brand} size={64} />
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-2 text-[11px] font-semibold text-[var(--accent)]">
+                      {d.product.country && <span className="text-[13px]">{FLAG[d.product.country.toLowerCase()] || "🌐"}</span>}
+                      <Package size={13} /> {d.product.brand || "브랜드 미상"}
+                      {d.categoryLabel && <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-600">{d.categoryLabel}</span>}
+                    </div>
+                    <h1 className="mt-1 text-[21px] font-black leading-tight">{d.product.title || "(제목 없음)"}</h1>
+                  </div>
                 </div>
-                <h1 className="mt-1 text-[21px] font-black leading-tight">{d.product.title || "(제목 없음)"}</h1>
 
                 <div className="mt-4 grid grid-cols-2 gap-2.5 sm:grid-cols-4">
                   <Stat label="가격" value={money(d.product.price, cur)} />
@@ -172,6 +177,13 @@ export default function ProductDetailPage() {
                 </div>
               )}
             </div>
+
+            {/* ── 가격 추이 (할인 감지) ── */}
+            {d.priceSeries && d.priceSeries.length >= 2 && (
+              <div className="mt-4 rounded-2xl border border-[var(--border)] p-4">
+                <PriceTrend series={d.priceSeries} cur={cur} />
+              </div>
+            )}
 
             {/* ── 콘텐츠 성과 요약 ── */}
             <div className="mt-4 grid grid-cols-3 gap-2.5">
@@ -258,8 +270,13 @@ export default function ProductDetailPage() {
                   {d.similar.map((s) => (
                     <Link key={s.id} href={`/product/${encodeURIComponent(s.id)}`}
                       className="group rounded-xl border border-[var(--border)] bg-white p-3.5 hover:border-[var(--accent)] hover:shadow-md">
-                      <div className="flex items-center gap-1 text-[10px] text-[var(--muted)]"><span>{FLAG[s.country.toLowerCase()] || "🌐"}</span><Package size={11} /> {s.brand || "브랜드 미상"}</div>
-                      <div className="mt-1 line-clamp-2 text-[12px] font-bold group-hover:text-[var(--accent)]">{s.title || "(제목 없음)"}</div>
+                      <div className="flex gap-2.5">
+                        <Thumb src={s.image} brand={s.brand} size={44} />
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-1 text-[10px] text-[var(--muted)]"><span>{FLAG[s.country.toLowerCase()] || "🌐"}</span><Package size={11} /> {s.brand || "브랜드 미상"}</div>
+                          <div className="mt-1 line-clamp-2 text-[12px] font-bold group-hover:text-[var(--accent)]">{s.title || "(제목 없음)"}</div>
+                        </div>
+                      </div>
                       <div className="mt-2 flex items-end justify-between">
                         <div>
                           <div className="text-[10px] text-[var(--muted)]">추정 GMV</div>
@@ -310,6 +327,53 @@ function DualAxisChart({ series, cur }: { series: TrendPoint[]; cur: string }) {
       <div className="mt-0.5 flex justify-between text-[10px] text-slate-400">
         <span>{series[0].date}</span><span>{series[n - 1].date}</span>
       </div>
+    </div>
+  );
+}
+
+// 썸네일 — 있으면 이미지, 없으면 브랜드 이니셜 플레이스홀더. next/image 대신 img(정적 export·외부 도메인 자유).
+function Thumb({ src, brand, size }: { src?: string; brand?: string; size: number }) {
+  const [ok, setOk] = useState(true);
+  const s = { width: size, height: size };
+  if (src && ok) {
+    // eslint-disable-next-line @next/next/no-img-element
+    return <img src={src} alt={brand || "product"} style={s} onError={() => setOk(false)} className="shrink-0 rounded-xl object-cover ring-1 ring-black/5" />;
+  }
+  return (
+    <div style={s} className="grid shrink-0 place-items-center rounded-xl bg-gradient-to-br from-[var(--accent)]/15 to-slate-100 text-[15px] font-black text-[var(--accent)] ring-1 ring-black/5">
+      {(brand || "?").slice(0, 1).toUpperCase()}
+    </div>
+  );
+}
+
+// 가격 추이 — 스냅샷 price 라인. 최저가 대비 변동/할인 감지.
+function PriceTrend({ series, cur }: { series: { date: string; price: number }[]; cur: string }) {
+  const W = 640, H = 70, pad = 6;
+  const vals = series.map((s) => s.price);
+  const min = Math.min(...vals), max = Math.max(...vals);
+  const span = max - min || 1;
+  const n = series.length;
+  const x = (i: number) => pad + (i / Math.max(1, n - 1)) * (W - pad * 2);
+  const y = (v: number) => H - pad - ((v - min) / span) * (H - pad * 2);
+  const line = series.map((s, i) => `${i === 0 ? "M" : "L"}${x(i).toFixed(1)},${y(s.price).toFixed(1)}`).join(" ");
+  const cur0 = series[0].price, curN = series[n - 1].price;
+  const changed = curN !== cur0;
+  const down = curN < cur0;
+  const money = (v: number) => `${cur === "USD" ? "$" : ""}${v.toLocaleString()}${cur !== "USD" ? " " + cur : ""}`;
+  return (
+    <div>
+      <div className="flex items-center justify-between">
+        <h2 className="text-[14px] font-black">가격 추이 <span className="text-[11px] font-normal text-[var(--muted)]">· 스냅샷 {n}일</span></h2>
+        {changed ? (
+          <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-bold ${down ? "bg-emerald-100 text-emerald-700" : "bg-rose-100 text-rose-600"}`}>
+            {down ? <ArrowDownRight size={12} /> : <ArrowUpRight size={12} />} {down ? "할인" : "인상"} {money(cur0)} → {money(curN)}
+          </span>
+        ) : <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-500">가격 변동 없음 · {money(curN)}</span>}
+      </div>
+      <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" className="mt-2 h-16 w-full">
+        <path d={line} fill="none" stroke={down ? "#059669" : changed ? "#e11d48" : "#94a3b8"} strokeWidth={2} strokeLinejoin="round" strokeLinecap="round" />
+      </svg>
+      <div className="flex justify-between text-[10px] text-slate-400"><span>{series[0].date}</span><span>최저 {money(min)} · 최고 {money(max)}</span><span>{series[n - 1].date}</span></div>
     </div>
   );
 }

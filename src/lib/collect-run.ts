@@ -201,7 +201,7 @@ export async function ingestProducts(brandName: string, products: ShopProduct[],
   const seen = new Set<string>();
   const rows = products.filter((p) => p.productId && !seen.has(p.productId) && seen.add(p.productId));
   if (rows.length) {
-    const COLS = 9; // + country
+    const COLS = 10; // + country, image_url
     const CHUNK = 100;
     for (let i = 0; i < rows.length; i += CHUNK) {
       const chunk = rows.slice(i, i + CHUNK);
@@ -213,14 +213,15 @@ export async function ingestProducts(brandName: string, products: ShopProduct[],
       for (const p of chunk) {
         // product_id는 국가 프리픽스(US:...)로 저장 → 같은 상품이 국가별로 구분 저장.
         // brand_name은 검색한 브랜드로 고정(우리 브랜드와 매핑 보장)
-        params.push(`${cc}:${p.productId}`, brandName, p.title, p.price, p.currency, p.soldCount, p.commissionRate, p.url, cc);
+        params.push(`${cc}:${p.productId}`, brandName, p.title, p.price, p.currency, p.soldCount, p.commissionRate, p.url, cc, p.image ?? null);
       }
       await sql.query(
-        `INSERT INTO products (product_id, brand_name, title, price, currency, sold_count, commission_rate, url, country)
+        `INSERT INTO products (product_id, brand_name, title, price, currency, sold_count, commission_rate, url, country, image_url)
          VALUES ${placeholders}
          ON CONFLICT (product_id) DO UPDATE SET brand_name=EXCLUDED.brand_name, title=EXCLUDED.title,
            price=EXCLUDED.price, currency=EXCLUDED.currency, sold_count=EXCLUDED.sold_count,
-           commission_rate=EXCLUDED.commission_rate, url=EXCLUDED.url, country=EXCLUDED.country, collected_at=now()`,
+           commission_rate=EXCLUDED.commission_rate, url=EXCLUDED.url, country=EXCLUDED.country,
+           image_url=COALESCE(EXCLUDED.image_url, products.image_url), collected_at=now()`,
         params,
       );
       // 일별 스냅샷 적재 — kalodata식 판매 추이/성장률 산출 기반. 하루 1행/제품(당일은 최신값 갱신).
