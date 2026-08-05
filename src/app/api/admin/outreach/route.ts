@@ -41,6 +41,10 @@ export async function GET(req: Request) {
     const r = await sql`SELECT id, actor, kind, body, created_at FROM outreach_activity WHERE target_id = ${id} ORDER BY created_at DESC LIMIT 200`;
     return NextResponse.json({ ok: true, activity: r.rows });
   }
+  if (type === "templates") {
+    const r = await sql`SELECT id, name, channel, subject, body, updated_at FROM outreach_templates ORDER BY updated_at DESC LIMIT 200`;
+    return NextResponse.json({ ok: true, templates: r.rows });
+  }
   // board: 상태별 집계
   const b = await sql<{ status: string; n: number }>`SELECT status, count(*)::int AS n FROM outreach_targets GROUP BY status`;
   const counts: Record<string, number> = {};
@@ -56,6 +60,7 @@ export async function POST(req: Request) {
   const b = (await req.json().catch(() => ({}))) as {
     action?: string; name?: string; filter?: unknown; handle?: string; handles?: string[];
     listId?: number; score?: number; id?: number; status?: string; note?: string; owner?: string;
+    channel?: string; subject?: string; body?: string;
   };
   const action = String(b.action ?? "");
 
@@ -109,6 +114,47 @@ export async function POST(req: Request) {
     await sql`DELETE FROM outreach_activity WHERE target_id=${id}`;
     await sql`DELETE FROM outreach_targets WHERE id=${id}`;
     return NextResponse.json({ ok: true });
+  }
+  if (action === "setOwner") {
+    const id = Number(b.id); if (!id) return NextResponse.json({ error: "id 필요" }, { status: 400 });
+    const owner = String(b.owner ?? "").trim().slice(0, 80) || null;
+    await sql`UPDATE outreach_targets SET owner=${owner}, updated_at=now() WHERE id=${id}`;
+    await sql`INSERT INTO outreach_activity (target_id, actor, kind, body) VALUES (${id}, 'admin', 'note', ${`담당자 배정: ${owner ?? "미지정"}`})`;
+    return NextResponse.json({ ok: true });
+  }
+  if (action === "saveTemplate") {
+    const name = String(b.name ?? "").trim().slice(0, 120);
+    const body = String(b.body ?? "").trim().slice(0, 4000);
+    if (!name || !body) return NextResponse.json({ error: "name/body 필요" }, { status: 400 });
+    const channel = ["email", "dm", "form"].includes(String(b.channel)) ? String(b.channel) : "email";
+    const subject = String(b.subject ?? "").slice(0, 200) || null;
+    if (b.id) {
+      await sql`UPDATE outreach_templates SET name=${name}, channel=${channel}, subject=${subject}, body=${body}, updated_at=now() WHERE id=${Number(b.id)}`;
+      return NextResponse.json({ ok: true, id: Number(b.id) });
+    }
+    const r = await sql<{ id: number }>`INSERT INTO outreach_templates (name, channel, subject, body) VALUES (${name}, ${channel}, ${subject}, ${body}) RETURNING id`;
+    return NextResponse.json({ ok: true, id: r.rows[0]?.id });
+  }
+  if (action === "deleteTemplate") {
+    const id = Number(b.id); if (!id) return NextResponse.json({ error: "id 필요" }, { status: 400 });
+    await sql`DELETE FROM outreach_templates WHERE id=${id}`;
+    return NextResponse.json({ ok: true });
+  }
+  if (action === "importProposals") {
+    // 기존 인플루언서 제안(inquiries kind=proposal)을 아웃리치 대상으로 흡수. handle=payload->>'context'.
+    const rows = await sql<{ handle: string }>`
+      SELECT DISTINCT lower(regexp_replace(coalesce(payload->>'context',''), '^@', '')) AS handle
+      FROM inquiries WHERE kind='proposal' AND coalesce(payload->>'context','') <> ''`;
+    let added = 0;
+    for (const row of rows.rows) {
+      const h = String(row.handle).trim();
+      if (!h) continue;
+      const r = await sql`INSERT INTO outreach_targets (handle, list_id, status, owner)
+        SELECT ${h}, NULL, 'contacted', 'proposal'
+        WHERE NOT EXISTS (SELECT 1 FROM outreach_targets WHERE handle=${h} AND list_id IS NULL)`;
+      if (r.rowCount) added += 1;
+    }
+    return NextResponse.json({ ok: true, added, total: rows.rows.length });
   }
   return NextResponse.json({ error: "알 수 없는 action" }, { status: 400 });
 }

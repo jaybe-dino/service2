@@ -5,7 +5,7 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import PageShell from "@/components/ktrend/PageShell";
-import { ShieldCheck, Loader2, ArrowLeft, ExternalLink, Trash2, X, Send, RefreshCw, Users } from "lucide-react";
+import { ShieldCheck, Loader2, ArrowLeft, ExternalLink, Trash2, X, Send, RefreshCw, Users, FileText, Copy, Check, Download, Plus } from "lucide-react";
 
 const STATUSES = ["discovered", "contacted", "replied", "negotiating", "contracted", "running", "done", "hold", "rejected"] as const;
 type Status = (typeof STATUSES)[number];
@@ -31,6 +31,15 @@ interface Target {
 }
 interface Segment { id: number; name: string; owner: string | null; targets: number; created_at: string }
 interface Activity { id: number; actor: string | null; kind: string; body: string | null; created_at: string }
+interface Template { id: number; name: string; channel: string; subject: string | null; body: string; updated_at: string }
+
+// 템플릿 변수 치환 — {{handle}}·{{views}}·{{score}} (대상에 있는 값만).
+function renderTemplate(text: string, t: Target): string {
+  return text
+    .replace(/\{\{\s*handle\s*\}\}/gi, `@${t.handle}`)
+    .replace(/\{\{\s*views\s*\}\}/gi, compact(Number(t.total_views) || 0))
+    .replace(/\{\{\s*score\s*\}\}/gi, t.score != null ? String(t.score) : "-");
+}
 
 export default function OutreachBoardPage() {
   const [authed, setAuthed] = useState<boolean | null>(null);
@@ -42,6 +51,13 @@ export default function OutreachBoardPage() {
   const [sel, setSel] = useState<Target | null>(null);
   const [activity, setActivity] = useState<Activity[]>([]);
   const [note, setNote] = useState("");
+  const [templates, setTemplates] = useState<Template[]>([]);
+  const [showTpl, setShowTpl] = useState(false);
+  const [tplForm, setTplForm] = useState<{ id?: number; name: string; channel: string; subject: string; body: string }>({ name: "", channel: "email", subject: "", body: "" });
+  const [ownerInput, setOwnerInput] = useState("");
+  const [genTplId, setGenTplId] = useState<number | "">("");
+  const [copied, setCopied] = useState(false);
+  const [importMsg, setImportMsg] = useState<string | null>(null);
 
   useEffect(() => {
     fetch("/api/admin/session", { cache: "no-store" }).then((r) => r.json()).then((j) => setAuthed(!!j.authed)).catch(() => setAuthed(false));
@@ -51,12 +67,14 @@ export default function OutreachBoardPage() {
     setLoading(true);
     try {
       const q = listFilter ? `&listId=${encodeURIComponent(listFilter)}` : "";
-      const [tRes, sRes] = await Promise.all([
+      const [tRes, sRes, tplRes] = await Promise.all([
         fetch(`/api/admin/outreach?type=targets${q}`, { cache: "no-store" }).then((r) => r.json()),
         fetch(`/api/admin/outreach?type=lists`, { cache: "no-store" }).then((r) => r.json()),
+        fetch(`/api/admin/outreach?type=templates`, { cache: "no-store" }).then((r) => r.json()),
       ]);
       setTargets(tRes.targets || []);
       setSegments(sRes.lists || []);
+      setTemplates(tplRes.templates || []);
     } finally { setLoading(false); }
   }, [listFilter]);
 
@@ -70,9 +88,42 @@ export default function OutreachBoardPage() {
   }
 
   async function openTarget(t: Target) {
-    setSel(t); setNote(""); setActivity([]);
+    setSel(t); setNote(""); setActivity([]); setOwnerInput(t.owner || ""); setGenTplId(""); setCopied(false);
     const j = await fetch(`/api/admin/outreach?type=activity&id=${t.id}`, { cache: "no-store" }).then((r) => r.json()).catch(() => ({}));
     setActivity(j.activity || []);
+  }
+
+  async function saveOwner() {
+    if (!sel) return;
+    await fetch("/api/admin/outreach", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "setOwner", id: sel.id, owner: ownerInput }) });
+    setTargets((prev) => prev.map((x) => (x.id === sel.id ? { ...x, owner: ownerInput || null } : x)));
+    setSel({ ...sel, owner: ownerInput || null }); openTarget({ ...sel, owner: ownerInput || null });
+  }
+
+  async function saveTemplate() {
+    if (!tplForm.name.trim() || !tplForm.body.trim()) return;
+    await fetch("/api/admin/outreach", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "saveTemplate", ...tplForm }) });
+    setTplForm({ name: "", channel: "email", subject: "", body: "" });
+    const j = await fetch(`/api/admin/outreach?type=templates`, { cache: "no-store" }).then((r) => r.json());
+    setTemplates(j.templates || []);
+  }
+  async function deleteTemplate(id: number) {
+    if (!confirm("템플릿을 삭제할까요?")) return;
+    await fetch("/api/admin/outreach", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "deleteTemplate", id }) });
+    setTemplates((prev) => prev.filter((t) => t.id !== id));
+  }
+  async function importProposals() {
+    setImportMsg(null);
+    const r = await fetch("/api/admin/outreach", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "importProposals" }) });
+    const j = await r.json();
+    setImportMsg(j.added != null ? `제안 ${j.total}건 중 ${j.added}건 신규 추가` : (j.error || "실패"));
+    load();
+  }
+  function copyMessage() {
+    const tpl = templates.find((t) => t.id === genTplId);
+    if (!tpl || !sel) return;
+    const msg = (tpl.subject ? `제목: ${renderTemplate(tpl.subject, sel)}\n\n` : "") + renderTemplate(tpl.body, sel);
+    navigator.clipboard?.writeText(msg).then(() => { setCopied(true); setTimeout(() => setCopied(false), 1500); }).catch(() => {});
   }
 
   async function setStatus(t: Target, status: Status) {
@@ -131,9 +182,49 @@ export default function OutreachBoardPage() {
             <option value="">전체 세그먼트</option>
             {segments.map((s) => <option key={s.id} value={String(s.id)}>{s.name} ({s.targets})</option>)}
           </select>
+          <button onClick={() => setShowTpl((v) => !v)} className="kt-btn kt-btn-outline px-3 py-1.5 text-[11px]"><FileText size={13} /> 템플릿 ({templates.length})</button>
+          <button onClick={importProposals} className="kt-btn kt-btn-outline px-3 py-1.5 text-[11px]"><Download size={13} /> 제안 가져오기</button>
           <button onClick={load} className="kt-btn kt-btn-outline px-3 py-1.5 text-[11px]"><RefreshCw size={13} className={loading ? "animate-spin" : ""} /> 새로고침</button>
         </div>
       </div>
+      {importMsg && <p className="mb-2 text-[11px] font-semibold text-emerald-700">{importMsg}</p>}
+
+      {/* 템플릿 관리 */}
+      {showTpl && (
+        <div className="mb-4 rounded-xl border border-[var(--border)] bg-slate-50/60 p-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-[13px] font-black">메시지 템플릿 <span className="text-[10px] font-normal text-[var(--muted)]">· 변수: {"{{handle}} {{views}} {{score}}"}</span></h2>
+          </div>
+          <div className="mt-3 grid gap-3 lg:grid-cols-2">
+            <div className="rounded-lg border border-[var(--border)] bg-white p-3">
+              <div className="flex gap-1.5">
+                <input value={tplForm.name} onChange={(e) => setTplForm({ ...tplForm, name: e.target.value })} placeholder="템플릿 이름" className="flex-1 rounded-md border border-[var(--border)] px-2 py-1.5 text-[12px] outline-none focus:border-[var(--accent)]" />
+                <select value={tplForm.channel} onChange={(e) => setTplForm({ ...tplForm, channel: e.target.value })} className="rounded-md border border-[var(--border)] px-2 py-1.5 text-[12px] outline-none">
+                  <option value="email">이메일</option><option value="dm">DM</option><option value="form">폼</option>
+                </select>
+              </div>
+              <input value={tplForm.subject} onChange={(e) => setTplForm({ ...tplForm, subject: e.target.value })} placeholder="제목(이메일)" className="mt-1.5 w-full rounded-md border border-[var(--border)] px-2 py-1.5 text-[12px] outline-none focus:border-[var(--accent)]" />
+              <textarea value={tplForm.body} onChange={(e) => setTplForm({ ...tplForm, body: e.target.value })} placeholder={"안녕하세요 {{handle}}님, 평균 조회 {{views}}의 성과 잘 봤습니다..."} rows={4} className="mt-1.5 w-full rounded-md border border-[var(--border)] px-2 py-1.5 text-[12px] outline-none focus:border-[var(--accent)]" />
+              <button onClick={saveTemplate} disabled={!tplForm.name.trim() || !tplForm.body.trim()} className="mt-1.5 inline-flex items-center gap-1 rounded-md bg-[var(--accent)] px-3 py-1.5 text-[12px] font-bold text-white disabled:opacity-40"><Plus size={13} /> {tplForm.id ? "수정 저장" : "템플릿 추가"}</button>
+              {tplForm.id && <button onClick={() => setTplForm({ name: "", channel: "email", subject: "", body: "" })} className="mt-1.5 ml-2 text-[11px] text-[var(--muted)] underline">취소</button>}
+            </div>
+            <div className="space-y-2">
+              {templates.length === 0 ? <p className="text-[11px] text-[var(--muted)]">템플릿이 없습니다.</p> : templates.map((t) => (
+                <div key={t.id} className="rounded-lg border border-[var(--border)] bg-white p-2.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[12px] font-bold">{t.name} <span className="ml-1 rounded bg-slate-100 px-1.5 py-0.5 text-[9px] font-semibold text-slate-500">{t.channel}</span></span>
+                    <div className="flex gap-1.5">
+                      <button onClick={() => setTplForm({ id: t.id, name: t.name, channel: t.channel, subject: t.subject || "", body: t.body })} className="text-[11px] text-[var(--accent)] underline">편집</button>
+                      <button onClick={() => deleteTemplate(t.id)} className="text-[11px] text-rose-500 underline">삭제</button>
+                    </div>
+                  </div>
+                  <p className="mt-1 line-clamp-2 whitespace-pre-wrap text-[11px] text-[var(--muted)]">{t.body}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 
       {targets.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-[var(--border)] p-12 text-center text-[13px] text-[var(--muted)]">
@@ -201,6 +292,37 @@ export default function OutreachBoardPage() {
                 ))}
               </div>
             </div>
+
+            {/* 담당자 배정 */}
+            <div className="mt-4">
+              <div className="mb-1.5 text-[11px] font-bold text-[var(--muted)]">담당자</div>
+              <div className="flex gap-1.5">
+                <input value={ownerInput} onChange={(e) => setOwnerInput(e.target.value)} placeholder="담당자명(예: 지영)" className="flex-1 rounded-lg border border-[var(--border)] px-2.5 py-1.5 text-[12px] outline-none focus:border-[var(--accent)]" />
+                <button onClick={saveOwner} className="rounded-lg border border-[var(--border)] px-3 py-1.5 text-[12px] font-bold text-[var(--muted)] hover:text-[var(--accent)]">배정</button>
+              </div>
+            </div>
+
+            {/* 메시지 생성(템플릿 변수치환) */}
+            {templates.length > 0 && (
+              <div className="mt-4">
+                <div className="mb-1.5 text-[11px] font-bold text-[var(--muted)]">메시지 생성 (템플릿)</div>
+                <div className="flex gap-1.5">
+                  <select value={genTplId} onChange={(e) => setGenTplId(e.target.value ? Number(e.target.value) : "")} className="flex-1 rounded-lg border border-[var(--border)] px-2.5 py-1.5 text-[12px] outline-none focus:border-[var(--accent)]">
+                    <option value="">템플릿 선택…</option>
+                    {templates.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+                  </select>
+                  <button onClick={copyMessage} disabled={!genTplId} className={`inline-flex items-center gap-1 rounded-lg px-3 py-1.5 text-[12px] font-bold disabled:opacity-40 ${copied ? "bg-emerald-50 text-emerald-700" : "bg-[var(--accent)] text-white"}`}>{copied ? <Check size={13} /> : <Copy size={13} />} {copied ? "복사됨" : "복사"}</button>
+                </div>
+                {genTplId !== "" && (() => {
+                  const tpl = templates.find((t) => t.id === genTplId);
+                  if (!tpl) return null;
+                  return <div className="mt-2 rounded-lg border border-slate-100 bg-slate-50/60 p-2.5 text-[12px]">
+                    {tpl.subject && <div className="font-semibold">제목: {renderTemplate(tpl.subject, sel)}</div>}
+                    <div className="mt-1 whitespace-pre-wrap">{renderTemplate(tpl.body, sel)}</div>
+                  </div>;
+                })()}
+              </div>
+            )}
 
             {/* 메모 추가 */}
             <div className="mt-4">

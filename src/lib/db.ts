@@ -379,6 +379,18 @@ export function ensureSchema(): Promise<void> {
         created_at timestamptz NOT NULL DEFAULT now()
       )`;
       await sql`CREATE INDEX IF NOT EXISTS idx_outreach_activity_target ON outreach_activity(target_id, created_at DESC)`;
+      // 아웃리치 메시지 템플릿 — 변수 치환({{handle}}·{{brand}}·{{product}}·{{views}}) 발송 문구
+      await sql`CREATE TABLE IF NOT EXISTS outreach_templates (
+        id serial PRIMARY KEY,
+        name text NOT NULL,
+        channel text NOT NULL DEFAULT 'email',  -- email|dm|form
+        subject text,
+        body text NOT NULL,
+        created_at timestamptz NOT NULL DEFAULT now(),
+        updated_at timestamptz NOT NULL DEFAULT now()
+      )`;
+      // owner(담당자)/note 검색 인덱스
+      await sql`CREATE INDEX IF NOT EXISTS idx_outreach_targets_owner ON outreach_targets(owner)`;
       // 개발 변경 로그 — 공개 개발문서(/dev-docs)에 노출. 매일 자정 크론이 배포 커밋을 자동 기록.
       await sql`CREATE TABLE IF NOT EXISTS dev_changelog (
         id serial PRIMARY KEY,
