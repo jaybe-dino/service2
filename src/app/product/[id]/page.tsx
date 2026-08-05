@@ -9,13 +9,14 @@ import PageShell from "@/components/ktrend/PageShell";
 import { Info, ExternalLink, Wand2, ArrowLeft, Package, Play, Heart, Eye, Megaphone, ShoppingBag, Users, Film, TrendingUp, ArrowUpRight, ArrowDownRight, Plus, Check, Trophy } from "lucide-react";
 import { COUNTRIES } from "@/data/ktrend/meta";
 
-interface VideoRow { id: string; handle: string; views: number; likes: number; url: string; country: string; isAd: boolean; isShop: boolean; postedAt?: string; direct?: boolean }
+interface VideoRow { id: string; handle: string; views: number; likes: number; url: string; country: string; isAd: boolean; isShop: boolean; postedAt?: string; cover?: string; direct?: boolean }
 interface ConnectedCreator { handle: string; videos: number; totalViews: number; maxViews: number; avgViews: number; engage: number; inducedGmv: number; fit: number; direct: boolean }
 interface TrendPoint { date: string; sold: number; gmv: number; price: number | null }
 interface Trend { series: TrendPoint[]; soldGrowth: number; soldGrowthPct: number | null; gmvGrowth: number; days: number; period: number }
 interface Similar { id: string; title: string; brand: string; gmv: number; sold: number; country: string; image?: string }
 interface Detail {
   matchMode?: "direct" | "brand";
+  directCount?: number;
   trend?: Trend | null;
   priceSeries?: { date: string; price: number }[];
   category?: string;
@@ -44,6 +45,7 @@ export default function ProductDetailPage() {
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
   const [vSort, setVSort] = useState<"views" | "engage" | "recent">("views");
+  const [directOnly, setDirectOnly] = useState(true); // 이 제품 직접태그만(정확 맵핑) — 기본 ON
   const [period, setPeriod] = useState<7 | 30 | 90>(30);
   const [isAdmin, setIsAdmin] = useState(false);
   const [added, setAdded] = useState<Record<string, boolean>>({});
@@ -82,8 +84,11 @@ export default function ProductDetailPage() {
 
   const money = (n: number, cur: string) => `${cur === "USD" ? "$" : ""}${fmt(n)}${cur !== "USD" ? " " + cur : ""}`;
 
+  const hasDirect = (d?.directCount ?? 0) > 0;
   const videos = useMemo(() => {
-    const list = d?.relatedVideos ? [...d.relatedVideos] : [];
+    let list = d?.relatedVideos ? [...d.relatedVideos] : [];
+    // 정확 맵핑: 이 제품을 직접 태그한 영상만(직접태그가 있을 때만 필터 적용).
+    if (directOnly && hasDirect) list = list.filter((v) => v.direct);
     list.sort((a, b) => {
       if (!!a.direct !== !!b.direct) return a.direct ? -1 : 1;
       if (vSort === "engage") return engage(b) - engage(a);
@@ -91,7 +96,7 @@ export default function ProductDetailPage() {
       return b.views - a.views;
     });
     return list;
-  }, [d, vSort]);
+  }, [d, vSort, directOnly, hasDirect]);
 
   const creators = d?.connectedCreators || [];
   const totalReach = useMemo(() => (d?.relatedVideos || []).reduce((s, v) => s + v.views, 0), [d]);
@@ -241,25 +246,35 @@ export default function ProductDetailPage() {
               )}
             </div>
 
-            {/* ── 영상 성과 랭킹 (카드) ── */}
+            {/* ── 영상 성과 랭킹 (콘텐츠 레퍼런스, 썸네일) ── */}
             <div className="mt-5">
               <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-                <h2 className="text-[14px] font-black">영상 성과 <span className="text-[11px] font-normal text-[var(--muted)]">· {d.matchMode === "direct" ? "제품 직접 태그 우선" : "같은 브랜드"} · {videos.length}개</span></h2>
-                {videos.length > 1 && (
-                  <div className="flex gap-1">
-                    {([["views", "조회수순"], ["engage", "참여율순"], ["recent", "최신순"]] as const).map(([k, l]) => (
-                      <button key={k} onClick={() => setVSort(k)} className={`rounded-lg border px-2.5 py-1 text-[11px] font-semibold ${vSort === k ? "border-[var(--accent)] bg-[var(--accent-light)] text-[var(--accent)]" : "border-[var(--border)] text-[var(--muted)]"}`}>{l}</button>
-                    ))}
-                  </div>
-                )}
+                <h2 className="text-[14px] font-black">영상 성과 <span className="text-[11px] font-normal text-[var(--muted)]">· 이 제품 콘텐츠 레퍼런스 · {videos.length}개</span></h2>
+                <div className="flex flex-wrap items-center gap-1">
+                  {hasDirect && (
+                    <button onClick={() => setDirectOnly((v) => !v)} title="이 제품을 직접 태그한 영상만"
+                      className={`rounded-lg border px-2.5 py-1 text-[11px] font-semibold ${directOnly ? "border-emerald-300 bg-emerald-50 text-emerald-700" : "border-[var(--border)] text-[var(--muted)]"}`}>
+                      {directOnly ? "✓ 이 제품만" : "브랜드 포함"}
+                    </button>
+                  )}
+                  {videos.length > 1 && ([["views", "조회수순"], ["engage", "참여율순"], ["recent", "최신순"]] as const).map(([k, l]) => (
+                    <button key={k} onClick={() => setVSort(k)} className={`rounded-lg border px-2.5 py-1 text-[11px] font-semibold ${vSort === k ? "border-[var(--accent)] bg-[var(--accent-light)] text-[var(--accent)]" : "border-[var(--border)] text-[var(--muted)]"}`}>{l}</button>
+                  ))}
+                </div>
               </div>
+              {directOnly && hasDirect && (
+                <p className="mb-2 text-[11px] text-emerald-700">이 제품(<span className="font-mono">{d.product.id}</span>)을 직접 태그한 영상만 표시 중. 브랜드 전체 영상을 보려면 “브랜드 포함”.</p>
+              )}
               {videos.length === 0 ? (
                 <Empty text="관련 영상이 아직 없습니다. 수집이 진행되면 채워집니다." />
               ) : (
-                <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
-                  {videos.map((v) => (
-                    <VideoCard key={v.id} v={v} />
-                  ))}
+                // 전부 노출 + 밑으로 스크롤(많으면 컨테이너 내부 스크롤)
+                <div className="max-h-[640px] overflow-y-auto rounded-xl border border-[var(--border)] p-2.5">
+                  <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-4">
+                    {videos.map((v) => (
+                      <VideoCard key={v.id} v={v} />
+                    ))}
+                  </div>
                 </div>
               )}
             </div>
@@ -382,38 +397,39 @@ function PriceTrend({ series, cur }: { series: { date: string; price: number }[]
 
 function VideoCard({ v }: { v: VideoRow }) {
   const eng = engage(v);
+  const [imgOk, setImgOk] = useState(true);
   return (
     <a href={v.url || undefined} target="_blank" rel="noopener noreferrer"
-      className={`group relative flex flex-col rounded-xl border p-3.5 transition hover:shadow-md ${v.direct ? "border-emerald-200 bg-emerald-50/30" : "border-[var(--border)] bg-white"}`}>
-      <div className="flex items-center justify-between">
-        <div className="flex min-w-0 items-center gap-1.5">
-          <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-slate-100 text-[11px] font-black text-slate-500">{(v.handle || "?").slice(0, 1).toUpperCase()}</span>
-          <span className="truncate text-[12px] font-bold group-hover:text-[var(--accent)]">@{v.handle || "unknown"}</span>
+      className={`group relative flex flex-col overflow-hidden rounded-xl border transition hover:shadow-md ${v.direct ? "border-emerald-200" : "border-[var(--border)]"} bg-white`}>
+      {/* 썸네일(세로 9:16 콘텐츠 레퍼런스) */}
+      <div className="relative aspect-[9/16] w-full overflow-hidden bg-slate-100">
+        {v.cover && imgOk ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={v.cover} alt={v.handle} onError={() => setImgOk(false)} loading="lazy" className="h-full w-full object-cover transition group-hover:scale-[1.03]" />
+        ) : (
+          <div className="grid h-full w-full place-items-center bg-gradient-to-br from-slate-200 to-slate-100 text-slate-400"><Play size={22} /></div>
+        )}
+        {/* 상단 배지 */}
+        <div className="absolute left-1.5 top-1.5 flex flex-wrap gap-1">
+          {v.direct && <DirectBadge />}
+          {v.isAd && <span className="inline-flex items-center gap-0.5 rounded-full bg-violet-600/90 px-1.5 py-0.5 text-[9px] font-bold text-white"><Megaphone size={9} /> 광고</span>}
+          {v.isShop && <span className="inline-flex items-center gap-0.5 rounded-full bg-sky-600/90 px-1.5 py-0.5 text-[9px] font-bold text-white"><ShoppingBag size={9} /> 샵</span>}
         </div>
-        <span className="text-[13px]">{FLAG[v.country] || "🌐"}</span>
+        {/* 하단 그라데이션 + 지표 */}
+        <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/75 to-transparent px-2 pb-1.5 pt-6 text-white">
+          <div className="flex items-center gap-2 text-[11px] font-bold">
+            <span className="flex items-center gap-0.5"><Eye size={11} /> {compact(v.views)}</span>
+            <span className="flex items-center gap-0.5"><Heart size={11} /> {compact(v.likes)}</span>
+            <span className={`ml-auto ${eng >= 8 ? "text-emerald-300" : ""}`}>{eng}%</span>
+          </div>
+        </div>
+        <span className="absolute right-1.5 top-1.5 text-[13px] drop-shadow">{FLAG[v.country] || "🌐"}</span>
       </div>
-
-      <div className="mt-3 flex items-end gap-3">
-        <div>
-          <div className="flex items-center gap-1 text-[10px] text-[var(--muted)]"><Eye size={11} /> 조회수</div>
-          <div className="text-[17px] font-black leading-none">{compact(v.views)}</div>
-        </div>
-        <div>
-          <div className="flex items-center gap-1 text-[10px] text-[var(--muted)]"><Heart size={11} /> 좋아요</div>
-          <div className="text-[14px] font-bold leading-none text-rose-500">{compact(v.likes)}</div>
-        </div>
-        <div className="ml-auto text-right">
-          <div className="text-[10px] text-[var(--muted)]">참여율</div>
-          <div className={`text-[14px] font-bold leading-none ${eng >= 8 ? "text-emerald-600" : "text-slate-600"}`}>{eng}%</div>
-        </div>
-      </div>
-
-      <div className="mt-3 flex flex-wrap items-center gap-1">
-        {v.direct && <DirectBadge />}
-        {v.isAd && <span className="inline-flex items-center gap-0.5 rounded-full bg-violet-100 px-1.5 py-0.5 text-[9px] font-bold text-violet-700"><Megaphone size={9} /> 광고</span>}
-        {v.isShop && <span className="inline-flex items-center gap-0.5 rounded-full bg-sky-100 px-1.5 py-0.5 text-[9px] font-bold text-sky-700"><ShoppingBag size={9} /> 샵</span>}
-        {v.postedAt && <span className="text-[9px] text-slate-400">{v.postedAt}</span>}
-        <span className="ml-auto inline-flex items-center gap-0.5 text-[10px] font-semibold text-[var(--muted)] group-hover:text-[var(--accent)]"><Play size={10} /> 영상 보기</span>
+      {/* 핸들·날짜 */}
+      <div className="flex items-center gap-1.5 px-2 py-2">
+        <span className="grid h-5 w-5 shrink-0 place-items-center rounded-full bg-slate-100 text-[9px] font-black text-slate-500">{(v.handle || "?").slice(0, 1).toUpperCase()}</span>
+        <span className="truncate text-[11px] font-bold group-hover:text-[var(--accent)]">@{v.handle || "unknown"}</span>
+        {v.postedAt && <span className="ml-auto shrink-0 text-[9px] text-slate-400">{v.postedAt}</span>}
       </div>
     </a>
   );

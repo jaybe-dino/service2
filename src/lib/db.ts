@@ -123,6 +123,8 @@ export function ensureSchema(): Promise<void> {
       // 영상이 태그한 TikTok Shop 상품ID(있으면 제품↔영상 정밀 매칭). 인덱스로 조회 가속.
       await sql`ALTER TABLE videos ADD COLUMN IF NOT EXISTS product_ref text`;
       await sql`CREATE INDEX IF NOT EXISTS idx_videos_product_ref ON videos(product_ref)`;
+      // 영상 썸네일(커버) — 콘텐츠 레퍼런스 노출용. 수집 시 확보되면 저장.
+      await sql`ALTER TABLE videos ADD COLUMN IF NOT EXISTS cover_url text`;
       // 영상 일별 스냅샷 (바이럴 급상승/조회수 증분 산출용). 하루 1행/영상.
       await sql`CREATE TABLE IF NOT EXISTS video_snapshots (
         video_id text NOT NULL,

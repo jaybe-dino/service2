@@ -35,11 +35,11 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
     // 제품↔영상↔크리에이터 매칭: product_ref 직접 태그 우선, 없으면 브랜드 폴백.
     const [vids, creators] = brand
       ? await Promise.all([
-          sql<{ video_id: string; handle: string | null; views: string | number; likes: string | number; url: string | null; country: string | null; is_ad: boolean; is_shop: boolean; posted_at: string | null; direct: boolean }>`
-            SELECT video_id, handle, views, likes, url, country, is_ad, is_shop, posted_at, (product_ref = ${rawId}) AS direct FROM videos
+          sql<{ video_id: string; handle: string | null; views: string | number; likes: string | number; url: string | null; country: string | null; is_ad: boolean; is_shop: boolean; posted_at: string | null; cover_url: string | null; direct: boolean }>`
+            SELECT video_id, handle, views, likes, url, country, is_ad, is_shop, posted_at, cover_url, (product_ref = ${rawId}) AS direct FROM videos
             WHERE (product_ref = ${rawId} OR lower(coalesce(brand_name,'')) = lower(${brand}))
               AND (handle IS NULL OR handle NOT IN (SELECT value FROM blocklist WHERE kind='handle'))
-            ORDER BY (product_ref = ${rawId}) DESC, views DESC LIMIT 40`,
+            ORDER BY (product_ref = ${rawId}) DESC, views DESC LIMIT 200`,
           sql<{ handle: string; videos: number; total_views: string | number; max_views: string | number; direct_views: string | number; avg_likes: string | number; last_posted: string | null; direct: boolean }>`
             SELECT handle, count(*)::int AS videos, sum(views)::bigint AS total_views, max(views)::bigint AS max_views,
                    sum(CASE WHEN product_ref = ${rawId} THEN views ELSE 0 END)::bigint AS direct_views,
@@ -119,6 +119,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
     return NextResponse.json({
       configured: true,
       matchMode: directCount > 0 ? "direct" : "brand", // 직접 상품태그 매칭 여부
+      directCount, // 이 제품을 직접 태그한 영상 수(정확 맵핑)
       trend,
       priceSeries,
       category,
@@ -129,7 +130,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
         id: p.product_id, brand, title: p.title || "", price, currency: p.currency || "USD", sold, country,
         gmv, commission: p.commission_rate != null ? Number(p.commission_rate) : null, url: p.url || "", image: p.image_url || "",
       },
-      relatedVideos: vids.rows.map((v) => ({ id: v.video_id, handle: v.handle || "", views: Number(v.views) || 0, likes: Number(v.likes) || 0, url: v.url || "", country: v.country || "", isAd: !!v.is_ad, isShop: !!v.is_shop, postedAt: v.posted_at ? String(v.posted_at).slice(0, 10) : "", direct: !!v.direct })),
+      relatedVideos: vids.rows.map((v) => ({ id: v.video_id, handle: v.handle || "", views: Number(v.views) || 0, likes: Number(v.likes) || 0, url: v.url || "", country: v.country || "", isAd: !!v.is_ad, isShop: !!v.is_shop, postedAt: v.posted_at ? String(v.posted_at).slice(0, 10) : "", cover: v.cover_url || "", direct: !!v.direct })),
       // 하위호환: 기존 relatedCreators 필드 유지 + 확장 필드는 connectedCreators.
       relatedCreators: connectedCreators.map((c) => ({ handle: c.handle, videos: c.videos, totalViews: c.totalViews, maxViews: c.maxViews, direct: c.direct })),
       connectedCreators,

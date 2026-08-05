@@ -16,6 +16,7 @@ export interface CollectedVideo {
   date: string; // YYYY-MM-DD
   url: string;
   productRef?: string | null; // 영상이 태그한 TikTok Shop 상품ID(있으면 제품↔영상 정밀 매칭)
+  cover?: string | null; // 영상 썸네일(커버) URL — 콘텐츠 레퍼런스 노출용
 }
 
 // 영상 item에서 TikTok Shop 상품ID 추출(앵커/링크). 없으면 null → 브랜드 매칭으로 폴백.
@@ -74,6 +75,13 @@ export function mapApifyItems(items: Array<Record<string, unknown>>, sinceDate?:
       if (!id) return null;
       const author = (it.authorMeta as { name?: string })?.name ?? String(it.authorName ?? "");
       const created = it.createTimeISO ? String(it.createTimeISO).slice(0, 10) : "";
+      // 커버(썸네일): clockworks는 videoMeta.coverUrl/originalCoverUrl 제공. 폴백 딥서치.
+      const vm = (it.videoMeta ?? {}) as Record<string, unknown>;
+      let cover = String(vm.coverUrl ?? vm.originalCoverUrl ?? vm.cover ?? it.covers ?? it.cover ?? "");
+      if (!cover || !/^https?:\/\//.test(cover)) {
+        const found = deepFind(it, (k, v) => /cover|thumb|image/i.test(k) && typeof v === "string" && /^https?:\/\//.test(v));
+        cover = found ? String(found) : "";
+      }
       return {
         videoId: id,
         handle: author,
@@ -86,6 +94,7 @@ export function mapApifyItems(items: Array<Record<string, unknown>>, sinceDate?:
         date: created,
         url: String(it.webVideoUrl ?? `https://www.tiktok.com/@${author}/video/${id}`),
         productRef: extractProductRef(it),
+        cover: cover || null,
       };
     })
     .filter((v): v is CollectedVideo => v !== null)

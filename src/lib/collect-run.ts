@@ -115,7 +115,7 @@ async function upsertVideos(brandName: string, vids: CollectedVideo[], rules: Cr
   // 배치 INSERT (1건씩 → 타임아웃 방지). 100행씩 묶어서.
   // 국가 태깅: 수집 잡의 region 우선(동남아 타게팅), 없으면 env/기본 US.
   const country = (region || process.env.COLLECT_COUNTRY || "US").toUpperCase();
-  const COLS = 13; // + product_ref
+  const COLS = 14; // + product_ref, cover_url
   const CHUNK = 100;
   for (let i = 0; i < rows.length; i += CHUNK) {
     const chunk = rows.slice(i, i + CHUNK);
@@ -127,13 +127,14 @@ async function upsertVideos(brandName: string, vids: CollectedVideo[], rules: Cr
       .join(",");
     const params: unknown[] = [];
     for (const v of chunk) {
-      params.push(v.videoId, brandName, v.handle, v.views, v.likes, v.comments, v.shares, v.isAd, v.isShop, v.date, v.url, country, v.productRef ?? null);
+      params.push(v.videoId, brandName, v.handle, v.views, v.likes, v.comments, v.shares, v.isAd, v.isShop, v.date, v.url, country, v.productRef ?? null, v.cover ?? null);
     }
     await sql.query(
-      `INSERT INTO videos (video_id, brand_name, handle, views, likes, comments, shares, is_ad, is_shop, posted_at, url, country, product_ref)
+      `INSERT INTO videos (video_id, brand_name, handle, views, likes, comments, shares, is_ad, is_shop, posted_at, url, country, product_ref, cover_url)
        VALUES ${placeholders}
        ON CONFLICT (video_id) DO UPDATE SET views=EXCLUDED.views, likes=EXCLUDED.likes, comments=EXCLUDED.comments, shares=EXCLUDED.shares,
-         product_ref=COALESCE(EXCLUDED.product_ref, videos.product_ref), collected_at=now()`,
+         product_ref=COALESCE(EXCLUDED.product_ref, videos.product_ref),
+         cover_url=COALESCE(EXCLUDED.cover_url, videos.cover_url), collected_at=now()`,
       params,
     );
     // 영상 일별 스냅샷 — 바이럴 급상승(조회수 증분) 산출 기반. 하루 1행/영상(당일은 최신값 갱신).
