@@ -24,13 +24,22 @@ export async function GET(req: Request) {
   }
   if (type === "targets") {
     const status = new URL(req.url).searchParams.get("status") || "";
+    const listId = new URL(req.url).searchParams.get("listId") || "";
     const r = await sql`
       SELECT t.id, t.handle, t.status, t.owner, t.score, t.note, t.list_id, t.created_at, t.updated_at,
-             c.total_views, c.avg_views, c.videos
+             c.total_views, c.avg_views, c.videos,
+             (SELECT count(*) FROM outreach_activity a WHERE a.target_id = t.id)::int AS activity
       FROM outreach_targets t LEFT JOIN creators c ON c.handle = t.handle
       WHERE (${status} = '' OR t.status = ${status})
+        AND (${listId} = '' OR t.list_id = ${listId === '' ? null : Number(listId)})
       ORDER BY t.updated_at DESC LIMIT 1000`;
     return NextResponse.json({ ok: true, targets: r.rows });
+  }
+  if (type === "activity") {
+    const id = Number(new URL(req.url).searchParams.get("id"));
+    if (!id) return NextResponse.json({ error: "id 필요" }, { status: 400 });
+    const r = await sql`SELECT id, actor, kind, body, created_at FROM outreach_activity WHERE target_id = ${id} ORDER BY created_at DESC LIMIT 200`;
+    return NextResponse.json({ ok: true, activity: r.rows });
   }
   // board: 상태별 집계
   const b = await sql<{ status: string; n: number }>`SELECT status, count(*)::int AS n FROM outreach_targets GROUP BY status`;
@@ -66,11 +75,17 @@ export async function POST(req: Request) {
   if (action === "addTarget") {
     const handles = (Array.isArray(b.handles) ? b.handles : b.handle ? [b.handle] : []).map((h) => String(h).replace(/^@/, "").trim()).filter(Boolean).slice(0, 500);
     if (!handles.length) return NextResponse.json({ error: "handle 필요" }, { status: 400 });
+    const listId = b.listId ?? null;
     let added = 0;
     for (const h of handles) {
-      const r = await sql`INSERT INTO outreach_targets (handle, list_id, score, owner)
-        VALUES (${h}, ${b.listId ?? null}, ${b.score ?? null}, ${b.owner ?? null})
-        ON CONFLICT (handle, list_id) DO NOTHING`;
+      // list_id NULL은 UNIQUE 제약이 중복을 막지 못함(NULL은 서로 distinct) → 존재 확인 후 삽입.
+      const r = listId == null
+        ? await sql`INSERT INTO outreach_targets (handle, list_id, score, owner)
+            SELECT ${h}, NULL, ${b.score ?? null}, ${b.owner ?? null}
+            WHERE NOT EXISTS (SELECT 1 FROM outreach_targets WHERE handle = ${h} AND list_id IS NULL)`
+        : await sql`INSERT INTO outreach_targets (handle, list_id, score, owner)
+            VALUES (${h}, ${listId}, ${b.score ?? null}, ${b.owner ?? null})
+            ON CONFLICT (handle, list_id) DO NOTHING`;
       if (r.rowCount) added += 1;
     }
     return NextResponse.json({ ok: true, added, total: handles.length });
@@ -86,6 +101,13 @@ export async function POST(req: Request) {
     const id = Number(b.id); const note = String(b.note ?? "").trim().slice(0, 2000);
     if (!id || !note) return NextResponse.json({ error: "id/note 필요" }, { status: 400 });
     await sql`INSERT INTO outreach_activity (target_id, actor, kind, body) VALUES (${id}, ${b.owner ?? 'admin'}, 'note', ${note})`;
+    await sql`UPDATE outreach_targets SET note=${note}, updated_at=now() WHERE id=${id}`;
+    return NextResponse.json({ ok: true });
+  }
+  if (action === "deleteTarget") {
+    const id = Number(b.id); if (!id) return NextResponse.json({ error: "id 필요" }, { status: 400 });
+    await sql`DELETE FROM outreach_activity WHERE target_id=${id}`;
+    await sql`DELETE FROM outreach_targets WHERE id=${id}`;
     return NextResponse.json({ ok: true });
   }
   return NextResponse.json({ error: "알 수 없는 action" }, { status: 400 });
