@@ -6,10 +6,13 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import PageShell from "@/components/ktrend/PageShell";
 import { Search, Info, Users, TrendingUp, Eye } from "lucide-react";
+import { COUNTRIES } from "@/data/ktrend/meta";
 
-interface Creator { handle: string; videos: number; totalViews: number; avgViews: number; brands: string[]; inducedGmv: number; taggedProducts: number }
-interface Summary { count: number; totalInducedGmv: number; withInduced: number }
-type Sort = "induced" | "views" | "videos";
+const ACTIVE_COUNTRIES = COUNTRIES.filter((c) => c.active);
+interface Creator { handle: string; videos: number; totalViews: number; avgViews: number; brands: string[]; inducedGmv: number; taggedProducts: number; engage: number; shopRatio: number; adRatio: number; lastPosted: string; daysSince: number; tier: string; countries: string[]; fit: number; reasons: string[] }
+interface Summary { count: number; totalInducedGmv: number; withInduced: number; withTag?: number }
+type Sort = "fit" | "induced" | "views" | "videos" | "recent";
+const TIER_LABEL: Record<string, string> = { mega: "메가", macro: "매크로", micro: "마이크로" };
 const compact = (n: number) => (n >= 1_000_000 ? (n / 1_000_000).toFixed(n >= 10_000_000 ? 0 : 1) + "M" : n >= 1_000 ? (n / 1_000).toFixed(n >= 10_000 ? 0 : 1) + "K" : String(n));
 
 export default function CreatorsPage() {
@@ -18,18 +21,29 @@ export default function CreatorsPage() {
   const [loading, setLoading] = useState(true);
   const [configured, setConfigured] = useState(true);
   const [q, setQ] = useState("");
-  const [sort, setSort] = useState<Sort>("induced");
+  const [sort, setSort] = useState<Sort>("fit");
+  const [tier, setTier] = useState("");
+  const [country, setCountry] = useState("");
+  const [minEngage, setMinEngage] = useState(0);
+  const [recentDays, setRecentDays] = useState(0);
+  const [hasTag, setHasTag] = useState(false);
 
   useEffect(() => {
     let alive = true;
     setLoading(true);
-    fetch(`/api/creators?sort=${sort}&limit=300`)
+    const p = new URLSearchParams({ sort, limit: "300" });
+    if (tier) p.set("tier", tier);
+    if (country) p.set("country", country);
+    if (minEngage > 0) p.set("minEngage", String(minEngage));
+    if (recentDays > 0) p.set("recentDays", String(recentDays));
+    if (hasTag) p.set("hasTag", "1");
+    fetch(`/api/creators?${p.toString()}`)
       .then((r) => r.json())
       .then((d) => { if (!alive) return; setCreators(Array.isArray(d.creators) ? d.creators : []); setSummary(d.summary || null); setConfigured(d.configured !== false); })
       .catch(() => { if (alive) setCreators([]); })
       .finally(() => { if (alive) setLoading(false); });
     return () => { alive = false; };
-  }, [sort]);
+  }, [sort, tier, country, minEngage, recentDays, hasTag]);
 
   const rows = useMemo(() => {
     const s = q.trim().toLowerCase();
@@ -61,13 +75,32 @@ export default function CreatorsPage() {
             <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
             <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="크리에이터·브랜드 검색" className="w-full rounded-lg border border-[var(--border)] py-2 pl-9 pr-3 text-[13px]" />
           </div>
-          <div className="flex gap-1">
-            {(["induced", "views", "videos"] as Sort[]).map((s) => (
+          <div className="flex flex-wrap gap-1">
+            {(["fit", "induced", "views", "recent"] as Sort[]).map((s) => (
               <button key={s} onClick={() => setSort(s)} className={`rounded-lg border px-3 py-2 text-[12px] font-semibold ${sort === s ? "border-[var(--accent)] bg-[var(--accent-light)] text-[var(--accent)]" : "border-[var(--border)] text-[var(--muted)]"}`}>
-                {s === "induced" ? "유도 GMV순" : s === "views" ? "조회수순" : "영상수순"}
+                {s === "fit" ? "적합도순" : s === "induced" ? "유도 GMV순" : s === "views" ? "조회수순" : "최근활동순"}
               </button>
             ))}
           </div>
+        </div>
+
+        {/* 발굴 필터 */}
+        <div className="mb-3 flex flex-wrap items-center gap-1.5">
+          <select value={tier} onChange={(e) => setTier(e.target.value)} className="rounded-lg border border-[var(--border)] px-2.5 py-1.5 text-[12px]">
+            <option value="">전체 티어</option>
+            <option value="mega">메가(1M+)</option><option value="macro">매크로(100K~1M)</option><option value="micro">마이크로(&lt;100K)</option>
+          </select>
+          <select value={country} onChange={(e) => setCountry(e.target.value)} className="rounded-lg border border-[var(--border)] px-2.5 py-1.5 text-[12px]">
+            <option value="">전체 국가</option>
+            {ACTIVE_COUNTRIES.map((c) => <option key={c.id} value={c.id}>{c.flag} {c.nameKo}</option>)}
+          </select>
+          {[0, 5, 8].map((e) => (
+            <button key={e} onClick={() => setMinEngage(e)} className={`rounded-full border px-2.5 py-1 text-[11px] font-semibold ${minEngage === e ? "border-[var(--accent)] bg-[var(--accent-light)] text-[var(--accent)]" : "border-[var(--border)] text-[var(--muted)]"}`}>{e === 0 ? "참여율 전체" : `참여율 ${e}%+`}</button>
+          ))}
+          {[0, 30, 14].map((d) => (
+            <button key={d} onClick={() => setRecentDays(d)} className={`rounded-full border px-2.5 py-1 text-[11px] font-semibold ${recentDays === d ? "border-[var(--accent)] bg-[var(--accent-light)] text-[var(--accent)]" : "border-[var(--border)] text-[var(--muted)]"}`}>{d === 0 ? "활동 전체" : `최근 ${d}일`}</button>
+          ))}
+          <button onClick={() => setHasTag((v) => !v)} className={`rounded-full border px-2.5 py-1 text-[11px] font-semibold ${hasTag ? "border-[var(--accent)] bg-[var(--accent)] text-white" : "border-[var(--border)] text-[var(--muted)]"}`}>제품태그 경험</button>
         </div>
 
         <div className="mb-4 flex items-start gap-1.5 rounded-lg bg-slate-50 px-3 py-2 text-[11px] text-[var(--muted)]">
@@ -92,8 +125,8 @@ export default function CreatorsPage() {
                 <tr>
                   <th className="p-2.5 pl-3">#</th>
                   <th className="p-2.5">크리에이터</th>
-                  <th className="p-2.5 text-right">영상</th>
-                  <th className="p-2.5 text-right">총 조회수</th>
+                  <th className="p-2.5 text-center">적합도</th>
+                  <th className="p-2.5 text-right">평균조회·참여</th>
                   <th className="p-2.5 text-right">태그 제품</th>
                   <th className="p-2.5">유도 GMV</th>
                 </tr>
@@ -103,11 +136,20 @@ export default function CreatorsPage() {
                   <tr key={c.handle} className="group border-t border-slate-100 hover:bg-[var(--accent-light)]/40">
                     <td className="p-2.5 pl-3"><span className={`grid h-6 w-6 place-items-center rounded-full text-[11px] font-black ${i === 0 ? "bg-amber-400 text-white" : i === 1 ? "bg-slate-300 text-white" : i === 2 ? "bg-amber-700 text-white" : "text-slate-400"}`}>{i + 1}</span></td>
                     <td className="p-2.5">
-                      <Link href={`/creator/${encodeURIComponent(c.handle)}`} className="font-semibold group-hover:text-[var(--accent)]">@{c.handle}</Link>
-                      {c.brands.length > 0 && <div className="mt-0.5 truncate text-[10px] text-[var(--muted)]">{c.brands.slice(0, 3).join(" · ")}</div>}
+                      <div className="flex items-center gap-1.5">
+                        <Link href={`/creator/${encodeURIComponent(c.handle)}`} className="font-semibold group-hover:text-[var(--accent)]">@{c.handle}</Link>
+                        <span className="rounded bg-slate-100 px-1 py-0.5 text-[9px] font-bold text-slate-500">{TIER_LABEL[c.tier] ?? c.tier}</span>
+                        {c.countries.slice(0, 2).map((cc) => <span key={cc} className="text-[10px]">{(COUNTRIES.find((x) => x.id === cc)?.flag) || ""}</span>)}
+                      </div>
+                      {c.reasons.length > 0 && <div className="mt-0.5 truncate text-[10px] text-[var(--muted)]" title={c.reasons.join(" · ")}>{c.reasons.slice(0, 3).join(" · ")}</div>}
                     </td>
-                    <td className="whitespace-nowrap p-2.5 text-right">{compact(c.videos)}</td>
-                    <td className="whitespace-nowrap p-2.5 text-right">{compact(c.totalViews)}</td>
+                    <td className="p-2.5 text-center">
+                      <div className="inline-flex items-center gap-1">
+                        <div className="h-1.5 w-10 overflow-hidden rounded-full bg-slate-100"><div className="h-full rounded-full" style={{ width: `${c.fit}%`, background: c.fit >= 70 ? "#0E9F6E" : c.fit >= 40 ? "#7C3AED" : "#94A3B8" }} /></div>
+                        <span className={`text-[11px] font-black ${c.fit >= 70 ? "text-emerald-600" : c.fit >= 40 ? "text-[var(--accent)]" : "text-slate-400"}`}>{c.fit}</span>
+                      </div>
+                    </td>
+                    <td className="whitespace-nowrap p-2.5 text-right">{compact(c.avgViews)}<span className="ml-1 text-[10px] text-[var(--muted)]">·{c.engage}%</span></td>
                     <td className="whitespace-nowrap p-2.5 text-right">{c.taggedProducts > 0 ? compact(c.taggedProducts) : "—"}</td>
                     <td className="p-2.5">
                       <div className="flex items-center gap-2">
