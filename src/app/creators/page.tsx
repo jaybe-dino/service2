@@ -27,6 +27,23 @@ export default function CreatorsPage() {
   const [minEngage, setMinEngage] = useState(0);
   const [recentDays, setRecentDays] = useState(0);
   const [hasTag, setHasTag] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [added, setAdded] = useState<Record<string, boolean>>({});
+  const [msg, setMsg] = useState("");
+
+  useEffect(() => { fetch("/api/admin/session", { cache: "no-store" }).then((r) => r.json()).then((d) => setIsAdmin(!!d?.authed)).catch(() => {}); }, []);
+  const addToOutreach = async (handle: string, score: number) => {
+    const r = await fetch("/api/admin/outreach", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "addTarget", handle, score }) }).then((x) => x.json()).catch(() => null);
+    if (r?.ok) { setAdded((a) => ({ ...a, [handle]: true })); setMsg(`@${handle} 아웃리치 추가됨`); setTimeout(() => setMsg(""), 2000); }
+    else setMsg(r?.error ?? "추가 실패");
+  };
+  const saveSegment = async () => {
+    const name = prompt("이 필터 조건을 세그먼트로 저장 — 이름:");
+    if (!name) return;
+    const filter = { sort, tier, country, minEngage, recentDays, hasTag, q };
+    const r = await fetch("/api/admin/outreach", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "saveList", name, filter }) }).then((x) => x.json()).catch(() => null);
+    setMsg(r?.ok ? "세그먼트 저장됨 (어드민 > 아웃리치)" : (r?.error ?? "저장 실패")); setTimeout(() => setMsg(""), 2500);
+  };
 
   useEffect(() => {
     let alive = true;
@@ -101,7 +118,9 @@ export default function CreatorsPage() {
             <button key={d} onClick={() => setRecentDays(d)} className={`rounded-full border px-2.5 py-1 text-[11px] font-semibold ${recentDays === d ? "border-[var(--accent)] bg-[var(--accent-light)] text-[var(--accent)]" : "border-[var(--border)] text-[var(--muted)]"}`}>{d === 0 ? "활동 전체" : `최근 ${d}일`}</button>
           ))}
           <button onClick={() => setHasTag((v) => !v)} className={`rounded-full border px-2.5 py-1 text-[11px] font-semibold ${hasTag ? "border-[var(--accent)] bg-[var(--accent)] text-white" : "border-[var(--border)] text-[var(--muted)]"}`}>제품태그 경험</button>
+          {isAdmin && <button onClick={saveSegment} className="ml-auto rounded-full border border-[var(--accent)] px-2.5 py-1 text-[11px] font-bold text-[var(--accent)] hover:bg-[var(--accent-light)]">＋ 세그먼트 저장</button>}
         </div>
+        {msg && <div className="mb-2 rounded-lg bg-emerald-50 px-3 py-1.5 text-[11px] font-semibold text-emerald-700">{msg}</div>}
 
         <div className="mb-4 flex items-start gap-1.5 rounded-lg bg-slate-50 px-3 py-2 text-[11px] text-[var(--muted)]">
           <Info size={13} className="mt-0.5 shrink-0 text-slate-400" />
@@ -129,6 +148,7 @@ export default function CreatorsPage() {
                   <th className="p-2.5 text-right">평균조회·참여</th>
                   <th className="p-2.5 text-right">태그 제품</th>
                   <th className="p-2.5">유도 GMV</th>
+                  {isAdmin && <th className="p-2.5 text-center">아웃리치</th>}
                 </tr>
               </thead>
               <tbody>
@@ -159,6 +179,14 @@ export default function CreatorsPage() {
                         <span className="whitespace-nowrap font-bold text-[var(--accent)]">{c.inducedGmv > 0 ? `$${compact(c.inducedGmv)}` : <span className="text-slate-300">—</span>}</span>
                       </div>
                     </td>
+                    {isAdmin && (
+                      <td className="p-2.5 text-center">
+                        <button onClick={() => addToOutreach(c.handle, c.fit)} disabled={added[c.handle]}
+                          className={`rounded-md border px-2 py-1 text-[10px] font-bold ${added[c.handle] ? "border-emerald-300 bg-emerald-50 text-emerald-600" : "border-[var(--accent)] text-[var(--accent)] hover:bg-[var(--accent-light)]"}`}>
+                          {added[c.handle] ? "✓ 추가됨" : "＋ 추가"}
+                        </button>
+                      </td>
+                    )}
                   </tr>
                 ))}
               </tbody>

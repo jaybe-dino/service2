@@ -344,6 +344,39 @@ export function ensureSchema(): Promise<void> {
       await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS markets text`;
       // 관리자 메모 — 회원 상세 관리(어드민 전용, 사용자 미노출)
       await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS admin_note text`;
+      // ── 아웃리치(크리에이터 CRM) 레이어 ──
+      // 세그먼트(필터 저장) — 반복 캠페인/발굴 재사용.
+      await sql`CREATE TABLE IF NOT EXISTS outreach_lists (
+        id serial PRIMARY KEY,
+        name text NOT NULL,
+        owner text,                 -- 관리자/추천인 식별(자유). null=공용
+        filter jsonb,               -- 저장된 필터 조합
+        created_at timestamptz NOT NULL DEFAULT now()
+      )`;
+      // 아웃리치 대상 + 상태 파이프라인. handle 기준. list_id 없으면 파이프라인 전역 대상.
+      await sql`CREATE TABLE IF NOT EXISTS outreach_targets (
+        id serial PRIMARY KEY,
+        handle text NOT NULL,
+        list_id int,
+        status text NOT NULL DEFAULT 'discovered',  -- discovered|contacted|replied|negotiating|contracted|running|done|hold|rejected
+        owner text,                 -- 담당자
+        score int,                  -- 등록 시점 적합도 캐시
+        note text,
+        created_at timestamptz NOT NULL DEFAULT now(),
+        updated_at timestamptz NOT NULL DEFAULT now(),
+        UNIQUE (handle, list_id)
+      )`;
+      await sql`CREATE INDEX IF NOT EXISTS idx_outreach_targets_status ON outreach_targets(status)`;
+      // 활동 로그(타임라인)
+      await sql`CREATE TABLE IF NOT EXISTS outreach_activity (
+        id serial PRIMARY KEY,
+        target_id int NOT NULL,
+        actor text,
+        kind text NOT NULL DEFAULT 'note',  -- note|status|message
+        body text,
+        created_at timestamptz NOT NULL DEFAULT now()
+      )`;
+      await sql`CREATE INDEX IF NOT EXISTS idx_outreach_activity_target ON outreach_activity(target_id, created_at DESC)`;
       // 개발 변경 로그 — 공개 개발문서(/dev-docs)에 노출. 매일 자정 크론이 배포 커밋을 자동 기록.
       await sql`CREATE TABLE IF NOT EXISTS dev_changelog (
         id serial PRIMARY KEY,

@@ -15,9 +15,11 @@ export async function GET(_req: Request, ctx: { params: Promise<{ handle: string
     let handle = raw;
     try { handle = decodeURIComponent(raw); } catch { handle = raw; }
 
-    const base = await sql<{ videos: string | number; total_views: string | number; avg_views: string | number; max_views: string | number; brands: string[] | null; shop_videos: string | number; ad_videos: string | number }>`
+    const base = await sql<{ videos: string | number; total_views: string | number; avg_views: string | number; max_views: string | number; avg_likes: string | number; last_posted: string | null; countries: string[] | null; brands: string[] | null; shop_videos: string | number; ad_videos: string | number }>`
       SELECT count(*)::int AS videos, coalesce(sum(views),0)::bigint AS total_views,
              coalesce(avg(views),0)::bigint AS avg_views, coalesce(max(views),0)::bigint AS max_views,
+             coalesce(avg(likes),0)::bigint AS avg_likes, max(posted_at) AS last_posted,
+             array_agg(DISTINCT country) FILTER (WHERE country IS NOT NULL) AS countries,
              array_agg(DISTINCT brand_name) FILTER (WHERE brand_name IS NOT NULL) AS brands,
              sum(CASE WHEN is_shop THEN 1 ELSE 0 END)::int AS shop_videos,
              sum(CASE WHEN is_ad THEN 1 ELSE 0 END)::int AS ad_videos
@@ -50,17 +52,43 @@ export async function GET(_req: Request, ctx: { params: Promise<{ handle: string
       postedAt: v.posted_at ? String(v.posted_at).slice(0, 10) : "", hasProduct: !!v.product_ref,
     }));
 
+    // ── 아웃리치 판단 지표: 참여율·최근활동·티어·추정단가·적합도 ──
+    const vTotal = Number(b.videos) || 0;
+    const avgViews = Number(b.avg_views) || 0;
+    const avgLikes = Number(b.avg_likes) || 0;
+    const engage = avgViews > 0 ? Math.round((avgLikes / avgViews) * 1000) / 10 : 0;
+    const shopVideos = Number(b.shop_videos) || 0, adVideos = Number(b.ad_videos) || 0;
+    const shopRatio = vTotal ? Math.round((shopVideos / vTotal) * 100) : 0;
+    const adRatio = vTotal ? Math.round((adVideos / vTotal) * 100) : 0;
+    const lastPosted = b.last_posted ? String(b.last_posted).slice(0, 10) : "";
+    const daysSince = lastPosted ? Math.floor((Date.now() - new Date(lastPosted).getTime()) / 86_400_000) : 9999;
+    const tier = avgViews >= 1_000_000 ? "mega" : avgViews >= 100_000 ? "macro" : "micro";
+    // 추정 단가(USD, 추정치): 평균조회 × CPM 계수(뷰티 UGC 근사 $12/1k). 라벨로 '추정' 명시.
+    const estRateUsd = Math.round((avgViews / 1000) * 12);
+    const sViews = Math.min(1, avgViews / 1_000_000), sEng = Math.min(1, engage / 12);
+    const sTag = products.length > 0 ? 1 : 0;
+    const sRecency = daysSince <= 14 ? 1 : daysSince <= 30 ? 0.7 : daysSince <= 90 ? 0.4 : 0.1;
+    const fit = Math.round(sViews * 40 + sEng * 30 + sTag * 20 + sRecency * 10);
+    const reasons = [
+      avgViews >= 100_000 ? `평균 조회 ${avgViews >= 1_000_000 ? (avgViews / 1e6).toFixed(1) + "M" : Math.round(avgViews / 1000) + "K"}` : null,
+      engage >= 6 ? `높은 참여율 ${engage}%` : null,
+      products.length > 0 ? `제품태그 협업 ${products.length}건(유도 GMV 실적)` : null,
+      daysSince <= 30 ? "최근 활발히 활동" : null,
+      shopRatio >= 20 ? `커머스 콘텐츠 비중 ${shopRatio}%` : null,
+    ].filter(Boolean) as string[];
+
     return NextResponse.json({
       configured: true,
       creator: {
         handle,
-        videos: Number(b.videos) || 0,
+        videos: vTotal,
         totalViews: Number(b.total_views) || 0,
-        avgViews: Number(b.avg_views) || 0,
+        avgViews,
         maxViews: Number(b.max_views) || 0,
         brands: Array.isArray(b.brands) ? b.brands.filter(Boolean) : [],
-        shopVideos: Number(b.shop_videos) || 0,
-        adVideos: Number(b.ad_videos) || 0,
+        countries: Array.isArray(b.countries) ? b.countries.filter(Boolean) : [],
+        shopVideos, adVideos, shopRatio, adRatio,
+        engage, lastPosted, daysSince, tier, estRateUsd, fit, reasons,
         inducedGmv,
         taggedProducts: products.length,
       },
