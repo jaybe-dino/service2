@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { sql, ensureSchema, isConfigured } from "@/lib/db";
-import { classifyProduct, CATEGORY_LABEL } from "@/lib/ktrend/classify";
+import { classifyProduct, subClassifyProduct, CATEGORY_LABEL, SUBCATEGORY_LABEL } from "@/lib/ktrend/classify";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -30,6 +30,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
     // 제품ID(국가 프리픽스 제거) — 영상 product_ref(원시 상품ID)와 직접 매칭용.
     const rawId = id.includes(":") ? id.slice(id.indexOf(":") + 1) : id;
     const category = classifyProduct(p.title);
+    const subId = subClassifyProduct(p.title, category).sub;
 
     // 제품↔영상↔크리에이터 매칭: product_ref 직접 태그 우선, 없으면 브랜드 폴백.
     const [vids, creators] = brand
@@ -122,6 +123,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
       priceSeries,
       category,
       categoryLabel: CATEGORY_LABEL[category],
+      subLabel: category !== "other" ? SUBCATEGORY_LABEL[subId] : null,
       rankInCategory,
       product: {
         id: p.product_id, brand, title: p.title || "", price, currency: p.currency || "USD", sold, country,

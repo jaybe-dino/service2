@@ -8,7 +8,7 @@ import PageShell from "@/components/ktrend/PageShell";
 import { Search, Info, ExternalLink, Package, TrendingUp, DollarSign, ShoppingCart, Tag, ArrowUpRight, ArrowDownRight } from "lucide-react";
 import { PRICE_BANDS } from "@/data/ktrend/product-taxonomy";
 import { COUNTRIES } from "@/data/ktrend/meta";
-import { CATEGORY_LABEL, CATEGORY_ICON, type CategoryId } from "@/lib/ktrend/classify";
+import { CATEGORY_LABEL, CATEGORY_ICON, SUBCATEGORY_LABEL, SUBS_BY_PARENT, type CategoryId, type SubCategoryId } from "@/lib/ktrend/classify";
 
 const ACTIVE_COUNTRIES = COUNTRIES.filter((c) => c.active);
 const FLAG: Record<string, string> = Object.fromEntries(COUNTRIES.map((c) => [c.id, c.flag]));
@@ -37,6 +37,7 @@ export default function ProductsPage() {
   const [band, setBand] = useState<number>(-1); // PRICE_BANDS 인덱스, -1=전체
   const [country, setCountry] = useState<string>(""); // "" = 전체
   const [category, setCategory] = useState<CategoryId | "">(""); // "" = 전체
+  const [sub, setSub] = useState<SubCategoryId | "">(""); // "" = 전체(세분화)
   const [minCommission, setMinCommission] = useState<number>(0);
 
   // /category, /shop 상세에서 넘어오는 ?category= / ?q= 딥링크 반영(마운트 1회)
@@ -56,6 +57,7 @@ export default function ProductsPage() {
     if (b) { params.set("minPrice", String(b.min)); if (b.max != null) params.set("maxPrice", String(b.max)); }
     if (country) params.set("country", country);
     if (category) params.set("category", category);
+    if (sub) params.set("sub", sub);
     if (minCommission > 0) params.set("minCommission", String(minCommission));
     fetch(`/api/products?${params.toString()}`)
       .then((r) => r.json())
@@ -63,7 +65,7 @@ export default function ProductsPage() {
       .catch(() => { if (alive) setProducts([]); })
       .finally(() => { if (alive) setLoading(false); });
     return () => { alive = false; };
-  }, [sort, band, country, category, minCommission]);
+  }, [sort, band, country, category, sub, minCommission]);
 
   const rows = useMemo(() => {
     const s = q.trim().toLowerCase();
@@ -130,11 +132,21 @@ export default function ProductsPage() {
 
         {/* 카테고리 필터 */}
         <div className="mb-2 flex flex-wrap gap-1.5">
-          <button onClick={() => setCategory("")} className={`rounded-full border px-2.5 py-1 text-[11px] font-semibold ${category === "" ? "border-[var(--accent)] bg-[var(--accent-light)] text-[var(--accent)]" : "border-[var(--border)] text-[var(--muted)]"}`}>전체</button>
+          <button onClick={() => { setCategory(""); setSub(""); }} className={`rounded-full border px-2.5 py-1 text-[11px] font-semibold ${category === "" ? "border-[var(--accent)] bg-[var(--accent-light)] text-[var(--accent)]" : "border-[var(--border)] text-[var(--muted)]"}`}>전체</button>
           {CAT_IDS.map((c) => (
-            <button key={c} onClick={() => setCategory(c)} className={`rounded-full border px-2.5 py-1 text-[11px] font-semibold ${category === c ? "border-[var(--accent)] bg-[var(--accent-light)] text-[var(--accent)]" : "border-[var(--border)] text-[var(--muted)]"}`}>{CATEGORY_ICON[c]} {CATEGORY_LABEL[c]}</button>
+            <button key={c} onClick={() => { setCategory(c); setSub(""); }} className={`rounded-full border px-2.5 py-1 text-[11px] font-semibold ${category === c ? "border-[var(--accent)] bg-[var(--accent-light)] text-[var(--accent)]" : "border-[var(--border)] text-[var(--muted)]"}`}>{CATEGORY_ICON[c]} {CATEGORY_LABEL[c]}</button>
           ))}
         </div>
+
+        {/* 서브카테고리(세분화) — 대분류 선택 시 노출 */}
+        {category && (
+          <div className="mb-2 flex flex-wrap gap-1.5 border-l-2 border-[var(--accent-light)] pl-2">
+            <button onClick={() => setSub("")} className={`rounded-full border px-2.5 py-1 text-[11px] font-semibold ${sub === "" ? "border-[var(--accent)] bg-[var(--accent-light)] text-[var(--accent)]" : "border-[var(--border)] text-[var(--muted)]"}`}>전체</button>
+            {SUBS_BY_PARENT[category].map((s) => (
+              <button key={s} onClick={() => setSub(s)} className={`rounded-full border px-2.5 py-1 text-[11px] font-semibold ${sub === s ? "border-[var(--accent)] bg-[var(--accent-light)] text-[var(--accent)]" : "border-[var(--border)] text-[var(--muted)]"}`}>{SUBCATEGORY_LABEL[s]}</button>
+            ))}
+          </div>
+        )}
 
         {/* 가격대 + 커미션 필터 */}
         <div className="mb-3 flex flex-wrap items-center gap-1.5">

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { sql, ensureSchema, isConfigured } from "@/lib/db";
-import { classifyProduct, type CategoryId } from "@/lib/ktrend/classify";
+import { classifyProduct, subClassifyProduct, type CategoryId, type SubCategoryId } from "@/lib/ktrend/classify";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -22,6 +22,7 @@ export async function GET(req: Request) {
     const maxPrice = Number(url.searchParams.get("maxPrice") || "") || 0; // 0 = 상한없음
     const country = (url.searchParams.get("country") || "").trim().toUpperCase(); // "" = 전체
     const category = (url.searchParams.get("category") || "").trim().toLowerCase() as CategoryId | ""; // "" = 전체
+    const sub = (url.searchParams.get("sub") || "").trim().toLowerCase() as SubCategoryId | ""; // "" = 전체(세분화)
     const minCommission = Number(url.searchParams.get("minCommission") || "") || 0; // % 하한
     const minSold = Number(url.searchParams.get("minSold") || "") || 0;
     const period = Math.max(1, Math.min(90, Number(url.searchParams.get("period") || 7))); // 성장률 기간(일)
@@ -62,6 +63,7 @@ export async function GET(req: Request) {
         url: p.url || "",
         country: (p.country || "US").toUpperCase(),
         category: classifyProduct(p.title),
+        sub: subClassifyProduct(p.title).sub,
         growth,
         growthPct: growth != null && soldPast && soldPast > 0 ? Math.round((growth / soldPast) * 1000) / 10 : null,
       };
@@ -71,6 +73,7 @@ export async function GET(req: Request) {
     const filtered = mapped.filter((p) =>
       (minPrice <= 0 || p.price >= minPrice) && (maxPrice <= 0 || p.price < maxPrice) &&
       (!category || p.category === category) &&
+      (!sub || p.sub === sub) &&
       (minCommission <= 0 || (p.commission ?? 0) >= minCommission) &&
       (minSold <= 0 || p.sold >= minSold),
     );

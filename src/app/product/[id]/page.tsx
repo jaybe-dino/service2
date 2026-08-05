@@ -20,6 +20,7 @@ interface Detail {
   priceSeries?: { date: string; price: number }[];
   category?: string;
   categoryLabel?: string;
+  subLabel?: string | null;
   rankInCategory?: { rank: number; total: number; capped: boolean } | null;
   product: { id: string; brand: string; title: string; price: number; currency: string; sold: number; gmv: number; commission: number | null; url: string; country?: string; image?: string };
   relatedVideos: VideoRow[];
@@ -117,6 +118,7 @@ export default function ProductDetailPage() {
                       {d.product.country && <span className="text-[13px]">{FLAG[d.product.country.toLowerCase()] || "🌐"}</span>}
                       <Package size={13} /> {d.product.brand || "브랜드 미상"}
                       {d.categoryLabel && <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-600">{d.categoryLabel}</span>}
+                      {d.subLabel && <span className="rounded-full bg-[var(--accent)]/10 px-2 py-0.5 text-[10px] font-bold text-[var(--accent)]">{d.subLabel}</span>}
                     </div>
                     <h1 className="mt-1 text-[21px] font-black leading-tight">{d.product.title || "(제목 없음)"}</h1>
                   </div>
