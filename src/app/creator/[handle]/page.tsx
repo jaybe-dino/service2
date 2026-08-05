@@ -34,7 +34,9 @@ export default function CreatorDetailPage() {
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [isUser, setIsUser] = useState(false);
   const [added, setAdded] = useState(false);
+  const [savedSelf, setSavedSelf] = useState(false);
   const [addMsg, setAddMsg] = useState<string | null>(null);
 
   useEffect(() => {
@@ -46,8 +48,23 @@ export default function CreatorDetailPage() {
       .catch((e) => { if (alive) setErr(String(e.message || e)); })
       .finally(() => { if (alive) setLoading(false); });
     fetch("/api/admin/session").then((r) => r.json()).then((j) => { if (alive) setIsAdmin(!!j?.authed); }).catch(() => {});
+    fetch("/api/auth/me").then((r) => r.json()).then((j) => { if (alive) setIsUser(!!j?.user); }).catch(() => {});
     return () => { alive = false; };
   }, [handle]);
+
+  async function saveSelf() {
+    if (!d) return;
+    setAddMsg(null);
+    try {
+      const r = await fetch("/api/outreach", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "addTarget", handle, score: d.creator.fit }),
+      });
+      const j = await r.json();
+      if (!r.ok) throw new Error(j?.error || `HTTP ${r.status}`);
+      setSavedSelf(true); setAddMsg(j.added > 0 ? "내 아웃리치에 저장됨 · 마이페이지에서 관리" : "이미 저장돼 있음");
+    } catch (e) { setAddMsg(String((e as Error).message || e)); }
+  }
 
   async function addToOutreach() {
     if (!d) return;
@@ -90,12 +107,17 @@ export default function CreatorDetailPage() {
                     </div>
                   </div>
                   <div className="ml-auto flex items-center gap-2">
-                    {isAdmin && (
+                    {isAdmin ? (
                       <button onClick={addToOutreach} disabled={added}
                         className={`inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-[12px] font-bold transition ${added ? "border border-emerald-200 bg-emerald-50 text-emerald-700" : "bg-[var(--accent)] text-white hover:opacity-90"}`}>
                         {added ? <Check size={14} /> : <Plus size={14} />} {added ? "추가됨" : "아웃리치 추가"}
                       </button>
-                    )}
+                    ) : isUser ? (
+                      <button onClick={saveSelf} disabled={savedSelf}
+                        className={`inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-[12px] font-bold transition ${savedSelf ? "border border-emerald-200 bg-emerald-50 text-emerald-700" : "bg-[var(--accent)] text-white hover:opacity-90"}`}>
+                        {savedSelf ? <Check size={14} /> : <Plus size={14} />} {savedSelf ? "저장됨" : "내 아웃리치 저장"}
+                      </button>
+                    ) : null}
                     <a href={`https://www.tiktok.com/@${handle}`} target="_blank" rel="noopener noreferrer"
                       className="inline-flex items-center gap-1.5 rounded-xl border border-[var(--border)] bg-white px-3 py-2 text-[12px] font-bold text-[var(--muted)] hover:text-[var(--accent)]">
                       <ExternalLink size={14} /> 틱톡

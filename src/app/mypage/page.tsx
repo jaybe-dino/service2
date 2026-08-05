@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { User, Crown, Ticket, Bookmark, LogOut, CreditCard, Building2, Mail, Briefcase, LogIn, Send, Loader2, ShoppingBag, Package, LayoutDashboard } from "lucide-react";
+import { User, Crown, Ticket, Bookmark, LogOut, CreditCard, Building2, Mail, Briefcase, LogIn, Send, Loader2, ShoppingBag, Package, LayoutDashboard, Users, ExternalLink, Trash2 } from "lucide-react";
 import PageShell from "@/components/ktrend/PageShell";
 import { usePlan } from "@/components/ktrend/PlanContext";
 import { useBookmarks } from "@/components/ktrend/BookmarkContext";
@@ -35,7 +35,17 @@ const PROP_STATUS: Record<string, { label: string; cls: string }> = {
   withdrawn: { label: "철회됨", cls: "bg-slate-100 text-slate-400" },
 };
 
-type Section = "account" | "onb-basic" | "onb-products" | "proposals";
+type Section = "account" | "onb-basic" | "onb-products" | "proposals" | "outreach";
+
+interface OutTarget { id: number; handle: string; status: string; score: number | null; total_views: string | number | null; videos: number | null; updated_at: string }
+const OUT_STATUS: Record<string, { label: string; cls: string }> = {
+  discovered: { label: "발굴", cls: "bg-slate-100 text-slate-600" }, contacted: { label: "접촉", cls: "bg-sky-100 text-sky-700" },
+  replied: { label: "응답", cls: "bg-indigo-100 text-indigo-700" }, negotiating: { label: "협의", cls: "bg-amber-100 text-amber-700" },
+  contracted: { label: "계약", cls: "bg-emerald-100 text-emerald-700" }, running: { label: "진행", cls: "bg-teal-100 text-teal-700" },
+  done: { label: "완료", cls: "bg-fuchsia-100 text-fuchsia-700" }, hold: { label: "보류", cls: "bg-zinc-100 text-zinc-500" }, rejected: { label: "제외", cls: "bg-rose-100 text-rose-600" },
+};
+const OUT_ORDER = ["discovered", "contacted", "replied", "negotiating", "contracted", "running", "done", "hold", "rejected"];
+const compactN = (n: number) => (n >= 1_000_000 ? (n / 1_000_000).toFixed(1) + "M" : n >= 1_000 ? (n / 1_000).toFixed(1) + "K" : String(n));
 
 export default function MyPage() {
   const { user, plan, isPro, trialMsLeft, passRemaining, logout } = usePlan();
@@ -45,9 +55,22 @@ export default function MyPage() {
   const [proposals, setProposals] = useState<Proposal[] | null>(null);
   const [onb, setOnb] = useState<{ application: OnbApp | null; mallSub: MallSub | null; orders: MallOrder[] } | null>(null);
   const [section, setSection] = useState<Section>("account");
+  const [outreach, setOutreach] = useState<OutTarget[] | null>(null);
 
   const loadProposals = () => {
     fetch("/api/proposals", { cache: "no-store" }).then((r) => r.json()).then((d) => setProposals(d.rows ?? [])).catch(() => setProposals([]));
+  };
+  const loadOutreach = () => {
+    fetch("/api/outreach", { cache: "no-store" }).then((r) => r.json()).then((d) => setOutreach(d.targets ?? [])).catch(() => setOutreach([]));
+  };
+  const setOutStatus = async (id: number, status: string) => {
+    setOutreach((prev) => (prev ? prev.map((t) => (t.id === id ? { ...t, status } : t)) : prev));
+    await fetch("/api/outreach", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "setStatus", id, status }) });
+  };
+  const removeOut = async (id: number) => {
+    if (!confirm("내 아웃리치에서 삭제할까요?")) return;
+    await fetch("/api/outreach", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "removeTarget", id }) });
+    setOutreach((prev) => (prev ? prev.filter((t) => t.id !== id) : prev));
   };
   const loadOnb = () => {
     fetch("/api/onboarding/status", { cache: "no-store" }).then((r) => r.json())
@@ -60,6 +83,7 @@ export default function MyPage() {
       fetch("/api/payment/cancel", { cache: "no-store" }).then((r) => r.json()).then((d) => setSub(d.subscription)).catch(() => {});
       loadProposals();
       loadOnb();
+      loadOutreach();
     }
   }, [user]);
 
@@ -69,6 +93,7 @@ export default function MyPage() {
     if (t === "basic" || t === "onb-basic") setSection("onb-basic");
     else if (t === "products" || t === "onb-products") setSection("onb-products");
     else if (t === "proposals") setSection("proposals");
+    else if (t === "outreach") setSection("outreach");
   }, []);
 
   const withdraw = async (id: number) => {
@@ -103,6 +128,7 @@ export default function MyPage() {
     { id: "account", label: "계정·구독", icon: <User size={14} />, show: true },
     { id: "onb-basic", label: "입점 기본정보", icon: <Building2 size={14} />, show: paid },
     { id: "onb-products", label: "제품 서류·정보", icon: <Package size={14} />, show: paid },
+    { id: "outreach", label: "내 아웃리치", icon: <Users size={14} />, show: true },
     { id: "proposals", label: "인플루언서 제안", icon: <Send size={14} />, show: true },
   ];
 
@@ -189,6 +215,41 @@ export default function MyPage() {
 
             {section === "onb-products" && (
               paid ? <OnboardingProductDocs initial={products} onSaved={loadOnb} /> : <PaidOnly />
+            )}
+
+            {section === "outreach" && (
+              <div className="kt-card p-5">
+                <h2 className="mb-1 flex items-center gap-1.5 text-[13px] font-bold"><Users size={14} className="text-[var(--accent)]" /> 내 아웃리치 {outreach && <span className="text-[11px] font-semibold text-[var(--muted)]">({outreach.length})</span>}</h2>
+                <p className="mb-3 text-[11px] text-[var(--muted)]"><Link href="/creators" className="font-semibold text-[var(--accent)] hover:underline">크리에이터 랭킹</Link>에서 [내 아웃리치 저장]으로 담은 크리에이터를 상태별로 관리하세요.</p>
+                {outreach === null ? (
+                  <div className="flex items-center gap-2 py-4 text-[11px] text-[var(--muted)]"><Loader2 size={13} className="animate-spin" /> 불러오는 중…</div>
+                ) : outreach.length === 0 ? (
+                  <p className="py-3 text-[12px] text-[var(--muted)]">아직 저장한 크리에이터가 없어요. <Link href="/creators" className="font-semibold text-[var(--accent)] hover:underline">크리에이터 랭킹</Link>에서 적합한 크리에이터를 담아보세요.</p>
+                ) : (
+                  <div className="overflow-x-auto rounded-lg border border-[var(--border)]">
+                    <table className="w-full text-left text-[12px]">
+                      <thead className="bg-slate-50 text-[11px] text-[var(--muted)]"><tr>
+                        <th className="p-2.5">크리에이터</th><th className="p-2.5 text-right">적합도</th><th className="p-2.5 text-right">조회수</th><th className="p-2.5">상태</th><th className="p-2.5"></th>
+                      </tr></thead>
+                      <tbody>
+                        {outreach.map((t) => (
+                          <tr key={t.id} className="border-t border-slate-100">
+                            <td className="p-2.5 font-semibold"><Link href={`/creator/${encodeURIComponent(t.handle)}`} className="inline-flex items-center gap-1 hover:text-[var(--accent)]">@{t.handle} <ExternalLink size={11} className="text-[var(--muted)]" /></Link></td>
+                            <td className="p-2.5 text-right">{t.score != null ? <span className="rounded bg-[var(--accent)]/10 px-1.5 py-0.5 text-[11px] font-bold text-[var(--accent)]">{t.score}</span> : "—"}</td>
+                            <td className="p-2.5 text-right text-[var(--muted)]">{t.total_views != null ? compactN(Number(t.total_views) || 0) : "—"}</td>
+                            <td className="p-2.5">
+                              <select value={t.status} onChange={(e) => setOutStatus(t.id, e.target.value)} className={`rounded-md border-0 px-2 py-1 text-[11px] font-bold outline-none ${(OUT_STATUS[t.status] || OUT_STATUS.discovered).cls}`}>
+                                {OUT_ORDER.map((s) => <option key={s} value={s}>{OUT_STATUS[s].label}</option>)}
+                              </select>
+                            </td>
+                            <td className="p-2.5 text-right"><button onClick={() => removeOut(t.id)} className="text-rose-400 hover:text-rose-600"><Trash2 size={13} /></button></td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
             )}
 
             {section === "proposals" && (
