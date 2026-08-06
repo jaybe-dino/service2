@@ -353,7 +353,7 @@ function normalizeActor(raw: string): string {
   return a.replace(/\//g, "~");       // username/name → username~name
 }
 
-export async function startShopRun(brandName: string, webhookUrl?: string, country?: string): Promise<string> {
+export async function startShopRun(brandName: string, webhookUrl?: string, country?: string, maxItemsOverride?: number): Promise<string> {
   if (!shopConfigured()) throw new Error("SHOP_ACTOR/SCRAPER_API_KEY 미설정");
   const token = process.env.SCRAPER_API_KEY!;
   const actor = normalizeActor(process.env.SHOP_ACTOR!);
@@ -369,7 +369,7 @@ export async function startShopRun(brandName: string, webhookUrl?: string, count
   }
   // 검색 입력은 actor마다 키가 달라서(가장 흔한 실패 원인) 일반 키 '슈퍼셋'을 전달한다.
   // 특정 actor 스키마에 정확히 맞추려면 SHOP_ACTOR_INPUT(JSON, {{keyword}}/{{country}} 치환)으로 완전 오버라이드.
-  const maxItems = Number(process.env.SHOP_MAX_ITEMS ?? 500); // 브랜드당 상품 확보량↑(env로 조절)
+  const maxItems = maxItemsOverride ?? Number(process.env.SHOP_MAX_ITEMS ?? 200); // 브랜드당 상품 확보량(어드민 설정 우선)
   let body: Record<string, unknown>;
   if (process.env.SHOP_ACTOR_INPUT) {
     try {

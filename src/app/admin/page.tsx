@@ -147,6 +147,9 @@ export default function AdminPage() {
   const [totals, setTotals] = useState<Totals | null>(null);
   const [rules, setRules] = useState<CrawlRules>(DEFAULT_CRAWL_RULES);
   const [tuning, setTuning] = useState<{ initialLimit: number; refreshLimit: number; maxPending: number; maxRefresh: number; maxPoll: number } | null>(null);
+  const [shopTuning, setShopTuning] = useState<{ maxItems: number; maxBrands: number; maxRunning: number; maxPoll: number; retryDays: number } | null>(null);
+  const [shopCountries, setShopCountries] = useState<string[]>([]);
+  const [shopAllowed, setShopAllowed] = useState<string[]>(["US", "TH", "VN", "MY", "SG", "ID", "PH", "GB", "JP"]);
   const [regions, setRegions] = useState<string[] | null>(null);
   const [regionOpts, setRegionOpts] = useState<{ id: string; nameKo: string; flag: string }[]>([]);
   const loadedTabs = useRef<Set<string>>(new Set());
@@ -199,6 +202,21 @@ export default function AdminPage() {
     if (t?.ok) setTuning(t.tuning);
     const g = await fetch("/api/admin/collect-regions", { cache: "no-store" }).then((x) => x.json()).catch(() => null);
     if (g?.ok) { setRegions(g.regions); setRegionOpts(g.options ?? []); }
+    const s = await fetch("/api/admin/shop-tuning", { cache: "no-store" }).then((x) => x.json()).catch(() => null);
+    if (s?.ok) { setShopTuning(s.tuning); setShopCountries(s.countries ?? ["US"]); if (Array.isArray(s.allowed)) setShopAllowed(s.allowed); }
+  };
+  const saveShopTuning = async () => {
+    if (!shopTuning) return;
+    const r = await fetch("/api/admin/shop-tuning", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ tuning: shopTuning }) });
+    const d = await r.json().catch(() => ({}));
+    if (r.ok && d.ok) { setShopTuning(d.tuning); setToast("샵 수집 설정 저장됨 (즉시 적용)"); } else setToast(d.error ?? "저장 실패");
+  };
+  const saveShopCountries = async (next: string[]) => {
+    const final = next.length ? next : ["US"];
+    setShopCountries(final);
+    const r = await fetch("/api/admin/shop-tuning", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ countries: final }) });
+    const d = await r.json().catch(() => ({}));
+    if (r.ok && d.ok) { setShopCountries(d.countries); setToast("샵 수집 국가 저장됨 (즉시 적용)"); } else setToast(d.error ?? "저장 실패");
   };
   const saveRegions = async (next: string[]) => {
     setRegions(next);
@@ -1042,6 +1060,51 @@ export default function AdminPage() {
                 ))}
               </div>
               <p className="mt-2 text-[10px] text-[var(--muted)]">※ 403개 전체를 빠르게 채우려면 ‘얕고 넓게’로 시작 → Apify 사용량 보며 조정. 적재/회는 함수 60초 제한 때문에 12 이하 권장.</p>
+            </div>
+          )}
+          {/* 샵(제품) 수집 설정 — env 대신 여기서 즉시 조정(재배포 불필요). 국가 순차·개수·처리량. */}
+          {shopTuning && (
+            <div className="mb-3 kt-card p-3">
+              <div className="mb-2 flex flex-wrap items-center gap-2">
+                <span className="flex items-center gap-1.5 text-[11px] font-bold"><ShoppingBag size={13} className="text-[var(--accent)]" /> 샵(제품) 수집 설정</span>
+                <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[9px] font-bold text-emerald-700">env 불필요 · 즉시 적용</span>
+                <button onClick={saveShopTuning} className="kt-btn kt-btn-primary ml-auto px-3 py-1.5 text-[11px]">저장 (즉시 적용)</button>
+              </div>
+              {/* 국가 순차: 원하는 나라만 켜기(US만 → US·TH → US·TH·VN). 즉시 저장. */}
+              <div className="mb-2">
+                <span className="mb-1 block text-[10px] font-semibold text-[var(--muted)]">수집 국가 <span className="font-normal">· 미국만 켜면 미국부터, 태국 추가하면 태국까지 (순차 권장)</span></span>
+                <div className="flex flex-wrap gap-1.5">
+                  {shopAllowed.map((cc) => {
+                    const on = shopCountries.includes(cc);
+                    const isUS = cc === "US";
+                    return (
+                      <button key={cc} type="button" disabled={isUS && on}
+                        onClick={() => saveShopCountries(on ? shopCountries.filter((x) => x !== cc) : [...shopCountries, cc])}
+                        className={`rounded-full border px-2.5 py-1 text-[11px] font-semibold ${on ? "border-[var(--accent)] bg-[var(--accent)] text-white" : "border-[var(--border)] text-[var(--muted)] hover:border-[var(--accent)]"} ${isUS && on ? "cursor-default opacity-90" : ""}`}>
+                        {cc}{isUS ? " · 기본" : ""}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
+                {([
+                  ["maxItems", "브랜드당 개수", "예: 200"],
+                  ["maxBrands", "브랜드 시작/회", "사이클당 킥 (예: 40)"],
+                  ["maxRunning", "동시 처리 상한", "Apify 동시성 이하 (예: 60)"],
+                  ["maxPoll", "적재/회(≤25)", "한 번에 회수할 run"],
+                  ["retryDays", "재수집 대기(일)", "완료 후 재크롤 간격"],
+                ] as const).map(([key, label, hint]) => (
+                  <label key={key} className="block">
+                    <span className="block text-[10px] font-semibold text-[var(--muted)]">{label}</span>
+                    <input type="number" min={1} value={shopTuning[key]}
+                      onChange={(e) => setShopTuning((t) => t ? { ...t, [key]: Number(e.target.value) } : t)}
+                      className="mt-0.5 w-full rounded-md border border-[var(--border)] px-2 py-1.5 text-[12px]" />
+                    <span className="mt-0.5 block text-[9px] text-[var(--muted)]">{hint}</span>
+                  </label>
+                ))}
+              </div>
+              <p className="mt-2 text-[10px] text-amber-600">⚠️ 국가·개수를 늘리면 Apify 비용↑(브랜드당 개수 × 브랜드수 × 국가수). 미국·200개부터 시작 권장. 국가는 하나씩 추가하면 그 나라부터 순차 수집됩니다.</p>
             </div>
           )}
           {/* 수집 지역 — 동남아 4개국 크롤링 켜기(지역 프록시 타게팅). US는 항상 포함. */}

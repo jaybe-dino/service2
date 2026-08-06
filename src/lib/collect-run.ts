@@ -63,6 +63,49 @@ export async function getCollectTuning(): Promise<CollectTuning> {
     };
   } catch { return DEFAULT_TUNING; }
 }
+
+// ── 샵(제품) 수집 강도/국가 — admin_settings 우선(어드민 UI에서 즉시 조정, 재배포 불필요), env 폴백 ──
+export interface ShopTuning {
+  maxItems: number;   // 브랜드당 상품 확보량
+  maxBrands: number;  // 사이클당 킥 브랜드 수
+  maxRunning: number; // 동시 처리 상한(백프레셔)
+  maxPoll: number;    // 사이클당 완료분 회수
+  retryDays: number;  // 완료/실패 후 재크롤 대기(일)
+}
+export const DEFAULT_SHOP_TUNING: ShopTuning = {
+  maxItems: Number(process.env.SHOP_MAX_ITEMS ?? 200),
+  maxBrands: Number(process.env.SHOP_MAX_BRANDS ?? 8),
+  maxRunning: Number(process.env.SHOP_MAX_RUNNING ?? 40),
+  maxPoll: Number(process.env.SHOP_MAX_POLL ?? 12),
+  retryDays: Number(process.env.SHOP_RETRY_DAYS ?? 3),
+};
+export async function getShopTuning(): Promise<ShopTuning> {
+  try {
+    const r = await sql`SELECT value FROM admin_settings WHERE key='shop_tuning' LIMIT 1`;
+    const v = (r.rows[0]?.value ?? {}) as Partial<ShopTuning>;
+    return {
+      maxItems: clampPos(v.maxItems, DEFAULT_SHOP_TUNING.maxItems, 3000),
+      maxBrands: clampPos(v.maxBrands, DEFAULT_SHOP_TUNING.maxBrands, 200),
+      maxRunning: clampPos(v.maxRunning, DEFAULT_SHOP_TUNING.maxRunning, 200),
+      maxPoll: clampPos(v.maxPoll, DEFAULT_SHOP_TUNING.maxPoll, 25),
+      retryDays: clampPos(v.retryDays, DEFAULT_SHOP_TUNING.retryDays, 30),
+    };
+  } catch { return DEFAULT_SHOP_TUNING; }
+}
+// 샵 수집 국가 — admin_settings(shop_countries) 우선, env(SHOP_COUNTRIES) 폴백, 기본 US.
+export async function getShopCountries(): Promise<string[]> {
+  const parse = (s: string) => s.split(",").map((x) => x.trim().toUpperCase()).filter(Boolean);
+  try {
+    const r = await sql`SELECT value FROM admin_settings WHERE key='shop_countries' LIMIT 1`;
+    const v = r.rows[0]?.value as { countries?: unknown } | unknown[] | undefined;
+    const arr = Array.isArray(v) ? v : ((v as { countries?: unknown })?.countries ?? []);
+    const list = (Array.isArray(arr) ? arr : []).map((x) => String(x).toUpperCase()).filter(Boolean);
+    if (list.length) return Array.from(new Set(list));
+  } catch { /* 폴백 */ }
+  const envList = parse(process.env.SHOP_COUNTRIES || "US");
+  return envList.length ? Array.from(new Set(envList)) : ["US"];
+}
+
 const BACKFILL_DAYS = Number(process.env.COLLECT_BACKFILL_DAYS ?? 365); // 신규 1차학습 기간
 const REFRESH_SINCE_DAYS = 30; // 증분 수집 기간
 
@@ -318,7 +361,7 @@ export async function deepCollectBrand(opts: {
   if (scope !== "video" && shopConfigured()) {
     for (const cc of countries) {
       try {
-        const runId = await startShopRun(brand, webhook, cc);
+        const runId = await startShopRun(brand, webhook, cc, limit); // 심층: 지정 limit(대량)
         if (runId) {
           await sql`INSERT INTO collect_jobs (run_id, brand_name, kind, region) VALUES (${runId}, ${brand}, 'shop', ${cc}) ON CONFLICT (run_id) DO NOTHING`;
           shopKicked += 1;
@@ -505,15 +548,17 @@ export async function runShopCollection(opts: { maxShop?: number; baseUrl?: stri
   await ensureSchema();
   if (!shopConfigured()) return { configured: false, mode: "skipped", polledDone: 0, ingested: 0, kicked: 0, reason: "SHOP_ACTOR 미설정" };
   const webhook = ingestWebhook(opts.baseUrl);
-  const maxShop = opts.maxShop ?? Math.max(1, Number(process.env.SHOP_MAX_BRANDS ?? 8));
-  // 다국가: SHOP_COUNTRIES(콤마) 순회. 미설정 시 US 단일.
-  const countries = (process.env.SHOP_COUNTRIES || "US")
-    .split(",").map((s) => s.trim().toUpperCase()).filter(Boolean);
+  // 강도/국가: admin_settings(어드민 UI) 우선 → env 폴백. 재배포 없이 즉시 반영.
+  const shopTuning = await getShopTuning();
+  const maxShop = opts.maxShop ?? Math.max(1, shopTuning.maxBrands);
+  // 다국가: 어드민 설정(shop_countries) 우선, 없으면 SHOP_COUNTRIES env. 미설정 시 US.
+  const countries = await getShopCountries();
   // 폴링 상한(60초 내 완료되게 고정) + 백프레셔 상한(running이 이보다 많으면 킥 중단).
-  const maxPoll = Math.max(6, Math.min(25, Number(process.env.SHOP_MAX_POLL ?? 12)));
-  const maxRunning = Math.max(10, Number(process.env.SHOP_MAX_RUNNING ?? 40));
+  const maxPoll = Math.max(6, Math.min(25, shopTuning.maxPoll));
+  const maxRunning = Math.max(10, shopTuning.maxRunning);
   // 완료 후 재시도 대기(일): 이 기간엔 재킥 안 함 → 매 호출 새 브랜드로 전진(무한 재시도 방지).
-  const retryDays = Math.max(1, Number(process.env.SHOP_RETRY_DAYS ?? 3));
+  const retryDays = Math.max(1, shopTuning.retryDays);
+  const maxItems = shopTuning.maxItems; // 브랜드당 상품 확보량 → startShopRun에 전달
   // 스톨 잡 타임아웃(분): running으로 이 시간 넘게 방치된 잡은 실패 처리 → 백프레셔 데드락 해소.
   const staleMin = Math.max(20, Number(process.env.SHOP_JOB_TIMEOUT_MIN ?? 90));
 
@@ -571,7 +616,7 @@ export async function runShopCollection(opts: { maxShop?: number; baseUrl?: stri
         if (kicked >= maxShop) break;
         if (runningSet.has(`${b.brand_name}|${cc}`)) continue;
         try {
-          const runId = await startShopRun(b.brand_name, webhook, cc);
+          const runId = await startShopRun(b.brand_name, webhook, cc, maxItems);
           if (runId) {
             await sql`INSERT INTO collect_jobs (run_id, brand_name, kind, region) VALUES (${runId}, ${b.brand_name}, 'shop', ${cc}) ON CONFLICT (run_id) DO NOTHING`;
             await sql`INSERT INTO collection_runs (kind, target, status) VALUES ('kick_shop', ${`${b.brand_name}·${cc}`}, 'started')`;
