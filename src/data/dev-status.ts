@@ -47,7 +47,7 @@ export const DEV_STATUS: DocSection[] = [
       { h: "결제", d: "NICEPAY_CLIENT_KEY · NICEPAY_SECRET_KEY · NICEPAY_API_BASE · NICEPAY_WEBHOOK_SECRET · PAY_TEST_TOKEN" },
       { h: "수집", d: "SCRAPER_API_KEY · APIFY_ACTOR · SHOP_ACTOR · SHOP_COUNTRIES · COLLECT_* · CRON_SECRET · INGEST_SECRET" },
       { h: "연동/파일", d: "ADMIN_INGEST_URL · ADMIN_INGEST_SECRET · FILE_API_TOKEN" },
-      { h: "결제심사", d: "NEXT_PUBLIC_PAY_FULL=1 (설정 시 연간·6개월·Guarantee 복원 / 미설정 시 3개월 이하만=심사 대응)" },
+      { h: "결제", d: "롤백 완료 — 기본 전체 결제(연간·6개월·Guarantee 노출, /plans). 다시 심사모드(3개월 이하만·/plans2)가 필요하면 NEXT_PUBLIC_PAY_REVIEW=1" },
       { h: "분석/공개", d: "NEXT_PUBLIC_META_PIXEL_ID · NEXT_PUBLIC_SITE_URL · NEXT_PUBLIC_GLOVEK_DECK_URL 등" },
     ],
   },
