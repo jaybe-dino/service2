@@ -154,6 +154,12 @@ export default function AdminPage() {
   const [shopTestCountry, setShopTestCountry] = useState("US");
   const [shopTestResult, setShopTestResult] = useState<Record<string, unknown> | null>(null);
   const [shopTestBusy, setShopTestBusy] = useState(false);
+  const [collectLog, setCollectLog] = useState<{
+    summary: { totalProducts: number; totalImage: number; imagePct: number };
+    byCountry: { country: string; products: number; with_image: number; with_commission: number; last_collected: string | null }[];
+    shopJobs: Record<string, number>;
+    runs: { id: number; kind: string; target: string | null; status: string; collected: number; error: string | null; created_at: string }[];
+  } | null>(null);
   const [regions, setRegions] = useState<string[] | null>(null);
   const [regionOpts, setRegionOpts] = useState<{ id: string; nameKo: string; flag: string }[]>([]);
   const loadedTabs = useRef<Set<string>>(new Set());
@@ -208,6 +214,11 @@ export default function AdminPage() {
     if (g?.ok) { setRegions(g.regions); setRegionOpts(g.options ?? []); }
     const s = await fetch("/api/admin/shop-tuning", { cache: "no-store" }).then((x) => x.json()).catch(() => null);
     if (s?.ok) { setShopTuning(s.tuning); setShopCountries(s.countries ?? ["US"]); if (Array.isArray(s.allowed)) setShopAllowed(s.allowed); }
+    loadCollectLog();
+  };
+  const loadCollectLog = async () => {
+    const l = await fetch("/api/admin/collect-log", { cache: "no-store" }).then((x) => x.json()).catch(() => null);
+    if (l?.ok) setCollectLog(l);
   };
   const saveShopTuning = async () => {
     if (!shopTuning) return;
@@ -222,6 +233,7 @@ export default function AdminPage() {
       const r = await fetch("/api/admin/shop-test", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ brand: shopTestBrand.trim(), country: shopTestCountry, maxItems: 5, ingest }) });
       const d = await r.json();
       setShopTestResult(d);
+      if (ingest) loadCollectLog();
       setToast(d?.ok ? `테스트 완료: ${d?.diagnostics?.verdict ?? ""}` : (d?.error ?? "실패"));
     } catch (e) { setShopTestResult({ ok: false, error: String((e as Error).message || e) }); }
     finally { setShopTestBusy(false); }
@@ -564,7 +576,7 @@ export default function AdminPage() {
       setDebugLog((L) => [`[${tnow}] 샵수집 → HTTP ${r.status}: ${text.slice(0, 400)}`, ...L].slice(0, 20));
       setToast(`샵 수집 실행 (HTTP ${r.status})`);
       setTimeout(() => setToast(""), 4000);
-      loadData();
+      loadData(); loadCollectLog();
     } catch (e) {
       setCollecting(false);
       setDebugLog((L) => [`[${tnow}] 샵수집 오류: ${String(e).slice(0, 200)}`, ...L].slice(0, 20));
@@ -1166,6 +1178,71 @@ export default function AdminPage() {
                 ) : (
                   <span className="text-rose-600">❌ {String((shopTestResult as { error?: string }).error ?? "실패")}</span>
                 )}
+              </div>
+            )}
+          </div>
+          {/* 수집·적재 결과 로그 — 제품/이미지 적재 현황(국가별) + 최근 실행 이력 */}
+          <div className="mb-3 kt-card p-3">
+            <div className="mb-2 flex flex-wrap items-center gap-2">
+              <span className="flex items-center gap-1.5 text-[11px] font-bold"><Database size={13} className="text-[var(--accent)]" /> 수집·적재 결과 로그</span>
+              <button onClick={loadCollectLog} className="rounded-md border border-[var(--border)] px-2 py-1 text-[10px] font-semibold text-[var(--accent)]">↻ 새로고침</button>
+              {collectLog && (
+                <span className="ml-auto text-[11px] font-bold">
+                  총 제품 {collectLog.summary.totalProducts.toLocaleString()} · <span className={collectLog.summary.imagePct === 0 ? "text-rose-600" : "text-emerald-600"}>이미지 {collectLog.summary.totalImage.toLocaleString()}건 ({collectLog.summary.imagePct}%)</span>
+                </span>
+              )}
+            </div>
+            {!collectLog ? (
+              <p className="py-2 text-[11px] text-[var(--muted)]">불러오는 중… (없으면 ↻ 새로고침)</p>
+            ) : (
+              <div className="space-y-2">
+                {/* 국가별 적재 현황 */}
+                <div className="overflow-x-auto rounded-lg border border-[var(--border)]">
+                  <table className="w-full text-left text-[11px]">
+                    <thead className="bg-slate-50 text-[10px] text-[var(--muted)]"><tr><th className="p-2">국가</th><th className="p-2 text-right">제품</th><th className="p-2 text-right">이미지</th><th className="p-2 text-right">커미션</th><th className="p-2 text-right">최근 적재</th></tr></thead>
+                    <tbody>
+                      {collectLog.byCountry.map((c) => (
+                        <tr key={c.country} className="border-t border-slate-100">
+                          <td className="p-2 font-bold">{c.country}</td>
+                          <td className="p-2 text-right">{Number(c.products).toLocaleString()}</td>
+                          <td className={`p-2 text-right font-semibold ${Number(c.with_image) === 0 ? "text-rose-500" : "text-emerald-600"}`}>{Number(c.with_image).toLocaleString()}</td>
+                          <td className="p-2 text-right">{Number(c.with_commission).toLocaleString()}</td>
+                          <td className="p-2 text-right text-[var(--muted)]">{c.last_collected ? dt(c.last_collected) : "—"}</td>
+                        </tr>
+                      ))}
+                      {collectLog.byCountry.length === 0 && <tr><td colSpan={5} className="p-3 text-center text-[var(--muted)]">적재된 제품이 없습니다.</td></tr>}
+                    </tbody>
+                  </table>
+                </div>
+                {/* 샵 잡 상태 */}
+                <div className="flex flex-wrap gap-2 text-[10px]">
+                  <span className="font-semibold text-[var(--muted)]">샵 잡:</span>
+                  {Object.entries(collectLog.shopJobs).length === 0 ? <span className="text-[var(--muted)]">없음</span> :
+                    Object.entries(collectLog.shopJobs).map(([s, n]) => (
+                      <span key={s} className={`rounded-full px-2 py-0.5 font-semibold ${s === "done" ? "bg-emerald-100 text-emerald-700" : s === "failed" ? "bg-rose-100 text-rose-600" : "bg-amber-100 text-amber-700"}`}>{s} {n}</span>
+                    ))}
+                </div>
+                {/* 최근 실행 이력 */}
+                <details open>
+                  <summary className="cursor-pointer text-[10px] font-semibold text-[var(--muted)]">최근 실행 이력 ({collectLog.runs.length})</summary>
+                  <div className="mt-1 max-h-64 overflow-y-auto rounded-lg border border-[var(--border)]">
+                    <table className="w-full text-left text-[10px]">
+                      <thead className="sticky top-0 bg-slate-50 text-[9px] text-[var(--muted)]"><tr><th className="p-1.5">시각</th><th className="p-1.5">종류</th><th className="p-1.5">대상</th><th className="p-1.5">상태</th><th className="p-1.5 text-right">건수</th><th className="p-1.5">에러</th></tr></thead>
+                      <tbody>
+                        {collectLog.runs.map((r) => (
+                          <tr key={r.id} className="border-t border-slate-100">
+                            <td className="p-1.5 whitespace-nowrap text-[var(--muted)]">{dt(r.created_at)}</td>
+                            <td className="p-1.5 whitespace-nowrap font-semibold">{r.kind}</td>
+                            <td className="p-1.5 max-w-[140px] truncate">{r.target ?? "—"}</td>
+                            <td className={`p-1.5 whitespace-nowrap font-semibold ${r.status === "ok" || r.status === "started" || r.status === "done" ? "text-emerald-600" : r.status === "error" ? "text-rose-500" : "text-amber-600"}`}>{r.status}</td>
+                            <td className="p-1.5 text-right">{r.collected || ""}</td>
+                            <td className="p-1.5 max-w-[200px] truncate text-rose-500" title={r.error ?? ""}>{r.error ?? ""}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </details>
               </div>
             )}
           </div>
