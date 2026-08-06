@@ -353,6 +353,44 @@ function normalizeActor(raw: string): string {
   return a.replace(/\//g, "~");       // username/name → username~name
 }
 
+// 샵 actor 입력 빌더 — SHOP_ACTOR_INPUT 오버라이드(권장) 또는 키 슈퍼셋(actor 스키마 몰라도 동작).
+function buildShopInput(brandName: string, cc: string, maxItems: number): Record<string, unknown> {
+  if (process.env.SHOP_ACTOR_INPUT) {
+    try {
+      return JSON.parse(
+        process.env.SHOP_ACTOR_INPUT
+          .replace(/\{\{\s*keyword\s*\}\}/g, brandName)
+          .replace(/\{\{\s*country\s*\}\}/g, cc),
+      );
+    } catch { return { keyword: brandName }; }
+  }
+  return {
+    keyword: brandName, search: brandName, query: brandName,
+    keywords: [brandName], searchQueries: [brandName],
+    maxItems, maxResults: maxItems, resultsLimit: maxItems, limit: maxItems,
+    count: maxItems, maxProducts: maxItems, maxProductsPerSearch: maxItems, resultsPerPage: maxItems,
+    ...(cc ? { country: cc, region: cc, market: cc } : {}),
+    ...(cc && cc !== "US" ? { proxyConfiguration: { useApifyProxy: true, apifyProxyCountry: cc } } : {}),
+  };
+}
+
+// 동기 테스트 실행 — run-sync-get-dataset-items로 즉시 결과 반환(정밀 진단용, 소량).
+// 반환: { rawItems, mapped } — actor 원본과 우리 매핑 결과를 나란히 확인(이미지 추출 여부 등).
+export async function runShopSync(brandName: string, country?: string, maxItems = 5): Promise<{ rawItems: Record<string, unknown>[]; mapped: ShopProduct[]; actor: string; input: Record<string, unknown> }> {
+  if (!shopConfigured()) throw new Error("SHOP_ACTOR/SCRAPER_API_KEY 미설정");
+  const token = process.env.SCRAPER_API_KEY!;
+  const actor = normalizeActor(process.env.SHOP_ACTOR!);
+  const cc = (country || process.env.SHOP_COUNTRY || "US").toUpperCase();
+  const input = buildShopInput(brandName, cc, maxItems);
+  const res = await fetch(`https://api.apify.com/v2/acts/${actor}/run-sync-get-dataset-items?token=${token}&clean=true`, {
+    method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(input),
+  });
+  if (!res.ok) throw new Error(`apify shop sync ${res.status} (actor=${actor}): ${(await res.text()).slice(0, 200)}`);
+  const rawItems = (await res.json()) as Record<string, unknown>[];
+  const mapped = mapShopItems(Array.isArray(rawItems) ? rawItems : [], brandName);
+  return { rawItems: Array.isArray(rawItems) ? rawItems.slice(0, 5) : [], mapped, actor, input };
+}
+
 export async function startShopRun(brandName: string, webhookUrl?: string, country?: string, maxItemsOverride?: number): Promise<string> {
   if (!shopConfigured()) throw new Error("SHOP_ACTOR/SCRAPER_API_KEY 미설정");
   const token = process.env.SCRAPER_API_KEY!;
@@ -367,33 +405,8 @@ export async function startShopRun(brandName: string, webhookUrl?: string, count
     }];
     qs += `&webhooks=${encodeURIComponent(Buffer.from(JSON.stringify(webhooks)).toString("base64"))}`;
   }
-  // 검색 입력은 actor마다 키가 달라서(가장 흔한 실패 원인) 일반 키 '슈퍼셋'을 전달한다.
-  // 특정 actor 스키마에 정확히 맞추려면 SHOP_ACTOR_INPUT(JSON, {{keyword}}/{{country}} 치환)으로 완전 오버라이드.
   const maxItems = maxItemsOverride ?? Number(process.env.SHOP_MAX_ITEMS ?? 200); // 브랜드당 상품 확보량(어드민 설정 우선)
-  let body: Record<string, unknown>;
-  if (process.env.SHOP_ACTOR_INPUT) {
-    try {
-      body = JSON.parse(
-        process.env.SHOP_ACTOR_INPUT
-          .replace(/\{\{\s*keyword\s*\}\}/g, brandName)
-          .replace(/\{\{\s*country\s*\}\}/g, cc),
-      );
-    } catch {
-      body = { keyword: brandName };
-    }
-  } else {
-    body = {
-      // 검색어 계열 (actor별로 하나만 사용됨, 나머지는 무시)
-      keyword: brandName, search: brandName, query: brandName,
-      keywords: [brandName], searchQueries: [brandName],
-      // 결과 수 상한 계열 (actor마다 키가 달라 슈퍼셋으로 전달 — 미사용 키는 무시됨)
-      maxItems, maxResults: maxItems, resultsLimit: maxItems, limit: maxItems,
-      count: maxItems, maxProducts: maxItems, maxProductsPerSearch: maxItems, resultsPerPage: maxItems,
-      // 지역 — actor 입력 키 계열 + 프록시 지역 타게팅(비US일 때).
-      ...(cc ? { country: cc, region: cc, market: cc } : {}),
-      ...(cc && cc !== "US" ? { proxyConfiguration: { useApifyProxy: true, apifyProxyCountry: cc } } : {}),
-    };
-  }
+  const body = buildShopInput(brandName, cc, maxItems);
   const res = await fetch(`https://api.apify.com/v2/acts/${actor}/runs${qs}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },

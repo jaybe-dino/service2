@@ -150,6 +150,10 @@ export default function AdminPage() {
   const [shopTuning, setShopTuning] = useState<{ maxItems: number; maxBrands: number; maxRunning: number; maxPoll: number; retryDays: number } | null>(null);
   const [shopCountries, setShopCountries] = useState<string[]>([]);
   const [shopAllowed, setShopAllowed] = useState<string[]>(["US", "TH", "VN", "MY", "SG", "ID", "PH", "GB", "JP"]);
+  const [shopTestBrand, setShopTestBrand] = useState("");
+  const [shopTestCountry, setShopTestCountry] = useState("US");
+  const [shopTestResult, setShopTestResult] = useState<Record<string, unknown> | null>(null);
+  const [shopTestBusy, setShopTestBusy] = useState(false);
   const [regions, setRegions] = useState<string[] | null>(null);
   const [regionOpts, setRegionOpts] = useState<{ id: string; nameKo: string; flag: string }[]>([]);
   const loadedTabs = useRef<Set<string>>(new Set());
@@ -210,6 +214,17 @@ export default function AdminPage() {
     const r = await fetch("/api/admin/shop-tuning", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ tuning: shopTuning }) });
     const d = await r.json().catch(() => ({}));
     if (r.ok && d.ok) { setShopTuning(d.tuning); setToast("샵 수집 설정 저장됨 (즉시 적용)"); } else setToast(d.error ?? "저장 실패");
+  };
+  const runShopTest = async (ingest: boolean) => {
+    if (!shopTestBrand.trim()) { setToast("브랜드명을 입력하세요"); return; }
+    setShopTestBusy(true); setShopTestResult(null);
+    try {
+      const r = await fetch("/api/admin/shop-test", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ brand: shopTestBrand.trim(), country: shopTestCountry, maxItems: 5, ingest }) });
+      const d = await r.json();
+      setShopTestResult(d);
+      setToast(d?.ok ? `테스트 완료: ${d?.diagnostics?.verdict ?? ""}` : (d?.error ?? "실패"));
+    } catch (e) { setShopTestResult({ ok: false, error: String((e as Error).message || e) }); }
+    finally { setShopTestBusy(false); }
   };
   const saveShopCountries = async (next: string[]) => {
     const final = next.length ? next : ["US"];
@@ -1107,6 +1122,53 @@ export default function AdminPage() {
               <p className="mt-2 text-[10px] text-amber-600">⚠️ 국가·개수를 늘리면 Apify 비용↑(브랜드당 개수 × 브랜드수 × 국가수). 미국·200개부터 시작 권장. 국가는 하나씩 추가하면 그 나라부터 순차 수집됩니다.</p>
             </div>
           )}
+          {/* 샵 정밀 테스트 — 브랜드 1개 즉시(동기) 크롤 → actor 원본 + 매핑(이미지/커미션/판매) 확인 */}
+          <div className="mb-3 kt-card p-3">
+            <div className="mb-2 flex flex-wrap items-center gap-2">
+              <span className="flex items-center gap-1.5 text-[11px] font-bold">🔬 샵 정밀 테스트 <span className="font-normal text-[var(--muted)]">· 1개 브랜드 즉시 크롤 → 이미지·커미션·판매 확인</span></span>
+            </div>
+            <div className="flex flex-wrap items-end gap-2">
+              <label className="block">
+                <span className="block text-[10px] font-semibold text-[var(--muted)]">브랜드명</span>
+                <input value={shopTestBrand} onChange={(e) => setShopTestBrand(e.target.value)} onKeyDown={(e) => e.key === "Enter" && runShopTest(false)}
+                  placeholder="예: Laka" className="mt-0.5 w-40 rounded-md border border-[var(--border)] px-2 py-1.5 text-[12px]" />
+              </label>
+              <label className="block">
+                <span className="block text-[10px] font-semibold text-[var(--muted)]">국가</span>
+                <select value={shopTestCountry} onChange={(e) => setShopTestCountry(e.target.value)} className="mt-0.5 rounded-md border border-[var(--border)] px-2 py-1.5 text-[12px]">
+                  {shopAllowed.map((cc) => <option key={cc} value={cc}>{cc}</option>)}
+                </select>
+              </label>
+              <button onClick={() => runShopTest(false)} disabled={shopTestBusy} className="kt-btn kt-btn-outline px-3 py-2 text-[11px] disabled:opacity-50">{shopTestBusy ? "크롤 중…" : "🔍 테스트 조회(적재 안 함)"}</button>
+              <button onClick={() => runShopTest(true)} disabled={shopTestBusy} className="kt-btn kt-btn-primary px-3 py-2 text-[11px] disabled:opacity-50">💾 테스트 + DB 적재</button>
+            </div>
+            {shopTestResult && (
+              <div className="mt-2 rounded-lg border border-[var(--border)] bg-slate-50 p-2.5 text-[11px]">
+                {shopTestResult.ok ? (
+                  <>
+                    <div className="flex flex-wrap gap-3 font-bold">
+                      <span>결과 {String((shopTestResult as { count?: number }).count ?? 0)}건</span>
+                      <span className={`${(shopTestResult as { diagnostics?: { imageOk?: string } }).diagnostics?.imageOk?.startsWith("0/") ? "text-rose-600" : "text-emerald-600"}`}>이미지 {(shopTestResult as { diagnostics?: { imageOk?: string } }).diagnostics?.imageOk}</span>
+                      <span>판매 {(shopTestResult as { diagnostics?: { soldOk?: string } }).diagnostics?.soldOk}</span>
+                      <span>커미션 {(shopTestResult as { diagnostics?: { commissionOk?: string } }).diagnostics?.commissionOk}</span>
+                      {typeof (shopTestResult as { ingested?: number }).ingested === "number" && (shopTestResult as { ingested?: number }).ingested! > 0 && <span className="text-[var(--accent)]">DB 적재 {(shopTestResult as { ingested?: number }).ingested}건</span>}
+                    </div>
+                    <div className="mt-1 text-[var(--accent)]">→ {(shopTestResult as { diagnostics?: { verdict?: string } }).diagnostics?.verdict}</div>
+                    <div className="mt-1.5 text-[10px] text-[var(--muted)]">actor: {String((shopTestResult as { actor?: string }).actor ?? "")}</div>
+                    <details className="mt-1.5"><summary className="cursor-pointer text-[10px] font-semibold text-[var(--muted)]">매핑 결과 5건 (id·title·price·sold·commission·image)</summary>
+                      <pre className="mt-1 max-h-48 overflow-auto rounded bg-white p-2 text-[10px] leading-tight">{JSON.stringify((shopTestResult as { mappedSample?: unknown }).mappedSample, null, 1)}</pre>
+                    </details>
+                    <details className="mt-1"><summary className="cursor-pointer text-[10px] font-semibold text-[var(--muted)]">actor 원본 필드명 + 1건 원본</summary>
+                      <div className="mt-1 text-[10px]">필드: {((shopTestResult as { rawKeys?: string[] }).rawKeys ?? []).join(", ")}</div>
+                      <pre className="mt-1 max-h-48 overflow-auto rounded bg-white p-2 text-[10px] leading-tight">{JSON.stringify((shopTestResult as { rawFirst?: unknown }).rawFirst, null, 1)}</pre>
+                    </details>
+                  </>
+                ) : (
+                  <span className="text-rose-600">❌ {String((shopTestResult as { error?: string }).error ?? "실패")}</span>
+                )}
+              </div>
+            )}
+          </div>
           {/* 수집 지역 — 동남아 4개국 크롤링 켜기(지역 프록시 타게팅). US는 항상 포함. */}
           {regions && (
             <div className="mb-3 kt-card p-3">
