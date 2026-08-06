@@ -302,7 +302,7 @@ export function mapShopItems(items: Array<Record<string, unknown>>, brandFallbac
         const t = deepFind(o, (k, v) => /title|name|desc/i.test(k) && !NOT_TITLE.test(k) && typeof v === "string" && v.trim().length >= 3);
         if (t) title = String(t);
       }
-      let price = numOr(pick(o, ["price", "salePrice", "sale_price", "priceVal", "minPrice", "min_price", "priceInfo.price", "price.amount", "originalPrice", "lowestPrice"]));
+      let price = numOr(pick(o, ["currentPrice", "price", "salePrice", "sale_price", "priceVal", "minPrice", "min_price", "priceInfo.price", "price.amount", "originalPrice", "lowestPrice"]));
       if (price == null || price <= 0) {
         const p = deepFind(o, (k, v) => /price|amount|(^|_)cost/i.test(k) && numOr(v) != null && (numOr(v) as number) > 0);
         if (p != null) price = numOr(p);
@@ -318,12 +318,14 @@ export function mapShopItems(items: Array<Record<string, unknown>>, brandFallbac
         if (c != null) commissionRate = parseCommission(c);
       }
 
-      // 썸네일: 명시 키 → 폴백(키 이름에 image/cover/thumb + http(s) 문자열). 배열이면 첫 요소.
-      let image = String(pick(o, ["image", "imageUrl", "image_url", "cover", "coverUrl", "thumbnail", "thumb", "mainImage", "main_image", "picture", "img"]) ?? "");
+      // 썸네일: 명시 키(imageUrl/imageUrls 포함) → 폴백 딥서치. imageUrls는 " | "로 여러 장 → 첫 장.
+      let image = String(pick(o, ["image", "imageUrl", "imageUrls", "image_url", "cover", "coverUrl", "thumbnail", "thumb", "mainImage", "main_image", "picture", "img"]) ?? "");
       if (!image) {
         const found = deepFind(o, (k, v) => /image|cover|thumb|photo|picture|img/i.test(k) && ((typeof v === "string" && /^https?:\/\//.test(v)) || (Array.isArray(v) && typeof v[0] === "string" && /^https?:\/\//.test(v[0]))));
         if (found) image = Array.isArray(found) ? String(found[0]) : String(found);
       }
+      if (image.includes("|")) image = image.split("|")[0]; // 다중 이미지 → 첫 장
+      image = image.trim();
       if (image && !/^https?:\/\//.test(image)) image = "";
 
       return {
