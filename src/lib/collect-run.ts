@@ -559,6 +559,9 @@ export async function runShopCollection(opts: { maxShop?: number; baseUrl?: stri
   // 완료 후 재시도 대기(일): 이 기간엔 재킥 안 함 → 매 호출 새 브랜드로 전진(무한 재시도 방지).
   const retryDays = Math.max(1, shopTuning.retryDays);
   const maxItems = shopTuning.maxItems; // 브랜드당 상품 확보량 → startShopRun에 전달
+  // 실패 잡 재시도 쿨다운(분): 'done'은 retryDays 대기하지만 'failed'는 짧게 재시도 →
+  // Apify 한도/일시장애로 대량 실패해도 복구 후 자동 재개(3일 스톨 방지).
+  const failCooldownMin = Math.max(5, Number(process.env.SHOP_FAIL_COOLDOWN_MIN ?? 30));
   // 스톨 잡 타임아웃(분): running으로 이 시간 넘게 방치된 잡은 실패 처리 → 백프레셔 데드락 해소.
   const staleMin = Math.max(20, Number(process.env.SHOP_JOB_TIMEOUT_MIN ?? 90));
 
@@ -586,8 +589,11 @@ export async function runShopCollection(opts: { maxShop?: number; baseUrl?: stri
        AND bs.brand_name NOT IN (SELECT value FROM blocklist WHERE kind='brand')
        AND NOT EXISTS (SELECT 1 FROM products p WHERE lower(p.brand_name)=lower(bs.brand_name) AND upper(coalesce(p.country,'US'))=cc)
        AND NOT EXISTS (SELECT 1 FROM collect_jobs cj WHERE cj.kind='shop' AND lower(cj.brand_name)=lower(bs.brand_name)
-                         AND upper(coalesce(cj.region,'US'))=cc AND cj.status IN ('done','failed') AND cj.updated_at > now() - make_interval(days => $2))`,
-    [countries, retryDays],
+                         AND upper(coalesce(cj.region,'US'))=cc AND (
+                           (cj.status='done' AND cj.updated_at > now() - make_interval(days => $2)) OR
+                           (cj.status='failed' AND cj.updated_at > now() - make_interval(mins => $3))
+                         ))`,
+    [countries, retryDays, failCooldownMin],
   );
   const remaining = rem.rows[0]?.n ?? 0;
 
@@ -608,7 +614,10 @@ export async function runShopCollection(opts: { maxShop?: number; baseUrl?: stri
           AND NOT EXISTS (SELECT 1 FROM collect_jobs cj WHERE cj.kind='shop' AND lower(cj.brand_name)=lower(bs.brand_name)
                             AND upper(coalesce(cj.region,'US'))=${cc} AND cj.status='running')
           AND NOT EXISTS (SELECT 1 FROM collect_jobs cj WHERE cj.kind='shop' AND lower(cj.brand_name)=lower(bs.brand_name)
-                            AND upper(coalesce(cj.region,'US'))=${cc} AND cj.status IN ('done','failed') AND cj.updated_at > now() - make_interval(days => ${retryDays}))
+                            AND upper(coalesce(cj.region,'US'))=${cc} AND (
+                              (cj.status='done' AND cj.updated_at > now() - make_interval(days => ${retryDays})) OR
+                              (cj.status='failed' AND cj.updated_at > now() - make_interval(mins => ${failCooldownMin}))
+                            ))
         ORDER BY bs.total_views DESC NULLS LAST
         LIMIT ${perCountry}`;
       dueCount += due.rows.length;
