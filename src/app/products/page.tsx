@@ -17,7 +17,7 @@ const CAT_IDS: CategoryId[] = ["skincare", "makeup", "haircare", "body", "inner"
 interface Product {
   id: string; brand: string; title: string;
   price: number; currency: string; sold: number; gmv: number;
-  commission: number | null; url: string; country?: string;
+  commission: number | null; url: string; country?: string; image?: string;
   category?: CategoryId; growth?: number | null; growthPct?: number | null;
 }
 interface Summary { count: number; totalGmv: number; totalSold: number; avgPrice: number }
@@ -197,13 +197,18 @@ export default function ProductsPage() {
                     <td className="p-2.5 pl-3">
                       <span className={`grid h-6 w-6 place-items-center rounded-full text-[11px] font-black ${i === 0 ? "bg-amber-400 text-white" : i === 1 ? "bg-slate-300 text-white" : i === 2 ? "bg-amber-700 text-white" : "text-slate-400"}`}>{i + 1}</span>
                     </td>
-                    <td className="max-w-[300px] p-2.5">
-                      <Link href={`/product/${encodeURIComponent(p.id)}`} className="block truncate font-semibold group-hover:text-[var(--accent)]">
-                        {p.title || <span className="text-slate-300">(제목 없음)</span>}
-                      </Link>
-                      <div className="mt-0.5 flex items-center gap-1 text-[10px] text-[var(--muted)]">
-                        <span>{FLAG[(p.country || "US").toUpperCase()] || "🌐"}</span>
-                        <span className="truncate">{p.brand || "브랜드 미상"}</span>
+                    <td className="max-w-[320px] p-2.5">
+                      <div className="flex items-center gap-2.5">
+                        <Thumb src={p.image} brand={p.brand} />
+                        <div className="min-w-0">
+                          <Link href={`/product/${encodeURIComponent(p.id)}`} className="block truncate font-semibold group-hover:text-[var(--accent)]">
+                            {p.title || <span className="text-slate-300">(제목 없음)</span>}
+                          </Link>
+                          <div className="mt-0.5 flex items-center gap-1 text-[10px] text-[var(--muted)]">
+                            <span>{FLAG[(p.country || "US").toUpperCase()] || "🌐"}</span>
+                            <span className="truncate">{p.brand || "브랜드 미상"}</span>
+                          </div>
+                        </div>
                       </div>
                     </td>
                     <td className="whitespace-nowrap p-2.5 text-right">{money(p.price, p.currency)}</td>
@@ -241,6 +246,16 @@ export default function ProductsPage() {
       </div>
     </PageShell>
   );
+}
+
+// 제품 썸네일 — 있으면 이미지, 없으면 브랜드 이니셜. 정적 export·외부 도메인 자유 위해 img 사용.
+function Thumb({ src, brand }: { src?: string; brand?: string }) {
+  const [ok, setOk] = useState(true);
+  if (src && ok) {
+    // eslint-disable-next-line @next/next/no-img-element
+    return <img src={src} alt={brand || "product"} onError={() => setOk(false)} loading="lazy" className="h-10 w-10 shrink-0 rounded-lg object-cover ring-1 ring-black/5" />;
+  }
+  return <div className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-gradient-to-br from-[var(--accent)]/15 to-slate-100 text-[13px] font-black text-[var(--accent)] ring-1 ring-black/5">{(brand || "?").slice(0, 1).toUpperCase()}</div>;
 }
 
 function Kpi({ icon, label, value, accent }: { icon: React.ReactNode; label: string; value: string; accent?: boolean }) {

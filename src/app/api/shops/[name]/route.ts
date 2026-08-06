@@ -17,8 +17,8 @@ export async function GET(_req: Request, ctx: { params: Promise<{ name: string }
     try { name = decodeURIComponent(raw); } catch { name = raw; }
 
     // 제품 전체(집계 + 카테고리/국가 분해용)
-    const prodRows = await sql<{ product_id: string; title: string | null; price: string | number | null; sold_count: string | number | null; commission_rate: string | number | null; url: string | null; country: string | null }>`
-      SELECT product_id, title, price, sold_count, commission_rate, url, country
+    const prodRows = await sql<{ product_id: string; title: string | null; price: string | number | null; sold_count: string | number | null; commission_rate: string | number | null; url: string | null; country: string | null; image_url: string | null }>`
+      SELECT product_id, title, price, sold_count, commission_rate, url, country, image_url
       FROM products WHERE lower(coalesce(brand_name,'')) = lower(${name})
         AND brand_name NOT IN (SELECT value FROM blocklist WHERE kind='brand')
       LIMIT 5000`;
@@ -33,7 +33,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ name: string }
       const price = Number(p.price) || 0, sold = Number(p.sold_count) || 0;
       return { id: p.product_id, title: p.title || "", price, sold, gmv: Math.round(price * sold),
         commission: p.commission_rate != null ? Number(p.commission_rate) : null,
-        url: p.url || "", country: (p.country || "US").toUpperCase(), category: classifyProduct(p.title) };
+        url: p.url || "", image: p.image_url || "", country: (p.country || "US").toUpperCase(), category: classifyProduct(p.title) };
     });
 
     const totalGmv = products.reduce((s, p) => s + p.gmv, 0);

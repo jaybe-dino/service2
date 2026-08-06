@@ -31,10 +31,10 @@ export async function GET(req: Request) {
     const r = await sql<{
       product_id: string; brand_name: string | null; title: string | null;
       price: string | number | null; currency: string | null;
-      sold_count: string | number | null; commission_rate: string | number | null; url: string | null; country: string | null;
+      sold_count: string | number | null; commission_rate: string | number | null; url: string | null; country: string | null; image_url: string | null;
       sold_past: string | number | null;
     }>`
-      SELECT p.product_id, p.brand_name, p.title, p.price, p.currency, p.sold_count, p.commission_rate, p.url, p.country,
+      SELECT p.product_id, p.brand_name, p.title, p.price, p.currency, p.sold_count, p.commission_rate, p.url, p.country, p.image_url,
              (SELECT ps.sold_count FROM product_snapshots ps
               WHERE ps.product_id = p.product_id AND ps.snap_date <= CURRENT_DATE - ${period}::int
               ORDER BY ps.snap_date DESC LIMIT 1) AS sold_past
@@ -61,6 +61,7 @@ export async function GET(req: Request) {
         gmv: Math.round(price * sold), // 추정
         commission: p.commission_rate != null ? Number(p.commission_rate) : null,
         url: p.url || "",
+        image: p.image_url || "",
         country: (p.country || "US").toUpperCase(),
         category: classifyProduct(p.title),
         sub: subClassifyProduct(p.title).sub,

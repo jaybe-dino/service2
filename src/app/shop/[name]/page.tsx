@@ -14,7 +14,7 @@ const CNAME: Record<string, string> = Object.fromEntries(COUNTRIES.map((c) => [c
 const compact = (n: number) => (n >= 1_000_000 ? (n / 1_000_000).toFixed(n >= 10_000_000 ? 0 : 1) + "M" : n >= 1_000 ? (n / 1_000).toFixed(n >= 10_000 ? 0 : 1) + "K" : String(n));
 const fmt = (n: number) => n.toLocaleString();
 
-interface Prod { id: string; title: string; price: number; sold: number; gmv: number; commission: number | null; url: string; country: string; category: string }
+interface Prod { id: string; title: string; price: number; sold: number; gmv: number; commission: number | null; url: string; image?: string; country: string; category: string }
 interface Cat { id: string; label: string; icon: string; products: number; gmv: number }
 interface Ctry { country: string; products: number; gmv: number }
 interface Creator { handle: string; videos: number; totalViews: number; maxViews: number }
@@ -114,7 +114,7 @@ export default function ShopDetailPage() {
                       {d.topProducts.map((p, i) => (
                         <tr key={p.id} className="group border-t border-slate-100 hover:bg-[var(--accent-light)]/40">
                           <td className="p-2.5 pl-3 text-slate-400">{i + 1}</td>
-                          <td className="max-w-[260px] p-2.5"><Link href={`/product/${encodeURIComponent(p.id)}`} className="block truncate font-semibold group-hover:text-[var(--accent)]">{p.title || "(제목 없음)"}</Link><span className="text-[10px] text-[var(--muted)]">{FLAG[p.country] || "🌐"}</span></td>
+                          <td className="max-w-[260px] p-2.5"><div className="flex items-center gap-2"><Thumb src={p.image} title={p.title} /><div className="min-w-0"><Link href={`/product/${encodeURIComponent(p.id)}`} className="block truncate font-semibold group-hover:text-[var(--accent)]">{p.title || "(제목 없음)"}</Link><span className="text-[10px] text-[var(--muted)]">{FLAG[p.country] || "🌐"}</span></div></div></td>
                           <td className="whitespace-nowrap p-2.5 text-right">${fmt(p.price)}</td>
                           <td className="whitespace-nowrap p-2.5 text-right">{compact(p.sold)}</td>
                           <td className="p-2.5"><div className="flex items-center gap-2"><div className="h-1.5 w-14 shrink-0 overflow-hidden rounded-full bg-slate-100"><div className="h-full rounded-full bg-[var(--accent)]" style={{ width: `${maxProdGmv > 0 ? Math.max(4, Math.round((p.gmv / maxProdGmv) * 100)) : 0}%` }} /></div><span className="whitespace-nowrap font-bold text-[var(--accent)]">${compact(p.gmv)}</span></div></td>
@@ -156,6 +156,16 @@ export default function ShopDetailPage() {
       </div>
     </PageShell>
   );
+}
+
+// 제품 썸네일 — 있으면 이미지, 없으면 이니셜 플레이스홀더.
+function Thumb({ src, title }: { src?: string; title?: string }) {
+  const [ok, setOk] = useState(true);
+  if (src && ok) {
+    // eslint-disable-next-line @next/next/no-img-element
+    return <img src={src} alt={title || "product"} onError={() => setOk(false)} loading="lazy" className="h-9 w-9 shrink-0 rounded-lg object-cover ring-1 ring-black/5" />;
+  }
+  return <div className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-gradient-to-br from-[var(--accent)]/15 to-slate-100 text-[12px] font-black text-[var(--accent)] ring-1 ring-black/5">{(title || "?").slice(0, 1).toUpperCase()}</div>;
 }
 
 function Stat({ icon, label, value, accent }: { icon: React.ReactNode; label: string; value: string; accent?: boolean }) {

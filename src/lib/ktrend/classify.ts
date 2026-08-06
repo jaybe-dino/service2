@@ -3,12 +3,14 @@
 
 export type CategoryId = "skincare" | "makeup" | "haircare" | "body" | "inner" | "other";
 
+// 매칭 견고화: 복수형·복합어(supplements·multivitamin·serums 등)까지 잡히도록 접미 \b 제거.
+// 접두는 살려 오탐 억제(예: 'flip'의 lip 방지 위해 짧은 토큰만 \b 유지).
 const RULES: { id: Exclude<CategoryId, "other">; kw: RegExp }[] = [
-  { id: "makeup", kw: /\b(cushion|foundation|primer|concealer|lip|tint|lipstick|gloss|lip balm|eyeshadow|eye shadow|eyeliner|eye liner|mascara|blush|contour|bronzer|highlighter|brow|eyebrow|makeup|make-up|setting spray)\b|틴트|쿠션|파운데이션|립스틱|마스카라|아이라이너|섀도/i },
-  { id: "haircare", kw: /\b(shampoo|conditioner|hair treatment|hair oil|hair essence|hair serum|hair mask|scalp|styling|hair spray|hair loss)\b|샴푸|트리트먼트|헤어|두피/i },
-  { id: "inner", kw: /\b(collagen|probiotic|supplement|vitamin|gummies|inner beauty|capsule|tablet)\b|콜라겐|유산균|건기식|이너뷰티/i },
-  { id: "body", kw: /\b(body wash|body lotion|body cream|body scrub|hand cream|foot cream|perfume|fragrance|eau de|deodorant|shower)\b|바디|핸드크림|향수|데오/i },
-  { id: "skincare", kw: /\b(serum|toner|essence|ampoule|cream|moisturizer|moisturiser|lotion|cleanser|cleansing|cleansing oil|face wash|mask|sheet mask|sunscreen|sun stick|sun cream|spf|acne|spot|eye cream|mist|hydrating|snail|cica|retinol|niacinamide|hyaluronic|collagen cream|pdrn|toner pad|exfoliat|peeling|pore)\b|세럼|토너|에센스|앰플|크림|클렌징|마스크|선크림|선스틱|자외선|미스트|패드/i },
+  { id: "makeup", kw: /(cushion|foundation|primer|concealer|lipstick|lip tint|lip gloss|lip balm|lip oil|eyeshadow|eye shadow|eyeliner|eye liner|mascara|blusher|blush on|contour|bronzer|highlighter|eyebrow|makeup|make-up|setting spray|\btint\b|\blip\b|\bbrow\b)|틴트|쿠션|파운데이션|립스틱|마스카라|아이라이너|섀도|블러셔/i },
+  { id: "haircare", kw: /(shampoo|conditioner|hair treatment|hair oil|hair essence|hair serum|hair mask|hair care|haircare|scalp|hair spray|hair loss|hair growth)|샴푸|트리트먼트|헤어|두피/i },
+  { id: "inner", kw: /(collagen|probiotic|prebiotic|supplement|vitamin|multivitamin|gummies|gummy|inner beauty|capsule|tablet|softgel|omega|biotin|shilajit|sea moss|glutathione\b)|콜라겐|유산균|건기식|이너뷰티|영양제|보충제/i },
+  { id: "body", kw: /(body wash|body lotion|body cream|body scrub|body butter|body oil|hand cream|foot cream|perfume|fragrance|eau de|deodorant|shower gel|shower)|바디|핸드크림|향수|데오/i },
+  { id: "skincare", kw: /(serum|toner|essence|ampoule|cream|moisturiz|moisturis|\blotion|cleanser|cleansing|face wash|sheet mask|sleeping mask|sunscreen|sun stick|sun cream|\bspf\b|\bacne\b|eye cream|hydrating|snail|cica|retinol|niacinamide|hyaluronic|\bpdrn\b|toner pad|exfoliat|peeling|\bpore|skincare|skin care|glow|brighten|whitening|\bmask\b|\broutine\b)|세럼|토너|에센스|앰플|크림|클렌징|마스크|선크림|선스틱|자외선|미스트|패드|스킨케어/i },
 ];
 
 export function classifyProduct(title?: string | null): CategoryId {
