@@ -36,11 +36,12 @@ export async function POST(req: Request) {
     ORDER BY (lower(email) = ${email}) DESC LIMIT 1`).rows[0];
 
   const fields = b.fields || {};
-  // 반영할 (컬럼, 값) — 공유 필드만 화이트리스트.
+  // 반영할 (컬럼, 값) — 공유 필드 화이트리스트. email·biz_no 는 매칭키(불변)라 갱신 제외(admin 합의 §3).
+  const MATCH_KEYS = new Set(["email", "biz_no"]);
   const sets: { col: string; val: unknown }[] = [];
   for (const [k, v] of Object.entries(fields)) {
     const col = SHARED_FIELD_COLUMN[k];
-    if (col && col !== "email") sets.push({ col, val: v == null ? null : String(v) }); // email(매핑키)은 갱신 제외
+    if (col && !MATCH_KEYS.has(col)) sets.push({ col, val: v == null ? null : String(v) });
   }
 
   if (!row) {
