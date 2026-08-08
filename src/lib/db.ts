@@ -348,6 +348,16 @@ export function ensureSchema(): Promise<void> {
       await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS markets text`;
       // 관리자 메모 — 회원 상세 관리(어드민 전용, 사용자 미노출)
       await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS admin_note text`;
+      // ── TikTok Admin 양방향 동기화: 공유 브랜드 프로필 필드 + 변경시각 ──
+      // brand_name→brand, contact_name→name(기존), 나머지는 아래 컬럼으로 통합.
+      await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS phone text`;
+      await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS biz_no text`;
+      await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS category text`;
+      await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS brand_url text`;
+      // 공유 프로필 마지막 수정시각(폴링/last-write-wins 기준). 기본 created_at으로 백필.
+      await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS profile_updated_at timestamptz`;
+      await sql`UPDATE users SET profile_updated_at = coalesce(profile_updated_at, created_at) WHERE profile_updated_at IS NULL`;
+      await sql`CREATE INDEX IF NOT EXISTS idx_users_profile_updated_at ON users(profile_updated_at)`;
       // ── 아웃리치(크리에이터 CRM) 레이어 ──
       // 세그먼트(필터 저장) — 반복 캠페인/발굴 재사용.
       await sql`CREATE TABLE IF NOT EXISTS outreach_lists (

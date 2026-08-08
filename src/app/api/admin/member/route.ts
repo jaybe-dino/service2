@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { sql, ensureSchema, isConfigured } from "@/lib/db";
 import { isAdminAuthed } from "@/lib/admin-auth";
+import { touchProfileAndNotify } from "@/lib/partner-sync";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -70,5 +71,10 @@ export async function POST(req: Request) {
     plan = COALESCE(${plan}, plan),
     admin_note = COALESCE(${adminNote}, admin_note)
     WHERE id=${id}`;
+  // TikTok Admin 동기화: 공유 필드(브랜드/담당자명) 변경 시 변경분만 웹훅 + profile_updated_at 갱신.
+  const shared: Record<string, unknown> = {};
+  if (brand != null) shared.brand_name = brand;
+  if (name != null) shared.contact_name = name;
+  if (Object.keys(shared).length) { try { await touchProfileAndNotify(id, shared); } catch {} }
   return NextResponse.json({ ok: true, id });
 }
