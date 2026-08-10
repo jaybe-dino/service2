@@ -77,7 +77,7 @@ export const DEFAULT_SHOP_TUNING: ShopTuning = {
   maxBrands: Number(process.env.SHOP_MAX_BRANDS ?? 8),
   maxRunning: Number(process.env.SHOP_MAX_RUNNING ?? 40),
   maxPoll: Number(process.env.SHOP_MAX_POLL ?? 12),
-  retryDays: Number(process.env.SHOP_RETRY_DAYS ?? 3),
+  retryDays: Number(process.env.SHOP_RETRY_DAYS ?? 14), // 비용 절감: 같은 브랜드 재구매 간격 ↑(중복 최소화)
 };
 export async function getShopTuning(): Promise<ShopTuning> {
   try {
