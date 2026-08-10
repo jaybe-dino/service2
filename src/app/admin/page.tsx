@@ -157,6 +157,7 @@ export default function AdminPage() {
   const [enrich, setEnrich] = useState<{ total: number; enriched: number; withEmail: number; remaining: number; configured: boolean } | null>(null);
   const [enrichBusy, setEnrichBusy] = useState(false);
   const [enrichMsg, setEnrichMsg] = useState<string | null>(null);
+  const [importMsg, setImportMsg] = useState<string | null>(null);
   const [collectPaused, setCollectPaused] = useState<boolean | null>(null);
   const [collectSwitches, setCollectSwitches] = useState<{ video: boolean; shop: boolean }>({ video: false, shop: true });
   const [collectActors, setCollectActors] = useState<Record<string, { actor: string; configured: boolean; cost: string; warn: boolean }> | null>(null);
@@ -240,6 +241,16 @@ export default function AdminPage() {
     setCollectSwitches(next);
     await fetch("/api/admin/collect-pause", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ switches: { [track]: on } }) });
     setToast(`${track === "video" ? "영상" : "샵"} 수집 ${on ? "ON" : "OFF"}`);
+  };
+  const importEmailsFile = async (file: File) => {
+    setImportMsg("업로드 중…");
+    try {
+      const csv = await file.text();
+      const r = await fetch("/api/admin/creators/import-emails", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ csv }) });
+      const j = await r.json();
+      setImportMsg(j.ok ? `임포트: ${j.updated}건 업데이트 · 스킵 ${j.skipped}(형식오류 ${j.invalid}/미매칭 ${j.notFound}) / 총 ${j.total}` : (j.error || "실패"));
+      loadCollectLog();
+    } catch (e) { setImportMsg(String((e as Error).message || e)); }
   };
   const runEnrich = async () => {
     setEnrichBusy(true); setEnrichMsg(null);
@@ -1264,6 +1275,19 @@ export default function AdminPage() {
             )}
             {enrichMsg && <p className="mt-1.5 text-[11px] font-semibold text-emerald-700">{enrichMsg}</p>}
             <p className="mt-1.5 text-[10px] text-[var(--muted)]">한 번에 다 하지 않고 <b>20건씩 배치</b>로 프로필을 재크롤 → bio에서 공개 이메일 추출·저장. 조회수 높은 순. ⚠️ Apify 사용(비용·한도 적용).</p>
+
+            {/* 외부 수집용: CSV 내려받기(key=handle) + 이메일 되매핑 임포트 */}
+            <div className="mt-2 flex flex-wrap items-center gap-2 border-t border-[var(--border)] pt-2">
+              <span className="text-[10px] font-bold text-[var(--muted)]">외부 이메일 수집:</span>
+              <a href="/api/admin/creators/export" className="kt-btn kt-btn-outline px-2.5 py-1 text-[10px]">⬇ 전체 CSV</a>
+              <a href="/api/admin/creators/export?missing=1" className="kt-btn kt-btn-outline px-2.5 py-1 text-[10px]">⬇ 이메일없는것만 CSV</a>
+              <label className="kt-btn kt-btn-primary cursor-pointer px-2.5 py-1 text-[10px]">
+                ⬆ 이메일 CSV 임포트
+                <input type="file" accept=".csv,text/csv" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) importEmailsFile(f); e.currentTarget.value = ""; }} />
+              </label>
+              {importMsg && <span className="text-[10px] font-semibold text-emerald-700">{importMsg}</span>}
+            </div>
+            <p className="mt-1 text-[9px] text-[var(--muted)]">CSV 첫 컬럼 <b>handle</b>이 매핑 key. 외부에서 이메일 채운 뒤(<b>handle,email</b> 컬럼 포함) 임포트하면 handle 기준으로 되매핑됩니다.</p>
           </div>
 
           {/* 수집·적재 결과 로그 — 제품/이미지 적재 현황(국가별) + 최근 실행 이력 */}
