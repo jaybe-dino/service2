@@ -369,7 +369,9 @@ function buildShopInput(brandName: string, cc: string, maxItems: number): Record
     keywords: [brandName], searchQueries: [brandName],
     maxItems, maxResults: maxItems, resultsLimit: maxItems, limit: maxItems,
     count: maxItems, maxProducts: maxItems, maxProductsPerSearch: maxItems, resultsPerPage: maxItems,
-    ...(cc ? { country: cc, region: cc, market: cc } : {}),
+    page: 1,
+    // 지역 — actor마다 키가 달라 슈퍼셋(country/country_code/countryCode/region/market). 미사용 키는 무시됨.
+    ...(cc ? { country: cc, country_code: cc, countryCode: cc, region: cc, market: cc } : {}),
     ...(cc && cc !== "US" ? { proxyConfiguration: { useApifyProxy: true, apifyProxyCountry: cc } } : {}),
   };
 }
