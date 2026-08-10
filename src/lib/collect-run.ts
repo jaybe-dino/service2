@@ -391,11 +391,10 @@ export async function deepCollectBrand(opts: {
 
   let videoKicked = 0, shopKicked = 0;
 
-  // 비용 보호: 영상 트랙이 전역 OFF면 심층 크롤에서도 영상은 스킵(샵만 진행). 영상 원하면 제어판에서 ON.
-  const videoAllowed = (await getCollectSwitches()).video;
-  // 1) 영상 — 지역별 깊은 백필 (scope에 video 포함 + 영상 트랙 ON일 때만)
-  if (scope !== "shop" && !videoAllowed) errors.push("영상 수집 OFF(제어판) — 심층 크롤 영상 스킵");
-  else if (scope !== "shop" && scraperConfigured()) {
+  // 심층 크롤은 수동 도구 — scope 선택으로 제어(영상 원치 않으면 '샵만' 선택). 전역 정지만 존중.
+  if (await isCollectPaused()) return { configured: scraperConfigured() || shopConfigured(), brand, videoKicked: 0, shopKicked: 0, regions, countries, errors: ["수집 일시정지(collect_paused)"], reason: "일시정지" };
+  // 1) 영상 — 지역별 깊은 백필 (scope에 video 포함 시)
+  if (scope !== "shop" && scraperConfigured()) {
     for (const region of regions) {
       try {
         const runId = await startApifyRun({ brandName: brand, handle: opts.handle, hashtags: opts.hashtags, backfillDays, limit, region }, webhook);
@@ -490,10 +489,11 @@ async function pollJobs(maxPoll: number, kind = ""): Promise<{ ingested: number;
 
 // B안 비동기 수집 사이클: Apify run을 "시작"만 하고(빠름) 결과는 webhook(ingest)으로 받음.
 // → 서버리스 60초 제한 무관하게 브랜드당 수천 건 깊게 수집 가능.
-export async function runCollection(opts: { maxPending?: number; maxRefresh?: number; maxPoll?: number; baseUrl?: string } = {}): Promise<CollectSummary> {
+export async function runCollection(opts: { maxPending?: number; maxRefresh?: number; maxPoll?: number; baseUrl?: string; manual?: boolean } = {}): Promise<CollectSummary> {
   await ensureSchema();
+  // 전체 정지는 자동·수동 모두 차단(비상 킬). 트랙 스위치는 '자동(크론)'만 차단 — 수동(manual)은 항상 허용.
   if (await isCollectPaused()) return { configured: scraperConfigured(), mode: "skipped", polledDone: 0, ingested: 0, kickedNew: 0, kickedRefresh: 0, reason: "수집 일시정지(collect_paused)" };
-  if (!(await getCollectSwitches()).video) return { configured: scraperConfigured(), mode: "skipped", polledDone: 0, ingested: 0, kickedNew: 0, kickedRefresh: 0, reason: "영상 수집 OFF(비용 보호)" };
+  if (!opts.manual && !(await getCollectSwitches()).video) return { configured: scraperConfigured(), mode: "skipped", polledDone: 0, ingested: 0, kickedNew: 0, kickedRefresh: 0, reason: "영상 자동수집 OFF (수동은 가능)" };
   const configured = scraperConfigured();
   const webhook = ingestWebhook(opts.baseUrl);
   // 수집 강도: admin_settings(DB) 우선, 없으면 env/기본값. opts로 강제 지정 시 그 값 우선.
@@ -596,10 +596,11 @@ export async function runCollection(opts: { maxPending?: number; maxRefresh?: nu
 export interface ShopSummary { configured: boolean; mode: "async" | "skipped"; polledDone: number; ingested: number; kicked: number; reason?: string; dueCount?: number; countries?: string[]; errors?: string[]; running?: number; remaining?: number }
 
 // A안 틱톡샵 상품 수집 사이클: 완료분 적재(폴링) + 미수집 브랜드 N개 shop run 시작.
-export async function runShopCollection(opts: { maxShop?: number; baseUrl?: string } = {}): Promise<ShopSummary> {
+export async function runShopCollection(opts: { maxShop?: number; baseUrl?: string; manual?: boolean } = {}): Promise<ShopSummary> {
   await ensureSchema();
+  // 전체 정지는 자동·수동 모두 차단. 트랙 스위치(shop)는 '자동(크론)'만 차단 — 수동(manual)은 항상 허용.
   if (await isCollectPaused()) return { configured: shopConfigured(), mode: "skipped", polledDone: 0, ingested: 0, kicked: 0, reason: "수집 일시정지(collect_paused)" };
-  if (!(await getCollectSwitches()).shop) return { configured: shopConfigured(), mode: "skipped", polledDone: 0, ingested: 0, kicked: 0, reason: "샵 수집 OFF" };
+  if (!opts.manual && !(await getCollectSwitches()).shop) return { configured: shopConfigured(), mode: "skipped", polledDone: 0, ingested: 0, kicked: 0, reason: "샵 자동수집 OFF (수동은 가능)" };
   if (!shopConfigured()) return { configured: false, mode: "skipped", polledDone: 0, ingested: 0, kicked: 0, reason: "SHOP_ACTOR 미설정" };
   const webhook = ingestWebhook(opts.baseUrl);
   // 강도/국가: admin_settings(어드민 UI) 우선 → env 폴백. 재배포 없이 즉시 반영.

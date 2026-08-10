@@ -520,7 +520,7 @@ export default function AdminPage() {
   const [deepBrand, setDeepBrand] = useState("");
   const [deepHandle, setDeepHandle] = useState("");
   const [deepHashtags, setDeepHashtags] = useState("");
-  const [deepScope, setDeepScope] = useState<"both" | "video" | "shop">("both");
+  const [deepScope, setDeepScope] = useState<"both" | "video" | "shop">("shop"); // 기본 샵만(영상 비용 사고 방지)
   const [deepYears, setDeepYears] = useState(2);
   const [deepLimit, setDeepLimit] = useState(1500);
   const [deepCountries, setDeepCountries] = useState<string[]>([]);
@@ -1058,7 +1058,7 @@ export default function AdminPage() {
                 );
               })}
             </div>
-            <p className="mt-2 text-[10px] text-[var(--muted)]">💡 <b>영상 수집은 결과당 과금이라 비쌉니다</b>(사고 원인). 지금은 <b>샵만 ON, 영상 OFF</b> 권장. 재배포 없이 즉시 반영. 이메일 크롤은 아래 배치 버튼으로 개별 실행.</p>
+            <p className="mt-2 text-[10px] text-[var(--muted)]">💡 <b>ON = 매시간 자동 수집 · OFF = 자동 정지(수동 버튼은 계속 가능)</b>. 영상은 결과당 과금이라 비쌈 → <b>샵 ON·영상 OFF</b> 권장. [⏸ 전체 정지]는 자동·수동 모두 차단(비상). 재배포 없이 즉시 반영.</p>
           </div>
           {/* 지정 브랜드 심층 크롤링 — 큐 대기 없이 즉시, 필터 지정 */}
           <div className="mb-3 kt-card p-3">

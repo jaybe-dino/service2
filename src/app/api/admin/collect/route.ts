@@ -20,6 +20,6 @@ export async function POST(req: Request) {
   const host = req.headers.get("x-forwarded-host") ?? req.headers.get("host");
   const baseUrl = host ? `${proto}://${host}` : undefined;
   // 수집 강도는 admin_settings(어드민 UI)에서 관리 → runCollection이 DB 값 사용
-  const summary = await runCollection({ baseUrl });
+  const summary = await runCollection({ baseUrl, manual: true }); // 수동 버튼 — 트랙 스위치 무관 실행(전체정지만 존중)
   return NextResponse.json({ ok: true, scraper: scraperConfigured(), ...summary });
 }

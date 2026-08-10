@@ -14,6 +14,6 @@ export async function POST(req: Request) {
   const proto = req.headers.get("x-forwarded-proto") ?? "https";
   const host = req.headers.get("x-forwarded-host") ?? req.headers.get("host");
   const baseUrl = host ? `${proto}://${host}` : undefined;
-  const summary = await runShopCollection({ maxShop: Number(process.env.SHOP_MAX_BRANDS ?? 8), baseUrl });
+  const summary = await runShopCollection({ maxShop: Number(process.env.SHOP_MAX_BRANDS ?? 8), baseUrl, manual: true }); // 수동 버튼 — 스위치 OFF여도 실행
   return NextResponse.json({ ok: true, ...summary });
 }
