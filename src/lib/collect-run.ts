@@ -391,8 +391,11 @@ export async function deepCollectBrand(opts: {
 
   let videoKicked = 0, shopKicked = 0;
 
-  // 1) 영상 — 지역별 깊은 백필 (scope에 video 포함 시)
-  if (scope !== "shop" && scraperConfigured()) {
+  // 비용 보호: 영상 트랙이 전역 OFF면 심층 크롤에서도 영상은 스킵(샵만 진행). 영상 원하면 제어판에서 ON.
+  const videoAllowed = (await getCollectSwitches()).video;
+  // 1) 영상 — 지역별 깊은 백필 (scope에 video 포함 + 영상 트랙 ON일 때만)
+  if (scope !== "shop" && !videoAllowed) errors.push("영상 수집 OFF(제어판) — 심층 크롤 영상 스킵");
+  else if (scope !== "shop" && scraperConfigured()) {
     for (const region of regions) {
       try {
         const runId = await startApifyRun({ brandName: brand, handle: opts.handle, hashtags: opts.hashtags, backfillDays, limit, region }, webhook);
