@@ -95,6 +95,27 @@ export async function POST(req: Request) {
     }
     return NextResponse.json({ ok: true, added, total: handles.length });
   }
+  if (action === "addAllTargets") {
+    // 보유 크리에이터 전체를 아웃리치에 일괄 등록. onlyEmail=true면 공개 이메일 보유자만(=연결 가능성↑).
+    // 블락 제외. 이미 있으면 skip. score는 적재 시점 조회수 근사(정렬용).
+    const onlyEmail = !!(b as { onlyEmail?: boolean }).onlyEmail;
+    const rows = await sql<{ handle: string }>`
+      SELECT handle FROM creators
+      WHERE handle IS NOT NULL AND handle <> ''
+        AND handle NOT IN (SELECT value FROM blocklist WHERE kind='handle')
+        AND (${onlyEmail} = false OR (email IS NOT NULL AND email <> ''))
+        AND NOT EXISTS (SELECT 1 FROM outreach_targets t WHERE t.handle = creators.handle AND t.list_id IS NULL)
+      ORDER BY (email IS NOT NULL) DESC, total_views DESC NULLS LAST
+      LIMIT 3000`;
+    let added = 0;
+    for (const row of rows.rows) {
+      const r = await sql`INSERT INTO outreach_targets (handle, list_id, owner)
+        SELECT ${row.handle}, NULL, ${b.owner ?? null}
+        WHERE NOT EXISTS (SELECT 1 FROM outreach_targets WHERE handle=${row.handle} AND list_id IS NULL)`;
+      if (r.rowCount) added += 1;
+    }
+    return NextResponse.json({ ok: true, added, total: rows.rows.length, onlyEmail });
+  }
   if (action === "setStatus") {
     const id = Number(b.id); const status = String(b.status ?? "");
     if (!id || !STATUSES.includes(status)) return NextResponse.json({ error: "id/status 확인" }, { status: 400 });

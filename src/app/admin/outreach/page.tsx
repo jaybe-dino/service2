@@ -119,6 +119,14 @@ export default function OutreachBoardPage() {
     setImportMsg(j.added != null ? `제안 ${j.total}건 중 ${j.added}건 신규 추가` : (j.error || "실패"));
     load();
   }
+  async function addAll(onlyEmail: boolean) {
+    if (!confirm(onlyEmail ? "공개 이메일이 있는 크리에이터 전체를 아웃리치에 추가할까요?" : "보유한 모든 크리에이터를 아웃리치에 추가할까요? (많을 수 있음)")) return;
+    setImportMsg(null);
+    const r = await fetch("/api/admin/outreach", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "addAllTargets", onlyEmail }) });
+    const j = await r.json();
+    setImportMsg(j.added != null ? `${onlyEmail ? "이메일 보유 " : "전체 "}크리에이터 ${j.added}건 신규 추가 (대상 ${j.total})` : (j.error || "실패"));
+    load();
+  }
   function copyMessage() {
     const tpl = templates.find((t) => t.id === genTplId);
     if (!tpl || !sel) return;
@@ -184,6 +192,8 @@ export default function OutreachBoardPage() {
           </select>
           <button onClick={() => setShowTpl((v) => !v)} className="kt-btn kt-btn-outline px-3 py-1.5 text-[11px]"><FileText size={13} /> 템플릿 ({templates.length})</button>
           <button onClick={importProposals} className="kt-btn kt-btn-outline px-3 py-1.5 text-[11px]"><Download size={13} /> 제안 가져오기</button>
+          <button onClick={() => addAll(true)} className="kt-btn kt-btn-outline px-3 py-1.5 text-[11px]" title="공개 이메일 보유 크리에이터만 = 연결 가능성↑">✉ 이메일보유 전체추가</button>
+          <button onClick={() => addAll(false)} className="kt-btn kt-btn-outline px-3 py-1.5 text-[11px]" title="보유 크리에이터 전체">👥 전체추가</button>
           <button onClick={load} className="kt-btn kt-btn-outline px-3 py-1.5 text-[11px]"><RefreshCw size={13} className={loading ? "animate-spin" : ""} /> 새로고침</button>
         </div>
       </div>

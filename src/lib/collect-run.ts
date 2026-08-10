@@ -293,12 +293,40 @@ export async function ingestProducts(brandName: string, products: ShopProduct[],
   return rows.length;
 }
 
+// 크리에이터 프로필 보강 — 수집 영상의 authorMeta에서 bio·이메일·팔로워·인증을 creators에 반영.
+// handle별 최신값(비어있지 않은 값 우선). email은 있을 때만 저장(요청: 실제 이메일 별도 보관).
+async function enrichCreatorProfiles(vids: CollectedVideo[]): Promise<void> {
+  const map = new Map<string, { bio: string | null; followers: number | null; verified: boolean; email: string | null }>();
+  for (const v of vids) {
+    if (!v.handle) continue;
+    const cur = map.get(v.handle) || { bio: null, followers: null, verified: false, email: null };
+    if (v.authorBio && !cur.bio) cur.bio = v.authorBio.slice(0, 1000);
+    if (v.authorEmail && !cur.email) cur.email = v.authorEmail;
+    if (typeof v.authorFollowers === "number" && (cur.followers == null || v.authorFollowers > cur.followers)) cur.followers = v.authorFollowers;
+    if (v.authorVerified) cur.verified = true;
+    map.set(v.handle, cur);
+  }
+  for (const [handle, a] of map) {
+    if (a.bio == null && a.email == null && a.followers == null && !a.verified) continue;
+    // creators 행이 이미 있으면 보강, 없어도 최소행 생성(집계는 recompute가 채움). COALESCE로 기존값 보존.
+    await sql`INSERT INTO creators (handle, bio, email, followers, verified, updated_at)
+      VALUES (${handle}, ${a.bio}, ${a.email}, ${a.followers}, ${a.verified}, now())
+      ON CONFLICT (handle) DO UPDATE SET
+        bio = COALESCE(EXCLUDED.bio, creators.bio),
+        email = COALESCE(EXCLUDED.email, creators.email),
+        followers = GREATEST(COALESCE(EXCLUDED.followers,0), COALESCE(creators.followers,0)),
+        verified = creators.verified OR EXCLUDED.verified,
+        updated_at = now()`;
+  }
+}
+
 // B안 webhook 적재 공용 함수: dedup upsert → 통계/인플루언서 갱신 → 추적/로그 갱신
 export async function ingestVideos(brandName: string, vids: CollectedVideo[], region?: string | null): Promise<number> {
   await ensureSchema();
   const rules = await getRules();
   const c = await upsertVideos(brandName, vids, rules, region); // video_id 멱등 = 중복 저장 차단
   if (c > 0) await syncDerived(brandName);
+  await enrichCreatorProfiles(vids); // bio·이메일·팔로워·인증 보강(있을 때만)
   await sql`INSERT INTO brand_tracking (brand_name, last_collected_at, updated_at)
             VALUES (${brandName}, now(), now())
             ON CONFLICT (brand_name) DO UPDATE SET last_collected_at=now(), updated_at=now()`;

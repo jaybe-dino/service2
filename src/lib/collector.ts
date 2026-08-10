@@ -17,6 +17,22 @@ export interface CollectedVideo {
   url: string;
   productRef?: string | null; // 영상이 태그한 TikTok Shop 상품ID(있으면 제품↔영상 정밀 매칭)
   cover?: string | null; // 영상 썸네일(커버) URL — 콘텐츠 레퍼런스 노출용
+  authorBio?: string | null;       // 크리에이터 프로필 설명(signature)
+  authorFollowers?: number | null; // 팔로워(fans)
+  authorVerified?: boolean;        // 인증 배지
+  authorEmail?: string | null;     // bio에서 추출한 공개 이메일(있을 때만)
+}
+
+// 공개 이메일 추출 — 프로필 설명(bio)에서. 흔한 난독화("at"/"dot", 이모지)도 일부 복원.
+const EMAIL_RE = /[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/;
+export function extractEmail(bio?: string | null): string | null {
+  if (!bio) return null;
+  const direct = bio.match(EMAIL_RE);
+  if (direct) return direct[0].toLowerCase();
+  // 난독화 복원: "name (at) gmail (dot) com" 류
+  const deob = bio.replace(/\s*[\(\[]?\s*at\s*[\)\]]?\s*/gi, "@").replace(/\s*[\(\[]?\s*dot\s*[\)\]]?\s*/gi, ".");
+  const m = deob.match(EMAIL_RE);
+  return m ? m[0].toLowerCase() : null;
 }
 
 // 영상 item에서 TikTok Shop 상품ID 추출(앵커/링크). 없으면 null → 브랜드 매칭으로 폴백.
@@ -73,7 +89,9 @@ export function mapApifyItems(items: Array<Record<string, unknown>>, sinceDate?:
     .map((it): CollectedVideo | null => {
       const id = String(it.id ?? it.videoId ?? "");
       if (!id) return null;
-      const author = (it.authorMeta as { name?: string })?.name ?? String(it.authorName ?? "");
+      const am = (it.authorMeta ?? {}) as { name?: string; signature?: string; fans?: number; verified?: boolean; nickName?: string };
+      const author = am.name ?? String(it.authorName ?? "");
+      const bio = am.signature ? String(am.signature) : null;
       const created = it.createTimeISO ? String(it.createTimeISO).slice(0, 10) : "";
       // 커버(썸네일): clockworks는 videoMeta.coverUrl/originalCoverUrl 제공. 폴백 딥서치.
       const vm = (it.videoMeta ?? {}) as Record<string, unknown>;
@@ -95,6 +113,10 @@ export function mapApifyItems(items: Array<Record<string, unknown>>, sinceDate?:
         url: String(it.webVideoUrl ?? `https://www.tiktok.com/@${author}/video/${id}`),
         productRef: extractProductRef(it),
         cover: cover || null,
+        authorBio: bio,
+        authorFollowers: typeof am.fans === "number" ? am.fans : null,
+        authorVerified: !!am.verified,
+        authorEmail: extractEmail(bio),
       };
     })
     .filter((v): v is CollectedVideo => v !== null)

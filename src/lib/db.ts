@@ -152,6 +152,13 @@ export function ensureSchema(): Promise<void> {
         brands text[] DEFAULT '{}',
         updated_at timestamptz NOT NULL DEFAULT now()
       )`;
+      // 크리에이터 프로필 보강 — bio(설명)·이메일(있으면 별도 저장)·팔로워·인증·지역.
+      await sql`ALTER TABLE creators ADD COLUMN IF NOT EXISTS bio text`;
+      await sql`ALTER TABLE creators ADD COLUMN IF NOT EXISTS email text`; // 프로필 설명에서 추출된 공개 이메일(있을 때만)
+      await sql`ALTER TABLE creators ADD COLUMN IF NOT EXISTS followers bigint`;
+      await sql`ALTER TABLE creators ADD COLUMN IF NOT EXISTS verified boolean`;
+      await sql`ALTER TABLE creators ADD COLUMN IF NOT EXISTS region text`;
+      await sql`CREATE INDEX IF NOT EXISTS idx_creators_email ON creators(email) WHERE email IS NOT NULL`;
       // 수집 영상에서 재계산된 브랜드 통계
       await sql`CREATE TABLE IF NOT EXISTS brand_stats (
         brand_name text PRIMARY KEY,

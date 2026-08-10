@@ -29,8 +29,9 @@ export async function GET(req: Request) {
       induced_gmv: string | number | null; tagged_products: number | string | null;
       avg_likes: string | number | null; last_posted: string | null; countries: string[] | null;
       shop_cnt: number | string | null; ad_cnt: number | string | null; vcount: number | string | null;
+      email: string | null; bio: string | null; followers: string | number | null; verified: boolean | null;
     }>`
-      SELECT c.handle, c.videos, c.total_views, c.avg_views, c.brands,
+      SELECT c.handle, c.videos, c.total_views, c.avg_views, c.brands, c.email, c.bio, c.followers, c.verified,
              coalesce(ig.induced_gmv, 0) AS induced_gmv, coalesce(ig.tagged_products, 0) AS tagged_products,
              va.avg_likes, va.last_posted, va.countries, va.shop_cnt, va.ad_cnt, va.vcount
       FROM creators c
@@ -82,6 +83,8 @@ export async function GET(req: Request) {
         inducedGmv, taggedProducts, engage, shopRatio, adRatio, lastPosted, daysSince,
         tier: tierOf(avgViews), countries: Array.isArray(c.countries) ? c.countries.filter(Boolean) : [],
         fit, reasons,
+        email: c.email || "", hasEmail: !!c.email, followers: Number(c.followers) || 0, verified: !!c.verified,
+        bio: c.bio ? String(c.bio).slice(0, 200) : "",
       };
     });
 
