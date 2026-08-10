@@ -157,6 +157,7 @@ export default function AdminPage() {
   const [enrich, setEnrich] = useState<{ total: number; enriched: number; withEmail: number; remaining: number; configured: boolean } | null>(null);
   const [enrichBusy, setEnrichBusy] = useState(false);
   const [enrichMsg, setEnrichMsg] = useState<string | null>(null);
+  const [collectPaused, setCollectPaused] = useState<boolean | null>(null);
   const [collectLog, setCollectLog] = useState<{
     summary: { totalProducts: number; totalImage: number; imagePct: number };
     byCountry: { country: string; products: number; with_image: number; with_commission: number; last_collected: string | null }[];
@@ -224,6 +225,13 @@ export default function AdminPage() {
     if (l?.ok) setCollectLog(l);
     const e = await fetch("/api/admin/creators/enrich-emails", { cache: "no-store" }).then((x) => x.json()).catch(() => null);
     if (e?.ok) setEnrich(e);
+    const p = await fetch("/api/admin/collect-pause", { cache: "no-store" }).then((x) => x.json()).catch(() => null);
+    if (p?.ok) setCollectPaused(!!p.paused);
+  };
+  const togglePause = async (paused: boolean) => {
+    setCollectPaused(paused);
+    await fetch("/api/admin/collect-pause", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ paused }) });
+    setToast(paused ? "⏸ 모든 자동 수집 정지됨 (비용 차단)" : "▶ 수집 재개됨");
   };
   const runEnrich = async () => {
     setEnrichBusy(true); setEnrichMsg(null);
@@ -1012,6 +1020,14 @@ export default function AdminPage() {
 
       {tab === "collect" && (
         <>
+          {/* 수집 일시정지 — 비용 급증 시 즉시 모든 자동 수집(영상·샵 크론) 차단 */}
+          <div className={`mb-3 flex flex-wrap items-center gap-3 rounded-xl border p-3 ${collectPaused ? "border-rose-300 bg-rose-50" : "border-[var(--border)]"}`}>
+            <span className="flex items-center gap-1.5 text-[12px] font-black">{collectPaused ? "⏸ 수집 정지됨" : "▶ 수집 실행 중"}</span>
+            <span className="text-[10px] text-[var(--muted)]">자동 크론(영상·샵)을 즉시 켜고/끕니다 · 재배포 불필요</span>
+            {collectPaused
+              ? <button onClick={() => togglePause(false)} className="kt-btn kt-btn-outline ml-auto px-3 py-1.5 text-[11px]">▶ 수집 재개</button>
+              : <button onClick={() => togglePause(true)} className="ml-auto rounded-lg bg-rose-600 px-3 py-1.5 text-[11px] font-bold text-white hover:bg-rose-700">⏸ 전체 수집 정지 (비용 차단)</button>}
+          </div>
           {/* 지정 브랜드 심층 크롤링 — 큐 대기 없이 즉시, 필터 지정 */}
           <div className="mb-3 kt-card p-3">
             <div className="mb-2 flex items-center gap-1.5 text-[11px] font-bold"><Database size={13} className="text-[var(--accent)]" /> 지정 브랜드 심층 크롤링

@@ -68,7 +68,9 @@ export function scraperProvider(): string {
 
 // 브랜드 해시태그 변형 접미사 — 브랜드명에 붙여 더 넓게 수집(디테일↑). 모두 브랜드 프리픽스라 귀속 유지.
 // env COLLECT_TAG_SUFFIXES(콤마구분)로 조정. 빈 문자열("")은 브랜드명 그대로.
-const DEFAULT_TAG_SUFFIXES = ["", "review", "haul", "skincare", "makeup", "tutorial", "grwm", "beforeafter"];
+// 비용 최소화: 기본은 브랜드명 1개만(과거 8종 변형은 같은 영상을 중복 스크랩 → 결과당 과금 폭증).
+// 더 넓게 원하면 env COLLECT_TAG_SUFFIXES(콤마)로 명시.
+const DEFAULT_TAG_SUFFIXES = [""];
 function tagSuffixes(): string[] {
   const raw = process.env.COLLECT_TAG_SUFFIXES;
   const list = raw ? raw.split(",").map((s) => s.trim()) : DEFAULT_TAG_SUFFIXES;

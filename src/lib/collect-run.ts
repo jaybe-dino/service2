@@ -106,6 +106,14 @@ export async function getShopCountries(): Promise<string[]> {
   return envList.length ? Array.from(new Set(envList)) : ["US"];
 }
 
+// 수집 전체 일시정지 스위치(비용 급증 시 즉시 차단). admin_settings(collect_paused).
+export async function isCollectPaused(): Promise<boolean> {
+  try {
+    const r = await sql`SELECT value FROM admin_settings WHERE key='collect_paused' LIMIT 1`;
+    return !!(r.rows[0]?.value as { paused?: boolean } | undefined)?.paused;
+  } catch { return false; }
+}
+
 const BACKFILL_DAYS = Number(process.env.COLLECT_BACKFILL_DAYS ?? 365); // 신규 1차학습 기간
 const REFRESH_SINCE_DAYS = 30; // 증분 수집 기간
 
@@ -470,6 +478,7 @@ async function pollJobs(maxPoll: number, kind = ""): Promise<{ ingested: number;
 // → 서버리스 60초 제한 무관하게 브랜드당 수천 건 깊게 수집 가능.
 export async function runCollection(opts: { maxPending?: number; maxRefresh?: number; maxPoll?: number; baseUrl?: string } = {}): Promise<CollectSummary> {
   await ensureSchema();
+  if (await isCollectPaused()) return { configured: scraperConfigured(), mode: "skipped", polledDone: 0, ingested: 0, kickedNew: 0, kickedRefresh: 0, reason: "수집 일시정지(collect_paused)" };
   const configured = scraperConfigured();
   const webhook = ingestWebhook(opts.baseUrl);
   // 수집 강도: admin_settings(DB) 우선, 없으면 env/기본값. opts로 강제 지정 시 그 값 우선.
@@ -574,6 +583,7 @@ export interface ShopSummary { configured: boolean; mode: "async" | "skipped"; p
 // A안 틱톡샵 상품 수집 사이클: 완료분 적재(폴링) + 미수집 브랜드 N개 shop run 시작.
 export async function runShopCollection(opts: { maxShop?: number; baseUrl?: string } = {}): Promise<ShopSummary> {
   await ensureSchema();
+  if (await isCollectPaused()) return { configured: shopConfigured(), mode: "skipped", polledDone: 0, ingested: 0, kicked: 0, reason: "수집 일시정지(collect_paused)" };
   if (!shopConfigured()) return { configured: false, mode: "skipped", polledDone: 0, ingested: 0, kicked: 0, reason: "SHOP_ACTOR 미설정" };
   const webhook = ingestWebhook(opts.baseUrl);
   // 강도/국가: admin_settings(어드민 UI) 우선 → env 폴백. 재배포 없이 즉시 반영.
