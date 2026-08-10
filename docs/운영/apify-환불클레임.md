@@ -1,59 +1,49 @@
-# Apify 과다 사용료 환불 요청 (클레임)
+# Apify 크레딧 보상 요청 (Issues 탭 경유)
 
-> 목적: 설정 오류로 인한 의도치 않은 과다 결과 스크랩(~$600) 환불/크레딧 요청.
-> 근거: pay-per-result 액터가 동일 영상을 중복 스크랩 → 결과 수·비용 폭증. 실제 보관 데이터는 절반뿐.
-
----
-
-## 보낼 곳 (우선순위)
-1. **Apify Console 우측 하단 채팅(Intercom)** — Starter 플랜은 Chat 지원 포함. **가장 빠름.**
-2. **support@apify.com** (이메일) — 아래 본문 그대로 발송.
-3. **help.apify.com** / Console → Billing → “Contact support”.
-
-> 팁: 채팅과 이메일 **둘 다** 남기고, Billing → Historical usage 스크린샷(“clockworks/tiktok-scraper – Result 70,924 events = $212.77”)을 첨부하세요.
+> Apify 정책: **환불 불가(약관), 크레딧 보상만 가능.** 그리고 스토어 액터는 **개발자를 통해서만** 신청됨.
+> 절차: 액터 **Issues 탭에 이슈 등록 → 개발자 검토·인정 → 개발자가 Support에 크레딧 요청**.
+> 현실: 이번 건은 **우리 설정 오류**(액터 버그 아님)라 **선의 요청**. 거절될 수 있으나 "중복 과금" 프레임으로 시도.
 
 ---
 
-## 이메일/채팅 본문 (영문 — 그대로 복사)
+## 어디에 올리나
+- **clockworks/tiktok-scraper 의 Issues 탭**: https://apify.com/clockworks/tiktok-scraper/issues
+- "Create issue"로 아래 본문 등록. (가능하면 Historical usage 스크린샷 첨부)
 
-**Subject:** Refund request — unintended runaway pay-per-result usage due to misconfiguration
-
-Hi Apify Support,
-
-We are writing to request a **refund (or platform credit)** for unintended, runaway usage on our account this billing period.
-
-**What happened**
-- Our backend calls `clockworks/tiktok-scraper` (pay-per-result, $0.003/result) on an hourly cron to collect TikTok videos per brand.
-- Due to a **configuration error on our side**, each brand was queried with **8 hashtag variants** and **re-scraped every hour**, so the actor repeatedly returned the **same videos** over and over.
-- As a result we were billed for **70,924 “Result” events ($212.77)** in this breakdown alone, and roughly **$600 across the period** — but after de-duplication we only **stored ~36,000 unique videos**. In other words, **about half of the billed results were duplicates** of data we already had.
-- This was **not intentional usage** — it was a runaway loop from a misconfigured job, which we have since **fixed** (reduced to a single query per brand, added an emergency pause switch, and disabled the video actor by default).
-
-**Request**
-- We kindly ask for a **refund or credit for the duplicated/runaway portion** of the charges (approximately the redundant ~50% of results, or as much as your policy allows).
-- We have already corrected the configuration to prevent recurrence.
-
-**Details for your reference**
-- Account: (your Apify account email)
-- Actor: `clockworks/tiktok-scraper`
-- Billing line: “Result” — 70,924 events × $0.003 = $212.77 (plus prior days at ~$116/day)
-- Billing period: (e.g., 2026-07-10 – 2026-08-09) and 2026-08-10 spike (~$328)
-
-We appreciate your understanding and any credit you can extend for this accidental overage.
-
-Thank you,
-(Your name)
-GloveK / glovek.space
+## 먼저 준비할 것
+- **Apify User ID**: Console → **Settings → Account/Integrations**에서 확인 (또는 URL의 사용자 식별자)
+- **요청 금액**: 전액 말고 **중복분 ~50%(약 $300)** 정도로 합리적으로 (수용 확률↑)
 
 ---
 
-## 한글 요지 (담당자 공유용)
-- clockworks 액터가 **결과당 과금**인데, **해시태그 8종 × 매시간 재수집**으로 같은 영상을 반복 구매.
-- 청구 70,924건인데 **저장은 36,000건** → **약 절반이 중복 재구매(낭비)**.
-- 설정 오류였고 **이미 수정**(1종으로 축소·정지 스위치·영상 기본 OFF).
-- **중복분/폭주분에 대한 환불 또는 크레딧** 요청.
+## Issue 본문 (영문 — 그대로 복사)
 
-## 성공 확률 높이는 팁
-- 정중하게, **“our misconfiguration”**을 인정하되 **runaway/duplicate**임을 강조(= 정상 사용 아님).
-- **이미 고쳤다**는 점(재발 방지)을 명시 → 호의적 처리 유도.
-- 스크린샷(Historical usage) 첨부.
-- 첫 응답이 부분 크레딧이면 정중히 추가 요청 가능.
+**Title:** Unexpectedly high pay-per-result charges from duplicate results — credit compensation request
+
+Hi, and thanks for maintaining this actor.
+
+We use `clockworks/tiktok-scraper` to collect TikTok videos per brand on a schedule. Over the recent billing period we were charged for **70,924 “Result” events (~$213 in one line item, ~$600 across the period)**. However, after de-duplicating by video ID, we only retained **~36,000 unique videos** — meaning **roughly half of the billed results were duplicates** of content we already had.
+
+This happened because our own scheduler ran **multiple hashtag queries per brand, repeatedly**, which caused the actor to return the same videos again and again. We have since **fixed our configuration** (a single query per brand, and we disabled the scheduled runs), so this will not recur.
+
+Since about half of the pay-per-result charges were duplicate content, would you be willing to submit a **credit compensation** request to Apify Support on our behalf? We understand this originated from our configuration, so we’re asking in good faith for a partial credit.
+
+For the Support request, here are the details:
+- **Apify User ID:** (fill in your user id)
+- **Actor ID:** clockworks/tiktok-scraper
+- **Requested compensation:** ~$300 (the duplicated ~50%), or whatever you consider fair
+- **Reason:** duplicate results led to unexpected pay-per-result charges; configuration has since been corrected
+
+Thank you for considering this.
+
+---
+
+## 한글 요지
+- 환불은 불가 → **크레딧 보상**을, **clockworks Issues 탭**에서 개발자에게 요청.
+- 청구 70,924건 중 **저장 36,000건 = 절반이 중복** → 중복분 크레딧을 정중히 요청.
+- 우리 설정 오류였고 **이미 수정**했음을 명시(재발 방지) → 선의 처리 유도.
+- 요청 금액은 **~$300(중복 50%)**로 합리적으로.
+
+## 기대치
+- 개발자가 인정하면 → Support로 크레딧 요청 전달 → 계정에 **크레딧**(현금 환불 아님)으로 반영될 수 있음.
+- 거절/무응답 가능성도 있음(우리 귀책이라). 그래도 시도 비용 0.
