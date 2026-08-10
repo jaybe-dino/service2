@@ -39,9 +39,11 @@ export interface CollectTuning {
   maxRefresh: number;   // 한 번 실행 시 갱신 시작 개수
   maxPoll: number;      // 한 번 실행 시 결과 적재(회수) 개수
 }
+// 비용 안전 기본값 — 영상은 결과당 과금이라 1차 백필 깊이를 낮춤(과거 500 → 사고 원인).
+// 더 깊게 원하면 특정 브랜드만 '심층 크롤'로 수동. 증분(refresh)은 새 게시물만이라 저렴.
 export const DEFAULT_TUNING: CollectTuning = {
-  initialLimit: Number(process.env.COLLECT_INITIAL_LIMIT ?? 500),
-  refreshLimit: Number(process.env.COLLECT_REFRESH_LIMIT ?? 100),
+  initialLimit: Number(process.env.COLLECT_INITIAL_LIMIT ?? 150),
+  refreshLimit: Number(process.env.COLLECT_REFRESH_LIMIT ?? 50),
   maxPending: Number(process.env.COLLECT_MAX_PENDING ?? 4),
   maxRefresh: Number(process.env.COLLECT_MAX_REFRESH ?? 6),
   maxPoll: Number(process.env.COLLECT_MAX_POLL ?? 4), // 킥 속도(신규4+갱신6) 대비 회수 속도 — 웹훅 차단 환경에서 잡이 리퍼에 먹히지 않게
