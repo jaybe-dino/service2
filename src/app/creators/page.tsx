@@ -9,7 +9,7 @@ import { Search, Info, Users, TrendingUp, Eye } from "lucide-react";
 import { COUNTRIES } from "@/data/ktrend/meta";
 
 const ACTIVE_COUNTRIES = COUNTRIES.filter((c) => c.active);
-interface Creator { handle: string; videos: number; totalViews: number; avgViews: number; brands: string[]; inducedGmv: number; taggedProducts: number; engage: number; shopRatio: number; adRatio: number; lastPosted: string; daysSince: number; tier: string; countries: string[]; fit: number; reasons: string[] }
+interface Creator { handle: string; videos: number; totalViews: number; avgViews: number; brands: string[]; inducedGmv: number; taggedProducts: number; engage: number; shopRatio: number; adRatio: number; lastPosted: string; daysSince: number; tier: string; countries: string[]; fit: number; reasons: string[]; hasEmail?: boolean; email?: string; verified?: boolean; followers?: number }
 interface Summary { count: number; totalInducedGmv: number; withInduced: number; withTag?: number }
 type Sort = "fit" | "induced" | "views" | "videos" | "recent";
 const TIER_LABEL: Record<string, string> = { mega: "메가", macro: "매크로", micro: "마이크로" };
@@ -158,7 +158,9 @@ export default function CreatorsPage() {
                     <td className="p-2.5">
                       <div className="flex items-center gap-1.5">
                         <Link href={`/creator/${encodeURIComponent(c.handle)}`} className="font-semibold group-hover:text-[var(--accent)]">@{c.handle}</Link>
+                        {c.verified && <span title="인증 계정" className="text-[10px] text-sky-500">✔</span>}
                         <span className="rounded bg-slate-100 px-1 py-0.5 text-[9px] font-bold text-slate-500">{TIER_LABEL[c.tier] ?? c.tier}</span>
+                        {c.hasEmail && <span title={c.email} className="rounded bg-emerald-100 px-1 py-0.5 text-[9px] font-bold text-emerald-700">✉ 연락가능</span>}
                         {c.countries.slice(0, 2).map((cc) => <span key={cc} className="text-[10px]">{(COUNTRIES.find((x) => x.id === cc)?.flag) || ""}</span>)}
                       </div>
                       {c.reasons.length > 0 && <div className="mt-0.5 truncate text-[10px] text-[var(--muted)]" title={c.reasons.join(" · ")}>{c.reasons.slice(0, 3).join(" · ")}</div>}

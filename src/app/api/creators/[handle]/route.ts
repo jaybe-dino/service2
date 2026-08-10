@@ -28,6 +28,9 @@ export async function GET(_req: Request, ctx: { params: Promise<{ handle: string
       return NextResponse.json({ error: "크리에이터를 찾을 수 없습니다." }, { status: 404 });
     }
     const b = base.rows[0];
+    // 프로필 보강(bio·공개 이메일·팔로워·인증)
+    const prof = (await sql<{ bio: string | null; email: string | null; followers: string | number | null; verified: boolean | null }>`
+      SELECT bio, email, followers, verified FROM creators WHERE handle = ${handle} LIMIT 1`).rows[0];
 
     // 태그한 제품(유도 GMV) — 영상 product_ref ↔ products(국가 프리픽스 제거).
     const prods = await sql<{ product_id: string; title: string | null; brand_name: string | null; price: string | number | null; sold_count: string | number | null; country: string | null }>`
@@ -91,6 +94,8 @@ export async function GET(_req: Request, ctx: { params: Promise<{ handle: string
         engage, lastPosted, daysSince, tier, estRateUsd, fit, reasons,
         inducedGmv,
         taggedProducts: products.length,
+        email: prof?.email || "", hasEmail: !!prof?.email, bio: prof?.bio || "",
+        followers: Number(prof?.followers) || 0, verified: !!prof?.verified,
       },
       products,
       videos,

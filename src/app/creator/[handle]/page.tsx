@@ -24,6 +24,7 @@ interface Creator {
   handle: string; videos: number; totalViews: number; avgViews: number; maxViews: number; brands: string[]; countries: string[];
   shopVideos: number; adVideos: number; shopRatio: number; adRatio: number; engage: number; lastPosted: string; daysSince: number;
   tier: string; estRateUsd: number; fit: number; reasons: string[]; inducedGmv: number; taggedProducts: number;
+  email?: string; hasEmail?: boolean; bio?: string; followers?: number; verified?: boolean;
 }
 interface Data { creator: Creator; products: Prod[]; videos: Vid[] }
 
@@ -99,12 +100,19 @@ export default function CreatorDetailPage() {
                   <div className="min-w-0">
                     <h1 className="flex items-center gap-1.5 text-[21px] font-black leading-tight">
                       <Users size={17} className="text-[var(--accent)]" /> @{handle}
+                      {d.creator.verified && <span title="인증 계정" className="text-sky-500">✔</span>}
                       <span className={`ml-1 rounded-full px-2 py-0.5 text-[10px] font-bold ${(TIER[d.creator.tier] || TIER.micro).cls}`}>{(TIER[d.creator.tier] || TIER.micro).label}</span>
+                      {d.creator.hasEmail
+                        ? <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-700">✉ 연락 가능</span>
+                        : <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-500">이메일 없음</span>}
                     </h1>
                     <div className="mt-0.5 flex flex-wrap items-center gap-1.5 text-[11px] text-[var(--muted)]">
+                      {(d.creator.followers ?? 0) > 0 && <span>팔로워 {compact(d.creator.followers as number)}</span>}
                       {d.creator.countries.length > 0 && <span>{d.creator.countries.map((c) => FLAG[c.toLowerCase()] || "🌐").join(" ")}</span>}
                       {d.creator.brands.length > 0 && <span className="truncate">{d.creator.brands.slice(0, 6).join(" · ")}</span>}
                     </div>
+                    {d.creator.email && <a href={`mailto:${d.creator.email}`} className="mt-0.5 inline-block text-[11px] font-semibold text-[var(--accent)] hover:underline">{d.creator.email}</a>}
+                    {d.creator.bio && <p className="mt-1 max-w-lg text-[11px] leading-snug text-[var(--muted)]">{d.creator.bio}</p>}
                   </div>
                   <div className="ml-auto flex items-center gap-2">
                     {isAdmin ? (
