@@ -58,9 +58,19 @@ export default function OutreachBoardPage() {
   const [genTplId, setGenTplId] = useState<number | "">("");
   const [copied, setCopied] = useState(false);
   const [importMsg, setImportMsg] = useState<string | null>(null);
+  const [quota, setQuota] = useState<{ perDay: number; sentToday: number; remaining: number; pending: number; configured: boolean } | null>(null);
+  const [perDayInput, setPerDayInput] = useState(50);
+  const [sendTplId, setSendTplId] = useState<number | "">("");
+  const [sending, setSending] = useState(false);
+  const [sendMsg, setSendMsg] = useState<string | null>(null);
 
   useEffect(() => {
     fetch("/api/admin/session", { cache: "no-store" }).then((r) => r.json()).then((j) => setAuthed(!!j.authed)).catch(() => setAuthed(false));
+  }, []);
+
+  const loadQuota = useCallback(async () => {
+    const q = await fetch("/api/admin/outreach/send", { cache: "no-store" }).then((r) => r.json()).catch(() => null);
+    if (q?.ok) { setQuota(q); setPerDayInput(q.perDay); }
   }, []);
 
   const load = useCallback(async () => {
@@ -75,8 +85,25 @@ export default function OutreachBoardPage() {
       setTargets(tRes.targets || []);
       setSegments(sRes.lists || []);
       setTemplates(tplRes.templates || []);
+      loadQuota();
     } finally { setLoading(false); }
-  }, [listFilter]);
+  }, [listFilter, loadQuota]);
+
+  async function saveQuota() {
+    await fetch("/api/admin/outreach", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "setQuota", perDay: perDayInput }) });
+    loadQuota();
+  }
+  async function runSend(dry: boolean) {
+    if (!sendTplId) { setSendMsg("발송 템플릿을 선택하세요"); return; }
+    setSending(true); setSendMsg(null);
+    try {
+      const r = await fetch("/api/admin/outreach/send", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ templateId: sendTplId, dry }) });
+      const j = await r.json();
+      if (j.ok) setSendMsg(`${dry ? "수기기록" : "발송"} ${j.sent ?? 0}건${j.failed ? ` · 실패 ${j.failed}` : ""}${j.reason ? ` · ${j.reason}` : ""} · 오늘 ${j.sentToday}/${j.perDay}`);
+      else setSendMsg(j.error || (j.configured === false ? "이메일 미설정" : "실패"));
+      load();
+    } finally { setSending(false); }
+  }
 
   useEffect(() => { if (authed) load(); }, [authed, load]);
 
@@ -198,6 +225,39 @@ export default function OutreachBoardPage() {
         </div>
       </div>
       {importMsg && <p className="mb-2 text-[11px] font-semibold text-emerald-700">{importMsg}</p>}
+
+      {/* 발송 — 일일 한도(rate limit) 준수 */}
+      <div className="mb-3 rounded-xl border border-[var(--border)] bg-slate-50/60 p-3">
+        <div className="flex flex-wrap items-center gap-3">
+          <span className="flex items-center gap-1.5 text-[12px] font-black"><Send size={13} className="text-[var(--accent)]" /> 발송 (일일 한도 준수)</span>
+          {quota && (
+            <>
+              <span className="text-[11px] font-bold">오늘 <span className={quota.remaining === 0 ? "text-rose-600" : "text-emerald-600"}>{quota.sentToday}/{quota.perDay}</span> · 대기 {quota.pending}</span>
+              <div className="h-1.5 w-28 overflow-hidden rounded-full bg-slate-200"><div className="h-full rounded-full bg-[var(--accent)]" style={{ width: `${Math.min(100, (quota.sentToday / quota.perDay) * 100)}%` }} /></div>
+              {!quota.configured && <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[9px] font-bold text-amber-700">Resend 미설정 — 수기기록만</span>}
+            </>
+          )}
+          <div className="ml-auto flex items-center gap-1.5">
+            <label className="text-[10px] font-semibold text-[var(--muted)]">일일 한도</label>
+            <input type="number" min={1} max={500} value={perDayInput} onChange={(e) => setPerDayInput(Number(e.target.value))} className="w-16 rounded-md border border-[var(--border)] px-2 py-1 text-[12px]" />
+            <button onClick={saveQuota} className="rounded-md border border-[var(--border)] px-2 py-1 text-[10px] font-semibold text-[var(--accent)]">저장</button>
+          </div>
+        </div>
+        <div className="mt-2 flex flex-wrap items-center gap-2">
+          <select value={sendTplId} onChange={(e) => setSendTplId(e.target.value ? Number(e.target.value) : "")} className="rounded-lg border border-[var(--border)] px-2.5 py-1.5 text-[12px]">
+            <option value="">발송 템플릿 선택…</option>
+            {templates.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+          </select>
+          <button onClick={() => runSend(false)} disabled={sending || !quota?.configured || (quota?.remaining ?? 0) === 0}
+            className="inline-flex items-center gap-1 rounded-lg bg-[var(--accent)] px-3 py-1.5 text-[12px] font-bold text-white disabled:opacity-40">
+            <Send size={13} /> {sending ? "발송 중…" : `오늘 배치 발송 (남은 ${quota?.remaining ?? 0})`}
+          </button>
+          <button onClick={() => runSend(true)} disabled={sending} title="실제 발송 없이 접촉 기록만(수기 발송 대응). 한도 동일 적용."
+            className="rounded-lg border border-[var(--border)] px-3 py-1.5 text-[12px] font-semibold text-[var(--muted)] disabled:opacity-40">수기 기록</button>
+          {sendMsg && <span className="text-[11px] font-semibold text-emerald-700">{sendMsg}</span>}
+        </div>
+        <p className="mt-1.5 text-[10px] text-[var(--muted)]">이메일 보유·미접촉(발굴) 대상을 적합도순으로 <b>한도 내에서만</b> 발송 → 상태 자동 접촉 전환. 도달성 위해 하루 소량부터 권장(예: 30~50).</p>
+      </div>
 
       {/* 템플릿 관리 */}
       {showTpl && (

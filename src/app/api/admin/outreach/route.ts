@@ -116,6 +116,12 @@ export async function POST(req: Request) {
     }
     return NextResponse.json({ ok: true, added, total: rows.rows.length, onlyEmail });
   }
+  if (action === "setQuota") {
+    const perDay = Math.max(1, Math.min(500, Number((b as { perDay?: number }).perDay) || 50));
+    await sql`INSERT INTO admin_settings (key, value, updated_at) VALUES ('outreach_quota', ${JSON.stringify({ perDay })}::jsonb, now())
+              ON CONFLICT (key) DO UPDATE SET value=EXCLUDED.value, updated_at=now()`;
+    return NextResponse.json({ ok: true, perDay });
+  }
   if (action === "setStatus") {
     const id = Number(b.id); const status = String(b.status ?? "");
     if (!id || !STATUSES.includes(status)) return NextResponse.json({ error: "id/status 확인" }, { status: 400 });
