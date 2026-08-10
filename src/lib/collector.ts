@@ -194,6 +194,37 @@ export async function startApifyRun(input: CollectInput, webhookUrl?: string): P
   return data?.data?.id ?? "";
 }
 
+// 프로필 배치 스크레이프 — handle 목록 → bio·이메일·팔로워·인증. clockworks 프로필 모드(profiles 입력) 재사용.
+// 동기(run-sync)로 소량씩. PROFILE_ACTOR 없으면 APIFY_ACTOR(clockworks) 사용.
+export interface ScrapedProfile { handle: string; bio: string | null; email: string | null; followers: number | null; verified: boolean }
+export async function scrapeProfiles(handles: string[]): Promise<ScrapedProfile[]> {
+  if (!scraperConfigured()) throw new Error("SCRAPER_API_KEY 미설정");
+  const clean = handles.map((h) => String(h).replace(/^@/, "").trim()).filter(Boolean).slice(0, 50);
+  if (!clean.length) return [];
+  const token = process.env.SCRAPER_API_KEY!;
+  const actor = process.env.PROFILE_ACTOR || process.env.APIFY_ACTOR || "clockworks~tiktok-scraper";
+  const body = { profiles: clean, resultsPerPage: 1, shouldDownloadVideos: false, shouldDownloadCovers: false, profileScrapeSections: ["videos"], profileSorting: "latest" };
+  const res = await fetch(`https://api.apify.com/v2/acts/${actor}/run-sync-get-dataset-items?token=${token}`, {
+    method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body),
+  });
+  if (!res.ok) throw new Error(`apify profile ${res.status}: ${(await res.text()).slice(0, 160)}`);
+  const items = (await res.json()) as Array<Record<string, unknown>>;
+  // handle → 최신 authorMeta 취합
+  const map = new Map<string, ScrapedProfile>();
+  for (const it of Array.isArray(items) ? items : []) {
+    const am = (it.authorMeta ?? {}) as { name?: string; signature?: string; fans?: number; verified?: boolean };
+    const handle = am.name ? String(am.name) : "";
+    if (!handle) continue;
+    const bio = am.signature ? String(am.signature) : null;
+    const cur = map.get(handle) || { handle, bio: null, email: null, followers: null, verified: false };
+    if (bio && !cur.bio) { cur.bio = bio.slice(0, 1000); cur.email = extractEmail(bio); }
+    if (typeof am.fans === "number") cur.followers = am.fans;
+    if (am.verified) cur.verified = true;
+    map.set(handle, cur);
+  }
+  return Array.from(map.values());
+}
+
 // 완료된 run의 dataset을 가져와 매핑 (webhook ingest / 폴링에서 사용)
 export async function fetchApifyDataset(datasetId: string, sinceDate?: string | null): Promise<CollectedVideo[]> {
   if (!scraperConfigured()) throw new Error("SCRAPER_API_KEY 미설정");

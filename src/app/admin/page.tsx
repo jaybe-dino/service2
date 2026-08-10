@@ -154,6 +154,9 @@ export default function AdminPage() {
   const [shopTestCountry, setShopTestCountry] = useState("US");
   const [shopTestResult, setShopTestResult] = useState<Record<string, unknown> | null>(null);
   const [shopTestBusy, setShopTestBusy] = useState(false);
+  const [enrich, setEnrich] = useState<{ total: number; enriched: number; withEmail: number; remaining: number; configured: boolean } | null>(null);
+  const [enrichBusy, setEnrichBusy] = useState(false);
+  const [enrichMsg, setEnrichMsg] = useState<string | null>(null);
   const [collectLog, setCollectLog] = useState<{
     summary: { totalProducts: number; totalImage: number; imagePct: number };
     byCountry: { country: string; products: number; with_image: number; with_commission: number; last_collected: string | null }[];
@@ -219,6 +222,18 @@ export default function AdminPage() {
   const loadCollectLog = async () => {
     const l = await fetch("/api/admin/collect-log", { cache: "no-store" }).then((x) => x.json()).catch(() => null);
     if (l?.ok) setCollectLog(l);
+    const e = await fetch("/api/admin/creators/enrich-emails", { cache: "no-store" }).then((x) => x.json()).catch(() => null);
+    if (e?.ok) setEnrich(e);
+  };
+  const runEnrich = async () => {
+    setEnrichBusy(true); setEnrichMsg(null);
+    try {
+      const r = await fetch("/api/admin/creators/enrich-emails", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ batch: 20 }) });
+      const j = await r.json();
+      setEnrichMsg(j.ok ? `배치 완료: ${j.processed}건 처리 · 이메일 ${j.foundEmail}건 발견${j.reason ? ` · ${j.reason}` : ""}` : (j.error || "실패"));
+      if (j.total != null) setEnrich((cur) => ({ ...(cur || { configured: true }), total: j.total, enriched: j.enriched, withEmail: j.withEmail, remaining: j.remaining } as typeof cur));
+    } catch (e) { setEnrichMsg(String((e as Error).message || e)); }
+    finally { setEnrichBusy(false); }
   };
   const saveShopTuning = async () => {
     if (!shopTuning) return;
@@ -1181,6 +1196,28 @@ export default function AdminPage() {
               </div>
             )}
           </div>
+          {/* 크리에이터 이메일 크롤(배치) — 기존 크리에이터 프로필 재수집으로 bio·이메일 채움 */}
+          <div className="mb-3 kt-card p-3">
+            <div className="mb-2 flex flex-wrap items-center gap-2">
+              <span className="flex items-center gap-1.5 text-[11px] font-bold"><UserSquare2 size={13} className="text-[var(--accent)]" /> 크리에이터 이메일 크롤 <span className="font-normal text-[var(--muted)]">· 프로필 재수집 → bio·이메일 추출</span></span>
+              {enrich && !enrich.configured && <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[9px] font-bold text-amber-700">SCRAPER 미설정</span>}
+              <button onClick={runEnrich} disabled={enrichBusy || (enrich?.remaining ?? 0) === 0} className="kt-btn kt-btn-primary ml-auto px-3 py-1.5 text-[11px] disabled:opacity-50">
+                {enrichBusy ? "크롤 중…" : `배치 크롤 (20건)`}
+              </button>
+            </div>
+            {enrich && (
+              <div className="flex flex-wrap items-center gap-3 text-[11px]">
+                <span>총 {enrich.total.toLocaleString()}</span>
+                <span>보강완료 <b>{enrich.enriched.toLocaleString()}</b></span>
+                <span className="text-emerald-600">이메일 <b>{enrich.withEmail.toLocaleString()}</b></span>
+                <span className="text-[var(--muted)]">남은 {enrich.remaining.toLocaleString()}</span>
+                <div className="h-1.5 w-32 overflow-hidden rounded-full bg-slate-200"><div className="h-full rounded-full bg-[var(--accent)]" style={{ width: `${enrich.total ? Math.round((enrich.enriched / enrich.total) * 100) : 0}%` }} /></div>
+              </div>
+            )}
+            {enrichMsg && <p className="mt-1.5 text-[11px] font-semibold text-emerald-700">{enrichMsg}</p>}
+            <p className="mt-1.5 text-[10px] text-[var(--muted)]">한 번에 다 하지 않고 <b>20건씩 배치</b>로 프로필을 재크롤 → bio에서 공개 이메일 추출·저장. 조회수 높은 순. ⚠️ Apify 사용(비용·한도 적용).</p>
+          </div>
+
           {/* 수집·적재 결과 로그 — 제품/이미지 적재 현황(국가별) + 최근 실행 이력 */}
           <div className="mb-3 kt-card p-3">
             <div className="mb-2 flex flex-wrap items-center gap-2">
