@@ -117,10 +117,14 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true, added, total: rows.rows.length, onlyEmail });
   }
   if (action === "setQuota") {
-    const perDay = Math.max(1, Math.min(500, Number((b as { perDay?: number }).perDay) || 50));
-    await sql`INSERT INTO admin_settings (key, value, updated_at) VALUES ('outreach_quota', ${JSON.stringify({ perDay })}::jsonb, now())
+    const bb = b as { perDay?: number; channel?: string };
+    const perDay = Math.max(1, Math.min(500, Number(bb.perDay) || 50));
+    const channel = bb.channel === "tiktok" ? "tiktok" : "email";
+    const cur = (await sql`SELECT value FROM admin_settings WHERE key='outreach_quota' LIMIT 1`).rows[0]?.value as Record<string, number> | undefined;
+    const next = { email: 50, tiktok: 20, ...(cur || {}), [channel]: perDay };
+    await sql`INSERT INTO admin_settings (key, value, updated_at) VALUES ('outreach_quota', ${JSON.stringify(next)}::jsonb, now())
               ON CONFLICT (key) DO UPDATE SET value=EXCLUDED.value, updated_at=now()`;
-    return NextResponse.json({ ok: true, perDay });
+    return NextResponse.json({ ok: true, channel, perDay });
   }
   if (action === "setStatus") {
     const id = Number(b.id); const status = String(b.status ?? "");

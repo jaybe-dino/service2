@@ -63,6 +63,12 @@ export default function OutreachBoardPage() {
   const [sendTplId, setSendTplId] = useState<number | "">("");
   const [sending, setSending] = useState(false);
   const [sendMsg, setSendMsg] = useState<string | null>(null);
+  // 틱톡 공식 채널(제휴 초대/TTCM) — 별도 트랙·별도 일일 한도
+  const [tkQuota, setTkQuota] = useState<{ perDay: number; sentToday: number; remaining: number; pending: number; configured: boolean } | null>(null);
+  const [tkPerDayInput, setTkPerDayInput] = useState(20);
+  const [tkTplId, setTkTplId] = useState<number | "">("");
+  const [tkSending, setTkSending] = useState(false);
+  const [tkMsg, setTkMsg] = useState<string | null>(null);
 
   useEffect(() => {
     fetch("/api/admin/session", { cache: "no-store" }).then((r) => r.json()).then((j) => setAuthed(!!j.authed)).catch(() => setAuthed(false));
@@ -71,6 +77,8 @@ export default function OutreachBoardPage() {
   const loadQuota = useCallback(async () => {
     const q = await fetch("/api/admin/outreach/send", { cache: "no-store" }).then((r) => r.json()).catch(() => null);
     if (q?.ok) { setQuota(q); setPerDayInput(q.perDay); }
+    const tk = await fetch("/api/admin/outreach/invite", { cache: "no-store" }).then((r) => r.json()).catch(() => null);
+    if (tk?.ok) { setTkQuota(tk); setTkPerDayInput(tk.perDay); }
   }, []);
 
   const load = useCallback(async () => {
@@ -103,6 +111,21 @@ export default function OutreachBoardPage() {
       else setSendMsg(j.error || (j.configured === false ? "이메일 미설정" : "실패"));
       load();
     } finally { setSending(false); }
+  }
+  async function saveTkQuota() {
+    await fetch("/api/admin/outreach", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "setQuota", channel: "tiktok", perDay: tkPerDayInput }) });
+    loadQuota();
+  }
+  async function runInvite(dry: boolean) {
+    if (!tkTplId) { setTkMsg("초대 메시지 템플릿을 선택하세요"); return; }
+    setTkSending(true); setTkMsg(null);
+    try {
+      const r = await fetch("/api/admin/outreach/invite", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ templateId: tkTplId, dry }) });
+      const j = await r.json();
+      if (j.ok) setTkMsg(`${dry ? "수기기록" : "초대"} ${j.sent ?? 0}건${j.failed ? ` · 실패 ${j.failed}` : ""}${j.reason ? ` · ${j.reason}` : ""} · 오늘 ${j.sentToday}/${j.perDay}`);
+      else setTkMsg(j.error || (j.configured === false ? "틱톡 연동 미설정" : "실패"));
+      load();
+    } finally { setTkSending(false); }
   }
 
   useEffect(() => { if (authed) load(); }, [authed, load]);
@@ -257,6 +280,39 @@ export default function OutreachBoardPage() {
           {sendMsg && <span className="text-[11px] font-semibold text-emerald-700">{sendMsg}</span>}
         </div>
         <p className="mt-1.5 text-[10px] text-[var(--muted)]">이메일 보유·미접촉(발굴) 대상을 적합도순으로 <b>한도 내에서만</b> 발송 → 상태 자동 접촉 전환. 도달성 위해 하루 소량부터 권장(예: 30~50).</p>
+      </div>
+
+      {/* 틱톡 공식 채널 — 제휴 초대/TTCM (별도 트랙·별도 한도) */}
+      <div className="mb-3 rounded-xl border border-[var(--border)] bg-slate-50/60 p-3">
+        <div className="flex flex-wrap items-center gap-3">
+          <span className="flex items-center gap-1.5 text-[12px] font-black">🎵 틱톡 공식 초대 <span className="rounded-full bg-slate-200 px-1.5 py-0.5 text-[9px] font-bold text-slate-600">제휴/TTCM · 별도 트랙</span></span>
+          {tkQuota && (
+            <>
+              <span className="text-[11px] font-bold">오늘 <span className={tkQuota.remaining === 0 ? "text-rose-600" : "text-emerald-600"}>{tkQuota.sentToday}/{tkQuota.perDay}</span> · 대기 {tkQuota.pending}</span>
+              <div className="h-1.5 w-28 overflow-hidden rounded-full bg-slate-200"><div className="h-full rounded-full bg-fuchsia-500" style={{ width: `${Math.min(100, (tkQuota.sentToday / tkQuota.perDay) * 100)}%` }} /></div>
+              {!tkQuota.configured && <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[9px] font-bold text-amber-700">틱톡 연동 미설정 — 수기기록만</span>}
+            </>
+          )}
+          <div className="ml-auto flex items-center gap-1.5">
+            <label className="text-[10px] font-semibold text-[var(--muted)]">일일 한도</label>
+            <input type="number" min={1} max={500} value={tkPerDayInput} onChange={(e) => setTkPerDayInput(Number(e.target.value))} className="w-16 rounded-md border border-[var(--border)] px-2 py-1 text-[12px]" />
+            <button onClick={saveTkQuota} className="rounded-md border border-[var(--border)] px-2 py-1 text-[10px] font-semibold text-[var(--accent)]">저장</button>
+          </div>
+        </div>
+        <div className="mt-2 flex flex-wrap items-center gap-2">
+          <select value={tkTplId} onChange={(e) => setTkTplId(e.target.value ? Number(e.target.value) : "")} className="rounded-lg border border-[var(--border)] px-2.5 py-1.5 text-[12px]">
+            <option value="">초대 메시지 템플릿…</option>
+            {templates.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+          </select>
+          <button onClick={() => runInvite(false)} disabled={tkSending || !tkQuota?.configured || (tkQuota?.remaining ?? 0) === 0}
+            className="inline-flex items-center gap-1 rounded-lg bg-fuchsia-600 px-3 py-1.5 text-[12px] font-bold text-white disabled:opacity-40">
+            🎵 {tkSending ? "초대 중…" : `오늘 배치 초대 (남은 ${tkQuota?.remaining ?? 0})`}
+          </button>
+          <button onClick={() => runInvite(true)} disabled={tkSending} title="실제 초대 없이 기록만(수기 초대 대응). 한도 동일 적용."
+            className="rounded-lg border border-[var(--border)] px-3 py-1.5 text-[12px] font-semibold text-[var(--muted)] disabled:opacity-40">수기 기록</button>
+          {tkMsg && <span className="text-[11px] font-semibold text-emerald-700">{tkMsg}</span>}
+        </div>
+        <p className="mt-1.5 text-[10px] text-[var(--muted)]">틱톡 공식 제휴 초대/TTCM은 <b>이메일과 별개 트랙·별개 한도</b>. handle 기반(이메일 불필요)이라 이메일 없는 대상도 진행. 연동: <span className="font-mono">TIKTOK_INVITE_URL</span>·<span className="font-mono">TIKTOK_INVITE_TOKEN</span>.</p>
       </div>
 
       {/* 템플릿 관리 */}

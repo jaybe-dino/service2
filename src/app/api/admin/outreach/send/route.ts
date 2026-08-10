@@ -19,8 +19,8 @@ function render(text: string, t: { handle: string; views: number; score: number 
 }
 
 async function quotaStatus() {
-  const q = (await sql`SELECT value FROM admin_settings WHERE key='outreach_quota' LIMIT 1`).rows[0]?.value as { perDay?: number } | undefined;
-  const perDay = Math.max(1, Math.min(500, Number(q?.perDay) || DEFAULT_PER_DAY));
+  const q = (await sql`SELECT value FROM admin_settings WHERE key='outreach_quota' LIMIT 1`).rows[0]?.value as { perDay?: number; email?: number } | undefined;
+  const perDay = Math.max(1, Math.min(500, Number(q?.email ?? q?.perDay) || DEFAULT_PER_DAY)); // email 채널(하위호환 perDay)
   // 오늘(KST) 발송 수 — outreach_activity kind='send'.
   const sent = Number((await sql`
     SELECT count(*)::int AS n FROM outreach_activity
