@@ -158,6 +158,8 @@ export default function AdminPage() {
   const [enrichBusy, setEnrichBusy] = useState(false);
   const [enrichMsg, setEnrichMsg] = useState<string | null>(null);
   const [collectPaused, setCollectPaused] = useState<boolean | null>(null);
+  const [collectSwitches, setCollectSwitches] = useState<{ video: boolean; shop: boolean }>({ video: false, shop: true });
+  const [collectActors, setCollectActors] = useState<Record<string, { actor: string; configured: boolean; cost: string; warn: boolean }> | null>(null);
   const [collectLog, setCollectLog] = useState<{
     summary: { totalProducts: number; totalImage: number; imagePct: number };
     byCountry: { country: string; products: number; with_image: number; with_commission: number; last_collected: string | null }[];
@@ -226,12 +228,18 @@ export default function AdminPage() {
     const e = await fetch("/api/admin/creators/enrich-emails", { cache: "no-store" }).then((x) => x.json()).catch(() => null);
     if (e?.ok) setEnrich(e);
     const p = await fetch("/api/admin/collect-pause", { cache: "no-store" }).then((x) => x.json()).catch(() => null);
-    if (p?.ok) setCollectPaused(!!p.paused);
+    if (p?.ok) { setCollectPaused(!!p.paused); if (p.switches) setCollectSwitches(p.switches); if (p.actors) setCollectActors(p.actors); }
   };
   const togglePause = async (paused: boolean) => {
     setCollectPaused(paused);
     await fetch("/api/admin/collect-pause", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ paused }) });
     setToast(paused ? "⏸ 모든 자동 수집 정지됨 (비용 차단)" : "▶ 수집 재개됨");
+  };
+  const toggleTrack = async (track: "video" | "shop", on: boolean) => {
+    const next = { ...collectSwitches, [track]: on };
+    setCollectSwitches(next);
+    await fetch("/api/admin/collect-pause", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ switches: { [track]: on } }) });
+    setToast(`${track === "video" ? "영상" : "샵"} 수집 ${on ? "ON" : "OFF"}`);
   };
   const runEnrich = async () => {
     setEnrichBusy(true); setEnrichMsg(null);
@@ -1020,13 +1028,37 @@ export default function AdminPage() {
 
       {tab === "collect" && (
         <>
-          {/* 수집 일시정지 — 비용 급증 시 즉시 모든 자동 수집(영상·샵 크론) 차단 */}
-          <div className={`mb-3 flex flex-wrap items-center gap-3 rounded-xl border p-3 ${collectPaused ? "border-rose-300 bg-rose-50" : "border-[var(--border)]"}`}>
-            <span className="flex items-center gap-1.5 text-[12px] font-black">{collectPaused ? "⏸ 수집 정지됨" : "▶ 수집 실행 중"}</span>
-            <span className="text-[10px] text-[var(--muted)]">자동 크론(영상·샵)을 즉시 켜고/끕니다 · 재배포 불필요</span>
-            {collectPaused
-              ? <button onClick={() => togglePause(false)} className="kt-btn kt-btn-outline ml-auto px-3 py-1.5 text-[11px]">▶ 수집 재개</button>
-              : <button onClick={() => togglePause(true)} className="ml-auto rounded-lg bg-rose-600 px-3 py-1.5 text-[11px] font-bold text-white hover:bg-rose-700">⏸ 전체 수집 정지 (비용 차단)</button>}
+          {/* 수집 제어판 — 전체 정지(비용 차단) + 액터별 on/off + 비용 표시 */}
+          <div className={`mb-3 rounded-xl border p-3 ${collectPaused ? "border-rose-300 bg-rose-50" : "border-[var(--border)]"}`}>
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="flex items-center gap-1.5 text-[12px] font-black"><SlidersHorizontal size={13} className="text-[var(--accent)]" /> 수집 제어판</span>
+              <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${collectPaused ? "bg-rose-100 text-rose-700" : "bg-emerald-100 text-emerald-700"}`}>{collectPaused ? "⏸ 전체 정지됨" : "▶ 실행 중"}</span>
+              {collectPaused
+                ? <button onClick={() => togglePause(false)} className="kt-btn kt-btn-outline ml-auto px-3 py-1.5 text-[11px]">▶ 수집 재개</button>
+                : <button onClick={() => togglePause(true)} className="ml-auto rounded-lg bg-rose-600 px-3 py-1.5 text-[11px] font-bold text-white hover:bg-rose-700">⏸ 전체 정지 (비용 차단)</button>}
+            </div>
+            {/* 액터별 토글 */}
+            <div className="mt-2 grid gap-2 sm:grid-cols-2">
+              {(["shop", "video"] as const).map((track) => {
+                const on = collectSwitches[track];
+                const info = collectActors?.[track];
+                const label = track === "shop" ? "🛍 샵(상품) 수집" : "🎬 영상 수집";
+                return (
+                  <div key={track} className={`rounded-lg border p-2.5 ${info?.warn && on ? "border-amber-300 bg-amber-50" : "border-[var(--border)] bg-white"}`}>
+                    <div className="flex items-center justify-between">
+                      <span className="text-[11px] font-bold">{label} {info?.warn && <span className="text-amber-600">⚠️</span>}</span>
+                      <button onClick={() => toggleTrack(track, !on)} disabled={collectPaused === true}
+                        className={`rounded-full px-2.5 py-0.5 text-[10px] font-bold ${on ? "bg-emerald-500 text-white" : "bg-slate-200 text-slate-500"} disabled:opacity-40`}>{on ? "ON" : "OFF"}</button>
+                    </div>
+                    <div className="mt-1 text-[9px] text-[var(--muted)]">
+                      actor: <span className="font-mono">{info?.actor || "미설정"}</span>{info && !info.configured && <span className="text-rose-500"> · 미설정</span>}
+                    </div>
+                    <div className="text-[9px] text-[var(--muted)]">{info?.cost}</div>
+                  </div>
+                );
+              })}
+            </div>
+            <p className="mt-2 text-[10px] text-[var(--muted)]">💡 <b>영상 수집은 결과당 과금이라 비쌉니다</b>(사고 원인). 지금은 <b>샵만 ON, 영상 OFF</b> 권장. 재배포 없이 즉시 반영. 이메일 크롤은 아래 배치 버튼으로 개별 실행.</p>
           </div>
           {/* 지정 브랜드 심층 크롤링 — 큐 대기 없이 즉시, 필터 지정 */}
           <div className="mb-3 kt-card p-3">

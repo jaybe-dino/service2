@@ -114,6 +114,17 @@ export async function isCollectPaused(): Promise<boolean> {
   } catch { return false; }
 }
 
+// 트랙별 on/off — 영상(비쌈)·샵을 독립 제어. 기본: 영상 OFF(비용 사고 방지), 샵 ON.
+export interface CollectSwitches { video: boolean; shop: boolean }
+export async function getCollectSwitches(): Promise<CollectSwitches> {
+  try {
+    const r = await sql`SELECT value FROM admin_settings WHERE key='collect_switches' LIMIT 1`;
+    const v = (r.rows[0]?.value ?? null) as Partial<CollectSwitches> | null;
+    if (!v) return { video: false, shop: true }; // 미설정 기본: 영상 끔(사고 방지), 샵 켬
+    return { video: v.video === true, shop: v.shop !== false };
+  } catch { return { video: false, shop: true }; }
+}
+
 const BACKFILL_DAYS = Number(process.env.COLLECT_BACKFILL_DAYS ?? 365); // 신규 1차학습 기간
 const REFRESH_SINCE_DAYS = 30; // 증분 수집 기간
 
@@ -479,6 +490,7 @@ async function pollJobs(maxPoll: number, kind = ""): Promise<{ ingested: number;
 export async function runCollection(opts: { maxPending?: number; maxRefresh?: number; maxPoll?: number; baseUrl?: string } = {}): Promise<CollectSummary> {
   await ensureSchema();
   if (await isCollectPaused()) return { configured: scraperConfigured(), mode: "skipped", polledDone: 0, ingested: 0, kickedNew: 0, kickedRefresh: 0, reason: "수집 일시정지(collect_paused)" };
+  if (!(await getCollectSwitches()).video) return { configured: scraperConfigured(), mode: "skipped", polledDone: 0, ingested: 0, kickedNew: 0, kickedRefresh: 0, reason: "영상 수집 OFF(비용 보호)" };
   const configured = scraperConfigured();
   const webhook = ingestWebhook(opts.baseUrl);
   // 수집 강도: admin_settings(DB) 우선, 없으면 env/기본값. opts로 강제 지정 시 그 값 우선.
@@ -584,6 +596,7 @@ export interface ShopSummary { configured: boolean; mode: "async" | "skipped"; p
 export async function runShopCollection(opts: { maxShop?: number; baseUrl?: string } = {}): Promise<ShopSummary> {
   await ensureSchema();
   if (await isCollectPaused()) return { configured: shopConfigured(), mode: "skipped", polledDone: 0, ingested: 0, kicked: 0, reason: "수집 일시정지(collect_paused)" };
+  if (!(await getCollectSwitches()).shop) return { configured: shopConfigured(), mode: "skipped", polledDone: 0, ingested: 0, kicked: 0, reason: "샵 수집 OFF" };
   if (!shopConfigured()) return { configured: false, mode: "skipped", polledDone: 0, ingested: 0, kicked: 0, reason: "SHOP_ACTOR 미설정" };
   const webhook = ingestWebhook(opts.baseUrl);
   // 강도/국가: admin_settings(어드민 UI) 우선 → env 폴백. 재배포 없이 즉시 반영.
