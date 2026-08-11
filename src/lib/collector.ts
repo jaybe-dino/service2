@@ -227,6 +227,53 @@ export async function scrapeProfiles(handles: string[]): Promise<ScrapedProfile[
   return Array.from(map.values());
 }
 
+// ── 이메일 전용 actor 어댑터 (예: scraper-mind/tiktok-profile-email-scraper) ──
+// env: EMAIL_ACTOR(액터 id), EMAIL_ACTOR_TOKEN(없으면 SCRAPER_API_KEY). 스키마는 actor마다 달라 슈퍼셋 입력 + 딥서치 출력.
+export function emailActorConfigured(): boolean {
+  return Boolean(process.env.EMAIL_ACTOR && (process.env.EMAIL_ACTOR_TOKEN || process.env.SCRAPER_API_KEY));
+}
+export interface ScrapedEmail { handle: string; email: string | null }
+export async function scrapeEmailsViaActor(handles: string[]): Promise<ScrapedEmail[]> {
+  if (!emailActorConfigured()) throw new Error("EMAIL_ACTOR/토큰 미설정");
+  const clean = handles.map((h) => String(h).replace(/^@/, "").trim()).filter(Boolean).slice(0, 100);
+  if (!clean.length) return [];
+  const token = process.env.EMAIL_ACTOR_TOKEN || process.env.SCRAPER_API_KEY!;
+  const actor = normalizeActor(process.env.EMAIL_ACTOR!);
+  const urls = clean.map((h) => `https://www.tiktok.com/@${h}`);
+  // 입력 슈퍼셋 — actor가 쓰는 키만 반영, 나머지 무시. SHOP_ACTOR_INPUT처럼 EMAIL_ACTOR_INPUT으로 완전 오버라이드 가능.
+  let body: Record<string, unknown>;
+  if (process.env.EMAIL_ACTOR_INPUT) {
+    try { body = JSON.parse(process.env.EMAIL_ACTOR_INPUT.replace(/\{\{\s*usernames\s*\}\}/g, JSON.stringify(clean))); } catch { body = { usernames: clean }; }
+  } else {
+    body = { usernames: clean, profiles: clean, handles: clean, usernameList: clean,
+      startUrls: urls.map((u) => ({ url: u })), profileUrls: urls, urls,
+      maxItems: clean.length, maxResults: clean.length, resultsLimit: clean.length };
+  }
+  const res = await fetch(`https://api.apify.com/v2/acts/${actor}/run-sync-get-dataset-items?token=${token}&clean=true`, {
+    method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body),
+  });
+  if (!res.ok) throw new Error(`apify email ${res.status} (${actor}): ${(await res.text()).slice(0, 200)}`);
+  const items = (await res.json()) as Array<Record<string, unknown>>;
+  const out: ScrapedEmail[] = [];
+  for (const it of Array.isArray(items) ? items : []) {
+    // handle: username/handle/uniqueId 계열, 없으면 url에서 @handle 추출.
+    let handle = String(pick(it, ["username", "handle", "uniqueId", "userName", "user_name", "profileName", "name", "author"]) ?? "");
+    if (!handle) { const u = String(pick(it, ["url", "profileUrl", "profile_url", "link"]) ?? ""); const m = u.match(/@([\w.\-]+)/); if (m) handle = m[1]; }
+    handle = handle.replace(/^@/, "").trim();
+    if (!handle) continue;
+    // email: 명시 키 → 딥서치(문자열에서 이메일 패턴).
+    let email = String(pick(it, ["email", "emails", "contactEmail", "contact_email", "businessEmail", "e_mail"]) ?? "");
+    if (email.includes(",") || email.includes(";")) email = email.split(/[,;]/)[0];
+    email = email.trim().toLowerCase();
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
+      const found = deepFind(it, (k, v) => /mail/i.test(k) && typeof v === "string" && /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(v));
+      email = found ? String(found).toLowerCase() : extractEmail(String(pick(it, ["bio", "signature", "desc", "description"]) ?? "")) || "";
+    }
+    out.push({ handle, email: email || null });
+  }
+  return out;
+}
+
 // 완료된 run의 dataset을 가져와 매핑 (webhook ingest / 폴링에서 사용)
 export async function fetchApifyDataset(datasetId: string, sinceDate?: string | null): Promise<CollectedVideo[]> {
   if (!scraperConfigured()) throw new Error("SCRAPER_API_KEY 미설정");

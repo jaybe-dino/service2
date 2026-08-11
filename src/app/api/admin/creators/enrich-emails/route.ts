@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { sql, ensureSchema, isConfigured } from "@/lib/db";
 import { isAdminAuthed } from "@/lib/admin-auth";
-import { scrapeProfiles, scraperConfigured } from "@/lib/collector";
+import { scrapeProfiles, scraperConfigured, scrapeEmailsViaActor, emailActorConfigured } from "@/lib/collector";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -23,17 +23,18 @@ export async function GET() {
   if (!(await isAdminAuthed())) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   if (!isConfigured()) return NextResponse.json({ error: "DB 미설정" }, { status: 503 });
   await ensureSchema();
-  return NextResponse.json({ ok: true, configured: scraperConfigured(), ...(await stats()) });
+  return NextResponse.json({ ok: true, configured: scraperConfigured() || emailActorConfigured(), via: emailActorConfigured() ? "email-actor" : "profile", ...(await stats()) });
 }
 
 export async function POST(req: Request) {
   if (!(await isAdminAuthed())) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   if (!isConfigured()) return NextResponse.json({ error: "DB 미설정" }, { status: 503 });
-  if (!scraperConfigured()) return NextResponse.json({ ok: false, error: "SCRAPER_API_KEY 미설정" }, { status: 503 });
+  const useEmailActor = emailActorConfigured(); // 전용 이메일 actor(EMAIL_ACTOR) 있으면 우선
+  if (!useEmailActor && !scraperConfigured()) return NextResponse.json({ ok: false, error: "SCRAPER_API_KEY 또는 EMAIL_ACTOR 미설정" }, { status: 503 });
   await ensureSchema();
   const b = (await req.json().catch(() => ({}))) as { batch?: number };
-  // 60초 내 완료되게 소량 배치(기본 20, 상한 40).
-  const take = Math.max(1, Math.min(40, Number(b.batch) || 20));
+  // 전용 이메일 actor는 소량 동기 처리에 강함 → 배치 상한 확대(기본 20, 상한 100).
+  const take = Math.max(1, Math.min(useEmailActor ? 100 : 40, Number(b.batch) || 20));
 
   // 아직 프로필 보강 안 된(bio NULL) 크리에이터를 조회수 높은 순으로.
   const rows = (await sql<{ handle: string }>`
@@ -41,31 +42,36 @@ export async function POST(req: Request) {
     WHERE bio IS NULL AND handle IS NOT NULL AND handle <> ''
       AND handle NOT IN (SELECT value FROM blocklist WHERE kind='handle')
     ORDER BY total_views DESC NULLS LAST LIMIT ${take}`).rows;
-  if (!rows.length) return NextResponse.json({ ok: true, processed: 0, foundEmail: 0, reason: "보강 대상 없음(모두 완료)", ...(await stats()) });
+  if (!rows.length) return NextResponse.json({ ok: true, processed: 0, foundEmail: 0, reason: "보강 대상 없음(모두 완료)", via: useEmailActor ? "email-actor" : "profile", ...(await stats()) });
 
   const handles = rows.map((r) => r.handle);
   let processed = 0, foundEmail = 0, err = "";
   try {
-    const profs = await scrapeProfiles(handles);
-    const got = new Map(profs.map((p) => [p.handle.toLowerCase(), p]));
-    for (const h of handles) {
-      const p = got.get(h.toLowerCase());
-      // 결과 없으면 bio=''로 마킹(재시도 무한루프 방지: 다음 배치에서 제외).
-      const bio = p?.bio ?? "";
-      const email = p?.email ?? null;
-      const followers = p?.followers ?? null;
-      const verified = !!p?.verified;
-      await sql`UPDATE creators SET
-        bio = ${bio},
-        email = COALESCE(${email}, email),
-        followers = COALESCE(${followers}, followers),
-        verified = ${verified} OR verified,
-        updated_at = now() WHERE handle = ${h}`;
-      processed += 1;
-      if (email) foundEmail += 1;
+    if (useEmailActor) {
+      // 이메일 전용 actor: email만 반환. 처리 표시로 bio=''(빈)로 마킹.
+      const got = new Map((await scrapeEmailsViaActor(handles)).map((p) => [p.handle.toLowerCase(), p.email]));
+      for (const h of handles) {
+        const email = got.get(h.toLowerCase()) || null;
+        await sql`UPDATE creators SET email = COALESCE(${email}, email), bio = COALESCE(bio, ''), updated_at = now() WHERE handle = ${h}`;
+        processed += 1;
+        if (email) foundEmail += 1;
+      }
+    } else {
+      const profs = await scrapeProfiles(handles);
+      const got = new Map(profs.map((p) => [p.handle.toLowerCase(), p]));
+      for (const h of handles) {
+        const p = got.get(h.toLowerCase());
+        const bio = p?.bio ?? ""; // 결과 없으면 bio=''로 마킹(무한재시도 방지)
+        await sql`UPDATE creators SET
+          bio = ${bio}, email = COALESCE(${p?.email ?? null}, email),
+          followers = COALESCE(${p?.followers ?? null}, followers),
+          verified = ${!!p?.verified} OR verified, updated_at = now() WHERE handle = ${h}`;
+        processed += 1;
+        if (p?.email) foundEmail += 1;
+      }
     }
   } catch (e) {
     err = String(e instanceof Error ? e.message : e).slice(0, 200);
   }
-  return NextResponse.json({ ok: !err, processed, foundEmail, error: err || undefined, ...(await stats()) });
+  return NextResponse.json({ ok: !err, processed, foundEmail, via: useEmailActor ? "email-actor" : "profile", error: err || undefined, ...(await stats()) });
 }
