@@ -158,6 +158,8 @@ export default function AdminPage() {
   const [enrichBusy, setEnrichBusy] = useState(false);
   const [enrichMsg, setEnrichMsg] = useState<string | null>(null);
   const [importMsg, setImportMsg] = useState<string | null>(null);
+  const [emailActorInput, setEmailActorInput] = useState("scraper-mind/tiktok-profile-email-scraper");
+  const [emailTokenInput, setEmailTokenInput] = useState("");
   const [collectPaused, setCollectPaused] = useState<boolean | null>(null);
   const [collectSwitches, setCollectSwitches] = useState<{ video: boolean; shop: boolean }>({ video: false, shop: true });
   const [collectActors, setCollectActors] = useState<Record<string, { actor: string; configured: boolean; cost: string; warn: boolean }> | null>(null);
@@ -255,7 +257,9 @@ export default function AdminPage() {
   const runEnrich = async () => {
     setEnrichBusy(true); setEnrichMsg(null);
     try {
-      const r = await fetch("/api/admin/creators/enrich-emails", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ batch: 20 }) });
+      const body: Record<string, unknown> = { batch: 20 };
+      if (emailActorInput.trim() && emailTokenInput.trim()) { body.emailActor = emailActorInput.trim(); body.emailToken = emailTokenInput.trim(); }
+      const r = await fetch("/api/admin/creators/enrich-emails", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
       const j = await r.json();
       setEnrichMsg(j.ok ? `배치 완료: ${j.processed}건 처리 · 이메일 ${j.foundEmail}건 발견${j.reason ? ` · ${j.reason}` : ""}` : (j.error || "실패"));
       if (j.total != null) setEnrich((cur) => ({ ...(cur || { configured: true }), total: j.total, enriched: j.enriched, withEmail: j.withEmail, remaining: j.remaining } as typeof cur));
@@ -1274,7 +1278,13 @@ export default function AdminPage() {
               </div>
             )}
             {enrichMsg && <p className="mt-1.5 text-[11px] font-semibold text-emerald-700">{enrichMsg}</p>}
-            <p className="mt-1.5 text-[10px] text-[var(--muted)]">한 번에 다 하지 않고 <b>20건씩 배치</b>로 프로필을 재크롤 → bio에서 공개 이메일 추출·저장. 조회수 높은 순. ⚠️ Apify 사용(비용·한도 적용).</p>
+            {/* 전용 이메일 actor·토큰 직접 입력 (env 저장 없이 1회용) */}
+            <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+              <input value={emailActorInput} onChange={(e) => setEmailActorInput(e.target.value)} placeholder="이메일 actor (예: scraper-mind/tiktok-profile-email-scraper)" className="w-72 rounded-md border border-[var(--border)] px-2 py-1 text-[10px]" />
+              <input value={emailTokenInput} onChange={(e) => setEmailTokenInput(e.target.value)} type="password" placeholder="Apify 토큰 (1회용·저장 안 함)" className="w-56 rounded-md border border-[var(--border)] px-2 py-1 text-[10px]" />
+              <span className="text-[9px] text-[var(--muted)]">둘 다 입력하면 그 actor로 실행(env 대신). 비우면 기존 방식.</span>
+            </div>
+            <p className="mt-1.5 text-[10px] text-[var(--muted)]">한 번에 다 하지 않고 <b>20건씩 배치</b>로 프로필을 재크롤 → 공개 이메일 추출·저장. 조회수 높은 순. ⚠️ Apify 사용(비용·한도 적용).</p>
 
             {/* 외부 수집용: CSV 내려받기(key=handle) + 이메일 되매핑 임포트 */}
             <div className="mt-2 flex flex-wrap items-center gap-2 border-t border-[var(--border)] pt-2">

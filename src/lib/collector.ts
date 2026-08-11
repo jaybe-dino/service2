@@ -233,12 +233,15 @@ export function emailActorConfigured(): boolean {
   return Boolean(process.env.EMAIL_ACTOR && (process.env.EMAIL_ACTOR_TOKEN || process.env.SCRAPER_API_KEY));
 }
 export interface ScrapedEmail { handle: string; email: string | null }
-export async function scrapeEmailsViaActor(handles: string[]): Promise<ScrapedEmail[]> {
-  if (!emailActorConfigured()) throw new Error("EMAIL_ACTOR/토큰 미설정");
+// opts로 요청별 actor/token 오버라이드(어드민 UI 1회 입력 → env 저장 없이 실행).
+export async function scrapeEmailsViaActor(handles: string[], opts?: { actor?: string; token?: string }): Promise<ScrapedEmail[]> {
+  const tokenRaw = opts?.token || process.env.EMAIL_ACTOR_TOKEN || process.env.SCRAPER_API_KEY || "";
+  const actorRaw = opts?.actor || process.env.EMAIL_ACTOR || "";
+  if (!tokenRaw || !actorRaw) throw new Error("EMAIL_ACTOR/토큰 필요");
   const clean = handles.map((h) => String(h).replace(/^@/, "").trim()).filter(Boolean).slice(0, 100);
   if (!clean.length) return [];
-  const token = process.env.EMAIL_ACTOR_TOKEN || process.env.SCRAPER_API_KEY!;
-  const actor = normalizeActor(process.env.EMAIL_ACTOR!);
+  const token = tokenRaw;
+  const actor = normalizeActor(actorRaw);
   const urls = clean.map((h) => `https://www.tiktok.com/@${h}`);
   // 입력 슈퍼셋 — actor가 쓰는 키만 반영, 나머지 무시. SHOP_ACTOR_INPUT처럼 EMAIL_ACTOR_INPUT으로 완전 오버라이드 가능.
   let body: Record<string, unknown>;

@@ -29,10 +29,13 @@ export async function GET() {
 export async function POST(req: Request) {
   if (!(await isAdminAuthed())) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   if (!isConfigured()) return NextResponse.json({ error: "DB 미설정" }, { status: 503 });
-  const useEmailActor = emailActorConfigured(); // 전용 이메일 actor(EMAIL_ACTOR) 있으면 우선
-  if (!useEmailActor && !scraperConfigured()) return NextResponse.json({ ok: false, error: "SCRAPER_API_KEY 또는 EMAIL_ACTOR 미설정" }, { status: 503 });
   await ensureSchema();
-  const b = (await req.json().catch(() => ({}))) as { batch?: number };
+  const b = (await req.json().catch(() => ({}))) as { batch?: number; emailActor?: string; emailToken?: string };
+  // 요청별 actor/token(어드민 1회 입력, 저장 안 함) 또는 env. 있으면 이메일 전용 actor 경로.
+  const ovActor = String(b.emailActor || "").trim();
+  const ovToken = String(b.emailToken || "").trim();
+  const useEmailActor = !!(ovActor && ovToken) || emailActorConfigured();
+  if (!useEmailActor && !scraperConfigured()) return NextResponse.json({ ok: false, error: "SCRAPER_API_KEY 또는 EMAIL_ACTOR/토큰 필요" }, { status: 503 });
   // 전용 이메일 actor는 소량 동기 처리에 강함 → 배치 상한 확대(기본 20, 상한 100).
   const take = Math.max(1, Math.min(useEmailActor ? 100 : 40, Number(b.batch) || 20));
 
@@ -49,7 +52,7 @@ export async function POST(req: Request) {
   try {
     if (useEmailActor) {
       // 이메일 전용 actor: email만 반환. 처리 표시로 bio=''(빈)로 마킹.
-      const got = new Map((await scrapeEmailsViaActor(handles)).map((p) => [p.handle.toLowerCase(), p.email]));
+      const got = new Map((await scrapeEmailsViaActor(handles, ovActor && ovToken ? { actor: ovActor, token: ovToken } : undefined)).map((p) => [p.handle.toLowerCase(), p.email]));
       for (const h of handles) {
         const email = got.get(h.toLowerCase()) || null;
         await sql`UPDATE creators SET email = COALESCE(${email}, email), bio = COALESCE(bio, ''), updated_at = now() WHERE handle = ${h}`;
