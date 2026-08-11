@@ -23,7 +23,8 @@ export async function GET(req: Request) {
   if (!isConfigured()) return new Response("DB 미설정", { status: 503 });
   await ensureSchema();
   const missing = url.searchParams.get("missing") === "1";
-  const limit = Math.min(50000, Math.max(1, Number(url.searchParams.get("limit")) || 20000));
+  // 기본 전량(잘림 방지). ?limit=N 으로 축소 가능.
+  const limit = Math.min(500000, Math.max(1, Number(url.searchParams.get("limit")) || 500000));
 
   const r = await sql<{ handle: string; videos: number; total_views: string | number; avg_views: string | number; followers: string | number | null; verified: boolean | null; email: string | null; bio: string | null; brands: string[] | null; region: string | null; updated_at: string }>`
     SELECT handle, videos, total_views, avg_views, followers, verified, email, bio, brands, region, updated_at
@@ -57,6 +58,7 @@ export async function GET(req: Request) {
     headers: {
       "Content-Type": "text/csv; charset=utf-8",
       "Content-Disposition": `attachment; filename="creators-${new Date().toISOString().slice(0, 10)}.csv"`,
+      "X-Total-Count": String(r.rows.length), // 전량 확인용
       "Cache-Control": "no-store",
     },
   });
