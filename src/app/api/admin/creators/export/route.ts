@@ -23,16 +23,18 @@ export async function GET(req: Request) {
   if (!isConfigured()) return new Response("DB 미설정", { status: 503 });
   await ensureSchema();
   const missing = url.searchParams.get("missing") === "1";
-  // 기본 전량(잘림 방지). ?limit=N 으로 축소 가능.
+  // 기본 전량(잘림 방지). ?limit=N 축소, ?offset=N 건너뛰기(예: offset=20000 = 앞 2만 제외 나머지).
   const limit = Math.min(500000, Math.max(1, Number(url.searchParams.get("limit")) || 500000));
+  const offset = Math.max(0, Number(url.searchParams.get("offset")) || 0);
 
+  // 정렬 안정화(total_views 동률 시 handle) → offset 페이지네이션이 일관됨.
   const r = await sql<{ handle: string; videos: number; total_views: string | number; avg_views: string | number; followers: string | number | null; verified: boolean | null; email: string | null; bio: string | null; brands: string[] | null; region: string | null; updated_at: string }>`
     SELECT handle, videos, total_views, avg_views, followers, verified, email, bio, brands, region, updated_at
     FROM creators
     WHERE handle IS NOT NULL AND handle <> ''
       AND handle NOT IN (SELECT value FROM blocklist WHERE kind='handle')
       AND (${missing} = false OR email IS NULL OR email = '')
-    ORDER BY total_views DESC NULLS LAST LIMIT ${limit}`;
+    ORDER BY total_views DESC NULLS LAST, handle ASC LIMIT ${limit} OFFSET ${offset}`;
 
   // 컬럼: handle(=KEY) 먼저. profile_url은 외부에서 이메일 찾을 때 사용.
   const headers = ["handle", "profile_url", "followers", "videos", "total_views", "avg_views", "verified", "email", "bio", "brands", "region", "updated_at"];
