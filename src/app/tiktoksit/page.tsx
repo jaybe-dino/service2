@@ -1,3 +1,4 @@
+import { Fragment } from "react";
 import type { Metadata } from "next";
 
 // 검색엔진 색인 차단(비공개 자료). robots.ts에도 disallow 추가됨.
@@ -27,7 +28,7 @@ const BUDGET: { icon: string; title: string; sub: string; a: string; b: string; 
     rule: <>인플루언서별 마케팅 전략 수립 후 <b>샵 티어별 편성</b> (100만~5억). 상위 티어 진입을 위해 검증된 크리에이터에 집중 배정합니다.</>,
   },
   {
-    icon: "📈", title: "부스팅 애즈 (예버비)", sub: "ROAS 기준 광고 증액 운영",
+    icon: "📈", title: "부스팅 애즈 (예비비)", sub: "ROAS 기준 광고 증액 운영",
     a: "500만~", b: "1,500만~", pink: true,
     rule: <>ROAS 기준 추가 편성 · 샵 티어별 (500만~5억). <b>성과가 확인된 소재에만</b> 집행하며 미달 시 미집행·중단합니다.</>,
   },
@@ -78,49 +79,54 @@ export default function TiktokSitPage() {
 
         {/* 2열 그리드 */}
         <div className="mt-6 grid items-start gap-8 lg:grid-cols-2">
-          {/* 좌: 기본 예산 (A/B + 편성 기준) */}
+          {/* 좌: 기본 예산 (A/B 표 + 편성 기준 하위 행) */}
           <section>
             <h2 className="mb-4 text-[18px] font-extrabold">기본 예산 (국가당 · 월)</h2>
-            <div className="space-y-3">
-              {BUDGET.map((b) => (
-                <div
-                  key={b.title}
-                  className={`rounded-2xl border p-5 ${b.pink ? "border-[var(--accent)] bg-[var(--accent-light)]" : "border-[var(--border)] bg-slate-50/70"}`}
-                >
-                  {/* 상단: 아이콘 + 제목 */}
-                  <div className="flex items-center gap-4">
-                    <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-white text-[20px]">{b.icon}</span>
-                    <div className="min-w-0 flex-1">
-                      <div className={`text-[17px] font-extrabold ${b.pink ? "text-[var(--accent)]" : ""}`}>{b.title}</div>
-                      <div className="mt-0.5 text-[13px] text-[var(--muted)]">{b.sub}</div>
-                    </div>
-                  </div>
-
-                  {/* A/B 금액 */}
-                  <div className="mt-3 grid grid-cols-2 gap-2.5">
-                    <div className="rounded-xl bg-white p-3 ring-1 ring-[var(--border)]">
-                      <div className="text-[11px] font-bold text-slate-400">A 타입</div>
-                      <div className="mt-0.5 text-[19px] font-black sm:text-[21px]">{b.a}</div>
-                    </div>
-                    <div className={`rounded-xl p-3 ${b.pink ? "bg-white ring-1 ring-[var(--accent)]" : "bg-white ring-1 ring-[var(--accent)]"}`}>
-                      <div className="text-[11px] font-bold text-[var(--accent)]">B 타입</div>
-                      <div className="mt-0.5 text-[19px] font-black text-[var(--accent)] sm:text-[21px]">{b.b}</div>
-                    </div>
-                  </div>
-
-                  {/* 편성 기준 (항목 하위) */}
-                  <div className="mt-3 flex gap-2 rounded-lg bg-white/70 px-3 py-2.5 text-[12.5px] leading-relaxed text-slate-600">
-                    <span className="mt-0.5 shrink-0 text-[10px] font-bold text-[var(--accent)]">편성 기준</span>
-                    <span>{b.rule}</span>
-                  </div>
-                </div>
-              ))}
+            <div className="overflow-x-auto rounded-2xl border border-[var(--border)]">
+              <table className="w-full min-w-[520px] border-collapse text-[13.5px]">
+                <thead>
+                  <tr className="bg-slate-800 text-white">
+                    <th className="px-4 py-3 text-left font-bold">항목</th>
+                    <th className="px-4 py-3 text-right font-bold">A 타입</th>
+                    <th className="px-4 py-3 text-right font-bold">B 타입</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {BUDGET.map((b) => (
+                    <Fragment key={b.title}>
+                      {/* 항목 + 금액 */}
+                      <tr className={`border-t border-[var(--border)] ${b.pink ? "bg-[var(--accent-light)]" : "bg-white"}`}>
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-2.5">
+                            <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-slate-50 text-[16px]">{b.icon}</span>
+                            <div>
+                              <div className={`font-extrabold ${b.pink ? "text-[var(--accent)]" : ""}`}>{b.title}</div>
+                              <div className="text-[11.5px] text-[var(--muted)]">{b.sub}</div>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 text-right text-[16px] font-black">{b.a}</td>
+                        <td className="px-4 py-3 text-right text-[16px] font-black text-[var(--accent)]">{b.b}</td>
+                      </tr>
+                      {/* 편성 기준 (항목 하위 행) */}
+                      <tr className={b.pink ? "bg-[var(--accent-light)]" : "bg-slate-50/60"}>
+                        <td colSpan={3} className="px-4 pb-3 pt-0">
+                          <div className="flex gap-2 text-[12.5px] leading-relaxed text-slate-600">
+                            <span className="mt-0.5 shrink-0 rounded bg-[var(--accent)] px-1.5 py-0.5 text-[10px] font-bold text-white">편성 기준</span>
+                            <span>{b.rule}</span>
+                          </div>
+                        </td>
+                      </tr>
+                    </Fragment>
+                  ))}
+                </tbody>
+              </table>
             </div>
 
             {/* 편성 안내 (다크 바) */}
             <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-slate-900 px-5 py-4 text-white">
               <div className="text-[13.5px]">
-                <b className="text-[var(--accent)]">편성 안내</b>&nbsp;&nbsp;부스팅 애즈는 성과에 따라 집행하는 <b>예버비</b>로 편성합니다
+                <b className="text-[var(--accent)]">편성 안내</b>&nbsp;&nbsp;부스팅 애즈는 성과에 따라 집행하는 <b>예비비</b>로 편성합니다
               </div>
               <div className="text-[12px] text-slate-400">* 샵 티어·품목에 따라 변동</div>
             </div>
@@ -159,13 +165,6 @@ export default function TiktokSitPage() {
           </section>
         </div>
 
-        {/* 계산기 유도 */}
-        <div className="mt-12 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[var(--border)] bg-slate-50/70 px-6 py-5">
-          <div className="text-[14px] text-[var(--muted)]">우리 브랜드 기준으로 예산·성과를 시뮬레이션하고 싶다면</div>
-          <a href="/tiktokmarketing3" className="rounded-full bg-[var(--accent)] px-5 py-2.5 text-[13px] font-extrabold text-white hover:opacity-90">
-            예산·성과 시뮬레이터 열기 →
-          </a>
-        </div>
       </div>
     </div>
   );

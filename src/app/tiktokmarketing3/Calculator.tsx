@@ -54,7 +54,7 @@ const GROUPS: Group[] = [
     ],
   },
   {
-    title: "④ 부스팅 애즈 (예버비)",
+    title: "④ 부스팅 애즈 (예비비)",
     note: "ROAS 기준 광고 증액",
     pink: true,
     fields: [
