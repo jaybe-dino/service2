@@ -9,5 +9,8 @@ const DECK_URL = process.env.NEXT_PUBLIC_GLOVEK_DECK_URL
   || "https://docs.google.com/presentation/d/1zUGsHZ9pIbupXZsGTdDx1okGRJX5Sdwg/edit?usp=sharing&ouid=109035759419679315158&rtpof=true&sd=true";
 
 export function GET() {
-  return NextResponse.redirect(DECK_URL, { status: 302 });
+  return NextResponse.redirect(DECK_URL, {
+    status: 302,
+    headers: { "X-Robots-Tag": "noindex, nofollow" },
+  });
 }

@@ -8,7 +8,7 @@ export default function robots(): MetadataRoute.Robots {
       {
         userAgent: "*",
         allow: "/",
-        disallow: ["/admin", "/api/", "/checkout", "/mypage", "/tiktokmarketing", "/tiktokmarketing2", "/tiktokmarketing3"],
+        disallow: ["/admin", "/api/", "/checkout", "/mypage", "/tiktokmarketing", "/tiktokmarketing2", "/tiktokmarketing3", "/tiktokshop", "/deck", "/deck2"],
       },
     ],
     sitemap: `${SITE_URL}/sitemap.xml`,
