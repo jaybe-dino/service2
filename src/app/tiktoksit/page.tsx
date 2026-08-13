@@ -9,12 +9,28 @@ export const metadata: Metadata = {
 
 const card = "rounded-2xl border border-[var(--border)] bg-slate-50/70 p-5";
 
-// 기본 예산 항목 (국가당 · 월)
-const BUDGET: { icon: string; title: string; sub: string; amount: string; pink?: boolean }[] = [
-  { icon: "🧾", title: "운영비", sub: "스토어 운영·번역·CS·정산 관리", amount: "300~500만" },
-  { icon: "🎁", title: "무가 운영", sub: "크리에이터 모집·제품 공급·시딩 운영", amount: "300~1,000만" },
-  { icon: "💸", title: "유가 운영비", sub: "인플루언서별 유가 캠페인 집행", amount: "100만~" },
-  { icon: "📈", title: "부스팅 애즈 (예버비)", sub: "ROAS 기준 광고 증액 운영", amount: "500만~", pink: true },
+// 기본 예산 항목 (국가당 · 월) — A타입 / B타입 + 편성 기준
+const BUDGET: { icon: string; title: string; sub: string; a: string; b: string; rule: React.ReactNode; pink?: boolean }[] = [
+  {
+    icon: "🧾", title: "운영비", sub: "스토어 운영·번역·CS·정산 관리",
+    a: "300~500만", b: "500~700만",
+    rule: "규모와 무관하게 필요한 고정 인프라 · 스토어·번역·CS·정산을 매월 동일하게 편성합니다.",
+  },
+  {
+    icon: "🎁", title: "무가 운영", sub: "크리에이터 모집·제품 공급·시딩 운영",
+    a: "300~1,000만", b: "1,000~3,000만",
+    rule: <>기본안 <b>최대 1,000개</b>까지 진행 (모집·제품 공급 조건) · 초과 및 메가 캠페인 무가는 별도 협의. B타입은 콘텐츠 점유율 확보를 위해 시딩 물량을 대폭 확대합니다.</>,
+  },
+  {
+    icon: "💸", title: "유가 운영비", sub: "인플루언서별 유가 캠페인 집행",
+    a: "건당 100만~", b: "건당 300만~",
+    rule: <>인플루언서별 마케팅 전략 수립 후 <b>샵 티어별 편성</b> (100만~5억). 상위 티어 진입을 위해 검증된 크리에이터에 집중 배정합니다.</>,
+  },
+  {
+    icon: "📈", title: "부스팅 애즈 (예버비)", sub: "ROAS 기준 광고 증액 운영",
+    a: "500만~", b: "1,500만~", pink: true,
+    rule: <>ROAS 기준 추가 편성 · 샵 티어별 (500만~5억). <b>성과가 확인된 소재에만</b> 집행하며 미달 시 미집행·중단합니다.</>,
+  },
 ];
 
 // 12개월 시즌 편성 — 막대 높이(%) + 유형(base/mid/peak)
@@ -29,79 +45,6 @@ const BAR_COLOR: Record<string, string> = {
   mid: "bg-pink-300",
   peak: "bg-[var(--accent)]",
 };
-
-const RULES: React.ReactNode[] = [
-  <><b>무가 운영</b> 기본안 최대 <b>1,000개</b>까지 진행 (모집·제품 공급 조건) · 초과 및 메가 캠페인 무가는 별도 협의</>,
-  <><b>유가 운영비</b> 인플루언서별 마케팅 전략 수립 후 샵 티어별 편성 (100만~5억)</>,
-  <><b>부스팅 애즈(예버비)</b> ROAS 기준 추가 편성 · 샵 티어별 (500만~5억)</>,
-];
-
-/* ── 타입별 월 예산 설계 (A / B) ─────────────────────────────
-   운영비는 고정, 비중운영(무가·유가·부스팅)은 시즌 계수로 증액.
-   B타입(해외매출 50억 이상)은 A 대비 비중운영을 2~3배로 집중 편성. */
-const SEASON = [1, 1, 1, 1, 1, 1.3, 1, 1, 1.3, 1.8, 2.5, 2.2]; // 월별 비중운영 계수
-type Model = { op: number; seed: number; paid: number; boost: number };
-const MODEL_A: Model = { op: 400, seed: 500, paid: 200, boost: 500 };
-const MODEL_B: Model = { op: 600, seed: 1400, paid: 500, boost: 1300 };
-
-function monthRows(m: Model) {
-  return SEASON.map((f, i) => {
-    const seed = Math.round(m.seed * f);
-    const paid = Math.round(m.paid * f);
-    const boost = Math.round(m.boost * f);
-    const total = m.op + seed + paid + boost;
-    return { month: i + 1, op: m.op, seed, paid, boost, total, peak: i >= 9 };
-  });
-}
-function annual(m: Model) {
-  return monthRows(m).reduce((a, r) => a + r.total, 0);
-}
-const fmt = (v: number) => v.toLocaleString("ko-KR");
-const eok = (v: number) => (v / 10000).toLocaleString("ko-KR", { maximumFractionDigits: 2 });
-const A_YR = annual(MODEL_A);
-const B_YR = annual(MODEL_B);
-
-function BudgetTable({ model, tone }: { model: Model; tone: "a" | "b" }) {
-  const rows = monthRows(model);
-  const sum = (k: "op" | "seed" | "paid" | "boost" | "total") => rows.reduce((a, r) => a + r[k], 0);
-  const head = tone === "b" ? "bg-[var(--accent)] text-white" : "bg-slate-800 text-white";
-  const cols = ["월", "운영비", "무가 운영", "유가", "부스팅(예버비)", "월 합계"];
-  return (
-    <div className="overflow-x-auto rounded-2xl border border-[var(--border)]">
-      <table className="w-full min-w-[560px] border-collapse text-right text-[13px]">
-        <thead>
-          <tr className={head}>
-            {cols.map((c, i) => (
-              <th key={c} className={`px-3 py-2.5 font-bold ${i === 0 ? "text-left" : ""}`}>{c}</th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((r) => (
-            <tr key={r.month} className={`border-t border-[var(--border)] ${r.peak ? "bg-[var(--accent-light)]" : "bg-white"}`}>
-              <td className="px-3 py-2 text-left font-bold">
-                {r.month}월 {r.peak && <span className="ml-1 rounded bg-[var(--accent)] px-1.5 py-0.5 text-[10px] font-bold text-white">성수기</span>}
-              </td>
-              <td className="px-3 py-2 text-slate-500">{fmt(r.op)}</td>
-              <td className="px-3 py-2">{fmt(r.seed)}</td>
-              <td className="px-3 py-2">{fmt(r.paid)}</td>
-              <td className="px-3 py-2 font-semibold text-[var(--accent)]">{fmt(r.boost)}</td>
-              <td className="px-3 py-2 font-black">{fmt(r.total)}</td>
-            </tr>
-          ))}
-          <tr className="border-t-2 border-slate-300 bg-slate-50 font-black">
-            <td className="px-3 py-2.5 text-left">연 합계</td>
-            <td className="px-3 py-2.5">{fmt(sum("op"))}</td>
-            <td className="px-3 py-2.5">{fmt(sum("seed"))}</td>
-            <td className="px-3 py-2.5">{fmt(sum("paid"))}</td>
-            <td className="px-3 py-2.5 text-[var(--accent)]">{fmt(sum("boost"))}</td>
-            <td className="px-3 py-2.5">{fmt(sum("total"))}</td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-  );
-}
 
 export default function TiktokSitPage() {
   return (
@@ -121,25 +64,55 @@ export default function TiktokSitPage() {
           <div className="hidden shrink-0 text-[18px] font-black text-[var(--accent)] sm:block">Glovek ✦</div>
         </div>
 
+        {/* A/B 타입 안내 */}
+        <div className="mt-8 grid gap-3 sm:grid-cols-2">
+          <div className="flex items-center gap-3 rounded-2xl border border-[var(--border)] bg-white px-5 py-4">
+            <span className="rounded-full bg-slate-800 px-3 py-1 text-[12px] font-extrabold text-white">A 타입</span>
+            <span className="text-[13.5px] text-slate-600">성장 초입 · 중견 브랜드 — 효율 중심 진입안</span>
+          </div>
+          <div className="flex items-center gap-3 rounded-2xl border border-[var(--accent)] bg-[var(--accent-light)] px-5 py-4">
+            <span className="rounded-full bg-[var(--accent)] px-3 py-1 text-[12px] font-extrabold text-white">B 타입</span>
+            <span className="text-[13.5px] text-slate-600"><b className="text-[var(--accent)]">해외매출 50억 이상</b> — 비중운영 A 대비 2~3배 집중 확장안</span>
+          </div>
+        </div>
+
         {/* 2열 그리드 */}
-        <div className="mt-10 grid gap-8 lg:grid-cols-2">
-          {/* 좌: 기본 예산 */}
+        <div className="mt-6 grid items-start gap-8 lg:grid-cols-2">
+          {/* 좌: 기본 예산 (A/B + 편성 기준) */}
           <section>
             <h2 className="mb-4 text-[18px] font-extrabold">기본 예산 (국가당 · 월)</h2>
             <div className="space-y-3">
               {BUDGET.map((b) => (
                 <div
                   key={b.title}
-                  className={`flex items-center gap-4 rounded-2xl border p-5 ${
-                    b.pink ? "border-[var(--accent)] bg-[var(--accent-light)]" : "border-[var(--border)] bg-slate-50/70"
-                  }`}
+                  className={`rounded-2xl border p-5 ${b.pink ? "border-[var(--accent)] bg-[var(--accent-light)]" : "border-[var(--border)] bg-slate-50/70"}`}
                 >
-                  <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-white text-[20px]">{b.icon}</span>
-                  <div className="min-w-0 flex-1">
-                    <div className={`text-[17px] font-extrabold ${b.pink ? "text-[var(--accent)]" : ""}`}>{b.title}</div>
-                    <div className="mt-0.5 text-[13px] text-[var(--muted)]">{b.sub}</div>
+                  {/* 상단: 아이콘 + 제목 */}
+                  <div className="flex items-center gap-4">
+                    <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-white text-[20px]">{b.icon}</span>
+                    <div className="min-w-0 flex-1">
+                      <div className={`text-[17px] font-extrabold ${b.pink ? "text-[var(--accent)]" : ""}`}>{b.title}</div>
+                      <div className="mt-0.5 text-[13px] text-[var(--muted)]">{b.sub}</div>
+                    </div>
                   </div>
-                  <div className={`shrink-0 text-[22px] font-black sm:text-[26px] ${b.pink ? "text-[var(--accent)]" : ""}`}>{b.amount}</div>
+
+                  {/* A/B 금액 */}
+                  <div className="mt-3 grid grid-cols-2 gap-2.5">
+                    <div className="rounded-xl bg-white p-3 ring-1 ring-[var(--border)]">
+                      <div className="text-[11px] font-bold text-slate-400">A 타입</div>
+                      <div className="mt-0.5 text-[19px] font-black sm:text-[21px]">{b.a}</div>
+                    </div>
+                    <div className={`rounded-xl p-3 ${b.pink ? "bg-white ring-1 ring-[var(--accent)]" : "bg-white ring-1 ring-[var(--accent)]"}`}>
+                      <div className="text-[11px] font-bold text-[var(--accent)]">B 타입</div>
+                      <div className="mt-0.5 text-[19px] font-black text-[var(--accent)] sm:text-[21px]">{b.b}</div>
+                    </div>
+                  </div>
+
+                  {/* 편성 기준 (항목 하위) */}
+                  <div className="mt-3 flex gap-2 rounded-lg bg-white/70 px-3 py-2.5 text-[12.5px] leading-relaxed text-slate-600">
+                    <span className="mt-0.5 shrink-0 text-[10px] font-bold text-[var(--accent)]">편성 기준</span>
+                    <span>{b.rule}</span>
+                  </div>
                 </div>
               ))}
             </div>
@@ -183,94 +156,8 @@ export default function TiktokSitPage() {
               <div className="mt-1 text-[30px] font-black leading-none sm:text-[34px]">예산 200~300% 증액</div>
               <div className="mt-2 text-[13.5px] opacity-90">11~12월 집중 · 시즌 전 사전 시딩 확대 필수</div>
             </div>
-
-            {/* 편성 기준 */}
-            <div className="mt-5 rounded-2xl border border-[var(--border)] bg-white p-5">
-              <div className="mb-2 text-[14px] font-extrabold">편성 기준</div>
-              <ul className="space-y-2">
-                {RULES.map((r, i) => (
-                  <li key={i} className="flex gap-2 text-[13.5px] leading-relaxed text-slate-600">
-                    <span className="mt-1 text-[var(--accent)]">·</span>
-                    <span>{r}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
           </section>
         </div>
-
-        {/* ── 타입별 월 예산 설계 (A / B) ── */}
-        <section className="mt-16">
-          <div className="text-[11px] font-extrabold uppercase tracking-[3px] text-sky-600">Budget Models</div>
-          <h2 className="mt-2 text-[24px] font-black tracking-tight sm:text-[30px]">타입별 12개월 월 예산 설계 (A · B)</h2>
-          <p className="mt-2 max-w-[900px] text-[14px] leading-relaxed text-[var(--muted)]">
-            브랜드 규모에 맞춘 두 가지 운영 모델입니다. <b>A타입</b>은 성장 초입~중견 브랜드의 효율적 진입안,
-            <b> B타입</b>은 <b>해외 매출 50억 이상</b> 브랜드가 시장 지배력을 확보하기 위해 비중운영(무가·유가·부스팅)을
-            A 대비 <b className="text-[var(--accent)]">2~3배</b>로 집중 편성한 확장안입니다. 운영비는 고정, 비중운영은 시즌 계수에 따라 증액됩니다.
-          </p>
-
-          {/* 비교 요약 카드 */}
-          <div className="mt-6 grid gap-4 sm:grid-cols-2">
-            <div className="rounded-2xl border border-[var(--border)] bg-white p-5">
-              <div className="flex items-center gap-2">
-                <span className="rounded-full bg-slate-800 px-3 py-1 text-[12px] font-extrabold text-white">A 타입</span>
-                <span className="text-[13px] font-semibold text-[var(--muted)]">성장 초입 · 중견 브랜드</span>
-              </div>
-              <div className="mt-3 flex items-baseline gap-2">
-                <div className="text-[30px] font-black">{eok(A_YR)}억</div>
-                <div className="text-[13px] text-[var(--muted)]">/ 연 · 국가당</div>
-              </div>
-              <div className="mt-1 text-[13px] text-[var(--muted)]">월 평균 약 {fmt(Math.round(A_YR / 12))}만 · 효율 중심 검증형</div>
-            </div>
-            <div className="rounded-2xl border border-[var(--accent)] bg-[var(--accent-light)] p-5">
-              <div className="flex items-center gap-2">
-                <span className="rounded-full bg-[var(--accent)] px-3 py-1 text-[12px] font-extrabold text-white">B 타입</span>
-                <span className="text-[13px] font-semibold text-[var(--accent)]">해외매출 50억 이상 · 확장</span>
-              </div>
-              <div className="mt-3 flex items-baseline gap-2">
-                <div className="text-[30px] font-black text-[var(--accent)]">{eok(B_YR)}억</div>
-                <div className="text-[13px] text-[var(--muted)]">/ 연 · 국가당</div>
-              </div>
-              <div className="mt-1 text-[13px] text-[var(--muted)]">월 평균 약 {fmt(Math.round(B_YR / 12))}만 · A 대비 약 {(B_YR / A_YR).toFixed(1)}배 편성</div>
-            </div>
-          </div>
-
-          {/* A 타입 표 */}
-          <div className="mt-8">
-            <div className="mb-3 flex items-baseline justify-between">
-              <h3 className="text-[18px] font-extrabold">A 타입 · 월별 예산 <span className="text-[13px] font-normal text-[var(--muted)]">(국가당 · 단위: 만원)</span></h3>
-            </div>
-            <p className="mb-3 text-[13.5px] leading-relaxed text-slate-600">
-              성장 초입~중견 브랜드의 <b>효율적 진입안</b>입니다. 무가 시딩으로 소재를 쌓고, 성과가 확인된 콘텐츠에만 부스팅을 태워
-              리스크를 낮춥니다. 평시 월 약 1,600만으로 시작해 성수기(10~12월) 부스팅·무가를 2배 이상 증액합니다.
-            </p>
-            <BudgetTable model={MODEL_A} tone="a" />
-          </div>
-
-          {/* B 타입 표 */}
-          <div className="mt-10">
-            <div className="mb-3 flex items-baseline justify-between">
-              <h3 className="text-[18px] font-extrabold text-[var(--accent)]">B 타입 · 월별 예산 <span className="text-[13px] font-normal text-[var(--muted)]">(국가당 · 단위: 만원)</span></h3>
-            </div>
-            <p className="mb-3 text-[13.5px] leading-relaxed text-slate-600">
-              <b>해외매출 50억 이상</b> 브랜드의 <b>시장 지배 확장안</b>입니다. 무가 시딩 물량을 대폭 늘려 콘텐츠 점유율을 높이고,
-              유가·부스팅을 A 대비 2~3배로 집중해 상위 티어(T3~T5)로 빠르게 진입합니다. 성수기엔 검증된 소재에 예산을 몰아
-              매출 레버리지를 극대화합니다.
-            </p>
-            <BudgetTable model={MODEL_B} tone="b" />
-          </div>
-
-          {/* 설계 메모 */}
-          <div className="mt-6 rounded-2xl border border-[var(--border)] bg-slate-50/70 p-5 text-[13px] leading-relaxed text-slate-600">
-            <b>설계 기준 메모</b>
-            <ul className="mt-2 space-y-1.5">
-              <li>· <b>운영비</b>는 규모와 무관하게 필요한 고정 인프라(스토어·번역·CS·정산)로 매월 동일하게 편성.</li>
-              <li>· <b>비중운영(무가·유가·부스팅)</b>은 시즌 계수(6·9월 1.3배, 10월 1.8배, 11월 2.5배, 12월 2.2배)로 증액.</li>
-              <li>· <b>B타입</b>은 A 대비 무가 약 2.8배·유가 2.5배·부스팅 2.6배로 집중 → 연 총액 약 {(B_YR / A_YR).toFixed(1)}배.</li>
-              <li>· 부스팅은 <b>예버비</b> — ROAS가 확인된 소재에만 집행하며 성과 미달 시 미집행/중단.</li>
-            </ul>
-          </div>
-        </section>
 
         {/* 계산기 유도 */}
         <div className="mt-12 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[var(--border)] bg-slate-50/70 px-6 py-5">
