@@ -18,7 +18,7 @@ type Key =
   | "paidCount" | "paidUnit" | "paidGmvPer"
   | "boostBudget" | "boostRoas"
   | "commRate" | "marginRate"
-  | "peakMult" | "peakMonths";
+  | "peakMult" | "peakMonths" | "growthRate";
 
 type Field = {
   key: Key; label: string; sub: string; unit: string; step: number; min: number; max: number;
@@ -70,17 +70,18 @@ const GROUPS: Group[] = [
       { key: "marginRate", label: "상품 마진율", sub: "GMV 대비 매출총이익", unit: "%", step: 1, min: 0, max: 95 },
       { key: "peakMult", label: "성수기 증액 배수", sub: "블프·연말 부스팅 증액", unit: "배", step: 0.1, min: 1, max: 5 },
       { key: "peakMonths", label: "성수기 개월수", sub: "11~12월 등", unit: "개월", step: 1, min: 0, max: 6 },
+      { key: "growthRate", label: "연 성장률 (티어 상승)", sub: "3년 프로젝션 복리", unit: "%", step: 5, min: 0, max: 200 },
     ],
   },
 ];
 
 const DEFAULTS: Record<Key, number> = {
   countries: 1, months: 12, opCost: 400,
-  seedQty: 100, seedUnit: 1.5, seedGmvPer: 3,
-  paidCount: 3, paidUnit: 200, paidGmvPer: 500,
-  boostBudget: 500, boostRoas: 3,
-  commRate: 15, marginRate: 40,
-  peakMult: 2.5, peakMonths: 2,
+  seedQty: 120, seedUnit: 1.5, seedGmvPer: 5,
+  paidCount: 3, paidUnit: 200, paidGmvPer: 800,
+  boostBudget: 500, boostRoas: 4,
+  commRate: 12, marginRate: 55,
+  peakMult: 2.5, peakMonths: 3, growthRate: 50,
 };
 
 export default function Calculator() {
@@ -127,6 +128,16 @@ export default function Calculator() {
     const blendedRoas = spendYr > 0 ? gmvYr / spendYr : 0;
     const netMargin = gmvYr > 0 ? (netProfitYr / gmvYr) * 100 : 0;
 
+    // ── 3년 복리 프로젝션 (티어 상승 → 성장) ──
+    const g = v.growthRate / 100;
+    const factor = 1 + (1 + g) + (1 + g) * (1 + g); // 1년차 + 2년차 + 3년차
+    const gmv3 = gmvYr * factor;
+    const net3 = netProfitYr * factor;
+    const yearly = [0, 1, 2].map((y) => {
+      const mult = Math.pow(1 + g, y);
+      return { year: y + 1, gmv: gmvYr * mult, net: netProfitYr * mult };
+    });
+
     return {
       N, M,
       mCostAll: mCost * N,
@@ -145,6 +156,7 @@ export default function Calculator() {
       ],
       spendYr, gmvYr, grossProfitYr, netProfitYr, commissionYr, blendedRoas, netMargin,
       peakBoostCost, peakBoostGmv,
+      gmv3, net3, yearly,
     };
   }, [v]);
 
@@ -216,6 +228,38 @@ export default function Calculator() {
                 tone={profitPos ? "good" : "bad"}
               />
               <Kpi label="종합 ROAS" value={`${r.blendedRoas.toFixed(2)}배`} sub={`GMV ÷ 총지출`} />
+            </div>
+
+            {/* 핵심 요약 한 줄 */}
+            <div className={`rounded-2xl border px-5 py-4 text-[13.5px] leading-relaxed ${profitPos ? "border-emerald-200 bg-emerald-50" : "border-rose-200 bg-rose-50"}`}>
+              총 <b>{fmtManwon(r.spendYr)}</b> 투자 → 매출 <b className="text-[var(--accent)]">{fmtManwon(r.gmvYr)}</b> ·
+              순이익 <b className={profitPos ? "text-emerald-600" : "text-rose-600"}>{fmtManwon(r.netProfitYr)}</b>
+              {profitPos ? <> — 투자 1원당 <b>{r.blendedRoas.toFixed(1)}원</b> 매출을 회수합니다.</> : <> — 현재 가정에선 적자입니다. 마진·ROAS를 조정해 보세요.</>}
+            </div>
+
+            {/* 3년 복리 프로젝션 */}
+            <div className="rounded-2xl bg-slate-900 p-5 text-white">
+              <div className="mb-1 flex items-baseline justify-between">
+                <div className="text-[14px] font-extrabold">3년 성장 프로젝션</div>
+                <div className="text-[12px] text-slate-400">티어 상승 연 {v.growthRate}% 복리</div>
+              </div>
+              <div className="mt-3 grid grid-cols-3 gap-2">
+                {r.yearly.map((y) => (
+                  <div key={y.year} className="rounded-xl bg-white/5 p-3 text-center">
+                    <div className="text-[11px] text-slate-400">{y.year}년차</div>
+                    <div className="mt-1 text-[16px] font-black text-[var(--accent)]">{fmtManwon(y.gmv)}</div>
+                    <div className="mt-0.5 text-[11px] text-slate-300">순익 {fmtManwon(y.net)}</div>
+                  </div>
+                ))}
+              </div>
+              <div className="mt-3 flex items-baseline justify-between border-t border-white/10 pt-3">
+                <span className="text-[13px] text-slate-300">3년 누적 GMV</span>
+                <span className="text-[20px] font-black text-[var(--accent)]">{fmtManwon(r.gmv3)}</span>
+              </div>
+              <div className="mt-1 flex items-baseline justify-between">
+                <span className="text-[13px] text-slate-300">3년 누적 순이익</span>
+                <span className="text-[16px] font-black text-emerald-400">{fmtManwon(r.net3)}</span>
+              </div>
             </div>
 
             {/* 지출 구성 */}
