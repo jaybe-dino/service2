@@ -257,7 +257,7 @@ export default function Calculator() {
               * 추정 모델입니다. 실제 성과는 샵 티어·품목·시즌·크리에이터 콘텐츠 품질에 따라 변동합니다.
               부스팅 GMV는 <b>예상 ROAS</b>에 선형 비례하며, 어필리에이트 커미션은 무가·유가 GMV에만 적용됩니다.
               성수기 증액은 부스팅에만 반영됩니다. 참고: <a href="/tiktokmarketing" className="text-sky-600 underline">온보딩·마케팅 가이드</a> ·
-              <a href="/tiktokmarketing2" className="ml-1 text-sky-600 underline">예산 플래닝</a>
+              <a href="/tiktoksit" className="ml-1 text-sky-600 underline">예산 플래닝</a>
             </p>
           </div>
         </div>
