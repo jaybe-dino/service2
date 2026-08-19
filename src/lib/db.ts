@@ -502,6 +502,83 @@ export function ensureSchema(): Promise<void> {
       await sql`ALTER TABLE remake_jobs ADD COLUMN IF NOT EXISTS fidelity text`;
       await sql`ALTER TABLE remake_jobs ADD COLUMN IF NOT EXISTS spec text`;
       await sql`ALTER TABLE remake_jobs ADD COLUMN IF NOT EXISTS debug text`;
+      // ── 아웃리치 캠페인(제품 컨셉 → 크리에이터 필터 → Gmail 그룹 발송) 레이어 ──
+      // 실제 크리에이터 데이터(업로드 CSV) 저장 테이블. handle 기준. (분석용 creators와 분리)
+      await sql`CREATE TABLE IF NOT EXISTS oc_creators (
+        handle text PRIMARY KEY,
+        profile_url text,
+        email text,
+        email_source_url text,
+        contact_status text,
+        videos int,
+        total_views bigint,
+        avg_views bigint,
+        brands text,                 -- 콤마 구분 브랜드 이력(카테고리 시그널)
+        region text,
+        source_list text,
+        source_creator_id text,
+        reviewed_at text,
+        imported_at timestamptz NOT NULL DEFAULT now()
+      )`;
+      await sql`CREATE INDEX IF NOT EXISTS idx_oc_creators_email ON oc_creators(email) WHERE email IS NOT NULL`;
+      await sql`CREATE INDEX IF NOT EXISTS idx_oc_creators_avg_views ON oc_creators(avg_views DESC)`;
+      // 제품/캠페인 컨셉 — 카테고리·컨셉·USP.
+      await sql`CREATE TABLE IF NOT EXISTS oc_products (
+        id serial PRIMARY KEY,
+        name text NOT NULL,
+        brand text,
+        category text,
+        concept text,
+        usp text,
+        notes text,
+        created_by text,
+        created_at timestamptz NOT NULL DEFAULT now()
+      )`;
+      // 등록된 Gmail 발신 계정(allow-list). 시크릿은 저장하지 않고 env_key로 환경변수 참조.
+      await sql`CREATE TABLE IF NOT EXISTS oc_senders (
+        id serial PRIMARY KEY,
+        email text UNIQUE NOT NULL,
+        display_name text,
+        backend text NOT NULL DEFAULT 'smtp',  -- smtp(App Password) | gmail_api(OAuth2)
+        env_key text NOT NULL,                 -- 환경변수 접미사(대문자/숫자/언더스코어)
+        daily_limit int NOT NULL DEFAULT 300,
+        active boolean NOT NULL DEFAULT true,
+        created_at timestamptz NOT NULL DEFAULT now()
+      )`;
+      // 발송 캠페인(그룹) — 제품+발신계정+필터+템플릿.
+      await sql`CREATE TABLE IF NOT EXISTS oc_campaigns (
+        id serial PRIMARY KEY,
+        name text NOT NULL,
+        product_id int,
+        sender_id int,
+        subject text NOT NULL,
+        body text NOT NULL,
+        filter jsonb,
+        status text NOT NULL DEFAULT 'draft',  -- draft|sending|paused|done
+        total int NOT NULL DEFAULT 0,
+        sent int NOT NULL DEFAULT 0,
+        failed int NOT NULL DEFAULT 0,
+        created_by text,
+        created_at timestamptz NOT NULL DEFAULT now(),
+        updated_at timestamptz NOT NULL DEFAULT now()
+      )`;
+      // 발송 이력(수신자별) — 그룹 발송 결과/상태.
+      await sql`CREATE TABLE IF NOT EXISTS oc_messages (
+        id serial PRIMARY KEY,
+        campaign_id int NOT NULL,
+        handle text,
+        to_email text NOT NULL,
+        subject text,
+        body text,
+        status text NOT NULL DEFAULT 'queued',  -- queued|sent|failed|skipped
+        provider_id text,
+        error text,
+        created_at timestamptz NOT NULL DEFAULT now(),
+        sent_at timestamptz
+      )`;
+      await sql`CREATE INDEX IF NOT EXISTS idx_oc_messages_campaign ON oc_messages(campaign_id, status)`;
+      await sql`CREATE UNIQUE INDEX IF NOT EXISTS idx_oc_messages_dedup ON oc_messages(campaign_id, to_email)`;
+
       // 데모/관리자 계정 시드 (bcrypt("ktrend2026")) — 서버 세션 로그인 가능하도록
       const DEMO_HASH = "$2b$10$mLc7sBm3zK4a83l6/Tg9NOoDGLLYsfp4SXRfZcls4.LTw6Tsy/8Oy";
       await sql`INSERT INTO users (id, email, password_hash, name, brand, role, plan) VALUES
