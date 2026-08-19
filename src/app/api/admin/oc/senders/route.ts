@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { isAdminAuthed } from "@/lib/admin-auth";
 import { sql, isConfigured, ensureSchema } from "@/lib/db";
-import { senderConfigured, sendViaSender, type OcSender } from "@/lib/gmail";
+import { saConfigured, sendViaSender, type OcSender } from "@/lib/gmail";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -18,8 +18,9 @@ export async function GET() {
   const g = await guard(); if (g) return g;
   const { rows } = await sql`SELECT id, email, display_name, backend, env_key, daily_limit, active, created_at
     FROM oc_senders ORDER BY created_at DESC`;
-  // env 시크릿 준비 여부(configured) 부가 — 값 자체는 노출하지 않음
-  const out = rows.map((r) => ({ ...r, configured: senderConfigured({ backend: r.backend, env_key: r.env_key }) }));
+  // 서비스계정 키 준비 여부(configured) 부가 — 공용(모든 발신계정 동일)
+  const ok = saConfigured();
+  const out = rows.map((r) => ({ ...r, configured: ok }));
   return NextResponse.json({ rows: out });
 }
 
@@ -32,7 +33,7 @@ export async function POST(req: Request) {
     const id = Number(b.id);
     const to = String(b.to || "").trim();
     if (!EMAIL_RE.test(to)) return NextResponse.json({ error: "테스트 수신 이메일 형식 오류" }, { status: 400 });
-    const { rows } = await sql`SELECT email, display_name, backend, env_key FROM oc_senders WHERE id = ${id}`;
+    const { rows } = await sql`SELECT email, display_name FROM oc_senders WHERE id = ${id}`;
     if (!rows[0]) return NextResponse.json({ error: "발신계정 없음" }, { status: 404 });
     const res = await sendViaSender(rows[0] as OcSender, {
       to,
@@ -42,20 +43,16 @@ export async function POST(req: Request) {
     return NextResponse.json(res, { status: res.ok ? 200 : 400 });
   }
 
-  // 생성/수정(upsert by email)
+  // 생성/수정(upsert by email) — email = 위임 대상 공용 메일함
   const email = String(b.email || "").trim().toLowerCase();
-  if (!EMAIL_RE.test(email)) return NextResponse.json({ error: "발신 이메일 형식 오류" }, { status: 400 });
-  const backend = b.backend === "gmail_api" ? "gmail_api" : "smtp";
-  const env_key = String(b.env_key || "").trim().toUpperCase().replace(/[^A-Z0-9_]/g, "_");
-  if (!env_key) return NextResponse.json({ error: "env_key 필요(대문자/숫자/언더스코어)" }, { status: 400 });
+  if (!EMAIL_RE.test(email)) return NextResponse.json({ error: "발신 메일함 형식 오류" }, { status: 400 });
   const display_name = String(b.display_name || "").trim() || null;
   const daily_limit = Math.min(Math.max(1, Number(b.daily_limit) || 300), 2000);
   const active = b.active === false ? false : true;
-  await sql`INSERT INTO oc_senders (email, display_name, backend, env_key, daily_limit, active)
-    VALUES (${email}, ${display_name}, ${backend}, ${env_key}, ${daily_limit}, ${active})
+  await sql`INSERT INTO oc_senders (email, display_name, backend, daily_limit, active)
+    VALUES (${email}, ${display_name}, 'workspace_sa', ${daily_limit}, ${active})
     ON CONFLICT (email) DO UPDATE SET
-      display_name = EXCLUDED.display_name, backend = EXCLUDED.backend, env_key = EXCLUDED.env_key,
-      daily_limit = EXCLUDED.daily_limit, active = EXCLUDED.active`;
+      display_name = EXCLUDED.display_name, daily_limit = EXCLUDED.daily_limit, active = EXCLUDED.active`;
   return NextResponse.json({ ok: true });
 }
 

@@ -534,17 +534,38 @@ export function ensureSchema(): Promise<void> {
         created_by text,
         created_at timestamptz NOT NULL DEFAULT now()
       )`;
-      // 등록된 Gmail 발신 계정(allow-list). 시크릿은 저장하지 않고 env_key로 환경변수 참조.
+      // 등록된 Gmail 발신 계정(공용 메일함 allow-list). Workspace 서비스계정 DWD로 impersonate.
+      // 시크릿은 저장하지 않음(GOOGLE_SA_KEY_JSON 공용). email = 위임 대상 메일함(cs@glovek.space 등)
       await sql`CREATE TABLE IF NOT EXISTS oc_senders (
         id serial PRIMARY KEY,
         email text UNIQUE NOT NULL,
         display_name text,
-        backend text NOT NULL DEFAULT 'smtp',  -- smtp(App Password) | gmail_api(OAuth2)
-        env_key text NOT NULL,                 -- 환경변수 접미사(대문자/숫자/언더스코어)
+        backend text DEFAULT 'workspace_sa',
+        env_key text,
         daily_limit int NOT NULL DEFAULT 300,
         active boolean NOT NULL DEFAULT true,
         created_at timestamptz NOT NULL DEFAULT now()
       )`;
+      // 기존 배포 보정: env_key NOT NULL 제거 + backend 기본값 전환
+      await sql`ALTER TABLE oc_senders ALTER COLUMN env_key DROP NOT NULL`;
+      await sql`ALTER TABLE oc_senders ALTER COLUMN backend SET DEFAULT 'workspace_sa'`;
+      // 수신함 적재(회신 매칭) — 공용 메일함 최근 수신을 브랜드/캠페인/크리에이터에 매칭.
+      await sql`CREATE TABLE IF NOT EXISTS oc_inbox (
+        id serial PRIMARY KEY,
+        mailbox text NOT NULL,
+        msg_id text NOT NULL,
+        thread_id text,
+        from_email text,
+        from_name text,
+        subject text,
+        snippet text,
+        received_at text,
+        matched_handle text,
+        matched_campaign_id int,
+        created_at timestamptz NOT NULL DEFAULT now(),
+        UNIQUE (mailbox, msg_id)
+      )`;
+      await sql`CREATE INDEX IF NOT EXISTS idx_oc_inbox_matched ON oc_inbox(matched_campaign_id)`;
       // 발송 캠페인(그룹) — 제품+발신계정+필터+템플릿.
       await sql`CREATE TABLE IF NOT EXISTS oc_campaigns (
         id serial PRIMARY KEY,

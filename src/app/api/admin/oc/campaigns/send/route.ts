@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { isAdminAuthed } from "@/lib/admin-auth";
 import { sql, isConfigured, ensureSchema } from "@/lib/db";
-import { sendViaSender, senderConfigured, type OcSender } from "@/lib/gmail";
+import { sendViaSender, saConfigured, type OcSender } from "@/lib/gmail";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -37,8 +37,8 @@ export async function POST(req: Request) {
   const dry = b.dry === true;
 
   // 캠페인 + 발신계정 + 제품
-  const cRes = await sql`SELECT c.*, s.email AS s_email, s.display_name AS s_name, s.backend AS s_backend,
-      s.env_key AS s_env_key, s.active AS s_active, s.daily_limit AS s_daily,
+  const cRes = await sql`SELECT c.*, s.email AS s_email, s.display_name AS s_name,
+      s.active AS s_active, s.daily_limit AS s_daily,
       p.name AS p_name, p.brand AS p_brand, p.category AS p_category, p.concept AS p_concept, p.usp AS p_usp
     FROM oc_campaigns c
     LEFT JOIN oc_senders s ON s.id = c.sender_id
@@ -49,8 +49,8 @@ export async function POST(req: Request) {
   if (!c.sender_id || !c.s_email) return NextResponse.json({ error: "발신계정 미지정" }, { status: 400 });
   if (!c.s_active) return NextResponse.json({ error: "발신계정 비활성" }, { status: 400 });
 
-  const sender: OcSender = { email: c.s_email, display_name: c.s_name, backend: c.s_backend, env_key: c.s_env_key };
-  if (!dry && !senderConfigured(sender)) return NextResponse.json({ error: "발신계정 시크릿 미설정(env)" }, { status: 400 });
+  const sender: OcSender = { email: c.s_email, display_name: c.s_name };
+  if (!dry && !saConfigured()) return NextResponse.json({ error: "서비스계정 미설정(GOOGLE_SA_KEY_JSON)" }, { status: 400 });
 
   // 오늘(KST) 이 발신계정이 이미 보낸 수 → 일일한도 잔여
   const dailyLimit = Number(c.s_daily) || 300;

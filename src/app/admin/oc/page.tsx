@@ -7,7 +7,7 @@ import Link from "next/link";
 import PageShell from "@/components/ktrend/PageShell";
 import {
   ShieldCheck, Loader2, ArrowLeft, Upload, Trash2, Send, RefreshCw, Users, Package,
-  Filter, Mail, History, UserCog, Check, X, Play,
+  Filter, Mail, History, UserCog, Check, X, Play, Inbox,
 } from "lucide-react";
 
 /* ── 타입 ── */
@@ -16,7 +16,8 @@ interface OcFilter {
   minVideos?: number; maxVideos?: number; brands?: string[]; region?: string; search?: string;
 }
 interface Product { id: number; name: string; brand: string | null; category: string | null; concept: string | null; usp: string | null; }
-interface Sender { id: number; email: string; display_name: string | null; backend: string; env_key: string; daily_limit: number; active: boolean; configured: boolean; }
+interface Sender { id: number; email: string; display_name: string | null; daily_limit: number; active: boolean; configured: boolean; }
+interface InboxRow { id: number; mailbox: string; from_email: string; from_name: string | null; subject: string | null; snippet: string | null; received_at: string | null; matched_handle: string | null; matched_campaign_id: number | null; }
 interface Campaign { id: number; name: string; status: string; total: number; sent: number; failed: number; created_at: string; product_name: string | null; sender_email: string | null; }
 interface CreatorRow { handle: string; email: string | null; avg_views: number | null; total_views: number | null; videos: number | null; brands: string | null; region: string | null; }
 interface MsgRow { id: number; handle: string | null; to_email: string; status: string; error: string | null; subject: string | null; sent_at: string | null; }
@@ -68,6 +69,7 @@ const TABS = [
   { k: "creators", label: "크리에이터 필터", icon: Filter },
   { k: "compose", label: "발송(캠페인)", icon: Mail },
   { k: "history", label: "발송이력", icon: History },
+  { k: "inbox", label: "회신함", icon: Inbox },
   { k: "senders", label: "발신계정", icon: UserCog },
 ] as const;
 type TabKey = (typeof TABS)[number]["k"];
@@ -170,6 +172,7 @@ export default function OcConsole() {
           runPreview={runPreview} reload={loadAll} />
       )}
       {tab === "history" && <HistoryTab campaigns={campaigns} />}
+      {tab === "inbox" && <InboxTab senders={senders} />}
       {tab === "senders" && <SendersTab senders={senders} reload={loadAll} />}
     </PageShell>
   );
@@ -550,14 +553,14 @@ function HistoryTab({ campaigns }: { campaigns: Campaign[] }) {
   );
 }
 
-/* ── 발신계정 ── */
+/* ── 발신계정(공용 메일함, 서비스계정 DWD) ── */
 function SendersTab({ senders, reload }: { senders: Sender[]; reload: () => void }) {
-  const [f, setF] = useState({ email: "", display_name: "", backend: "smtp", env_key: "", daily_limit: 300 });
+  const [f, setF] = useState({ email: "", display_name: "", daily_limit: 300 });
   const inp = "w-full rounded-md border border-[var(--border)] px-3 py-2 text-[12px] outline-none focus:border-[var(--accent)]";
   async function save() {
-    if (!f.email.trim() || !f.env_key.trim()) { alert("이메일·env_key 필수"); return; }
+    if (!f.email.trim()) { alert("메일함 이메일 필수"); return; }
     const r = await fetch("/api/admin/oc/senders", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(f) });
-    if (r.ok) { setF({ email: "", display_name: "", backend: "smtp", env_key: "", daily_limit: 300 }); reload(); }
+    if (r.ok) { setF({ email: "", display_name: "", daily_limit: 300 }); reload(); }
     else alert((await r.json()).error || "저장 실패");
   }
   async function del(id: number) { if (!confirm("삭제?")) return; await fetch(`/api/admin/oc/senders?id=${id}`, { method: "DELETE" }); reload(); }
@@ -570,34 +573,31 @@ function SendersTab({ senders, reload }: { senders: Sender[]; reload: () => void
   return (
     <div className="grid gap-4 lg:grid-cols-[400px_1fr]">
       <div className="kt-card p-5">
-        <h2 className="text-[14px] font-black">발신계정 등록(allow-list)</h2>
-        <p className="mt-1 text-[11px] text-[var(--muted)]">등록된 계정으로만 발송됩니다. 시크릿은 DB에 저장하지 않고 <b>환경변수</b>로 관리합니다.</p>
+        <h2 className="text-[14px] font-black">발신 메일함 등록(allow-list)</h2>
+        <p className="mt-1 text-[11px] text-[var(--muted)]">등록된 공용 메일함으로만 발송·열람됩니다. Google Workspace <b>서비스계정 + 도메인 전체 위임(DWD)</b>으로 해당 메일함을 impersonate 합니다.</p>
         <div className="mt-3 space-y-2.5">
-          <input className={inp} placeholder="발신 이메일 (예: partners@glovek.space)" value={f.email} onChange={(e) => setF({ ...f, email: e.target.value })} />
-          <input className={inp} placeholder="표시 이름 (예: GloveK Partners)" value={f.display_name} onChange={(e) => setF({ ...f, display_name: e.target.value })} />
-          <select className={inp} value={f.backend} onChange={(e) => setF({ ...f, backend: e.target.value })}>
-            <option value="smtp">SMTP (앱 비밀번호) — 간편</option>
-            <option value="gmail_api">Gmail API (OAuth2) — 견고</option>
-          </select>
-          <input className={inp} placeholder="env_key (예: PARTNERS)" value={f.env_key} onChange={(e) => setF({ ...f, env_key: e.target.value.toUpperCase() })} />
+          <input className={inp} placeholder="공용 메일함 (예: cs@glovek.space)" value={f.email} onChange={(e) => setF({ ...f, email: e.target.value })} />
+          <input className={inp} placeholder="표시 이름 (예: GloveK)" value={f.display_name} onChange={(e) => setF({ ...f, display_name: e.target.value })} />
           <input className={inp} type="number" placeholder="일일 한도" value={f.daily_limit} onChange={(e) => setF({ ...f, daily_limit: +e.target.value })} />
           <button onClick={save} className="kt-btn kt-btn-primary w-full py-2 text-[12px]">등록 / 수정</button>
         </div>
         <div className="mt-4 rounded-lg bg-slate-50 p-3 text-[11px] text-[var(--muted)]">
-          <b>환경변수 설정 (Vercel)</b>
-          <div className="mt-1">· SMTP: <code>OC_SMTP_PASS_&lt;env_key&gt;</code> = Gmail 앱 비밀번호</div>
-          <div>· Gmail API: <code>GOOGLE_OAUTH_CLIENT_ID</code>, <code>GOOGLE_OAUTH_CLIENT_SECRET</code>(공용) + <code>OC_GMAIL_REFRESH_&lt;env_key&gt;</code></div>
+          <b>설정 (한 번만)</b>
+          <div className="mt-1">1. Vercel env <code>GOOGLE_SA_KEY_JSON</code> = 서비스계정 키 JSON</div>
+          <div>2. Workspace 관리콘솔 → 도메인 위임에 서비스계정 client_id 승인</div>
+          <div className="ml-3">scope: <code>gmail.send</code>, <code>gmail.readonly</code></div>
+          <div>3. 위임 대상 메일함(예 cs@glovek.space)을 여기 등록</div>
         </div>
       </div>
       <div className="kt-card p-5">
-        <h2 className="text-[14px] font-black">등록된 발신계정 ({senders.length})</h2>
+        <h2 className="text-[14px] font-black">등록된 메일함 ({senders.length})</h2>
         <div className="mt-3 space-y-2">
           {senders.map((s) => (
             <div key={s.id} className="flex items-center justify-between gap-2 rounded-lg border border-[var(--border)] p-3">
               <div className="min-w-0">
                 <div className="text-[13px] font-bold">{s.email} {s.display_name && <span className="text-[11px] text-[var(--muted)]">· {s.display_name}</span>}</div>
-                <div className="text-[11px] text-[var(--muted)]">{s.backend} · env_key {s.env_key} · 일일 {s.daily_limit}
-                  {s.configured ? <span className="ml-1 text-emerald-600"><Check size={11} className="inline" /> env 설정됨</span> : <span className="ml-1 text-rose-500"><X size={11} className="inline" /> env 미설정</span>}
+                <div className="text-[11px] text-[var(--muted)]">서비스계정 위임 · 일일 {s.daily_limit}
+                  {s.configured ? <span className="ml-1 text-emerald-600"><Check size={11} className="inline" /> SA 설정됨</span> : <span className="ml-1 text-rose-500"><X size={11} className="inline" /> SA 미설정</span>}
                   {!s.active && <span className="ml-1 text-slate-400">· 비활성</span>}
                 </div>
               </div>
@@ -607,9 +607,69 @@ function SendersTab({ senders, reload }: { senders: Sender[]; reload: () => void
               </div>
             </div>
           ))}
-          {!senders.length && <p className="text-[12px] text-[var(--muted)]">등록된 발신계정이 없습니다.</p>}
+          {!senders.length && <p className="text-[12px] text-[var(--muted)]">등록된 메일함이 없습니다.</p>}
         </div>
       </div>
+    </div>
+  );
+}
+
+/* ── 회신함(수신 매칭) ── */
+function InboxTab({ senders }: { senders: Sender[] }) {
+  const [mailbox, setMailbox] = useState("");
+  const [rows, setRows] = useState<InboxRow[]>([]);
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState<string | null>(null);
+  const inp = "rounded-md border border-[var(--border)] px-3 py-2 text-[12px] outline-none focus:border-[var(--accent)]";
+
+  const load = useCallback((mb: string) => {
+    const qs = mb ? `?mailbox=${encodeURIComponent(mb)}` : "";
+    fetch(`/api/admin/oc/inbox${qs}`).then((r) => r.json()).then((j) => setRows(j.rows || [])).catch(() => {});
+  }, []);
+  useEffect(() => { load(mailbox); }, [mailbox, load]);
+
+  async function sync() {
+    if (!mailbox) { alert("메일함을 선택하세요"); return; }
+    setBusy(true); setMsg(null);
+    const r = await fetch("/api/admin/oc/inbox", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ mailbox }) });
+    const j = await r.json(); setBusy(false);
+    if (r.ok) { setMsg(`동기화 완료 · 조회 ${j.fetched} · 신규 ${j.stored} · 매칭 ${j.matched}`); load(mailbox); }
+    else setMsg("실패: " + (j.error || ""));
+  }
+  return (
+    <div className="kt-card p-5">
+      <div className="flex flex-wrap items-center gap-2">
+        <select className={inp} value={mailbox} onChange={(e) => setMailbox(e.target.value)}>
+          <option value="">메일함 선택</option>
+          {senders.map((s) => <option key={s.id} value={s.email}>{s.email}</option>)}
+        </select>
+        <button onClick={sync} disabled={busy || !mailbox} className="kt-btn kt-btn-primary px-3 py-1.5 text-[11px]">{busy ? <Loader2 size={12} className="animate-spin" /> : <RefreshCw size={12} />} 최근 30일 동기화</button>
+        <span className="text-[11px] text-[var(--muted)]">{rows.length}건 · 회신을 크리에이터/캠페인에 매칭·적재</span>
+      </div>
+      {msg && <p className="mt-2 text-[12px] font-semibold text-[var(--accent)]">{msg}</p>}
+      <div className="mt-3 max-h-[560px] overflow-auto rounded-lg border border-[var(--border)]">
+        <table className="w-full text-[11.5px]">
+          <thead className="sticky top-0 bg-slate-50 text-left text-[var(--muted)]">
+            <tr><th className="px-2 py-1.5">보낸사람</th><th className="px-2 py-1.5">제목</th><th className="px-2 py-1.5">내용</th><th className="px-2 py-1.5">매칭</th><th className="px-2 py-1.5">수신</th></tr>
+          </thead>
+          <tbody>
+            {rows.map((m) => (
+              <tr key={m.id} className="border-t border-[var(--border)] align-top">
+                <td className="px-2 py-1.5"><div className="font-medium">{m.from_name || "—"}</div><div className="text-[var(--muted)]">{m.from_email}</div></td>
+                <td className="px-2 py-1.5 max-w-[220px]">{m.subject || "—"}</td>
+                <td className="px-2 py-1.5 max-w-[280px] text-[var(--muted)]">{m.snippet || ""}</td>
+                <td className="px-2 py-1.5">
+                  {m.matched_handle && <span className="rounded bg-emerald-100 px-1.5 py-0.5 text-[10px] font-bold text-emerald-700">@{m.matched_handle}</span>}
+                  {m.matched_campaign_id && <span className="ml-1 rounded bg-sky-100 px-1.5 py-0.5 text-[10px] font-bold text-sky-700">캠페인#{m.matched_campaign_id}</span>}
+                  {!m.matched_handle && !m.matched_campaign_id && <span className="text-slate-400">—</span>}
+                </td>
+                <td className="px-2 py-1.5 text-[var(--muted)]">{(m.received_at || "").slice(0, 22)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      {!mailbox && <p className="mt-2 text-[12px] text-[var(--muted)]">메일함을 선택하고 [동기화]를 누르면 회신이 크리에이터·캠페인에 매칭되어 적재됩니다.</p>}
     </div>
   );
 }
