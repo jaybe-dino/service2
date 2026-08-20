@@ -78,6 +78,29 @@ export async function POST(req: Request) {
     } catch { /* 통지 실패 무시 — 문의 저장은 이미 완료 */ }
   }
 
+  // 1:1 상담 리드훅 전송(외부 어드민) — POST. 응답 이후 비차단(실패해도 접수 플로우 무관).
+  // 키/소스는 env로 관리(미설정 시 기본값). 형식:
+  //   {LEADHOOK_URL}?key=..&source=..&company=..&name=..&email=..&category=..&memo=..
+  {
+    const base = process.env.LEADHOOK_URL || "https://admin.glovek.space/api/leadhook";
+    const key = process.env.LEADHOOK_KEY || "dinoffice1029";
+    const src = process.env.LEADHOOK_SOURCE || "HfbbIVFL9p29ZtG2sNI21sCC";
+    // memo: 상담 내용 + 연락처/해외경험/브랜드URL(리드훅에 별도 필드가 없어 memo에 보존)
+    const memo = [
+      s(b.message, 1500),
+      contact ? `연락처: ${contact}` : "",
+      b.overseas ? `해외: ${s(b.overseas, 40)}` : "",
+      b.brandUrl ? `URL: ${s(b.brandUrl, 200)}` : "",
+    ].filter(Boolean).join(" / ");
+    const qs = new URLSearchParams({ key, source: src, company, name: managerName, email, category: s(b.category, 80), memo });
+    const leadhookUrl = `${base}?${qs.toString()}`;
+    after(async () => {
+      try {
+        await fetch(leadhookUrl, { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" });
+      } catch { /* 리드훅 실패 무시 — 상담 저장은 이미 완료 */ }
+    });
+  }
+
   // 신청 성공 시 1:1 미팅 링크를 반환(자동 노출용). 값은 env로 주입.
   const meetingUrl = process.env.NEXT_PUBLIC_GLOVEK_MEETING_URL || "";
   return NextResponse.json({ ok: true, id: rows[0]?.id, meetingUrl });
