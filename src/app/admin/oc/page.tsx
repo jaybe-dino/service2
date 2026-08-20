@@ -178,6 +178,72 @@ export default function OcConsole() {
   );
 }
 
+/* ── 매핑 점검 ── */
+interface MapReport {
+  oc: { total: number; with_email: number }; creators: { total: number; with_email: number };
+  overlap_handle: number; overlap_handle_ci: number; overlap_email: number; only_in_oc: number;
+  linked_targets: number; match_rate: number;
+  sample_matched: { handle: string; oc_avg: number | null; cr_avg: number | null; email: string | null }[];
+  sample_only_oc: { handle: string; avg_views: number | null; email: string | null }[];
+}
+function MappingCheck() {
+  const [rep, setRep] = useState<MapReport | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+  async function run() {
+    setBusy(true); setErr(null);
+    const r = await fetch("/api/admin/oc/mapping"); const j = await r.json(); setBusy(false);
+    if (r.ok) setRep(j); else setErr(j.error || "조회 실패");
+  }
+  return (
+    <div className="mt-4 kt-card p-5">
+      <div className="flex items-center justify-between">
+        <div>
+          <h3 className="text-[13px] font-black">매핑 점검</h3>
+          <p className="text-[11px] text-[var(--muted)]">업로드 데이터가 기존 크리에이터 데이터(분석 <code>creators</code>)·아웃리치 CRM과 <b>handle/email</b>로 연결되는지 확인</p>
+        </div>
+        <button onClick={run} disabled={busy} className="kt-btn kt-btn-outline px-3 py-1.5 text-[11px]">{busy ? "확인 중…" : "매핑 확인"}</button>
+      </div>
+      {err && <p className="mt-2 text-[12px] text-rose-600">{err}</p>}
+      {rep && (
+        <div className="mt-3 space-y-3">
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+            {[
+              ["업로드(oc)", `${rep.oc.total.toLocaleString()}명`, `이메일 ${rep.oc.with_email.toLocaleString()}`],
+              ["기존(creators)", `${rep.creators.total.toLocaleString()}명`, `이메일 ${rep.creators.with_email.toLocaleString()}`],
+              ["handle 매칭", `${rep.overlap_handle.toLocaleString()}명`, `일치율 ${rep.match_rate}%`],
+              ["email 매칭", `${rep.overlap_email.toLocaleString()}명`, `CRM 연결 ${rep.linked_targets.toLocaleString()}`],
+            ].map(([a, b, c]) => (
+              <div key={a} className="rounded-lg border border-[var(--border)] p-3">
+                <div className="text-[11px] text-[var(--muted)]">{a}</div>
+                <div className="text-[18px] font-black">{b}</div>
+                <div className="text-[11px] text-[var(--muted)]">{c}</div>
+              </div>
+            ))}
+          </div>
+          <div className="text-[11px] text-[var(--muted)]">
+            · handle 매칭 {rep.overlap_handle.toLocaleString()}명(대소문자 무시 시 {rep.overlap_handle_ci.toLocaleString()}) · 업로드에만 있는 신규 {rep.only_in_oc.toLocaleString()}명
+          </div>
+          <div className="grid gap-3 lg:grid-cols-2">
+            <div className="rounded-lg border border-[var(--border)] p-3">
+              <div className="mb-1 text-[11px] font-bold text-emerald-600">양쪽에 있는 매칭 샘플</div>
+              {rep.sample_matched.length ? rep.sample_matched.map((m) => (
+                <div key={m.handle} className="text-[11px] text-[var(--muted)]">@{m.handle} · oc {compact(m.oc_avg)} / cr {compact(m.cr_avg)}</div>
+              )) : <div className="text-[11px] text-[var(--muted)]">매칭 없음</div>}
+            </div>
+            <div className="rounded-lg border border-[var(--border)] p-3">
+              <div className="mb-1 text-[11px] font-bold text-sky-600">업로드에만 있는 신규 샘플</div>
+              {rep.sample_only_oc.length ? rep.sample_only_oc.map((m) => (
+                <div key={m.handle} className="text-[11px] text-[var(--muted)]">@{m.handle} · {compact(m.avg_views)} · {m.email || "이메일없음"}</div>
+              )) : <div className="text-[11px] text-[var(--muted)]">신규 없음(전부 기존에 존재)</div>}
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 /* ── 데이터(CSV 업로드) ── */
 function DataTab({ stat, onDone }: { stat: { total: number; with_email: number } | null; onDone: () => void }) {
   const [busy, setBusy] = useState(false);
@@ -209,6 +275,7 @@ function DataTab({ stat, onDone }: { stat: { total: number; with_email: number }
   }
 
   return (
+    <>
     <div className="kt-card p-5">
       <h2 className="text-[14px] font-black">크리에이터 데이터 업로드</h2>
       <p className="mt-1 text-[12px] text-[var(--muted)]">
@@ -232,6 +299,8 @@ function DataTab({ stat, onDone }: { stat: { total: number; with_email: number }
       )}
       {msg && <p className="mt-2 text-[12px] font-semibold text-[var(--accent)]">{msg}</p>}
     </div>
+    <MappingCheck />
+    </>
   );
 }
 
