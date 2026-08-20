@@ -43,25 +43,30 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   const g = await guard(); if (g) return g;
   const b = (await req.json().catch(() => ({}))) as {
-    name?: string; productId?: number; senderId?: number; subject?: string; body?: string; filter?: OcFilter;
+    name?: string; productId?: number; senderId?: number; senderIds?: number[]; subject?: string; body?: string; filter?: OcFilter;
   };
   const name = String(b.name || "").trim();
   const subject = String(b.subject || "").trim();
   const body = String(b.body || "").trim();
   if (!name || !subject || !body) return NextResponse.json({ error: "캠페인명·제목·본문 필수" }, { status: 400 });
   const productId = b.productId ? Number(b.productId) : null;
-  const senderId = b.senderId ? Number(b.senderId) : null;
   const filter = b.filter || {};
 
-  // 발신계정 유효성(등록/활성) 확인 — 등록된 계정으로만 발송
-  if (senderId) {
-    const s = await sql`SELECT active FROM oc_senders WHERE id = ${senderId}`;
-    if (!s.rows[0]) return NextResponse.json({ error: "발신계정 없음" }, { status: 400 });
-  }
+  // 발신 메일함(1개 이상) — 등록·활성 계정만. 여러 개면 로테이션 발송.
+  const rawIds = (Array.isArray(b.senderIds) && b.senderIds.length ? b.senderIds : (b.senderId ? [b.senderId] : []))
+    .map(Number).filter((n) => n > 0);
+  const senderIds = Array.from(new Set(rawIds));
+  if (!senderIds.length) return NextResponse.json({ error: "발신 메일함을 1개 이상 선택하세요" }, { status: 400 });
+  const chk = await sql.query(`SELECT id FROM oc_senders WHERE active = true AND id = ANY($1::int[])`, [senderIds]);
+  const validIds = chk.rows.map((r) => Number(r.id));
+  if (!validIds.length) return NextResponse.json({ error: "유효한(활성) 발신 메일함이 없습니다" }, { status: 400 });
+  const senderId = validIds[0]; // 대표(표시용)
 
-  const created = await sql`INSERT INTO oc_campaigns (name, product_id, sender_id, subject, body, filter, status, created_by)
-    VALUES (${name}, ${productId}, ${senderId}, ${subject}, ${body}, ${JSON.stringify(filter)}, 'draft', 'admin')
-    RETURNING id`;
+  const created = await sql.query(
+    `INSERT INTO oc_campaigns (name, product_id, sender_id, sender_ids, subject, body, filter, status, created_by)
+     VALUES ($1, $2, $3, $4::int[], $5, $6, $7::jsonb, 'draft', 'admin') RETURNING id`,
+    [name, productId, senderId, validIds, subject, body, JSON.stringify(filter)],
+  );
   const campaignId = Number(created.rows[0].id);
 
   // 수신자 확정: 이메일 보유 + 필터 조건, 이메일 기준 dedup(ON CONFLICT)

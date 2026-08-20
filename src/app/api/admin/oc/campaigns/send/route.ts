@@ -36,36 +36,42 @@ export async function POST(req: Request) {
   const batchReq = Math.min(Math.max(1, Number(b.batch) || 30), BATCH_CAP);
   const dry = b.dry === true;
 
-  // 캠페인 + 발신계정 + 제품
-  const cRes = await sql`SELECT c.*, s.email AS s_email, s.display_name AS s_name,
-      s.active AS s_active, s.daily_limit AS s_daily,
+  // 캠페인 + 제품
+  const cRes = await sql`SELECT c.*,
       p.name AS p_name, p.brand AS p_brand, p.category AS p_category, p.concept AS p_concept, p.usp AS p_usp
     FROM oc_campaigns c
-    LEFT JOIN oc_senders s ON s.id = c.sender_id
     LEFT JOIN oc_products p ON p.id = c.product_id
     WHERE c.id = ${campaignId}`;
   const c = cRes.rows[0];
   if (!c) return NextResponse.json({ error: "캠페인 없음" }, { status: 404 });
-  if (!c.sender_id || !c.s_email) return NextResponse.json({ error: "발신계정 미지정" }, { status: 400 });
-  if (!c.s_active) return NextResponse.json({ error: "발신계정 비활성" }, { status: 400 });
-
-  const sender: OcSender = { email: c.s_email, display_name: c.s_name };
   if (!dry && !saConfigured()) return NextResponse.json({ error: "서비스계정 미설정(GOOGLE_SA_KEY_JSON)" }, { status: 400 });
 
-  // 오늘(KST) 이 발신계정이 이미 보낸 수 → 일일한도 잔여
-  const dailyLimit = Number(c.s_daily) || 300;
-  const sentTodayRes = await sql`
-    SELECT COUNT(*)::int AS n FROM oc_messages m
-    JOIN oc_campaigns cc ON cc.id = m.campaign_id
-    WHERE cc.sender_id = ${c.sender_id} AND m.status = 'sent'
-      AND (m.sent_at AT TIME ZONE 'Asia/Seoul')::date = (now() AT TIME ZONE 'Asia/Seoul')::date`;
-  const sentToday = sentTodayRes.rows[0]?.n || 0;
-  const dailyRemaining = Math.max(0, dailyLimit - sentToday);
-  if (dailyRemaining <= 0) {
-    return NextResponse.json({ sentNow: 0, failedNow: 0, dailyRemaining: 0, note: "오늘 일일한도 소진" });
+  // 발신 메일함 목록(다중 로테이션) — sender_ids 우선, 없으면 sender_id
+  const idList: number[] = (Array.isArray(c.sender_ids) && c.sender_ids.length ? c.sender_ids : (c.sender_id ? [c.sender_id] : [])).map(Number);
+  if (!idList.length) return NextResponse.json({ error: "발신 메일함 미지정" }, { status: 400 });
+  const sRes = await sql.query(
+    `SELECT id, email, display_name, daily_limit FROM oc_senders WHERE active = true AND id = ANY($1::int[])`,
+    [idList],
+  );
+  if (!sRes.rows.length) return NextResponse.json({ error: "활성 발신 메일함 없음" }, { status: 400 });
+
+  // 메일함별 오늘(KST) 발송량 → 잔여 한도 계산. 발송 주체는 oc_messages.sender_id 기준.
+  interface Slot { id: number; sender: OcSender; remaining: number }
+  const pool: Slot[] = [];
+  let dailyRemaining = 0;
+  for (const s of sRes.rows) {
+    const sentTodayRes = await sql`SELECT COUNT(*)::int AS n FROM oc_messages
+      WHERE sender_id = ${s.id} AND status = 'sent'
+        AND (sent_at AT TIME ZONE 'Asia/Seoul')::date = (now() AT TIME ZONE 'Asia/Seoul')::date`;
+    const remaining = Math.max(0, (Number(s.daily_limit) || 300) - (sentTodayRes.rows[0]?.n || 0));
+    pool.push({ id: Number(s.id), sender: { email: s.email, display_name: s.display_name }, remaining });
+    dailyRemaining += remaining;
+  }
+  if (!dry && dailyRemaining <= 0) {
+    return NextResponse.json({ sentNow: 0, failedNow: 0, dailyRemaining: 0, note: "오늘 일일한도 소진(전 메일함)" });
   }
 
-  const batch = Math.min(batchReq, dailyRemaining);
+  const batch = dry ? batchReq : Math.min(batchReq, dailyRemaining);
 
   // 다음 큐 메시지 + 크리에이터 변수
   const qMsgs = await sql`
@@ -83,6 +89,16 @@ export async function POST(req: Request) {
 
   await sql`UPDATE oc_campaigns SET status = 'sending', updated_at = now() WHERE id = ${campaignId}`;
 
+  // 로테이션 커서: 잔여 한도가 있는 메일함을 순환 선택
+  let cursor = 0;
+  const pickSlot = (): Slot | null => {
+    for (let i = 0; i < pool.length; i++) {
+      const slot = pool[(cursor + i) % pool.length];
+      if (slot.remaining > 0) { cursor = (cursor + i + 1) % pool.length; return slot; }
+    }
+    return null;
+  };
+
   let sentNow = 0, failedNow = 0;
   for (const m of msgs) {
     const vars = {
@@ -99,16 +115,20 @@ export async function POST(req: Request) {
     const text = looksHtml ? undefined : rawBody;
 
     if (dry) {
-      await sql`UPDATE oc_messages SET status='skipped', subject=${subject}, body=${rawBody}, error='dry-run', sent_at=now() WHERE id=${m.id}`;
+      const slot = pool[0];
+      await sql`UPDATE oc_messages SET status='skipped', sender_id=${slot?.id || null}, subject=${subject}, body=${rawBody}, error='dry-run', sent_at=now() WHERE id=${m.id}`;
       sentNow++;
       continue;
     }
-    const res = await sendViaSender(sender, { to: m.to_email, subject, html, text });
+    const slot = pickSlot();
+    if (!slot) break; // 전 메일함 한도 소진
+    const res = await sendViaSender(slot.sender, { to: m.to_email, subject, html, text });
     if (res.ok) {
-      await sql`UPDATE oc_messages SET status='sent', subject=${subject}, body=${rawBody}, provider_id=${res.id || null}, error=NULL, sent_at=now() WHERE id=${m.id}`;
+      slot.remaining--;
+      await sql`UPDATE oc_messages SET status='sent', sender_id=${slot.id}, subject=${subject}, body=${rawBody}, provider_id=${res.id || null}, error=NULL, sent_at=now() WHERE id=${m.id}`;
       sentNow++;
     } else {
-      await sql`UPDATE oc_messages SET status='failed', subject=${subject}, body=${rawBody}, error=${(res.error || "발송 실패").slice(0, 300)}, sent_at=now() WHERE id=${m.id}`;
+      await sql`UPDATE oc_messages SET status='failed', sender_id=${slot.id}, subject=${subject}, body=${rawBody}, error=${(res.error || "발송 실패").slice(0, 300)}, sent_at=now() WHERE id=${m.id}`;
       failedNow++;
     }
     // 완만한 발송(스팸/스로틀 방지)

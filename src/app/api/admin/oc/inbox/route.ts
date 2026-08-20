@@ -14,20 +14,52 @@ async function guard() {
   return null;
 }
 
-// GET ?mailbox= — 적재된 수신함(회신 매칭) 조회
+// GET ?mailbox=&status=  또는  ?summary=1 (회신 현황 요약)
 export async function GET(req: Request) {
   const g = await guard(); if (g) return g;
-  const mailbox = (new URL(req.url).searchParams.get("mailbox") || "").trim().toLowerCase();
-  const rows = mailbox
-    ? (await sql`SELECT * FROM oc_inbox WHERE mailbox = ${mailbox} ORDER BY created_at DESC LIMIT 300`).rows
-    : (await sql`SELECT * FROM oc_inbox ORDER BY created_at DESC LIMIT 300`).rows;
+  const u = new URL(req.url);
+  if (u.searchParams.get("summary")) {
+    // 캠페인별 회신 현황: 발송 수 vs 회신(고유 발신자) 수 → 회신율
+    const perCampaign = await sql`
+      SELECT c.id, c.name, c.sent,
+        COUNT(DISTINCT i.from_email)::int AS replied,
+        COUNT(*) FILTER (WHERE i.status = 'new')::int AS new_replies
+      FROM oc_campaigns c
+      LEFT JOIN oc_inbox i ON i.matched_campaign_id = c.id
+      GROUP BY c.id, c.name, c.sent
+      HAVING c.sent > 0 OR COUNT(i.id) > 0
+      ORDER BY c.created_at DESC LIMIT 100`;
+    const perMailbox = await sql`
+      SELECT mailbox, COUNT(*)::int AS total,
+        COUNT(*) FILTER (WHERE status='new')::int AS new_replies,
+        COUNT(*) FILTER (WHERE matched_campaign_id IS NOT NULL OR matched_handle IS NOT NULL)::int AS matched
+      FROM oc_inbox GROUP BY mailbox ORDER BY total DESC`;
+    return NextResponse.json({ perCampaign: perCampaign.rows, perMailbox: perMailbox.rows });
+  }
+  const mailbox = (u.searchParams.get("mailbox") || "").trim().toLowerCase();
+  const status = (u.searchParams.get("status") || "").trim();
+  const cond: string[] = [];
+  const params: unknown[] = [];
+  if (mailbox) { params.push(mailbox); cond.push(`mailbox = $${params.length}`); }
+  if (["new", "handled", "ignored"].includes(status)) { params.push(status); cond.push(`status = $${params.length}`); }
+  const where = cond.length ? "WHERE " + cond.join(" AND ") : "";
+  const { rows } = await sql.query(`SELECT * FROM oc_inbox ${where} ORDER BY created_at DESC LIMIT 300`, params);
   return NextResponse.json({ rows });
 }
 
-// POST { mailbox } — 최근 30일 수신을 읽어 크리에이터/캠페인에 매칭·적재
+// POST { mailbox } 동기화  또는  { action:'setStatus', id, status }
 export async function POST(req: Request) {
   const g = await guard(); if (g) return g;
-  const b = (await req.json().catch(() => ({}))) as { mailbox?: string; max?: number };
+  const b = (await req.json().catch(() => ({}))) as { mailbox?: string; max?: number; action?: string; id?: number; status?: string };
+
+  if (b.action === "setStatus") {
+    const id = Number(b.id);
+    const status = String(b.status || "");
+    if (!id || !["new", "handled", "ignored"].includes(status)) return NextResponse.json({ error: "id/status 오류" }, { status: 400 });
+    await sql`UPDATE oc_inbox SET status = ${status} WHERE id = ${id}`;
+    return NextResponse.json({ ok: true });
+  }
+
   const mailbox = String(b.mailbox || "").trim().toLowerCase();
   if (!mailbox) return NextResponse.json({ error: "mailbox 필요" }, { status: 400 });
   // 등록된 발신계정(공용 메일함)만 열람

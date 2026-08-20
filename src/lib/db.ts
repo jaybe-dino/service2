@@ -566,6 +566,11 @@ export function ensureSchema(): Promise<void> {
         UNIQUE (mailbox, msg_id)
       )`;
       await sql`CREATE INDEX IF NOT EXISTS idx_oc_inbox_matched ON oc_inbox(matched_campaign_id)`;
+      // 다중 발신 메일함 로테이션 + 회신 현황 관리 보강
+      await sql`ALTER TABLE oc_messages ADD COLUMN IF NOT EXISTS sender_id int`;
+      await sql`CREATE INDEX IF NOT EXISTS idx_oc_messages_sender ON oc_messages(sender_id, sent_at)`;
+      await sql`ALTER TABLE oc_campaigns ADD COLUMN IF NOT EXISTS sender_ids int[]`;
+      await sql`ALTER TABLE oc_inbox ADD COLUMN IF NOT EXISTS status text NOT NULL DEFAULT 'new'`; // new|handled|ignored
       // 발송 캠페인(그룹) — 제품+발신계정+필터+템플릿.
       await sql`CREATE TABLE IF NOT EXISTS oc_campaigns (
         id serial PRIMARY KEY,
