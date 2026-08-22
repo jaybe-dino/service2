@@ -14,6 +14,20 @@ interface Asset { id: number; asset_id: string; kind: Kind; label: string | null
 interface KF { shot_no: number; sales_beat: string; needs_product: boolean; ok: boolean; assetId?: string; url?: string; error?: string }
 interface ClipRow { shot_no: number; status: string; videoUrl?: string | null; error?: string | null }
 
+// 업로드 전 다운스케일(서버리스 4.5MB 바디 한도 회피 + 속도). 최대 변 1280px, JPEG q0.85.
+async function downscale(file: File, max = 1280, quality = 0.85): Promise<string> {
+  const dataUrl = await new Promise<string>((res) => { const r = new FileReader(); r.onload = () => res(String(r.result)); r.readAsDataURL(file); });
+  try {
+    const img = await new Promise<HTMLImageElement>((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = dataUrl; });
+    const scale = Math.min(1, max / Math.max(img.width, img.height));
+    if (scale >= 1 && dataUrl.length < 3_000_000) return dataUrl; // 이미 작으면 원본
+    const w = Math.round(img.width * scale), h = Math.round(img.height * scale);
+    const canvas = document.createElement("canvas"); canvas.width = w; canvas.height = h;
+    const ctx = canvas.getContext("2d"); if (!ctx) return dataUrl;
+    ctx.drawImage(img, 0, 0, w, h);
+    return canvas.toDataURL("image/jpeg", quality);
+  } catch { return dataUrl; }
+}
 async function assetToDataUrl(assetId: string): Promise<string> {
   const res = await fetch(`/api/remake/asset/${assetId}`);
   const blob = await res.blob();
@@ -75,7 +89,7 @@ export default function RemakeStudio2() {
 
   async function uploadAsset(kind: Kind, file: File) {
     if (!sel) return;
-    const dataUrl = await new Promise<string>((res) => { const r = new FileReader(); r.onload = () => res(String(r.result)); r.readAsDataURL(file); });
+    const dataUrl = await downscale(file);
     const r = await fetch("/api/remake2/assets", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ productId: sel.id, kind, image: dataUrl }) });
     const j = await r.json(); if (!r.ok) { alert(j.error || "업로드 실패"); return; }
     loadProduct(sel.id); loadProducts();
