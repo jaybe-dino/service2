@@ -43,10 +43,11 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   const g = await guard(); if (g) return g;
   const b = (await req.json().catch(() => ({}))) as {
-    name?: string; productId?: number; senderId?: number; senderIds?: number[]; subject?: string; body?: string; filter?: OcFilter;
+    name?: string; productId?: number; senderId?: number; senderIds?: number[]; subject?: string; subjectB?: string; body?: string; filter?: OcFilter;
   };
   const name = String(b.name || "").trim();
   const subject = String(b.subject || "").trim();
+  const subjectB = String(b.subjectB || "").trim() || null;
   const body = String(b.body || "").trim();
   if (!name || !subject || !body) return NextResponse.json({ error: "캠페인명·제목·본문 필수" }, { status: 400 });
   const productId = b.productId ? Number(b.productId) : null;
@@ -63,21 +64,22 @@ export async function POST(req: Request) {
   const senderId = validIds[0]; // 대표(표시용)
 
   const created = await sql.query(
-    `INSERT INTO oc_campaigns (name, product_id, sender_id, sender_ids, subject, body, filter, status, created_by)
-     VALUES ($1, $2, $3, $4::int[], $5, $6, $7::jsonb, 'draft', 'admin') RETURNING id`,
-    [name, productId, senderId, validIds, subject, body, JSON.stringify(filter)],
+    `INSERT INTO oc_campaigns (name, product_id, sender_id, sender_ids, subject, subject_b, body, filter, status, created_by)
+     VALUES ($1, $2, $3, $4::int[], $5, $6, $7, $8::jsonb, 'draft', 'admin') RETURNING id`,
+    [name, productId, senderId, validIds, subject, subjectB, body, JSON.stringify(filter)],
   );
   const campaignId = Number(created.rows[0].id);
 
   // 수신자 확정: 이메일 보유 + 필터 조건, 이메일 기준 dedup(ON CONFLICT)
   const { where, params } = buildWhere({ ...filter, hasEmail: true });
-  // 이메일 기준 dedup(DISTINCT ON) 후 avg_views 상위로 상한 적용.
+  // 이메일 기준 dedup(DISTINCT ON) + 제외목록(oc_suppression) 제거 후 avg_views 상위로 상한 적용.
   const q = `INSERT INTO oc_messages (campaign_id, handle, to_email, status)
     SELECT ${campaignId}, d.handle, d.email, 'queued' FROM (
       SELECT DISTINCT ON (lower(email)) handle, lower(email) AS email, avg_views
       FROM oc_creators ${where}
       ORDER BY lower(email), avg_views DESC NULLS LAST
     ) d
+    WHERE NOT EXISTS (SELECT 1 FROM oc_suppression s WHERE s.email = d.email)
     ORDER BY d.avg_views DESC NULLS LAST
     LIMIT ${MAX_RECIPIENTS}
     ON CONFLICT (campaign_id, to_email) DO NOTHING`;

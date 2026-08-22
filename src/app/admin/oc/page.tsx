@@ -2,12 +2,12 @@
 
 // 크리에이터 아웃리치(제품 컨셉 → 필터 → Gmail 그룹 발송 → 이력) — 관리자 전용, 메뉴 비노출.
 // 데이터: /api/admin/oc/*. 발송은 등록된 Gmail 발신계정(allow-list)으로만.
-import { useCallback, useEffect, useState } from "react";
+import { Fragment, useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import PageShell from "@/components/ktrend/PageShell";
 import {
   ShieldCheck, Loader2, ArrowLeft, Upload, Trash2, Send, RefreshCw, Users, Package,
-  Filter, Mail, History, UserCog, Check, X, Play, Inbox,
+  Filter, Mail, History, UserCog, Check, X, Play, Inbox, BarChart3, Link2, Save, ChevronDown,
 } from "lucide-react";
 
 /* ── 타입 ── */
@@ -16,8 +16,8 @@ interface OcFilter {
   minVideos?: number; maxVideos?: number; brands?: string[]; region?: string; search?: string;
 }
 interface Product { id: number; name: string; brand: string | null; category: string | null; concept: string | null; usp: string | null; }
-interface Sender { id: number; email: string; display_name: string | null; daily_limit: number; active: boolean; configured: boolean; }
-interface InboxRow { id: number; mailbox: string; from_email: string; from_name: string | null; subject: string | null; snippet: string | null; received_at: string | null; matched_handle: string | null; matched_campaign_id: number | null; status: string; }
+interface Sender { id: number; email: string; display_name: string | null; daily_limit: number; active: boolean; configured: boolean; warmup_start: string | null; }
+interface InboxRow { id: number; mailbox: string; from_email: string; from_name: string | null; subject: string | null; snippet: string | null; body_text: string | null; received_at: string | null; matched_handle: string | null; matched_campaign_id: number | null; status: string; }
 interface Campaign { id: number; name: string; status: string; total: number; sent: number; failed: number; created_at: string; product_name: string | null; sender_email: string | null; }
 interface CreatorRow { handle: string; email: string | null; avg_views: number | null; total_views: number | null; videos: number | null; brands: string | null; region: string | null; }
 interface MsgRow { id: number; handle: string | null; to_email: string; status: string; error: string | null; subject: string | null; sent_at: string | null; }
@@ -70,7 +70,9 @@ const TABS = [
   { k: "compose", label: "발송(캠페인)", icon: Mail },
   { k: "history", label: "발송이력", icon: History },
   { k: "inbox", label: "회신함", icon: Inbox },
-  { k: "senders", label: "발신계정", icon: UserCog },
+  { k: "stats", label: "성과", icon: BarChart3 },
+  { k: "match", label: "매칭", icon: Link2 },
+  { k: "senders", label: "발신·안전", icon: UserCog },
 ] as const;
 type TabKey = (typeof TABS)[number]["k"];
 
@@ -173,6 +175,8 @@ export default function OcConsole() {
       )}
       {tab === "history" && <HistoryTab campaigns={campaigns} />}
       {tab === "inbox" && <InboxTab senders={senders} />}
+      {tab === "stats" && <StatsTab />}
+      {tab === "match" && <MatchTab facetBrands={facetBrands} products={products} />}
       {tab === "senders" && <SendersTab senders={senders} reload={loadAll} />}
     </PageShell>
   );
@@ -368,11 +372,38 @@ function CreatorsTab({ filter, setFilter, facetBrands, preview, previewing, runP
     const cur = filter.brands || [];
     setFilter({ ...filter, brands: cur.includes(b) ? cur.filter((x) => x !== b) : [...cur, b] });
   };
+  const [segs, setSegs] = useState<{ id: number; name: string; filter: OcFilter }[]>([]);
+  const loadSegs = useCallback(() => { fetch("/api/admin/oc/segments").then((r) => r.json()).then((j) => setSegs(j.rows || [])).catch(() => {}); }, []);
+  useEffect(() => { loadSegs(); }, [loadSegs]);
+  async function saveSeg() {
+    const name = prompt("세그먼트 이름"); if (!name) return;
+    await fetch("/api/admin/oc/segments", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name, filter }) });
+    loadSegs();
+  }
+  async function delSeg(id: number) { await fetch(`/api/admin/oc/segments?id=${id}`, { method: "DELETE" }); loadSegs(); }
   return (
     <div className="grid gap-4 lg:grid-cols-[380px_1fr]">
       <div className="kt-card p-5">
         <h2 className="text-[14px] font-black">필터</h2>
         <p className="mt-1 text-[11px] text-[var(--muted)]">이 데이터셋은 팔로워 값이 없어 <b>평균 조회수(avg_views)</b>로 규모를 판단합니다.</p>
+
+        {/* 저장 세그먼트 */}
+        <div className="mt-3 flex flex-wrap items-center gap-1.5">
+          <select className="rounded-md border border-[var(--border)] px-2 py-1 text-[11px]" defaultValue="" onChange={(e) => { const s = segs.find((x) => x.id === +e.target.value); if (s) setFilter(s.filter || {}); }}>
+            <option value="">저장된 세그먼트 불러오기</option>
+            {segs.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+          </select>
+          <button onClick={saveSeg} className="inline-flex items-center gap-1 rounded-md border border-[var(--border)] px-2 py-1 text-[11px] text-[var(--muted)] hover:border-[var(--accent)]"><Save size={11} /> 현재 필터 저장</button>
+        </div>
+        {segs.length > 0 && (
+          <div className="mt-1 flex flex-wrap gap-1">
+            {segs.map((s) => (
+              <span key={s.id} className="inline-flex items-center gap-1 rounded bg-slate-50 px-1.5 py-0.5 text-[10px] text-[var(--muted)]">
+                {s.name}<button onClick={() => { if (confirm(`"${s.name}" 삭제?`)) delSeg(s.id); }} className="text-slate-400 hover:text-rose-500"><X size={10} /></button>
+              </span>
+            ))}
+          </div>
+        )}
 
         <label className="mt-3 flex items-center gap-2 text-[12px]">
           <input type="checkbox" checked={!!filter.hasEmail} onChange={(e) => setFilter({ ...filter, hasEmail: e.target.checked })} />
@@ -467,6 +498,7 @@ function ComposeTab({ filter, products, senders, campaigns, preview, runPreview,
   const [productId, setProductId] = useState<number | "">("");
   const [senderIds, setSenderIds] = useState<number[]>([]);
   const [subject, setSubject] = useState("[{{brand}}] {{product}} 크리에이터 협업 제안");
+  const [subjectB, setSubjectB] = useState("");
   const [body, setBody] = useState(DEFAULT_BODY);
   const [busy, setBusy] = useState(false);
   const [sendState, setSendState] = useState<{ id: number; sent: number; failed: number; queued: number; running: boolean; note?: string } | null>(null);
@@ -478,7 +510,7 @@ function ComposeTab({ filter, products, senders, campaigns, preview, runPreview,
     setBusy(true);
     const r = await fetch("/api/admin/oc/campaigns", {
       method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, productId: productId || null, senderIds, subject, body, filter }),
+      body: JSON.stringify({ name, productId: productId || null, senderIds, subject, subjectB: subjectB || null, body, filter }),
     });
     const j = await r.json(); setBusy(false);
     if (r.ok) { alert(`캠페인 생성 · 수신자 ${j.total.toLocaleString()}명 확정`); setName(""); reload(); }
@@ -530,7 +562,8 @@ function ComposeTab({ filter, products, senders, campaigns, preview, runPreview,
             </div>
             {senderIds.length > 1 && <div className="mt-1 text-[10px] text-[var(--accent)]">{senderIds.length}개 메일함 로테이션 · 합산 일일한도까지 분산 발송</div>}
           </div>
-          <input className={inp} placeholder="제목" value={subject} onChange={(e) => setSubject(e.target.value)} />
+          <input className={inp} placeholder="제목 (A)" value={subject} onChange={(e) => setSubject(e.target.value)} />
+          <input className={inp} placeholder="제목 B (선택 · 입력 시 A/B 테스트 자동 분할)" value={subjectB} onChange={(e) => setSubjectB(e.target.value)} />
           <textarea className={`${inp} font-mono`} rows={9} value={body} onChange={(e) => setBody(e.target.value)} />
           <div className="text-[11px] text-[var(--muted)]">변수: <code>{"{{handle}} {{views}} {{brands}} {{product}} {{brand}} {{category}} {{concept}} {{usp}} {{region}}"}</code></div>
           <button onClick={createCampaign} disabled={busy} className="kt-btn kt-btn-primary w-full py-2 text-[12px]">{busy ? "생성 중…" : "캠페인 생성(수신자 확정)"}</button>
@@ -632,14 +665,150 @@ function HistoryTab({ campaigns }: { campaigns: Campaign[] }) {
   );
 }
 
-/* ── 발신계정(공용 메일함, 서비스계정 DWD) ── */
+/* ── 성과(퍼널) ── */
+interface StatCampaign { id: number; name: string; has_ab: boolean; sent: number; opened: number; clicked: number; failed: number; replied: number; open_rate: number; click_rate: number; reply_rate: number; }
+interface AbRow { cid: number; name: string; variant: string; sent: number; opened: number; }
+function StatsTab() {
+  const [rows, setRows] = useState<StatCampaign[]>([]);
+  const [ab, setAb] = useState<AbRow[]>([]);
+  const [totals, setTotals] = useState<{ sent: number; opened: number; clicked: number; replied: number }>({ sent: 0, opened: 0, clicked: 0, replied: 0 });
+  const [busy, setBusy] = useState(false);
+  const load = useCallback(() => {
+    setBusy(true);
+    fetch("/api/admin/oc/stats").then((r) => r.json()).then((j) => { setRows(j.perCampaign || []); setAb(j.ab || []); setTotals(j.totals || {}); }).finally(() => setBusy(false));
+  }, []);
+  useEffect(() => { load(); }, [load]);
+  const rate = (n: number, d: number) => (d ? ((n / d) * 100).toFixed(1) : "0") + "%";
+  return (
+    <div className="space-y-4">
+      <div className="kt-card p-5">
+        <div className="flex items-center justify-between">
+          <h2 className="text-[14px] font-black">성과 요약 (전체)</h2>
+          <button onClick={load} className="kt-btn kt-btn-outline px-2.5 py-1 text-[11px]"><RefreshCw size={12} className={busy ? "animate-spin" : ""} /> 새로고침</button>
+        </div>
+        <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
+          {[["발송", totals.sent, ""], ["오픈", totals.opened, rate(totals.opened, totals.sent)], ["클릭", totals.clicked, rate(totals.clicked, totals.sent)], ["회신", totals.replied, rate(totals.replied, totals.sent)]].map(([a, b, c]) => (
+            <div key={a as string} className="rounded-lg border border-[var(--border)] p-3">
+              <div className="text-[11px] text-[var(--muted)]">{a}</div>
+              <div className="text-[20px] font-black">{Number(b).toLocaleString()}</div>
+              {c && <div className="text-[11px] text-[var(--accent)]">{c}</div>}
+            </div>
+          ))}
+        </div>
+      </div>
+      <div className="kt-card p-5">
+        <h2 className="text-[14px] font-black">캠페인별 퍼널</h2>
+        <div className="mt-3 overflow-x-auto rounded-lg border border-[var(--border)]">
+          <table className="w-full min-w-[560px] text-[11.5px]">
+            <thead className="bg-slate-50 text-left text-[var(--muted)]"><tr><th className="px-2 py-1.5">캠페인</th><th className="px-2 py-1.5 text-right">발송</th><th className="px-2 py-1.5 text-right">오픈</th><th className="px-2 py-1.5 text-right">클릭</th><th className="px-2 py-1.5 text-right">회신</th><th className="px-2 py-1.5 text-right">실패</th></tr></thead>
+            <tbody>
+              {rows.map((c) => (
+                <tr key={c.id} className="border-t border-[var(--border)]">
+                  <td className="px-2 py-1.5 max-w-[200px] truncate">{c.name}{c.has_ab && <span className="ml-1 rounded bg-indigo-100 px-1 text-[9px] font-bold text-indigo-700">A/B</span>}</td>
+                  <td className="px-2 py-1.5 text-right">{c.sent.toLocaleString()}</td>
+                  <td className="px-2 py-1.5 text-right">{c.opened.toLocaleString()} <span className="text-[var(--muted)]">{c.open_rate}%</span></td>
+                  <td className="px-2 py-1.5 text-right">{c.clicked.toLocaleString()} <span className="text-[var(--muted)]">{c.click_rate}%</span></td>
+                  <td className="px-2 py-1.5 text-right font-bold text-[var(--accent)]">{c.replied.toLocaleString()} <span className="font-normal text-[var(--muted)]">{c.reply_rate}%</span></td>
+                  <td className="px-2 py-1.5 text-right text-rose-500">{c.failed.toLocaleString()}</td>
+                </tr>
+              ))}
+              {!rows.length && <tr><td colSpan={6} className="px-2 py-3 text-center text-[var(--muted)]">데이터 없음</td></tr>}
+            </tbody>
+          </table>
+        </div>
+        <p className="mt-2 text-[11px] text-[var(--muted)]">오픈·클릭은 추적 픽셀/링크 기반이라 이미지 차단 환경에선 실제보다 낮게 잡힐 수 있습니다.</p>
+      </div>
+      {ab.length > 0 && (
+        <div className="kt-card p-5">
+          <h2 className="text-[14px] font-black">A/B 제목 비교</h2>
+          <div className="mt-3 overflow-x-auto rounded-lg border border-[var(--border)]">
+            <table className="w-full text-[11.5px]">
+              <thead className="bg-slate-50 text-left text-[var(--muted)]"><tr><th className="px-2 py-1.5">캠페인</th><th className="px-2 py-1.5">변형</th><th className="px-2 py-1.5 text-right">발송</th><th className="px-2 py-1.5 text-right">오픈</th><th className="px-2 py-1.5 text-right">오픈율</th></tr></thead>
+              <tbody>
+                {ab.map((r, i) => (
+                  <tr key={i} className="border-t border-[var(--border)]">
+                    <td className="px-2 py-1.5 max-w-[180px] truncate">{r.name}</td>
+                    <td className="px-2 py-1.5"><span className={`rounded px-1.5 py-0.5 text-[10px] font-bold ${r.variant === "A" ? "bg-sky-100 text-sky-700" : "bg-amber-100 text-amber-700"}`}>{r.variant}</span></td>
+                    <td className="px-2 py-1.5 text-right">{r.sent.toLocaleString()}</td>
+                    <td className="px-2 py-1.5 text-right">{r.opened.toLocaleString()}</td>
+                    <td className="px-2 py-1.5 text-right font-bold">{rate(r.opened, r.sent)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ── 제품↔크리에이터 매칭 ── */
+function MatchTab({ facetBrands, products }: { facetBrands: { brand: string; n: number }[]; products: Product[] }) {
+  const [brand, setBrand] = useState("");
+  const [hasEmail, setHasEmail] = useState(true);
+  const [res, setRes] = useState<{ count: number; withEmail: number; rows: CreatorRow[] } | null>(null);
+  const [busy, setBusy] = useState(false);
+  const inp = "rounded-md border border-[var(--border)] px-3 py-2 text-[12px] outline-none focus:border-[var(--accent)]";
+  async function run(b?: string) {
+    const q = (b ?? brand).trim(); if (!q) return;
+    setBrand(q); setBusy(true);
+    const r = await fetch(`/api/admin/oc/match?brand=${encodeURIComponent(q)}&hasEmail=${hasEmail ? 1 : 0}&limit=200`);
+    const j = await r.json(); setBusy(false);
+    if (r.ok) setRes(j); else alert(j.error || "실패");
+  }
+  return (
+    <div className="kt-card p-5">
+      <h2 className="text-[14px] font-black">제품↔크리에이터 매칭</h2>
+      <p className="mt-1 text-[12px] text-[var(--muted)]">브랜드 이력 기반 — 그 브랜드 콘텐츠 경험이 있는 크리에이터를 찾습니다(kalodata형).</p>
+      <div className="mt-3 flex flex-wrap items-center gap-2">
+        <input className={inp} placeholder="브랜드명" value={brand} onChange={(e) => setBrand(e.target.value)} onKeyDown={(e) => e.key === "Enter" && run()} />
+        {products.length > 0 && (
+          <select className={inp} onChange={(e) => e.target.value && run(e.target.value)} defaultValue="">
+            <option value="">제품의 브랜드로</option>
+            {products.filter((p) => p.brand).map((p) => <option key={p.id} value={p.brand!}>{p.name} · {p.brand}</option>)}
+          </select>
+        )}
+        <label className="flex items-center gap-1.5 text-[12px]"><input type="checkbox" checked={hasEmail} onChange={(e) => setHasEmail(e.target.checked)} /> 이메일 보유만</label>
+        <button onClick={() => run()} disabled={busy} className="kt-btn kt-btn-primary px-3 py-1.5 text-[11px]">{busy ? "조회 중…" : "조회"}</button>
+      </div>
+      <div className="mt-2 flex flex-wrap gap-1.5">
+        {facetBrands.slice(0, 20).map((b) => (
+          <button key={b.brand} onClick={() => run(b.brand)} className="rounded-md border border-[var(--border)] px-2 py-0.5 text-[11px] text-[var(--muted)] hover:border-[var(--accent)]">{b.brand} <span className="opacity-60">{b.n}</span></button>
+        ))}
+      </div>
+      {res && (
+        <>
+          <div className="mt-3 text-[13px]">「{brand}」 매칭 <b className="text-[var(--accent)]">{res.count.toLocaleString()}</b>명 · 이메일 <b>{res.withEmail.toLocaleString()}</b></div>
+          <div className="mt-2 max-h-[440px] overflow-auto rounded-lg border border-[var(--border)]">
+            <table className="w-full text-[11.5px]">
+              <thead className="sticky top-0 bg-slate-50 text-left text-[var(--muted)]"><tr><th className="px-2 py-1.5">handle</th><th className="px-2 py-1.5">email</th><th className="px-2 py-1.5 text-right">avg</th><th className="px-2 py-1.5">brands</th></tr></thead>
+              <tbody>
+                {res.rows.map((r) => (
+                  <tr key={r.handle} className="border-t border-[var(--border)]">
+                    <td className="px-2 py-1.5">@{r.handle}</td>
+                    <td className="px-2 py-1.5 text-[var(--muted)]">{r.email || "—"}</td>
+                    <td className="px-2 py-1.5 text-right">{compact(r.avg_views)}</td>
+                    <td className="px-2 py-1.5 max-w-[240px] truncate text-[var(--muted)]">{r.brands || "—"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+/* ── 발신계정(공용 메일함, 서비스계정 DWD) + 안전(제외목록·DNS) ── */
 function SendersTab({ senders, reload }: { senders: Sender[]; reload: () => void }) {
-  const [f, setF] = useState({ email: "", display_name: "", daily_limit: 300 });
+  const [f, setF] = useState({ email: "", display_name: "", daily_limit: 300, warmup: false });
   const inp = "w-full rounded-md border border-[var(--border)] px-3 py-2 text-[12px] outline-none focus:border-[var(--accent)]";
   async function save() {
     if (!f.email.trim()) { alert("메일함 이메일 필수"); return; }
     const r = await fetch("/api/admin/oc/senders", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(f) });
-    if (r.ok) { setF({ email: "", display_name: "", daily_limit: 300 }); reload(); }
+    if (r.ok) { setF({ email: "", display_name: "", daily_limit: 300, warmup: false }); reload(); }
     else alert((await r.json()).error || "저장 실패");
   }
   async function del(id: number) { if (!confirm("삭제?")) return; await fetch(`/api/admin/oc/senders?id=${id}`, { method: "DELETE" }); reload(); }
@@ -650,44 +819,125 @@ function SendersTab({ senders, reload }: { senders: Sender[]; reload: () => void
     alert(r.ok ? "발송 성공: " + (j.id || "") : "실패: " + (j.error || ""));
   }
   return (
-    <div className="grid gap-4 lg:grid-cols-[400px_1fr]">
-      <div className="kt-card p-5">
-        <h2 className="text-[14px] font-black">발신 메일함 등록(allow-list)</h2>
-        <p className="mt-1 text-[11px] text-[var(--muted)]">등록된 공용 메일함으로만 발송·열람됩니다. Google Workspace <b>서비스계정 + 도메인 전체 위임(DWD)</b>으로 해당 메일함을 impersonate 합니다.</p>
-        <div className="mt-3 space-y-2.5">
-          <input className={inp} placeholder="공용 메일함 (예: cs@glovek.space)" value={f.email} onChange={(e) => setF({ ...f, email: e.target.value })} />
-          <input className={inp} placeholder="표시 이름 (예: GloveK)" value={f.display_name} onChange={(e) => setF({ ...f, display_name: e.target.value })} />
-          <input className={inp} type="number" placeholder="일일 한도" value={f.daily_limit} onChange={(e) => setF({ ...f, daily_limit: +e.target.value })} />
-          <button onClick={save} className="kt-btn kt-btn-primary w-full py-2 text-[12px]">등록 / 수정</button>
+    <div className="space-y-4">
+      <div className="grid gap-4 lg:grid-cols-[400px_1fr]">
+        <div className="kt-card p-5">
+          <h2 className="text-[14px] font-black">발신 메일함 등록(allow-list)</h2>
+          <p className="mt-1 text-[11px] text-[var(--muted)]">등록된 공용 메일함으로만 발송·열람됩니다. Google Workspace <b>서비스계정 + 도메인 전체 위임(DWD)</b>으로 impersonate. 여러 개 등록 시 캠페인에서 로테이션됩니다.</p>
+          <div className="mt-3 space-y-2.5">
+            <input className={inp} placeholder="공용 메일함 (예: cs@glovek.space)" value={f.email} onChange={(e) => setF({ ...f, email: e.target.value })} />
+            <input className={inp} placeholder="표시 이름 (예: GloveK)" value={f.display_name} onChange={(e) => setF({ ...f, display_name: e.target.value })} />
+            <input className={inp} type="number" placeholder="일일 한도" value={f.daily_limit} onChange={(e) => setF({ ...f, daily_limit: +e.target.value })} />
+            <label className="flex items-center gap-2 text-[12px]"><input type="checkbox" checked={f.warmup} onChange={(e) => setF({ ...f, warmup: e.target.checked })} /> 워밍업 시작(신규 메일함 권장 · 초기 소량→점증)</label>
+            <button onClick={save} className="kt-btn kt-btn-primary w-full py-2 text-[12px]">등록 / 수정</button>
+          </div>
+          <div className="mt-4 rounded-lg bg-slate-50 p-3 text-[11px] text-[var(--muted)]">
+            <b>설정 (한 번만)</b>
+            <div className="mt-1">1. Vercel env <code>GOOGLE_SA_KEY_JSON</code> = 서비스계정 키 JSON</div>
+            <div>2. Workspace 관리콘솔 → 도메인 위임에 서비스계정 client_id 승인 (scope <code>gmail.send</code>, <code>gmail.readonly</code>)</div>
+            <div>3. 위임 대상 메일함을 여기 등록</div>
+          </div>
         </div>
-        <div className="mt-4 rounded-lg bg-slate-50 p-3 text-[11px] text-[var(--muted)]">
-          <b>설정 (한 번만)</b>
-          <div className="mt-1">1. Vercel env <code>GOOGLE_SA_KEY_JSON</code> = 서비스계정 키 JSON</div>
-          <div>2. Workspace 관리콘솔 → 도메인 위임에 서비스계정 client_id 승인</div>
-          <div className="ml-3">scope: <code>gmail.send</code>, <code>gmail.readonly</code></div>
-          <div>3. 위임 대상 메일함(예 cs@glovek.space)을 여기 등록</div>
-        </div>
-      </div>
-      <div className="kt-card p-5">
-        <h2 className="text-[14px] font-black">등록된 메일함 ({senders.length})</h2>
-        <div className="mt-3 space-y-2">
-          {senders.map((s) => (
-            <div key={s.id} className="flex items-center justify-between gap-2 rounded-lg border border-[var(--border)] p-3">
-              <div className="min-w-0">
-                <div className="text-[13px] font-bold">{s.email} {s.display_name && <span className="text-[11px] text-[var(--muted)]">· {s.display_name}</span>}</div>
-                <div className="text-[11px] text-[var(--muted)]">서비스계정 위임 · 일일 {s.daily_limit}
-                  {s.configured ? <span className="ml-1 text-emerald-600"><Check size={11} className="inline" /> SA 설정됨</span> : <span className="ml-1 text-rose-500"><X size={11} className="inline" /> SA 미설정</span>}
-                  {!s.active && <span className="ml-1 text-slate-400">· 비활성</span>}
+        <div className="kt-card p-5">
+          <h2 className="text-[14px] font-black">등록된 메일함 ({senders.length})</h2>
+          <div className="mt-3 space-y-2">
+            {senders.map((s) => (
+              <div key={s.id} className="flex items-center justify-between gap-2 rounded-lg border border-[var(--border)] p-3">
+                <div className="min-w-0">
+                  <div className="text-[13px] font-bold">{s.email} {s.display_name && <span className="text-[11px] text-[var(--muted)]">· {s.display_name}</span>}</div>
+                  <div className="text-[11px] text-[var(--muted)]">서비스계정 위임 · 일일 {s.daily_limit}
+                    {s.configured ? <span className="ml-1 text-emerald-600"><Check size={11} className="inline" /> SA</span> : <span className="ml-1 text-rose-500"><X size={11} className="inline" /> SA 미설정</span>}
+                    {s.warmup_start && <span className="ml-1 rounded bg-orange-100 px-1 text-[9px] font-bold text-orange-700">워밍업</span>}
+                    {!s.active && <span className="ml-1 text-slate-400">· 비활성</span>}
+                  </div>
+                </div>
+                <div className="flex shrink-0 gap-1.5">
+                  <button onClick={() => test(s.id)} className="kt-btn kt-btn-outline px-2 py-0.5 text-[10px]">테스트</button>
+                  <button onClick={() => del(s.id)} className="text-slate-400 hover:text-rose-500"><Trash2 size={14} /></button>
                 </div>
               </div>
-              <div className="flex shrink-0 gap-1.5">
-                <button onClick={() => test(s.id)} className="kt-btn kt-btn-outline px-2 py-0.5 text-[10px]">테스트</button>
-                <button onClick={() => del(s.id)} className="text-slate-400 hover:text-rose-500"><Trash2 size={14} /></button>
-              </div>
-            </div>
-          ))}
-          {!senders.length && <p className="text-[12px] text-[var(--muted)]">등록된 메일함이 없습니다.</p>}
+            ))}
+            {!senders.length && <p className="text-[12px] text-[var(--muted)]">등록된 메일함이 없습니다.</p>}
+          </div>
         </div>
+      </div>
+      <DnsCheck />
+      <SuppressionPanel />
+    </div>
+  );
+}
+
+/* ── 도메인 인증(SPF/DKIM/DMARC) 점검 ── */
+function DnsCheck() {
+  const [domain, setDomain] = useState("glovek.space");
+  const [rep, setRep] = useState<{ domain: string; spf: { found: boolean; value: string; google: boolean }; dkim: { found: boolean; value: string }; dmarc: { found: boolean; value: string }; ok: boolean } | null>(null);
+  const [busy, setBusy] = useState(false);
+  async function run() {
+    setBusy(true);
+    const r = await fetch(`/api/admin/oc/dns-check?domain=${encodeURIComponent(domain)}`); const j = await r.json(); setBusy(false);
+    if (r.ok) setRep(j); else alert(j.error || "실패");
+  }
+  const Row = ({ label, ok, val }: { label: string; ok: boolean; val: string }) => (
+    <div className="flex items-start gap-2 border-t border-[var(--border)] py-2 text-[12px]">
+      <span className={`mt-0.5 shrink-0 rounded px-1.5 py-0.5 text-[10px] font-bold ${ok ? "bg-emerald-100 text-emerald-700" : "bg-rose-100 text-rose-600"}`}>{ok ? "OK" : "없음"}</span>
+      <div className="min-w-0"><b>{label}</b><div className="break-all text-[11px] text-[var(--muted)]">{val || "레코드 없음"}</div></div>
+    </div>
+  );
+  return (
+    <div className="kt-card p-5">
+      <div className="flex items-center justify-between">
+        <div><h2 className="text-[14px] font-black">도메인 인증 점검 (SPF · DKIM · DMARC)</h2><p className="text-[11px] text-[var(--muted)]">스팸함 방지 필수 · 배포 서버에서 실제 DNS 조회</p></div>
+        <div className="flex gap-2">
+          <input className="rounded-md border border-[var(--border)] px-2 py-1 text-[12px]" value={domain} onChange={(e) => setDomain(e.target.value)} />
+          <button onClick={run} disabled={busy} className="kt-btn kt-btn-primary px-3 py-1.5 text-[11px]">{busy ? "조회 중…" : "점검"}</button>
+        </div>
+      </div>
+      {rep && (
+        <div className="mt-3">
+          <Row label="SPF" ok={rep.spf.found} val={rep.spf.value + (rep.spf.found && !rep.spf.google ? "  ⚠ google include 없음" : "")} />
+          <Row label="DKIM (google._domainkey)" ok={rep.dkim.found} val={rep.dkim.value} />
+          <Row label="DMARC" ok={rep.dmarc.found} val={rep.dmarc.value} />
+          {!rep.ok && <p className="mt-2 text-[11px] text-rose-600">일부 레코드 누락 — 발송 전 DNS에 SPF/DKIM/DMARC를 추가하세요(스팸 처리 위험).</p>}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ── 발송 제외목록(수신거부·바운스·스팸) ── */
+interface SupRow { email: string; reason: string | null; source: string | null; created_at: string; }
+function SuppressionPanel() {
+  const [rows, setRows] = useState<SupRow[]>([]);
+  const [count, setCount] = useState(0);
+  const [email, setEmail] = useState("");
+  const load = useCallback(() => { fetch("/api/admin/oc/suppression").then((r) => r.json()).then((j) => { setRows(j.rows || []); setCount(j.count || 0); }).catch(() => {}); }, []);
+  useEffect(() => { load(); }, [load]);
+  async function add() { if (!email.trim()) return; await fetch("/api/admin/oc/suppression", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email }) }); setEmail(""); load(); }
+  async function rm(e: string) { await fetch(`/api/admin/oc/suppression?email=${encodeURIComponent(e)}`, { method: "DELETE" }); load(); }
+  return (
+    <div className="kt-card p-5">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div><h2 className="text-[14px] font-black">발송 제외목록 ({count.toLocaleString()})</h2><p className="text-[11px] text-[var(--muted)]">수신거부·바운스·스팸신고 주소는 자동 등록되어 재발송에서 제외됩니다</p></div>
+        <div className="flex gap-2">
+          <input className="rounded-md border border-[var(--border)] px-2 py-1 text-[12px]" placeholder="이메일 수동 추가" value={email} onChange={(e) => setEmail(e.target.value)} />
+          <button onClick={add} className="kt-btn kt-btn-outline px-3 py-1.5 text-[11px]">추가</button>
+        </div>
+      </div>
+      <div className="mt-3 max-h-64 overflow-auto rounded-lg border border-[var(--border)]">
+        <table className="w-full text-[11.5px]">
+          <thead className="sticky top-0 bg-slate-50 text-left text-[var(--muted)]"><tr><th className="px-2 py-1.5">이메일</th><th className="px-2 py-1.5">사유</th><th className="px-2 py-1.5">등록</th><th className="px-2 py-1.5"></th></tr></thead>
+          <tbody>
+            {rows.map((r) => (
+              <tr key={r.email} className="border-t border-[var(--border)]">
+                <td className="px-2 py-1.5">{r.email}</td>
+                <td className="px-2 py-1.5"><span className="rounded bg-slate-100 px-1.5 py-0.5 text-[10px]">{r.reason}</span></td>
+                <td className="px-2 py-1.5 text-[var(--muted)]">{dt(r.created_at)}</td>
+                <td className="px-2 py-1.5 text-right"><button onClick={() => rm(r.email)} className="text-slate-400 hover:text-rose-500"><X size={12} /></button></td>
+              </tr>
+            ))}
+            {!rows.length && <tr><td colSpan={4} className="px-2 py-3 text-center text-[var(--muted)]">비어있음</td></tr>}
+          </tbody>
+        </table>
       </div>
     </div>
   );
@@ -704,6 +954,7 @@ function InboxTab({ senders }: { senders: Sender[] }) {
   const [msg, setMsg] = useState<string | null>(null);
   const [camp, setCamp] = useState<CampReply[]>([]);
   const [mail, setMail] = useState<MailReply[]>([]);
+  const [open, setOpen] = useState<number | null>(null);
   const inp = "rounded-md border border-[var(--border)] px-3 py-2 text-[12px] outline-none focus:border-[var(--accent)]";
 
   const load = useCallback((mb: string, st: string) => {
@@ -799,14 +1050,16 @@ function InboxTab({ senders }: { senders: Sender[] }) {
         <div className="mt-3 max-h-[520px] overflow-auto rounded-lg border border-[var(--border)]">
           <table className="w-full text-[11.5px]">
             <thead className="sticky top-0 bg-slate-50 text-left text-[var(--muted)]">
-              <tr><th className="px-2 py-1.5">상태</th><th className="px-2 py-1.5">보낸사람</th><th className="px-2 py-1.5">제목</th><th className="px-2 py-1.5">내용</th><th className="px-2 py-1.5">매칭</th><th className="px-2 py-1.5">처리</th></tr>
+              <tr><th className="px-2 py-1.5 w-6"></th><th className="px-2 py-1.5">상태</th><th className="px-2 py-1.5">보낸사람</th><th className="px-2 py-1.5">제목</th><th className="px-2 py-1.5">내용</th><th className="px-2 py-1.5">매칭</th><th className="px-2 py-1.5">처리</th></tr>
             </thead>
             <tbody>
               {rows.map((m) => (
-                <tr key={m.id} className="border-t border-[var(--border)] align-top">
+                <Fragment key={m.id}>
+                <tr className="border-t border-[var(--border)] align-top">
+                  <td className="px-2 py-1.5"><button onClick={() => setOpen(open === m.id ? null : m.id)} className="text-slate-400 hover:text-[var(--accent)]"><ChevronDown size={13} className={open === m.id ? "rotate-180 transition" : "transition"} /></button></td>
                   <td className="px-2 py-1.5"><span className={`rounded px-1.5 py-0.5 text-[10px] font-bold ${sc[m.status] || ""}`}>{m.status === "new" ? "신규" : m.status === "handled" ? "완료" : "무시"}</span></td>
                   <td className="px-2 py-1.5"><div className="font-medium">{m.from_name || "—"}</div><div className="text-[var(--muted)]">{m.from_email}</div></td>
-                  <td className="px-2 py-1.5 max-w-[180px]">{m.subject || "—"}</td>
+                  <td className="cursor-pointer px-2 py-1.5 max-w-[180px]" onClick={() => setOpen(open === m.id ? null : m.id)}>{m.subject || "—"}</td>
                   <td className="px-2 py-1.5 max-w-[240px] text-[var(--muted)]">{m.snippet || ""}</td>
                   <td className="px-2 py-1.5">
                     {m.matched_handle && <span className="rounded bg-emerald-100 px-1.5 py-0.5 text-[10px] font-bold text-emerald-700">@{m.matched_handle}</span>}
@@ -821,6 +1074,13 @@ function InboxTab({ senders }: { senders: Sender[] }) {
                     </div>
                   </td>
                 </tr>
+                {open === m.id && (
+                  <tr className="border-t border-[var(--border)] bg-slate-50/60"><td colSpan={7} className="px-4 py-3">
+                    <div className="text-[11px] text-[var(--muted)]">{m.received_at}</div>
+                    <div className="mt-1 whitespace-pre-wrap break-words text-[12px] text-[var(--fg)]">{m.body_text || m.snippet || "(본문 없음)"}</div>
+                  </td></tr>
+                )}
+                </Fragment>
               ))}
             </tbody>
           </table>

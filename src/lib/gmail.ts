@@ -12,7 +12,7 @@ const SCOPE_READ = "https://www.googleapis.com/auth/gmail.readonly";
 
 export interface OcSender { email: string; display_name?: string | null }
 export interface GmailSendResult { ok: boolean; id?: string; error?: string }
-export interface InboxMsg { id: string; threadId?: string; from: string; fromEmail: string; subject: string; date: string; snippet: string }
+export interface InboxMsg { id: string; threadId?: string; from: string; fromEmail: string; subject: string; date: string; snippet: string; body: string }
 
 const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 
@@ -80,6 +80,34 @@ function fromHeader(s: OcSender): string {
 }
 function b64(s: string): string {
   return Buffer.from(s, "utf-8").toString("base64").replace(/(.{76})/g, "$1\r\n");
+}
+
+// Gmail 메시지 payload 파트에서 본문(text/plain 우선, 없으면 html→텍스트) 추출
+interface GmailPart {
+  mimeType?: string;
+  headers?: { name: string; value: string }[];
+  body?: { data?: string; size?: number };
+  parts?: GmailPart[];
+}
+function decodeB64Url(data?: string): string {
+  if (!data) return "";
+  try { return Buffer.from(data.replace(/-/g, "+").replace(/_/g, "/"), "base64").toString("utf-8"); } catch { return ""; }
+}
+function extractBody(part?: GmailPart): string {
+  if (!part) return "";
+  const plain = findPart(part, "text/plain");
+  if (plain) return decodeB64Url(plain.body?.data);
+  const html = findPart(part, "text/html");
+  if (html) return stripHtml(decodeB64Url(html.body?.data));
+  return decodeB64Url(part.body?.data);
+}
+function findPart(part: GmailPart, mime: string): GmailPart | null {
+  if (part.mimeType === mime && part.body?.data) return part;
+  for (const p of part.parts || []) {
+    const found = findPart(p, mime);
+    if (found) return found;
+  }
+  return null;
 }
 function stripHtml(html: string): string {
   return html.replace(/<style[\s\S]*?<\/style>/gi, "").replace(/<br\s*\/?>/gi, "\n")
@@ -149,14 +177,15 @@ export async function listInbox(mailbox: string, opts?: { max?: number; query?: 
     const ids = (lj.messages || []).slice(0, max);
     const msgs: InboxMsg[] = [];
     for (const { id } of ids) {
-      const mRes = await fetch(`${base}/messages/${id}?format=metadata&metadataHeaders=From&metadataHeaders=Subject&metadataHeaders=Date`, { headers: { Authorization: `Bearer ${token}` } });
-      const mj = (await mRes.json().catch(() => ({}))) as { id?: string; threadId?: string; snippet?: string; payload?: { headers?: { name: string; value: string }[] } };
+      const mRes = await fetch(`${base}/messages/${id}?format=full`, { headers: { Authorization: `Bearer ${token}` } });
+      const mj = (await mRes.json().catch(() => ({}))) as { id?: string; threadId?: string; snippet?: string; payload?: GmailPart };
       if (!mRes.ok) continue;
-      const h = (n: string) => mj.payload?.headers?.find((x) => x.name.toLowerCase() === n)?.value || "";
+      const headers = mj.payload?.headers || [];
+      const h = (n: string) => headers.find((x) => x.name.toLowerCase() === n)?.value || "";
       const from = h("From");
       const m = from.match(/<([^>]+)>/);
       const fromEmail = (m ? m[1] : from).trim().toLowerCase();
-      msgs.push({ id: mj.id || id, threadId: mj.threadId, from, fromEmail, subject: h("Subject"), date: h("Date"), snippet: mj.snippet || "" });
+      msgs.push({ id: mj.id || id, threadId: mj.threadId, from, fromEmail, subject: h("Subject"), date: h("Date"), snippet: mj.snippet || "", body: extractBody(mj.payload).slice(0, 20000) });
     }
     return { ok: true, msgs };
   } catch (e) {

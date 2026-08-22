@@ -16,7 +16,7 @@ const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 
 export async function GET() {
   const g = await guard(); if (g) return g;
-  const { rows } = await sql`SELECT id, email, display_name, backend, env_key, daily_limit, active, created_at
+  const { rows } = await sql`SELECT id, email, display_name, backend, env_key, daily_limit, active, warmup_start, created_at
     FROM oc_senders ORDER BY created_at DESC`;
   // 서비스계정 키 준비 여부(configured) 부가 — 공용(모든 발신계정 동일)
   const ok = saConfigured();
@@ -49,10 +49,14 @@ export async function POST(req: Request) {
   const display_name = String(b.display_name || "").trim() || null;
   const daily_limit = Math.min(Math.max(1, Number(b.daily_limit) || 300), 2000);
   const active = b.active === false ? false : true;
-  await sql`INSERT INTO oc_senders (email, display_name, backend, daily_limit, active)
-    VALUES (${email}, ${display_name}, 'workspace_sa', ${daily_limit}, ${active})
+  // 워밍업: true면 오늘부터 시작(기존 시작일 유지), false면 해제(full 한도)
+  const warmup = b.warmup === true;
+  const today = new Date().toISOString().slice(0, 10);
+  await sql`INSERT INTO oc_senders (email, display_name, backend, daily_limit, active, warmup_start)
+    VALUES (${email}, ${display_name}, 'workspace_sa', ${daily_limit}, ${active}, ${warmup ? today : null})
     ON CONFLICT (email) DO UPDATE SET
-      display_name = EXCLUDED.display_name, daily_limit = EXCLUDED.daily_limit, active = EXCLUDED.active`;
+      display_name = EXCLUDED.display_name, daily_limit = EXCLUDED.daily_limit, active = EXCLUDED.active,
+      warmup_start = CASE WHEN ${warmup} THEN COALESCE(oc_senders.warmup_start, ${today}::date) ELSE NULL END`;
   return NextResponse.json({ ok: true });
 }
 

@@ -571,6 +571,31 @@ export function ensureSchema(): Promise<void> {
       await sql`CREATE INDEX IF NOT EXISTS idx_oc_messages_sender ON oc_messages(sender_id, sent_at)`;
       await sql`ALTER TABLE oc_campaigns ADD COLUMN IF NOT EXISTS sender_ids int[]`;
       await sql`ALTER TABLE oc_inbox ADD COLUMN IF NOT EXISTS status text NOT NULL DEFAULT 'new'`; // new|handled|ignored
+      await sql`ALTER TABLE oc_inbox ADD COLUMN IF NOT EXISTS body_text text`; // 회신 본문 전체
+      // 발송 제외 목록(수신거부·바운스·스팸신고) — 재발송 방지
+      await sql`CREATE TABLE IF NOT EXISTS oc_suppression (
+        email text PRIMARY KEY,
+        reason text,                 -- unsubscribe|bounce|complaint|manual
+        source text,
+        created_at timestamptz NOT NULL DEFAULT now()
+      )`;
+      // 발송 추적(오픈/클릭) + A/B 변형
+      await sql`ALTER TABLE oc_messages ADD COLUMN IF NOT EXISTS opened_at timestamptz`;
+      await sql`ALTER TABLE oc_messages ADD COLUMN IF NOT EXISTS clicked_at timestamptz`;
+      await sql`ALTER TABLE oc_messages ADD COLUMN IF NOT EXISTS open_count int NOT NULL DEFAULT 0`;
+      await sql`ALTER TABLE oc_messages ADD COLUMN IF NOT EXISTS click_count int NOT NULL DEFAULT 0`;
+      await sql`ALTER TABLE oc_messages ADD COLUMN IF NOT EXISTS variant text`; // A|B
+      // 발신 메일함 워밍업 시작일 — 초기 소량→점증
+      await sql`ALTER TABLE oc_senders ADD COLUMN IF NOT EXISTS warmup_start date`;
+      // 캠페인 A/B 제목(선택)
+      await sql`ALTER TABLE oc_campaigns ADD COLUMN IF NOT EXISTS subject_b text`;
+      // 저장 세그먼트(필터 조합 재사용)
+      await sql`CREATE TABLE IF NOT EXISTS oc_segments (
+        id serial PRIMARY KEY,
+        name text NOT NULL,
+        filter jsonb,
+        created_at timestamptz NOT NULL DEFAULT now()
+      )`;
       // 발송 캠페인(그룹) — 제품+발신계정+필터+템플릿.
       await sql`CREATE TABLE IF NOT EXISTS oc_campaigns (
         id serial PRIMARY KEY,

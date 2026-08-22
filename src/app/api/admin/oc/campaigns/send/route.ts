@@ -8,6 +8,7 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
 const BATCH_CAP = 50;
+const SITE = (process.env.NEXT_PUBLIC_SITE_URL || "https://glovek.space").replace(/\/$/, "");
 
 async function guard() {
   if (!(await isAdminAuthed())) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
@@ -27,6 +28,25 @@ function esc(s: string): string {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 const fmt = (n: number | null | undefined) => (n == null ? "" : Number(n).toLocaleString("ko-KR"));
+
+// 워밍업: 시작일 기준 경과일에 따라 일일 상한을 점증(스팸/평판 보호). 미설정 시 full.
+const WARMUP = [30, 40, 60, 80, 120, 160, 220, 300, 400, 500];
+function warmupCap(warmupStart: string | Date | null, full: number): number {
+  if (!warmupStart) return full;
+  const start = new Date(warmupStart);
+  if (isNaN(start.getTime())) return full;
+  const days = Math.floor((Date.now() - start.getTime()) / 86400000);
+  if (days >= WARMUP.length) return full;
+  return Math.min(full, WARMUP[Math.max(0, days)]);
+}
+
+// 오픈 픽셀 + 링크 클릭 래핑 주입(HTML 전용)
+function injectTracking(html: string, msgId: number, site: string): string {
+  const wrapped = html.replace(/href="(https?:\/\/[^"]+)"/gi,
+    (_m, url) => `href="${site}/api/oc/t/c/${msgId}?u=${encodeURIComponent(url)}"`);
+  const pixel = `<img src="${site}/api/oc/t/o/${msgId}" width="1" height="1" alt="" style="display:none" />`;
+  return wrapped + pixel;
+}
 
 export async function POST(req: Request) {
   const g = await guard(); if (g) return g;
@@ -50,12 +70,12 @@ export async function POST(req: Request) {
   const idList: number[] = (Array.isArray(c.sender_ids) && c.sender_ids.length ? c.sender_ids : (c.sender_id ? [c.sender_id] : [])).map(Number);
   if (!idList.length) return NextResponse.json({ error: "발신 메일함 미지정" }, { status: 400 });
   const sRes = await sql.query(
-    `SELECT id, email, display_name, daily_limit FROM oc_senders WHERE active = true AND id = ANY($1::int[])`,
+    `SELECT id, email, display_name, daily_limit, warmup_start FROM oc_senders WHERE active = true AND id = ANY($1::int[])`,
     [idList],
   );
   if (!sRes.rows.length) return NextResponse.json({ error: "활성 발신 메일함 없음" }, { status: 400 });
 
-  // 메일함별 오늘(KST) 발송량 → 잔여 한도 계산. 발송 주체는 oc_messages.sender_id 기준.
+  // 메일함별 오늘(KST) 발송량 → 잔여 한도 계산(워밍업 반영). 발송 주체는 oc_messages.sender_id 기준.
   interface Slot { id: number; sender: OcSender; remaining: number }
   const pool: Slot[] = [];
   let dailyRemaining = 0;
@@ -63,7 +83,8 @@ export async function POST(req: Request) {
     const sentTodayRes = await sql`SELECT COUNT(*)::int AS n FROM oc_messages
       WHERE sender_id = ${s.id} AND status = 'sent'
         AND (sent_at AT TIME ZONE 'Asia/Seoul')::date = (now() AT TIME ZONE 'Asia/Seoul')::date`;
-    const remaining = Math.max(0, (Number(s.daily_limit) || 300) - (sentTodayRes.rows[0]?.n || 0));
+    const cap = warmupCap(s.warmup_start, Number(s.daily_limit) || 300);
+    const remaining = Math.max(0, cap - (sentTodayRes.rows[0]?.n || 0));
     pool.push({ id: Number(s.id), sender: { email: s.email, display_name: s.display_name }, remaining });
     dailyRemaining += remaining;
   }
@@ -72,6 +93,11 @@ export async function POST(req: Request) {
   }
 
   const batch = dry ? batchReq : Math.min(batchReq, dailyRemaining);
+
+  // 제외목록(수신거부·바운스)에 오른 큐 메시지는 발송 전 스킵 처리
+  await sql`UPDATE oc_messages SET status='skipped', error='suppressed', sent_at=now()
+    WHERE campaign_id=${campaignId} AND status='queued'
+      AND EXISTS (SELECT 1 FROM oc_suppression s WHERE s.email = oc_messages.to_email)`;
 
   // 다음 큐 메시지 + 크리에이터 변수
   const qMsgs = await sql`
@@ -108,28 +134,37 @@ export async function POST(req: Request) {
       product: c.p_name || "", brand: c.p_brand || "", category: c.p_category || "",
       concept: c.p_concept || "", usp: c.p_usp || "",
     };
-    const subject = render(c.subject, vars);
+    // A/B 제목 — subject_b 있으면 메시지 id 홀짝으로 변형 배정
+    const variant = c.subject_b ? (m.id % 2 === 0 ? "A" : "B") : "A";
+    const subjectTpl = variant === "B" && c.subject_b ? c.subject_b : c.subject;
+    const subject = render(subjectTpl, vars);
     const rawBody = render(c.body, vars);
     const looksHtml = /<[a-z][\s\S]*>/i.test(rawBody);
-    const html = looksHtml ? rawBody : esc(rawBody).replace(/\n/g, "<br>");
+    let html = looksHtml ? rawBody : esc(rawBody).replace(/\n/g, "<br>");
     const text = looksHtml ? undefined : rawBody;
 
     if (dry) {
       const slot = pool[0];
-      await sql`UPDATE oc_messages SET status='skipped', sender_id=${slot?.id || null}, subject=${subject}, body=${rawBody}, error='dry-run', sent_at=now() WHERE id=${m.id}`;
+      await sql`UPDATE oc_messages SET status='skipped', sender_id=${slot?.id || null}, variant=${variant}, subject=${subject}, body=${rawBody}, error='dry-run', sent_at=now() WHERE id=${m.id}`;
       sentNow++;
       continue;
     }
     const slot = pickSlot();
     if (!slot) break; // 전 메일함 한도 소진
+    html = injectTracking(html, m.id, SITE); // 오픈/클릭 추적 주입
     const res = await sendViaSender(slot.sender, { to: m.to_email, subject, html, text });
     if (res.ok) {
       slot.remaining--;
-      await sql`UPDATE oc_messages SET status='sent', sender_id=${slot.id}, subject=${subject}, body=${rawBody}, provider_id=${res.id || null}, error=NULL, sent_at=now() WHERE id=${m.id}`;
+      await sql`UPDATE oc_messages SET status='sent', sender_id=${slot.id}, variant=${variant}, subject=${subject}, body=${rawBody}, provider_id=${res.id || null}, error=NULL, sent_at=now() WHERE id=${m.id}`;
       sentNow++;
     } else {
-      await sql`UPDATE oc_messages SET status='failed', sender_id=${slot.id}, subject=${subject}, body=${rawBody}, error=${(res.error || "발송 실패").slice(0, 300)}, sent_at=now() WHERE id=${m.id}`;
+      const err = res.error || "발송 실패";
+      await sql`UPDATE oc_messages SET status='failed', sender_id=${slot.id}, variant=${variant}, subject=${subject}, body=${rawBody}, error=${err.slice(0, 300)}, sent_at=now() WHERE id=${m.id}`;
       failedNow++;
+      // 영구 실패(잘못된/없는 주소)로 보이면 제외목록 자동 등록
+      if (/invalid.*(recipient|address)|no such|not found|disabled|mailbox.*unavailable|550|5\.1\.[0-9]/i.test(err)) {
+        await sql`INSERT INTO oc_suppression (email, reason, source) VALUES (${m.to_email}, 'bounce', 'send') ON CONFLICT (email) DO NOTHING`;
+      }
     }
     // 완만한 발송(스팸/스로틀 방지)
     await new Promise((r) => setTimeout(r, 350));

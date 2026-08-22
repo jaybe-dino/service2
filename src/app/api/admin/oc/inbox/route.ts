@@ -69,24 +69,60 @@ export async function POST(req: Request) {
   const res = await listInbox(mailbox, { max: Math.min(Math.max(1, Number(b.max) || 80), 200) });
   if (!res.ok) return NextResponse.json({ error: res.error }, { status: 400 });
 
-  let stored = 0, matched = 0;
+  // 수신거부 의사 감지 키워드
+  const UNSUB_RE = /(수신\s*거부|수신\s*동의\s*철회|그만\s*보내|보내지\s*마|unsubscribe|opt[-\s]?out|remove me|stop email|더\s*이상\s*(메일|연락))/i;
+  let stored = 0, matched = 0, unsub = 0;
   for (const m of res.msgs || []) {
     const fromEmail = m.fromEmail;
-    // 크리에이터 핸들 매칭
     const cr = await sql`SELECT handle FROM oc_creators WHERE lower(email) = ${fromEmail} LIMIT 1`;
     const handle = cr.rows[0]?.handle || null;
-    // 발송했던 캠페인 매칭(가장 최근)
     const cm = await sql`SELECT campaign_id FROM oc_messages WHERE to_email = ${fromEmail} ORDER BY sent_at DESC NULLS LAST LIMIT 1`;
     const campaignId = cm.rows[0]?.campaign_id || null;
     if (handle || campaignId) matched++;
     const nameMatch = m.from.match(/^\s*"?([^"<]*?)"?\s*</);
     const fromName = nameMatch ? nameMatch[1].trim() : null;
-    const r = await sql`INSERT INTO oc_inbox (mailbox, msg_id, thread_id, from_email, from_name, subject, snippet, received_at, matched_handle, matched_campaign_id)
-      VALUES (${mailbox}, ${m.id}, ${m.threadId || null}, ${fromEmail}, ${fromName}, ${m.subject || null}, ${m.snippet || null}, ${m.date || null}, ${handle}, ${campaignId})
+    const isUnsub = UNSUB_RE.test((m.subject || "") + " " + (m.body || ""));
+    const r = await sql`INSERT INTO oc_inbox (mailbox, msg_id, thread_id, from_email, from_name, subject, snippet, body_text, received_at, matched_handle, matched_campaign_id, status)
+      VALUES (${mailbox}, ${m.id}, ${m.threadId || null}, ${fromEmail}, ${fromName}, ${m.subject || null}, ${m.snippet || null}, ${m.body || null}, ${m.date || null}, ${handle}, ${campaignId}, ${isUnsub ? "new" : "new"})
       ON CONFLICT (mailbox, msg_id) DO UPDATE SET
-        matched_handle = EXCLUDED.matched_handle, matched_campaign_id = EXCLUDED.matched_campaign_id
+        matched_handle = EXCLUDED.matched_handle, matched_campaign_id = EXCLUDED.matched_campaign_id, body_text = EXCLUDED.body_text
       RETURNING (xmax = 0) AS inserted`;
     if (r.rows[0]?.inserted) stored++;
+    // 수신거부 → 제외목록 자동 등록(재발송 방지)
+    if (isUnsub && fromEmail) {
+      await sql`INSERT INTO oc_suppression (email, reason, source) VALUES (${fromEmail}, 'unsubscribe', ${mailbox})
+        ON CONFLICT (email) DO NOTHING`;
+      unsub++;
+    }
+    // 회신 → 아웃리치 CRM 파이프라인 자동 편입(핸들 매칭 시)
+    if (handle && !isUnsub) {
+      try {
+        const ins = await sql`INSERT INTO outreach_targets (handle, status, note)
+          SELECT ${handle}, 'replied', 'inbound reply'
+          WHERE NOT EXISTS (SELECT 1 FROM outreach_targets WHERE handle = ${handle})
+          RETURNING id`;
+        let targetId: number | undefined = ins.rows[0]?.id;
+        if (!targetId) {
+          await sql`UPDATE outreach_targets SET status='replied', updated_at=now()
+            WHERE handle=${handle} AND status IN ('discovered','contacted')`;
+          targetId = (await sql`SELECT id FROM outreach_targets WHERE handle=${handle} ORDER BY id LIMIT 1`).rows[0]?.id;
+        }
+        if (targetId) await sql`INSERT INTO outreach_activity (target_id, actor, kind, body)
+          VALUES (${targetId}, 'inbox', 'note', ${"회신: " + (m.subject || "").slice(0, 120)})`;
+      } catch { /* CRM 연동 실패 무시 — 회신 적재는 완료 */ }
+    }
   }
-  return NextResponse.json({ ok: true, fetched: res.msgs?.length || 0, stored, matched });
+
+  // Slack 실시간 통지(SLACK_WEBHOOK_URL 설정 시)
+  const hook = process.env.SLACK_WEBHOOK_URL;
+  if (hook && (stored > 0 || unsub > 0)) {
+    try {
+      await fetch(hook, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: `:inbox_tray: *아웃리치 회신 동기화* · ${mailbox}\n신규 ${stored} · 매칭 ${matched} · 수신거부 ${unsub}` }),
+      });
+    } catch { /* 통지 실패 무시 */ }
+  }
+
+  return NextResponse.json({ ok: true, fetched: res.msgs?.length || 0, stored, matched, unsubscribed: unsub });
 }
