@@ -502,6 +502,30 @@ export function ensureSchema(): Promise<void> {
       await sql`ALTER TABLE remake_jobs ADD COLUMN IF NOT EXISTS fidelity text`;
       await sql`ALTER TABLE remake_jobs ADD COLUMN IF NOT EXISTS spec text`;
       await sql`ALTER TABLE remake_jobs ADD COLUMN IF NOT EXISTS debug text`;
+      // ── Remake Studio v2 — 브랜드 제품 자산 사전등록 → 트렌드 포맷 선택 → 영상화 ──
+      // 브랜드가 제품 프로필을 등록(재사용). 이미지 blob은 remake_assets 재사용.
+      await sql`CREATE TABLE IF NOT EXISTS remake_products (
+        id text PRIMARY KEY,
+        brand text,
+        name text NOT NULL,
+        category text,
+        concept text,
+        usp text,
+        created_by text,
+        created_at timestamptz NOT NULL DEFAULT now(),
+        updated_at timestamptz NOT NULL DEFAULT now()
+      )`;
+      // 제품별 자산(패키지 디자인·제형 에셋·로고·제품컷). asset_id → remake_assets.id
+      await sql`CREATE TABLE IF NOT EXISTS remake_product_assets (
+        id serial PRIMARY KEY,
+        product_id text NOT NULL,
+        asset_id text NOT NULL,
+        kind text NOT NULL DEFAULT 'shot',   -- package|texture|logo|shot
+        label text,
+        is_primary boolean NOT NULL DEFAULT false,
+        created_at timestamptz NOT NULL DEFAULT now()
+      )`;
+      await sql`CREATE INDEX IF NOT EXISTS idx_remake_product_assets_pid ON remake_product_assets(product_id)`;
       // ── 아웃리치 캠페인(제품 컨셉 → 크리에이터 필터 → Gmail 그룹 발송) 레이어 ──
       // 실제 크리에이터 데이터(업로드 CSV) 저장 테이블. handle 기준. (분석용 creators와 분리)
       await sql`CREATE TABLE IF NOT EXISTS oc_creators (
