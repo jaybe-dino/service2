@@ -13,7 +13,7 @@ async function guard() {
   await ensureSchema();
   return null;
 }
-const KINDS = ["package", "texture", "logo", "shot"];
+const KINDS = ["package", "texture", "logo", "shot", "detail", "other"];
 
 // POST — 자산 업로드. {productId, kind, label?, image(dataURL), primary?}
 export async function POST(req: Request) {
@@ -53,15 +53,19 @@ export async function DELETE(req: Request) {
   return NextResponse.json({ ok: true });
 }
 
-// PATCH — 대표 지정. {id}
+// PATCH — 대표 지정 / 라벨·종류 수정. {id, primary?, label?, kind?}
 export async function PATCH(req: Request) {
   const g = await guard(); if (g) return g;
-  const b = (await req.json().catch(() => ({}))) as { id?: number };
+  const b = (await req.json().catch(() => ({}))) as { id?: number; primary?: boolean; label?: string; kind?: string };
   const id = Number(b.id);
   if (!id) return NextResponse.json({ error: "id 필요" }, { status: 400 });
   const row = await sql`SELECT product_id FROM remake_product_assets WHERE id = ${id}`;
   if (!row.rows[0]) return NextResponse.json({ error: "없음" }, { status: 404 });
-  await sql`UPDATE remake_product_assets SET is_primary = false WHERE product_id = ${row.rows[0].product_id}`;
-  await sql`UPDATE remake_product_assets SET is_primary = true WHERE id = ${id}`;
+  if (b.primary === true) {
+    await sql`UPDATE remake_product_assets SET is_primary = false WHERE product_id = ${row.rows[0].product_id}`;
+    await sql`UPDATE remake_product_assets SET is_primary = true WHERE id = ${id}`;
+  }
+  if (typeof b.label === "string") await sql`UPDATE remake_product_assets SET label = ${b.label || null} WHERE id = ${id}`;
+  if (b.kind && KINDS.includes(b.kind)) await sql`UPDATE remake_product_assets SET kind = ${b.kind} WHERE id = ${id}`;
   return NextResponse.json({ ok: true });
 }

@@ -526,6 +526,28 @@ export function ensureSchema(): Promise<void> {
         created_at timestamptz NOT NULL DEFAULT now()
       )`;
       await sql`CREATE INDEX IF NOT EXISTS idx_remake_product_assets_pid ON remake_product_assets(product_id)`;
+      // 브랜드 레이어 — 브랜드 자산(로고·가이드·공통)과 제품 자산 분리 관리.
+      await sql`CREATE TABLE IF NOT EXISTS remake_brands (
+        id text PRIMARY KEY,
+        name text NOT NULL,
+        notes text,
+        created_by text,
+        created_at timestamptz NOT NULL DEFAULT now(),
+        updated_at timestamptz NOT NULL DEFAULT now()
+      )`;
+      await sql`CREATE TABLE IF NOT EXISTS remake_brand_assets (
+        id serial PRIMARY KEY,
+        brand_id text NOT NULL,
+        asset_id text NOT NULL,
+        kind text NOT NULL DEFAULT 'common',  -- logo|guide|common|other
+        label text,
+        sort int NOT NULL DEFAULT 0,
+        created_at timestamptz NOT NULL DEFAULT now()
+      )`;
+      await sql`CREATE INDEX IF NOT EXISTS idx_remake_brand_assets_bid ON remake_brand_assets(brand_id)`;
+      // 제품↔브랜드 연결 + 자산 정렬/상세관리 컬럼
+      await sql`ALTER TABLE remake_products ADD COLUMN IF NOT EXISTS brand_id text`;
+      await sql`ALTER TABLE remake_product_assets ADD COLUMN IF NOT EXISTS sort int NOT NULL DEFAULT 0`;
       // ── 아웃리치 캠페인(제품 컨셉 → 크리에이터 필터 → Gmail 그룹 발송) 레이어 ──
       // 실제 크리에이터 데이터(업로드 CSV) 저장 테이블. handle 기준. (분석용 creators와 분리)
       await sql`CREATE TABLE IF NOT EXISTS oc_creators (

@@ -25,11 +25,17 @@ export async function GET(req: Request) {
       FROM remake_product_assets WHERE product_id = ${id} ORDER BY is_primary DESC, id ASC`;
     return NextResponse.json({ product: p.rows[0], assets: assets.rows });
   }
-  const { rows } = await sql`
-    SELECT p.*, COUNT(a.id)::int AS asset_count,
-      (SELECT asset_id FROM remake_product_assets WHERE product_id = p.id ORDER BY is_primary DESC, id ASC LIMIT 1) AS cover_asset
-    FROM remake_products p LEFT JOIN remake_product_assets a ON a.product_id = p.id
-    GROUP BY p.id ORDER BY p.updated_at DESC LIMIT 300`;
+  const brandId = new URL(req.url).searchParams.get("brandId");
+  const { rows } = brandId
+    ? (await sql`SELECT p.*, COUNT(a.id)::int AS asset_count,
+        (SELECT asset_id FROM remake_product_assets WHERE product_id = p.id ORDER BY is_primary DESC, id ASC LIMIT 1) AS cover_asset
+      FROM remake_products p LEFT JOIN remake_product_assets a ON a.product_id = p.id
+      WHERE p.brand_id = ${brandId}
+      GROUP BY p.id ORDER BY p.updated_at DESC LIMIT 300`)
+    : (await sql`SELECT p.*, COUNT(a.id)::int AS asset_count,
+        (SELECT asset_id FROM remake_product_assets WHERE product_id = p.id ORDER BY is_primary DESC, id ASC LIMIT 1) AS cover_asset
+      FROM remake_products p LEFT JOIN remake_product_assets a ON a.product_id = p.id
+      GROUP BY p.id ORDER BY p.updated_at DESC LIMIT 300`);
   return NextResponse.json({ rows });
 }
 
@@ -40,13 +46,13 @@ export async function POST(req: Request) {
   const name = String(b.name || "").trim();
   if (!name) return NextResponse.json({ error: "제품명 필수" }, { status: 400 });
   if (b.id) {
-    await sql`UPDATE remake_products SET brand=${b.brand || null}, name=${name}, category=${b.category || null},
+    await sql`UPDATE remake_products SET brand_id=${b.brandId || null}, brand=${b.brand || null}, name=${name}, category=${b.category || null},
       concept=${b.concept || null}, usp=${b.usp || null}, updated_at=now() WHERE id=${b.id}`;
     return NextResponse.json({ ok: true, id: b.id });
   }
   const id = crypto.randomUUID();
-  await sql`INSERT INTO remake_products (id, brand, name, category, concept, usp, created_by)
-    VALUES (${id}, ${b.brand || null}, ${name}, ${b.category || null}, ${b.concept || null}, ${b.usp || null}, 'admin')`;
+  await sql`INSERT INTO remake_products (id, brand_id, brand, name, category, concept, usp, created_by)
+    VALUES (${id}, ${b.brandId || null}, ${b.brand || null}, ${name}, ${b.category || null}, ${b.concept || null}, ${b.usp || null}, 'admin')`;
   return NextResponse.json({ ok: true, id });
 }
 
