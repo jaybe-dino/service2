@@ -132,3 +132,24 @@ const { creators } = await fetch(`/api/public/creators?token=${TOKEN}&category=$
 - 카테고리는 크리에이터가 다룬 **브랜드 이력** 기반 추정입니다(브랜드→카테고리 매핑).
 - `tier`(규모)는 수집 소스의 tier가 있으면 그 값을, 없으면 평균 조회수로 근사(micro/macro/mega).
 - 토큰은 외부 노출(클라이언트 코드) 시 도메인/사용량 제한을 함께 두는 것을 권장합니다.
+
+---
+
+# 추가 엔드포인트 — 영상 / 제품 (요청서 확인 3 대응)
+
+RO DB URL 대신 **읽기전용 API**로 videos·products를 노출합니다. 카테고리는 서버가 brand→category로 매핑합니다(테이블에 category 컬럼 없음).
+
+## GET /api/public/videos
+콘텐츠 레퍼런스(영상) — 썸네일 `cover_url`.
+- 파라미터: `category`(skincare,makeup,haircare) · `country`(US,TH,VN,MY,SG) · `brand` · `minViews` · `isShop=1` · `withThumbnail=1` · `sort`(views|likes|comments|recent|posted) · `order` · `limit`(≤100) · `offset` · `token`
+- 응답: `{ total, count, videos: [{ video_id, handle, profile_url, brand, category, country, tier, thumbnail, url, posted_at, is_shop, is_ad, metrics:{views,likes,comments,shares} }] }`
+
+## GET /api/public/products
+- 파라미터: `category` · `country` · `brand` · `minSold` · `sort`(gmv|sold|price|recent) · `order` · `limit` · `offset` · `token`
+- 응답: `{ total, count, products: [{ product_id, title, brand, category, country, thumbnail, url, price, currency, sold_count, commission_rate, est_gmv }] }`
+- `est_gmv = sold_count × price` 근사(정렬/노출용).
+
+## 실제 스키마 참고 (요청서 확인 2 회신)
+- `videos`: video_id, brand_name, handle, views, likes, comments, shares, is_ad, is_shop, posted_at, url, country, tier, product_ref, **cover_url**(썸네일), collected_at — **category 컬럼 없음**.
+- `products`: product_id, brand_name, title, price, currency, sold_count, commission_rate, url, country, **image_url**(썸네일), collected_at — **category·gmv 컬럼 없음**(GMV는 sold×price 또는 brand_shop_stats.est_gmv).
+- 카테고리 매칭이 0건이던 원인: 요청서가 가정한 `category` 컬럼이 없기 때문. 이 API는 brand→category로 해결.
