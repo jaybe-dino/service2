@@ -36,6 +36,15 @@ function AmazonMark({ className = "" }: { className?: string }) {
     </span>
   );
 }
+function ShukranMark({ className = "" }: { className?: string }) {
+  // 받은 로고 재현: 주황 SHUKRAN + 회색 KOREA (정확한 raster 필요 시 파일 교체)
+  return (
+    <span className={`inline-flex flex-col items-start leading-none ${className}`} aria-label="Shukran Korea">
+      <span className="font-black tracking-tight text-[#F26522]">SHU<span className="inline-block scale-x-[1.1]">K</span>RAN</span>
+      <span className="mt-0.5 self-end text-[0.5em] font-bold tracking-[0.15em] text-slate-500">KOREA</span>
+    </span>
+  );
+}
 
 const FACTS: { icon: string; label: string; value: React.ReactNode }[] = [
   { icon: "🗓", label: "일시", value: <>2026년 9월 8일(화)<br />13:30 – 18:00</> },
@@ -59,15 +68,6 @@ const GALLERY = [
   { src: "/bhseminar/venue-hall.jpg", cap: "세미나홀 · 100석" },
 ];
 
-// 글로벌 틱톡 크리에이터 레퍼런스(연출용 목업)
-const CREATORS = [
-  { grad: "linear-gradient(160deg,#ff9a9e,#fad0c4)", handle: "@glow.kr", views: "2.4M", tag: "#kbeauty", flag: "🇺🇸" },
-  { grad: "linear-gradient(160deg,#a18cd1,#fbc2eb)", handle: "@skinlab", views: "1.1M", tag: "#skincare", flag: "🇻🇳" },
-  { grad: "linear-gradient(160deg,#84fab0,#8fd3f4)", handle: "@derma.co", views: "3.8M", tag: "#routine", flag: "🇯🇵" },
-  { grad: "linear-gradient(160deg,#fccb90,#d57eeb)", handle: "@beautyme", views: "890K", tag: "#getready", flag: "🇸🇦" },
-  { grad: "linear-gradient(160deg,#f6d365,#fda085)", handle: "@k.wellness", views: "1.6M", tag: "#health", flag: "🇹🇭" },
-  { grad: "linear-gradient(160deg,#5ee7df,#b490ca)", handle: "@seoul.skin", views: "4.2M", tag: "#viral", flag: "🇺🇸" },
-];
 const REGIONS = [["🇺🇸", "미국"], ["🇻🇳🇹🇭", "동남아"], ["🇸🇦🇦🇪", "중동"], ["🇯🇵", "일본"]];
 
 const MAPS = [
@@ -150,31 +150,26 @@ export default function BhSeminarPage() {
           ))}
         </section>
 
-        {/* 글로벌 틱톡 크리에이터 레퍼런스 */}
+        {/* 글로벌 리치 — 이미지 배경 배너 */}
         <section className="mt-20">
-          <div className="text-[12px] font-extrabold uppercase tracking-[3px] text-sky-600">Global Reach</div>
-          <h2 className="mt-2 text-[28px] font-black tracking-tight sm:text-[36px]">전 세계 틱톡 크리에이터와 함께</h2>
-          <p className="mt-2 max-w-[640px] text-[14px] text-[var(--muted,#64748b)]">미국·동남아·중동·일본까지 — 현지 크리에이터 콘텐츠로 우리 브랜드를 글로벌 피드에 올립니다.</p>
-          <div className="mt-6 flex gap-3 overflow-x-auto pb-2 [-ms-overflow-style:none] [scrollbar-width:none]">
-            {CREATORS.map((c) => (
-              <div key={c.handle} className="relative w-[150px] shrink-0 overflow-hidden rounded-2xl shadow-md sm:w-[168px]" style={{ aspectRatio: "9/16" }}>
-                <div className="absolute inset-0" style={{ background: c.grad }} />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-transparent to-black/10" />
-                <div className="absolute right-2 top-2 text-[18px]">{c.flag}</div>
-                <div className="absolute left-1/2 top-1/2 grid h-11 w-11 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full bg-white/25 backdrop-blur-sm">
-                  <div className="ml-0.5 h-0 w-0 border-y-[7px] border-l-[11px] border-y-transparent border-l-white" />
-                </div>
-                <div className="absolute inset-x-0 bottom-0 p-2.5 text-white">
-                  <div className="text-[12px] font-bold">{c.handle}</div>
-                  <div className="flex items-center justify-between text-[10px] opacity-90"><span>{c.tag}</span><span>▶ {c.views}</span></div>
-                </div>
+          <div className="relative overflow-hidden rounded-3xl bg-slate-950 px-6 py-16 text-white sm:px-12 sm:py-24">
+            {/* 배경 이미지 자리 (실제 이미지 제공 시 여기에 배치) + 그라데이션/도트 패턴 */}
+            <div className="pointer-events-none absolute inset-0 opacity-90" style={{ background: "radial-gradient(120% 120% at 80% 0%, rgba(236,72,153,.35), transparent 55%), radial-gradient(120% 120% at 0% 100%, rgba(14,165,233,.30), transparent 55%)" }} />
+            <div className="pointer-events-none absolute inset-0 opacity-[0.12]" style={{ backgroundImage: "radial-gradient(rgba(255,255,255,.8) 1px, transparent 1.4px)", backgroundSize: "22px 22px" }} />
+            <div className="relative max-w-[720px]">
+              <div className="text-[12px] font-extrabold uppercase tracking-[4px] text-pink-300">Global Reach</div>
+              <h2 className="mt-3 text-[30px] font-black leading-[1.15] tracking-tight sm:text-[44px]">우리 브랜드를 <span className="bg-gradient-to-r from-pink-300 to-orange-200 bg-clip-text text-transparent">전 세계 틱톡 피드</span>로</h2>
+              <p className="mt-4 text-[15px] leading-relaxed text-slate-300 sm:text-[17px]">미국·동남아·중동·일본까지 — 현지 크리에이터와 퍼포먼스 광고로 글로벌 매출을 만드는 실전 전략을 한자리에서.</p>
+              <div className="mt-6 flex flex-wrap items-center gap-3">
+                <span className="inline-flex items-center gap-2 rounded-lg bg-white px-3 py-1.5"><TikTokMark className="text-[16px]" /> <span className="text-[12px] font-bold text-slate-500">Shop</span></span>
+                <span className="inline-flex items-center rounded-lg bg-white px-3 py-2"><AmazonMark className="text-[16px]" /></span>
               </div>
-            ))}
-          </div>
-          <div className="mt-5 flex flex-wrap gap-2">
-            {REGIONS.map(([f, n]) => (
-              <span key={n} className="inline-flex items-center gap-1.5 rounded-full border border-[var(--border,#e2e8f0)] bg-white px-3.5 py-1.5 text-[13px] font-semibold"><span>{f}</span>{n}</span>
-            ))}
+              <div className="mt-6 flex flex-wrap gap-2">
+                {REGIONS.map(([f, n]) => (
+                  <span key={n} className="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/5 px-3.5 py-1.5 text-[13px] font-semibold text-slate-100"><span>{f}</span>{n}</span>
+                ))}
+              </div>
+            </div>
           </div>
         </section>
 
@@ -277,8 +272,8 @@ export default function BhSeminarPage() {
             <TikTokMark className="text-[22px]" />
             {/* Amazon — SVG 마크 */}
             <AmazonMark className="text-[22px] pb-1" />
-            {/* 슈크란코리아 — 로고형 스타일(실제 로고 파일 수령 시 교체) */}
-            <span className="inline-flex items-center rounded-lg bg-slate-900 px-3 py-1.5 text-[15px] font-black tracking-tight text-white">شكراً <span className="ml-1.5 text-[12px] font-bold text-emerald-300">SHUKRAN KOREA</span></span>
+            {/* 슈크란코리아 — 로고 재현(주황 SHUKRAN + 회색 KOREA) */}
+            <ShukranMark className="text-[22px]" />
           </div>
           <div className="mt-9 text-center text-[12px] text-[var(--muted,#64748b)]">
             문의 <a href={`mailto:${CONTACT}`} className="font-semibold text-[var(--accent,#ec4899)]">{CONTACT}</a>
