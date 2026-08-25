@@ -38,7 +38,7 @@ export async function POST(req: Request) {
   let body: { filter?: OcFilter; limit?: number; offset?: number };
   try { body = await req.json(); } catch { return NextResponse.json({ error: "본문 파싱 실패" }, { status: 400 }); }
   const filter = body.filter || {};
-  const limit = Math.min(Math.max(1, body.limit || 50), 200);
+  const limit = Math.min(Math.max(1, body.limit || 50), 500);
   const offset = Math.max(0, body.offset || 0);
   const { where, params } = buildWhere(filter);
 

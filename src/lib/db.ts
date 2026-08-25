@@ -580,6 +580,7 @@ export function ensureSchema(): Promise<void> {
         created_by text,
         created_at timestamptz NOT NULL DEFAULT now()
       )`;
+      await sql`ALTER TABLE oc_products ADD COLUMN IF NOT EXISTS country text`; // 타겟 국가(콤마 코드) — 언어변환용
       // 등록된 Gmail 발신 계정(공용 메일함 allow-list). Workspace 서비스계정 DWD로 impersonate.
       // 시크릿은 저장하지 않음(GOOGLE_SA_KEY_JSON 공용). email = 위임 대상 메일함(cs@glovek.space 등)
       await sql`CREATE TABLE IF NOT EXISTS oc_senders (

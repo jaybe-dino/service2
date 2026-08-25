@@ -15,7 +15,12 @@ interface OcFilter {
   hasEmail?: boolean; minAvgViews?: number; maxAvgViews?: number; minTotalViews?: number;
   minVideos?: number; maxVideos?: number; brands?: string[]; region?: string; search?: string;
 }
-interface Product { id: number; name: string; brand: string | null; category: string | null; concept: string | null; usp: string | null; }
+interface Product { id: number; name: string; brand: string | null; category: string | null; country: string | null; concept: string | null; usp: string | null; }
+
+// GloveK 분류/시장 (객관식)
+const OC_CATEGORIES = [{ id: "스킨케어", ko: "스킨케어" }, { id: "메이크업", ko: "메이크업" }, { id: "헤어케어", ko: "헤어케어" }];
+const OC_COUNTRIES = [{ id: "US", ko: "미국", flag: "🇺🇸" }, { id: "TH", ko: "태국", flag: "🇹🇭" }, { id: "VN", ko: "베트남", flag: "🇻🇳" }, { id: "MY", ko: "말레이시아", flag: "🇲🇾" }, { id: "SG", ko: "싱가포르", flag: "🇸🇬" }];
+const COUNTRY_KO: Record<string, string> = Object.fromEntries(OC_COUNTRIES.map((c) => [c.id, `${c.flag} ${c.ko}`]));
 interface Sender { id: number; email: string; display_name: string | null; daily_limit: number; active: boolean; configured: boolean; warmup_start: string | null; }
 interface InboxRow { id: number; mailbox: string; from_email: string; from_name: string | null; subject: string | null; snippet: string | null; body_text: string | null; received_at: string | null; matched_handle: string | null; matched_campaign_id: number | null; status: string; }
 interface Campaign { id: number; name: string; status: string; total: number; sent: number; failed: number; created_at: string; product_name: string | null; sender_email: string | null; }
@@ -92,6 +97,7 @@ export default function OcConsole() {
   const [filter, setFilter] = useState<OcFilter>({ hasEmail: true });
   const [preview, setPreview] = useState<{ count: number; withEmail: number; rows: CreatorRow[] } | null>(null);
   const [previewing, setPreviewing] = useState(false);
+  const [selectedEmails, setSelectedEmails] = useState<string[]>([]); // 필터 결과에서 체크로 고른 대상
 
   useEffect(() => {
     fetch("/api/admin/session", { cache: "no-store" }).then((r) => r.json()).then((j) => setAuthed(!!j.authed)).catch(() => setAuthed(false));
@@ -116,10 +122,13 @@ export default function OcConsole() {
   async function runPreview() {
     setPreviewing(true);
     try {
-      const r = await fetch("/api/admin/oc/creators", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ filter, limit: 30 }) });
+      const r = await fetch("/api/admin/oc/creators", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ filter, limit: 300 }) });
       const j = await r.json();
-      if (r.ok) setPreview({ count: j.count, withEmail: j.withEmail, rows: j.rows || [] });
-      else alert(j.error || "조회 실패");
+      if (r.ok) {
+        const rows: CreatorRow[] = j.rows || [];
+        setPreview({ count: j.count, withEmail: j.withEmail, rows });
+        setSelectedEmails(rows.filter((x) => x.email).map((x) => x.email!.toLowerCase())); // 기본 전체 선택
+      } else alert(j.error || "조회 실패");
     } finally { setPreviewing(false); }
   }
 
@@ -167,11 +176,11 @@ export default function OcConsole() {
       {tab === "products" && <ProductsTab products={products} reload={loadAll} />}
       {tab === "creators" && (
         <CreatorsTab filter={filter} setFilter={setFilter} facetBrands={facetBrands} preview={preview} previewing={previewing}
-          runPreview={runPreview} goCompose={() => setTab("compose")} />
+          runPreview={runPreview} goCompose={() => setTab("compose")} selectedEmails={selectedEmails} setSelectedEmails={setSelectedEmails} />
       )}
       {tab === "compose" && (
         <ComposeTab filter={filter} products={products} senders={senders} campaigns={campaigns} preview={preview}
-          runPreview={runPreview} reload={loadAll} />
+          runPreview={runPreview} reload={loadAll} selectedEmails={selectedEmails} />
       )}
       {tab === "history" && <HistoryTab campaigns={campaigns} />}
       {tab === "inbox" && <InboxTab senders={senders} />}
@@ -310,14 +319,20 @@ function DataTab({ stat, onDone }: { stat: { total: number; with_email: number }
 
 /* ── 제품·컨셉 ── */
 function ProductsTab({ products, reload }: { products: Product[]; reload: () => void }) {
-  const [f, setF] = useState({ name: "", brand: "", category: "", concept: "", usp: "" });
+  const [f, setF] = useState({ name: "", brand: "", concept: "", usp: "" });
+  const [cats, setCats] = useState<string[]>([]);
+  const [ctrys, setCtrys] = useState<string[]>([]);
+  const [names, setNames] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
+  useEffect(() => { fetch("/api/admin/oc/products?catalog=1").then((r) => r.json()).then((j) => setNames(j.names || [])).catch(() => {}); }, [products.length]);
+  const toggle = (arr: string[], set: (v: string[]) => void, v: string) => set(arr.includes(v) ? arr.filter((x) => x !== v) : [...arr, v]);
   async function save() {
     if (!f.name.trim()) { alert("제품명을 입력하세요"); return; }
     setBusy(true);
-    const r = await fetch("/api/admin/oc/products", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(f) });
+    const body = { ...f, category: cats.join(","), country: ctrys.join(",") };
+    const r = await fetch("/api/admin/oc/products", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
     setBusy(false);
-    if (r.ok) { setF({ name: "", brand: "", category: "", concept: "", usp: "" }); reload(); }
+    if (r.ok) { setF({ name: "", brand: "", concept: "", usp: "" }); setCats([]); setCtrys([]); reload(); }
     else alert((await r.json()).error || "저장 실패");
   }
   async function del(id: number) {
@@ -325,14 +340,29 @@ function ProductsTab({ products, reload }: { products: Product[]; reload: () => 
     await fetch(`/api/admin/oc/products?id=${id}`, { method: "DELETE" }); reload();
   }
   const inp = "w-full rounded-md border border-[var(--border)] px-3 py-2 text-[12px] outline-none focus:border-[var(--accent)]";
+  const chip = (on: boolean) => `rounded-full px-3 py-1 text-[11px] font-semibold ${on ? "bg-[var(--accent)] text-white" : "border border-[var(--border)] text-[var(--muted)]"}`;
   return (
     <div className="grid gap-4 lg:grid-cols-[380px_1fr]">
       <div className="kt-card p-5">
         <h2 className="text-[14px] font-black">제품 · 컨셉 등록</h2>
         <div className="mt-3 space-y-2.5">
-          <input className={inp} placeholder="제품명 *" value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} />
+          <div>
+            <input list="oc-prod-names" className={inp} placeholder="제품명 * (직접 입력 또는 등록된 제품 선택)" value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} />
+            <datalist id="oc-prod-names">{names.map((n) => <option key={n} value={n} />)}</datalist>
+          </div>
           <input className={inp} placeholder="브랜드" value={f.brand} onChange={(e) => setF({ ...f, brand: e.target.value })} />
-          <input className={inp} placeholder="카테고리 (예: 스킨케어/토너)" value={f.category} onChange={(e) => setF({ ...f, category: e.target.value })} />
+          <div>
+            <div className="mb-1 text-[11px] font-bold text-[var(--muted)]">카테고리 (복수 선택)</div>
+            <div className="flex flex-wrap gap-1.5">
+              {OC_CATEGORIES.map((c) => <button key={c.id} type="button" onClick={() => toggle(cats, setCats, c.id)} className={chip(cats.includes(c.id))}>{c.ko}</button>)}
+            </div>
+          </div>
+          <div>
+            <div className="mb-1 text-[11px] font-bold text-[var(--muted)]">타겟 국가 (복수 선택 · 언어변환 기준)</div>
+            <div className="flex flex-wrap gap-1.5">
+              {OC_COUNTRIES.map((c) => <button key={c.id} type="button" onClick={() => toggle(ctrys, setCtrys, c.id)} className={chip(ctrys.includes(c.id))}>{c.flag} {c.ko}</button>)}
+            </div>
+          </div>
           <textarea className={inp} rows={2} placeholder="컨셉" value={f.concept} onChange={(e) => setF({ ...f, concept: e.target.value })} />
           <textarea className={inp} rows={2} placeholder="USP (핵심 강점)" value={f.usp} onChange={(e) => setF({ ...f, usp: e.target.value })} />
           <button onClick={save} disabled={busy} className="kt-btn kt-btn-primary w-full py-2 text-[12px]">{busy ? "저장 중…" : "등록"}</button>
@@ -346,7 +376,10 @@ function ProductsTab({ products, reload }: { products: Product[]; reload: () => 
               <div className="flex items-start justify-between gap-2">
                 <div>
                   <div className="text-[13px] font-bold">{p.name} {p.brand && <span className="text-[11px] text-[var(--muted)]">· {p.brand}</span>}</div>
-                  {p.category && <div className="text-[11px] text-[var(--muted)]">{p.category}</div>}
+                  <div className="mt-0.5 flex flex-wrap gap-1">
+                    {(p.category || "").split(",").filter(Boolean).map((c) => <span key={c} className="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] text-slate-600">{c}</span>)}
+                    {(p.country || "").split(",").filter(Boolean).map((c) => <span key={c} className="rounded bg-sky-100 px-1.5 py-0.5 text-[10px] text-sky-700">{COUNTRY_KO[c] || c}</span>)}
+                  </div>
                   {p.concept && <div className="mt-1 text-[12px] text-slate-600">{p.concept}</div>}
                   {p.usp && <div className="mt-0.5 text-[12px] text-[var(--accent)]">USP · {p.usp}</div>}
                 </div>
@@ -362,10 +395,19 @@ function ProductsTab({ products, reload }: { products: Product[]; reload: () => 
 }
 
 /* ── 크리에이터 필터 ── */
-function CreatorsTab({ filter, setFilter, facetBrands, preview, previewing, runPreview, goCompose }: {
+function CreatorsTab({ filter, setFilter, facetBrands, preview, previewing, runPreview, goCompose, selectedEmails, setSelectedEmails }: {
   filter: OcFilter; setFilter: (f: OcFilter) => void; facetBrands: { brand: string; n: number }[];
   preview: { count: number; withEmail: number; rows: CreatorRow[] } | null; previewing: boolean; runPreview: () => void; goCompose: () => void;
+  selectedEmails: string[]; setSelectedEmails: (v: string[]) => void;
 }) {
+  const sel = new Set(selectedEmails);
+  const emailRows = preview ? preview.rows.filter((r) => r.email) : [];
+  const allSel = emailRows.length > 0 && emailRows.every((r) => sel.has(r.email!.toLowerCase()));
+  const toggleOne = (email: string) => {
+    const e = email.toLowerCase();
+    setSelectedEmails(sel.has(e) ? selectedEmails.filter((x) => x !== e) : [...selectedEmails, e]);
+  };
+  const toggleAll = () => setSelectedEmails(allSel ? [] : emailRows.map((r) => r.email!.toLowerCase()));
   const inp = "w-full rounded-md border border-[var(--border)] px-3 py-2 text-[12px] outline-none focus:border-[var(--accent)]";
   const tier = (min: number) => setFilter({ ...filter, minAvgViews: min || undefined });
   const toggleBrand = (b: string) => {
@@ -444,36 +486,44 @@ function CreatorsTab({ filter, setFilter, facetBrands, preview, previewing, runP
 
       <div className="kt-card p-5">
         <div className="flex items-center justify-between">
-          <h2 className="text-[14px] font-black">결과</h2>
+          <h2 className="text-[14px] font-black">결과 · 대상 선택</h2>
           {preview && (
-            <button onClick={goCompose} className="kt-btn kt-btn-primary px-3 py-1.5 text-[11px]"><Mail size={13} /> 이 조건으로 캠페인 만들기</button>
+            <button onClick={goCompose} disabled={!selectedEmails.length} className="kt-btn kt-btn-primary px-3 py-1.5 text-[11px] disabled:opacity-50"><Mail size={13} /> 선택 {selectedEmails.length}명으로 캠페인</button>
           )}
         </div>
         {preview ? (
           <>
-            <div className="mt-2 flex gap-4 text-[13px]">
-              <span>대상 <b className="text-[var(--accent)]">{preview.count.toLocaleString()}</b>명</span>
+            <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-[13px]">
+              <span>조건 대상 <b className="text-[var(--accent)]">{preview.count.toLocaleString()}</b>명</span>
               <span>이메일 보유 <b>{preview.withEmail.toLocaleString()}</b>명</span>
+              <span className="text-[var(--muted)]">· 로드 {emailRows.length}명 · <b className="text-[var(--accent)]">선택 {selectedEmails.length}</b></span>
             </div>
-            <div className="mt-3 max-h-[440px] overflow-auto rounded-lg border border-[var(--border)]">
+            <div className="mt-2 flex items-center gap-2">
+              <label className="flex items-center gap-1.5 text-[12px] font-semibold"><input type="checkbox" checked={allSel} onChange={toggleAll} /> 전체 선택/해제</label>
+              <button onClick={() => setSelectedEmails([])} className="rounded border border-[var(--border)] px-2 py-0.5 text-[11px] text-[var(--muted)] hover:text-rose-500">선택 비우기</button>
+            </div>
+            <div className="mt-2 max-h-[460px] overflow-auto rounded-lg border border-[var(--border)]">
               <table className="w-full text-[11.5px]">
                 <thead className="sticky top-0 bg-slate-50 text-left text-[var(--muted)]">
-                  <tr><th className="px-2 py-1.5">handle</th><th className="px-2 py-1.5">email</th><th className="px-2 py-1.5 text-right">avg</th><th className="px-2 py-1.5 text-right">total</th><th className="px-2 py-1.5">brands</th></tr>
+                  <tr><th className="w-8 px-2 py-1.5"><input type="checkbox" checked={allSel} onChange={toggleAll} /></th><th className="px-2 py-1.5">handle</th><th className="px-2 py-1.5">email</th><th className="px-2 py-1.5 text-right">avg</th><th className="px-2 py-1.5">brands</th></tr>
                 </thead>
                 <tbody>
-                  {preview.rows.map((r) => (
-                    <tr key={r.handle} className="border-t border-[var(--border)]">
-                      <td className="px-2 py-1.5 font-medium">@{r.handle}</td>
-                      <td className="px-2 py-1.5 text-[var(--muted)]">{r.email || "—"}</td>
-                      <td className="px-2 py-1.5 text-right">{compact(r.avg_views)}</td>
-                      <td className="px-2 py-1.5 text-right">{compact(r.total_views)}</td>
-                      <td className="px-2 py-1.5 text-[var(--muted)] max-w-[220px] truncate">{r.brands || "—"}</td>
-                    </tr>
-                  ))}
+                  {preview.rows.map((r) => {
+                    const has = !!r.email; const on = has && sel.has(r.email!.toLowerCase());
+                    return (
+                      <tr key={r.handle} className={`border-t border-[var(--border)] ${has ? "cursor-pointer" : "opacity-50"} ${on ? "bg-[var(--accent-light)]" : ""}`} onClick={() => has && toggleOne(r.email!)}>
+                        <td className="px-2 py-1.5"><input type="checkbox" disabled={!has} checked={on} onChange={() => has && toggleOne(r.email!)} onClick={(e) => e.stopPropagation()} /></td>
+                        <td className="px-2 py-1.5 font-medium">@{r.handle}</td>
+                        <td className="px-2 py-1.5 text-[var(--muted)]">{r.email || "—"}</td>
+                        <td className="px-2 py-1.5 text-right">{compact(r.avg_views)}</td>
+                        <td className="px-2 py-1.5 text-[var(--muted)] max-w-[200px] truncate">{r.brands || "—"}</td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
-            <p className="mt-2 text-[11px] text-[var(--muted)]">상위 30명 미리보기 · 실제 발송은 전체 대상에 적용됩니다.</p>
+            <p className="mt-2 text-[11px] text-[var(--muted)]">행 클릭 또는 체크로 선택/해제 · 최대 300명 로드. 선택한 대상에게만 발송됩니다.</p>
           </>
         ) : <p className="mt-3 text-[12px] text-[var(--muted)]">필터를 설정하고 [조회]를 누르세요.</p>}
       </div>
@@ -490,9 +540,9 @@ const DEFAULT_BODY = `안녕하세요 @{{handle}} 님,
 
 콘텐츠 제작에 관심 있으시면 회신 부탁드립니다. 감사합니다.`;
 
-function ComposeTab({ filter, products, senders, campaigns, preview, runPreview, reload }: {
+function ComposeTab({ filter, products, senders, campaigns, preview, runPreview, reload, selectedEmails }: {
   filter: OcFilter; products: Product[]; senders: Sender[]; campaigns: Campaign[];
-  preview: { count: number; withEmail: number } | null; runPreview: () => void; reload: () => void;
+  preview: { count: number; withEmail: number } | null; runPreview: () => void; reload: () => void; selectedEmails: string[];
 }) {
   const [name, setName] = useState("");
   const [productId, setProductId] = useState<number | "">("");
@@ -501,16 +551,40 @@ function ComposeTab({ filter, products, senders, campaigns, preview, runPreview,
   const [subjectB, setSubjectB] = useState("");
   const [body, setBody] = useState(DEFAULT_BODY);
   const [busy, setBusy] = useState(false);
+  const [transBusy, setTransBusy] = useState(false);
+  const [useSelection, setUseSelection] = useState(true);
   const [sendState, setSendState] = useState<{ id: number; sent: number; failed: number; queued: number; running: boolean; note?: string } | null>(null);
   const inp = "w-full rounded-md border border-[var(--border)] px-3 py-2 text-[12px] outline-none focus:border-[var(--accent)]";
+
+  const selProduct = products.find((p) => p.id === productId);
+  const productCountries = (selProduct?.country || "").split(",").map((c) => c.trim()).filter(Boolean);
+  const [transCountry, setTransCountry] = useState("");
+  const targetCountry = transCountry || productCountries[0] || "";
+  const usingSelection = useSelection && selectedEmails.length > 0;
+
+  async function translate() {
+    if (!body.trim()) { alert("본문을 먼저 작성하세요"); return; }
+    if (!targetCountry) { alert("제품에 타겟 국가를 등록하거나 국가를 선택하세요"); return; }
+    setTransBusy(true);
+    try {
+      const [rb, rs] = await Promise.all([
+        fetch("/api/admin/oc/translate", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text: body, country: targetCountry }) }).then((r) => r.json()),
+        subject.trim() ? fetch("/api/admin/oc/translate", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text: subject, country: targetCountry, subject: true }) }).then((r) => r.json()) : Promise.resolve(null),
+      ]);
+      if (rb.error) { alert("번역 실패: " + rb.error); return; }
+      setBody(rb.translated);
+      if (rs && rs.translated) setSubject(rs.translated);
+    } finally { setTransBusy(false); }
+  }
 
   async function createCampaign() {
     if (!name.trim() || !subject.trim() || !body.trim()) { alert("캠페인명·제목·본문을 입력하세요"); return; }
     if (!senderIds.length) { alert("발신 메일함을 1개 이상 선택하세요"); return; }
     setBusy(true);
+    const payload: Record<string, unknown> = { name, productId: productId || null, senderIds, subject, subjectB: subjectB || null, body };
+    if (usingSelection) payload.emails = selectedEmails; else payload.filter = filter;
     const r = await fetch("/api/admin/oc/campaigns", {
-      method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, productId: productId || null, senderIds, subject, subjectB: subjectB || null, body, filter }),
+      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload),
     });
     const j = await r.json(); setBusy(false);
     if (r.ok) { alert(`캠페인 생성 · 수신자 ${j.total.toLocaleString()}명 확정`); setName(""); reload(); }
@@ -538,9 +612,14 @@ function ComposeTab({ filter, products, senders, campaigns, preview, runPreview,
       <div className="kt-card p-5">
         <h2 className="text-[14px] font-black">새 캠페인(그룹 발송)</h2>
         <div className="mt-1 rounded-md bg-slate-50 px-3 py-2 text-[11px] text-[var(--muted)]">
-          현재 필터 대상: {preview ? <b className="text-[var(--accent)]">{preview.withEmail.toLocaleString()}명(이메일 보유)</b> : "미조회"}
-          <button onClick={runPreview} className="ml-2 underline">대상 재조회</button>
-          <div className="mt-0.5">※ [크리에이터 필터] 탭에서 조건을 설정하면 여기에 반영됩니다.</div>
+          <label className="flex items-center gap-1.5 font-semibold text-[var(--fg)]">
+            <input type="checkbox" checked={useSelection} onChange={(e) => setUseSelection(e.target.checked)} disabled={!selectedEmails.length} />
+            선택한 대상만 발송 (<b className="text-[var(--accent)]">{selectedEmails.length}명</b>)
+          </label>
+          <div className="mt-0.5">{usingSelection
+            ? "[크리에이터 필터] 탭에서 체크한 대상에게만 발송됩니다."
+            : <>필터 조건 전체로 발송: {preview ? <b>{preview.withEmail.toLocaleString()}명</b> : "미조회"} <button onClick={runPreview} className="ml-1 underline">재조회</button></>}
+          </div>
         </div>
         <div className="mt-3 space-y-2.5">
           <input className={inp} placeholder="캠페인명 *" value={name} onChange={(e) => setName(e.target.value)} />
@@ -565,6 +644,16 @@ function ComposeTab({ filter, products, senders, campaigns, preview, runPreview,
           <input className={inp} placeholder="제목 (A)" value={subject} onChange={(e) => setSubject(e.target.value)} />
           <input className={inp} placeholder="제목 B (선택 · 입력 시 A/B 테스트 자동 분할)" value={subjectB} onChange={(e) => setSubjectB(e.target.value)} />
           <textarea className={`${inp} font-mono`} rows={9} value={body} onChange={(e) => setBody(e.target.value)} />
+          {/* 언어 변환 */}
+          <div className="flex flex-wrap items-center gap-2 rounded-md bg-slate-50 px-2.5 py-2 text-[11px]">
+            <span className="font-bold text-[var(--muted)]">🌐 언어 변환</span>
+            <select className="rounded border border-[var(--border)] px-1.5 py-1 text-[11px]" value={targetCountry} onChange={(e) => setTransCountry(e.target.value)}>
+              <option value="">국가 선택</option>
+              {OC_COUNTRIES.map((c) => <option key={c.id} value={c.id}>{c.flag} {c.ko}</option>)}
+            </select>
+            <button onClick={translate} disabled={transBusy} className="kt-btn kt-btn-outline px-2.5 py-1 text-[11px]">{transBusy ? "변환 중…" : "제목·본문 번역"}</button>
+            <span className="text-[10px] text-[var(--muted)]">한국어로 작성 후 → 해당 국가 언어로 변환(제품 국가 자동)</span>
+          </div>
           <div className="text-[11px] text-[var(--muted)]">변수: <code>{"{{handle}} {{views}} {{brands}} {{product}} {{brand}} {{category}} {{concept}} {{usp}} {{region}}"}</code></div>
           <button onClick={createCampaign} disabled={busy} className="kt-btn kt-btn-primary w-full py-2 text-[12px]">{busy ? "생성 중…" : "캠페인 생성(수신자 확정)"}</button>
         </div>

@@ -43,7 +43,7 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   const g = await guard(); if (g) return g;
   const b = (await req.json().catch(() => ({}))) as {
-    name?: string; productId?: number; senderId?: number; senderIds?: number[]; subject?: string; subjectB?: string; body?: string; filter?: OcFilter;
+    name?: string; productId?: number; senderId?: number; senderIds?: number[]; subject?: string; subjectB?: string; body?: string; filter?: OcFilter; emails?: string[];
   };
   const name = String(b.name || "").trim();
   const subject = String(b.subject || "").trim();
@@ -70,19 +70,38 @@ export async function POST(req: Request) {
   );
   const campaignId = Number(created.rows[0].id);
 
-  // 수신자 확정: 이메일 보유 + 필터 조건, 이메일 기준 dedup(ON CONFLICT)
-  const { where, params } = buildWhere({ ...filter, hasEmail: true });
-  // 이메일 기준 dedup(DISTINCT ON) + 제외목록(oc_suppression) 제거 후 avg_views 상위로 상한 적용.
-  const q = `INSERT INTO oc_messages (campaign_id, handle, to_email, status)
-    SELECT ${campaignId}, d.handle, d.email, 'queued' FROM (
-      SELECT DISTINCT ON (lower(email)) handle, lower(email) AS email, avg_views
-      FROM oc_creators ${where}
-      ORDER BY lower(email), avg_views DESC NULLS LAST
-    ) d
-    WHERE NOT EXISTS (SELECT 1 FROM oc_suppression s WHERE s.email = d.email)
-    ORDER BY d.avg_views DESC NULLS LAST
-    LIMIT ${MAX_RECIPIENTS}
-    ON CONFLICT (campaign_id, to_email) DO NOTHING`;
+  // 수신자 확정
+  const picked = Array.isArray(b.emails)
+    ? Array.from(new Set(b.emails.map((e) => String(e || "").trim().toLowerCase()).filter(Boolean))).slice(0, MAX_RECIPIENTS)
+    : null;
+  let q: string; let params: unknown[];
+  if (picked && picked.length) {
+    // 명시적으로 선택한 이메일만(필터 결과에서 체크로 고른 대상). 제외목록·dedup 적용.
+    q = `INSERT INTO oc_messages (campaign_id, handle, to_email, status)
+      SELECT ${campaignId}, d.handle, d.email, 'queued' FROM (
+        SELECT DISTINCT ON (lower(email)) handle, lower(email) AS email, avg_views
+        FROM oc_creators
+        WHERE lower(email) = ANY($1::text[]) AND email IS NOT NULL AND email <> ''
+        ORDER BY lower(email), avg_views DESC NULLS LAST
+      ) d
+      WHERE NOT EXISTS (SELECT 1 FROM oc_suppression s WHERE s.email = d.email)
+      ON CONFLICT (campaign_id, to_email) DO NOTHING`;
+    params = [picked];
+  } else {
+    // 필터 기반: 이메일 보유 + 필터 조건, dedup + 제외목록 제거 후 avg_views 상위 상한.
+    const w = buildWhere({ ...filter, hasEmail: true });
+    q = `INSERT INTO oc_messages (campaign_id, handle, to_email, status)
+      SELECT ${campaignId}, d.handle, d.email, 'queued' FROM (
+        SELECT DISTINCT ON (lower(email)) handle, lower(email) AS email, avg_views
+        FROM oc_creators ${w.where}
+        ORDER BY lower(email), avg_views DESC NULLS LAST
+      ) d
+      WHERE NOT EXISTS (SELECT 1 FROM oc_suppression s WHERE s.email = d.email)
+      ORDER BY d.avg_views DESC NULLS LAST
+      LIMIT ${MAX_RECIPIENTS}
+      ON CONFLICT (campaign_id, to_email) DO NOTHING`;
+    params = w.params;
+  }
   try {
     await sql.query(q, params);
   } catch (e) {

@@ -12,9 +12,19 @@ async function guard() {
   return null;
 }
 
-export async function GET() {
+export async function GET(req: Request) {
   const g = await guard(); if (g) return g;
-  const { rows } = await sql`SELECT id, name, brand, category, concept, usp, notes, created_at
+  // ?catalog=1 — 제품명 자동완성용(어드민 보드 제품명: 리메이크 브랜드 제품 + 아웃리치 제품)
+  if (new URL(req.url).searchParams.get("catalog")) {
+    const oc = await sql`SELECT DISTINCT name FROM oc_products WHERE name IS NOT NULL`;
+    let rm: { rows: { name: string; brand: string | null }[] } = { rows: [] };
+    try { rm = await sql`SELECT name, brand FROM remake_products ORDER BY updated_at DESC LIMIT 500`; } catch { /* 테이블 없을 수 있음 */ }
+    const names = new Set<string>();
+    for (const r of oc.rows) if (r.name) names.add(String(r.name));
+    for (const r of rm.rows) if (r.name) names.add(r.brand ? `${r.name} (${r.brand})` : String(r.name));
+    return NextResponse.json({ names: [...names].sort() });
+  }
+  const { rows } = await sql`SELECT id, name, brand, category, country, concept, usp, notes, created_at
     FROM oc_products ORDER BY created_at DESC LIMIT 500`;
   return NextResponse.json({ rows });
 }
@@ -24,8 +34,9 @@ export async function POST(req: Request) {
   const b = (await req.json().catch(() => ({}))) as Record<string, string>;
   const name = String(b.name || "").trim();
   if (!name) return NextResponse.json({ error: "제품명 필수" }, { status: 400 });
-  const { rows } = await sql`INSERT INTO oc_products (name, brand, category, concept, usp, notes, created_by)
-    VALUES (${name}, ${b.brand || null}, ${b.category || null}, ${b.concept || null}, ${b.usp || null}, ${b.notes || null}, 'admin')
+  // category/country 는 콤마 결합 문자열(복수 선택)
+  const { rows } = await sql`INSERT INTO oc_products (name, brand, category, country, concept, usp, notes, created_by)
+    VALUES (${name}, ${b.brand || null}, ${b.category || null}, ${b.country || null}, ${b.concept || null}, ${b.usp || null}, ${b.notes || null}, 'admin')
     RETURNING id`;
   return NextResponse.json({ ok: true, id: rows[0]?.id });
 }
