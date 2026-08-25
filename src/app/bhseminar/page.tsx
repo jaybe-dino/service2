@@ -6,7 +6,7 @@ const CONTACT = "dino_glovek@dinostudio.kr";
 
 export const metadata: Metadata = {
   title: "뷰티 & 헬스케어 글로벌 진출 원스톱 전략 세미나 | 2026",
-  description: "2026.9.8(화) 13:30–18:00 · 서울 섬유센터. 글로벌 TikTok Shop/Amazon 구축·운영·물류·정산·인증까지 한 번에. 사전 등록 200명.",
+  description: "2026.9.8(화) 13:30–18:00 · 서울 섬유센터. 글로벌 TikTok Shop/Amazon 구축·운영·물류·정산·인증까지 한 번에. 선착순 100명.",
   openGraph: {
     title: "뷰티 & 헬스케어 글로벌 진출 원스톱 전략 세미나",
     description: "글로벌 TikTok Shop/Amazon — 구축·운영·물류·정산·인증까지. 2026.9.8 서울 섬유센터.",
@@ -15,10 +15,32 @@ export const metadata: Metadata = {
   },
 };
 
+/* ── 브랜드 마크 (SVG 재현) ── */
+function TikTokMark({ className = "" }: { className?: string }) {
+  return (
+    <span className={`relative inline-block font-black leading-none ${className}`} aria-label="TikTok">
+      <span className="absolute left-[-1.5px] top-[1px] text-[#25F4EE]" aria-hidden>TikTok</span>
+      <span className="absolute left-[1.5px] top-[-1px] text-[#FE2C55]" aria-hidden>TikTok</span>
+      <span className="relative text-slate-900">TikTok</span>
+    </span>
+  );
+}
+function AmazonMark({ className = "" }: { className?: string }) {
+  return (
+    <span className={`relative inline-block font-black leading-none text-slate-900 ${className}`} aria-label="Amazon">
+      amazon
+      <svg viewBox="0 0 120 22" className="absolute -bottom-[7px] left-1 w-[88%]" aria-hidden>
+        <path d="M4 8 Q60 26 108 7" fill="none" stroke="#FF9900" strokeWidth="3.5" strokeLinecap="round" />
+        <path d="M108 7 l-9 -1 M108 7 l-3 8" fill="none" stroke="#FF9900" strokeWidth="3.5" strokeLinecap="round" />
+      </svg>
+    </span>
+  );
+}
+
 const FACTS: { icon: string; label: string; value: React.ReactNode }[] = [
   { icon: "🗓", label: "일시", value: <>2026년 9월 8일(화)<br />13:30 – 18:00</> },
   { icon: "📍", label: "장소", value: <>{ADDRESS}</> },
-  { icon: "👥", label: "대상 · 규모", value: <>뷰티·헬스케어 브랜드/제조사<br />대표·실무자 <b>200명</b> · 사전 등록</> },
+  { icon: "👥", label: "대상 · 규모", value: <>뷰티·헬스케어 브랜드/제조사<br />대표·실무자 <b>100명</b> · 선착순</> },
   { icon: "🎁", label: "참가 혜택", value: <>「글로벌 진출」 E-book 증정<br />1:1 진출 상담 · 현장 온보딩</> },
 ];
 
@@ -34,8 +56,19 @@ const SESSIONS: { org: string; title: string }[] = [
 const GALLERY = [
   { src: "/bhseminar/venue-building.jpg", cap: "섬유센터 (테헤란로 518)" },
   { src: "/bhseminar/venue-lounge.jpg", cap: "17층 스카이 라운지" },
-  { src: "/bhseminar/venue-hall.jpg", cap: "세미나홀 · 200석" },
+  { src: "/bhseminar/venue-hall.jpg", cap: "세미나홀 · 100석" },
 ];
+
+// 글로벌 틱톡 크리에이터 레퍼런스(연출용 목업)
+const CREATORS = [
+  { grad: "linear-gradient(160deg,#ff9a9e,#fad0c4)", handle: "@glow.kr", views: "2.4M", tag: "#kbeauty", flag: "🇺🇸" },
+  { grad: "linear-gradient(160deg,#a18cd1,#fbc2eb)", handle: "@skinlab", views: "1.1M", tag: "#skincare", flag: "🇻🇳" },
+  { grad: "linear-gradient(160deg,#84fab0,#8fd3f4)", handle: "@derma.co", views: "3.8M", tag: "#routine", flag: "🇯🇵" },
+  { grad: "linear-gradient(160deg,#fccb90,#d57eeb)", handle: "@beautyme", views: "890K", tag: "#getready", flag: "🇸🇦" },
+  { grad: "linear-gradient(160deg,#f6d365,#fda085)", handle: "@k.wellness", views: "1.6M", tag: "#health", flag: "🇹🇭" },
+  { grad: "linear-gradient(160deg,#5ee7df,#b490ca)", handle: "@seoul.skin", views: "4.2M", tag: "#viral", flag: "🇺🇸" },
+];
+const REGIONS = [["🇺🇸", "미국"], ["🇻🇳🇹🇭", "동남아"], ["🇸🇦🇦🇪", "중동"], ["🇯🇵", "일본"]];
 
 const MAPS = [
   { label: "네이버 지도", url: "https://map.naver.com/p/search/" + encodeURIComponent("섬유센터 테헤란로 518") },
@@ -45,40 +78,48 @@ const MAPS = [
 
 function Apply({ big }: { big?: boolean }) {
   return (
-    <a href={FORM_URL} target="_blank" rel="noopener noreferrer"
-      className={`group inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-[var(--accent,#ec4899)] to-orange-400 font-extrabold text-white shadow-lg shadow-pink-500/25 transition hover:shadow-pink-500/40 hover:brightness-105 ${big ? "px-9 py-4 text-[16px]" : "px-6 py-3 text-[14px]"}`}>
-      참가 신청하기 <span className="transition group-hover:translate-x-0.5" aria-hidden>→</span>
+    <a href={FORM_URL} target="_blank" rel="noopener noreferrer" className="group relative inline-block break-keep">
+      <span aria-hidden className="absolute -inset-1.5 rounded-full bg-gradient-to-r from-pink-500 via-fuchsia-500 to-orange-400 opacity-50 blur-lg transition group-hover:opacity-90" />
+      <span className={`relative inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-[var(--accent,#ec4899)] to-orange-400 font-extrabold text-white transition group-hover:scale-[1.03] ${big ? "px-10 py-4 text-[17px]" : "px-6 py-3 text-[14px]"}`}>
+        참가 신청하기 <span className="text-[1.1em] transition group-hover:translate-x-0.5" aria-hidden>→</span>
+      </span>
     </a>
   );
 }
 
 export default function BhSeminarPage() {
   return (
-    <div className="min-h-screen bg-[var(--bg,#fff)] text-[var(--fg,#2d3748)]">
-      {/* ── 히어로 (다크·드라마틱) ── */}
+    <div className="min-h-screen break-keep bg-[var(--bg,#fff)] text-[var(--fg,#2d3748)]">
+      {/* ── 히어로 ── */}
       <header className="relative overflow-hidden bg-slate-950 text-white">
         <div className="pointer-events-none absolute -right-40 -top-40 h-[520px] w-[520px] rounded-full bg-[var(--accent,#ec4899)] opacity-25 blur-[120px]" />
         <div className="pointer-events-none absolute -bottom-40 -left-32 h-[420px] w-[420px] rounded-full bg-sky-500 opacity-20 blur-[120px]" />
         <div className="pointer-events-none absolute inset-0 opacity-[0.05]" style={{ backgroundImage: "linear-gradient(rgba(255,255,255,.4) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.4) 1px,transparent 1px)", backgroundSize: "44px 44px" }} />
-        <div className="relative mx-auto grid max-w-[1180px] items-center gap-10 px-5 py-16 sm:px-8 sm:py-20 lg:grid-cols-[1.1fr_0.9fr]">
+        <div className="relative mx-auto grid max-w-[1180px] items-center gap-10 px-5 py-16 sm:px-8 sm:py-20 lg:grid-cols-[1.05fr_0.95fr]">
           <div>
             <div className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-3.5 py-1.5 text-[11px] font-extrabold uppercase tracking-[4px] text-pink-300">
               Offline Seminar · 2026
             </div>
-            <h1 className="mt-5 text-[36px] font-black leading-[1.1] tracking-tight sm:text-[58px]">
-              뷰티 &amp; 헬스케어<br />
+            <h1 className="mt-5 text-[34px] font-black leading-[1.12] tracking-tight sm:text-[54px]">
+              뷰티 &amp; 헬스케어
+              <br className="hidden sm:block" />{" "}
               <span className="bg-gradient-to-r from-pink-400 via-fuchsia-400 to-orange-300 bg-clip-text text-transparent">글로벌 진출</span> 전략 세미나
             </h1>
-            <p className="mt-5 max-w-[560px] text-[16px] leading-relaxed text-slate-300 sm:text-[19px]">
-              글로벌 TikTok Shop / Amazon — <b className="text-white">구축 · 운영 · 물류 · 정산 · 인증</b>까지 한 번에.
+            <p className="mt-5 max-w-[540px] text-[16px] leading-relaxed text-slate-300 sm:text-[18.5px]">
+              글로벌 <b className="text-white">TikTok Shop · Amazon</b> — 구축 · 운영 · 물류 · 정산 · 인증까지 한 번에.
               지금 해외로 나가려는 브랜드·제조사를 위한 원스톱 실무 전략.
             </p>
+            {/* 플랫폼 배지 */}
+            <div className="mt-5 flex flex-wrap items-center gap-3">
+              <span className="inline-flex items-center gap-2 rounded-lg bg-white px-3 py-1.5"><TikTokMark className="text-[16px]" /> <span className="text-[12px] font-bold text-slate-500">Shop</span></span>
+              <span className="inline-flex items-center rounded-lg bg-white px-3 py-2"><AmazonMark className="text-[16px]" /></span>
+            </div>
             <div className="mt-7 flex flex-wrap gap-2">
-              {["2026.9.8(화) 13:30–18:00", "서울 섬유센터 17층", "선착순 200명"].map((c) => (
+              {["2026.9.8(화) 13:30–18:00", "서울 섬유센터 17층", "선착순 100명"].map((c) => (
                 <span key={c} className="rounded-full border border-white/15 bg-white/5 px-4 py-1.5 text-[12.5px] font-semibold text-slate-200">{c}</span>
               ))}
             </div>
-            <div className="mt-8 flex flex-wrap items-center gap-3">
+            <div className="mt-8 flex flex-wrap items-center gap-4">
               <Apply big />
               <a href="#program" className="rounded-full border border-white/20 px-6 py-3.5 text-[14px] font-bold text-white hover:bg-white/10">프로그램 보기</a>
             </div>
@@ -109,6 +150,34 @@ export default function BhSeminarPage() {
           ))}
         </section>
 
+        {/* 글로벌 틱톡 크리에이터 레퍼런스 */}
+        <section className="mt-20">
+          <div className="text-[12px] font-extrabold uppercase tracking-[3px] text-sky-600">Global Reach</div>
+          <h2 className="mt-2 text-[28px] font-black tracking-tight sm:text-[36px]">전 세계 틱톡 크리에이터와 함께</h2>
+          <p className="mt-2 max-w-[640px] text-[14px] text-[var(--muted,#64748b)]">미국·동남아·중동·일본까지 — 현지 크리에이터 콘텐츠로 우리 브랜드를 글로벌 피드에 올립니다.</p>
+          <div className="mt-6 flex gap-3 overflow-x-auto pb-2 [-ms-overflow-style:none] [scrollbar-width:none]">
+            {CREATORS.map((c) => (
+              <div key={c.handle} className="relative w-[150px] shrink-0 overflow-hidden rounded-2xl shadow-md sm:w-[168px]" style={{ aspectRatio: "9/16" }}>
+                <div className="absolute inset-0" style={{ background: c.grad }} />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-transparent to-black/10" />
+                <div className="absolute right-2 top-2 text-[18px]">{c.flag}</div>
+                <div className="absolute left-1/2 top-1/2 grid h-11 w-11 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full bg-white/25 backdrop-blur-sm">
+                  <div className="ml-0.5 h-0 w-0 border-y-[7px] border-l-[11px] border-y-transparent border-l-white" />
+                </div>
+                <div className="absolute inset-x-0 bottom-0 p-2.5 text-white">
+                  <div className="text-[12px] font-bold">{c.handle}</div>
+                  <div className="flex items-center justify-between text-[10px] opacity-90"><span>{c.tag}</span><span>▶ {c.views}</span></div>
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="mt-5 flex flex-wrap gap-2">
+            {REGIONS.map(([f, n]) => (
+              <span key={n} className="inline-flex items-center gap-1.5 rounded-full border border-[var(--border,#e2e8f0)] bg-white px-3.5 py-1.5 text-[13px] font-semibold"><span>{f}</span>{n}</span>
+            ))}
+          </div>
+        </section>
+
         {/* 프로그램 */}
         <section id="program" className="mt-20 scroll-mt-8">
           <div className="text-[12px] font-extrabold uppercase tracking-[3px] text-sky-600">Program</div>
@@ -131,7 +200,7 @@ export default function BhSeminarPage() {
         <section className="mt-20">
           <div className="text-[12px] font-extrabold uppercase tracking-[3px] text-sky-600">Venue</div>
           <h2 className="mt-2 text-[28px] font-black tracking-tight sm:text-[36px]">프리미엄 행사장</h2>
-          <p className="mt-2 text-[14px] text-[var(--muted,#64748b)]">테헤란로 섬유센터 17층 — 스카이 라운지와 200석 규모 세미나홀.</p>
+          <p className="mt-2 text-[14px] text-[var(--muted,#64748b)]">테헤란로 섬유센터 17층 — 스카이 라운지와 100석 규모 세미나홀.</p>
           <div className="mt-7 grid gap-4 md:grid-cols-3">
             {GALLERY.map((g) => (
               <figure key={g.src} className="group overflow-hidden rounded-2xl ring-1 ring-[var(--border,#e2e8f0)]">
@@ -181,7 +250,7 @@ export default function BhSeminarPage() {
           <div className="pointer-events-none absolute -bottom-24 -left-24 h-72 w-72 rounded-full bg-sky-500 opacity-25 blur-[90px]" />
           <div className="relative">
             <div className="text-[12px] font-extrabold uppercase tracking-[3px] text-pink-300">Register Now</div>
-            <h2 className="mt-3 text-[28px] font-black leading-tight tracking-tight sm:text-[40px]">선착순 200명 · 사전 등록</h2>
+            <h2 className="mt-3 text-[28px] font-black leading-tight tracking-tight sm:text-[40px]">선착순 100명 · 사전 등록</h2>
             <p className="mx-auto mt-4 max-w-[560px] text-[15px] leading-relaxed text-slate-300">좌석이 한정되어 조기 마감될 수 있습니다. 지금 온라인 신청서로 등록해 주세요.</p>
             <div className="mt-7"><Apply big /></div>
             <p className="mt-4 text-[12px] text-slate-500">신청은 외부 온라인 신청서(Google Forms)로 접수됩니다.</p>
@@ -193,23 +262,25 @@ export default function BhSeminarPage() {
       <footer className="border-t border-[var(--border,#e2e8f0)] bg-slate-50">
         <div className="mx-auto max-w-[1180px] px-5 py-12 sm:px-8">
           <div className="text-center text-[12px] font-bold uppercase tracking-[3px] text-[var(--muted,#64748b)]">주관 · 협력</div>
-          <div className="mt-6 flex flex-wrap items-center justify-center gap-x-10 gap-y-6">
-            {/* 디노스튜디오 (워드마크 텍스트) */}
+          <div className="mt-7 flex flex-wrap items-center justify-center gap-x-10 gap-y-7">
+            {/* 디노스튜디오 — 텍스트 */}
             <span className="text-[22px] font-black tracking-tight text-slate-900">DINO<span className="text-[var(--accent,#ec4899)]">STUDIO</span></span>
-            {/* SF Express (로고 이미지) */}
+            {/* 전경련 바이오 CEO Club — 텍스트 */}
+            <span className="text-[15px] font-bold text-slate-700">전경련 바이오 CEO Club</span>
+            {/* SF Express — 로고 이미지 */}
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src="/bhseminar/logo-sf.png" alt="SF Express" className="h-8 w-auto object-contain" />
-            {/* pingpong (로고 이미지) */}
+            {/* pingpong — 로고 이미지 */}
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src="/bhseminar/logo-pingpong.png" alt="PingPong" className="h-9 w-auto object-contain" />
-            {/* TikTok (워드마크) */}
-            <span className="text-[20px] font-black tracking-tight text-slate-900">TikTok</span>
-            {/* 슈크란코리아 (텍스트) */}
-            <span className="text-[16px] font-bold text-slate-700">슈크란코리아</span>
-            {/* 전경련 바이오 CEO Club (텍스트) */}
-            <span className="text-[16px] font-bold text-slate-700">전경련 바이오 CEO Club</span>
+            {/* TikTok — SVG 마크 */}
+            <TikTokMark className="text-[22px]" />
+            {/* Amazon — SVG 마크 */}
+            <AmazonMark className="text-[22px] pb-1" />
+            {/* 슈크란코리아 — 로고형 스타일(실제 로고 파일 수령 시 교체) */}
+            <span className="inline-flex items-center rounded-lg bg-slate-900 px-3 py-1.5 text-[15px] font-black tracking-tight text-white">شكراً <span className="ml-1.5 text-[12px] font-bold text-emerald-300">SHUKRAN KOREA</span></span>
           </div>
-          <div className="mt-8 text-center text-[12px] text-[var(--muted,#64748b)]">
+          <div className="mt-9 text-center text-[12px] text-[var(--muted,#64748b)]">
             문의 <a href={`mailto:${CONTACT}`} className="font-semibold text-[var(--accent,#ec4899)]">{CONTACT}</a>
           </div>
         </div>
