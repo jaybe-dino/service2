@@ -23,7 +23,8 @@ export async function POST(req: Request) {
   const text = String(b.text || "").trim();
   if (!text) return NextResponse.json({ error: "text 필요" }, { status: 400 });
   const lang = b.lang || LANG[String(b.country || "").toUpperCase()] || "English";
-  const model = process.env.ANTHROPIC_TEXT_MODEL || process.env.CLAUDE_MODEL || "claude-3-5-haiku-latest";
+  // remake 라우트와 동일 모델 사용(이 키에서 검증됨). -latest 별칭은 인식 안 될 수 있어 회피.
+  const model = process.env.ANTHROPIC_TEXT_MODEL || process.env.REMAKE_AI_MODEL || "claude-opus-4-8";
 
   const system =
     "You are a professional localization expert for B2B creator-outreach emails in the K-beauty industry. " +
