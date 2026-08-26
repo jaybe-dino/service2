@@ -6,7 +6,7 @@ const CONTACT = "dino_glovek@dinostudio.kr";
 
 export const metadata: Metadata = {
   title: "뷰티 & 헬스케어 글로벌 진출 원스톱 전략 세미나 | 2026",
-  description: "2026.9.8(화) 13:30–18:00 · 서울 섬유센터. 글로벌 TikTok Shop/Amazon 구축·운영·물류·정산·인증까지 한 번에. 선착순 100명.",
+  description: "2026.9.8(화) 13:30–18:00 · 서울 섬유센터. 글로벌 TikTok Shop/Amazon 구축·운영·물류·정산·인증까지 한 번에. 참여자·신청자 전원 「50개국 글로벌 진출 전략」 E-book 제공.",
   openGraph: {
     title: "뷰티 & 헬스케어 글로벌 진출 원스톱 전략 세미나",
     description: "글로벌 TikTok Shop/Amazon — 구축·운영·물류·정산·인증까지. 2026.9.8 서울 섬유센터.",
@@ -49,8 +49,8 @@ function ShukranMark({ className = "" }: { className?: string }) {
 const FACTS: { icon: string; label: string; value: React.ReactNode }[] = [
   { icon: "🗓", label: "일시", value: <>2026년 9월 8일(화)<br />13:30 – 18:00</> },
   { icon: "📍", label: "장소", value: <>{ADDRESS}</> },
-  { icon: "👥", label: "대상 · 규모", value: <>뷰티·헬스케어 브랜드/제조사<br />대표·실무자 <b>100명</b> · 선착순</> },
-  { icon: "🎁", label: "참가 혜택", value: <>「글로벌 진출」 E-book 증정<br />1:1 진출 상담 · 현장 온보딩</> },
+  { icon: "👥", label: "대상", value: <>뷰티·헬스케어 브랜드/제조사<br />대표·실무자 · 사전 등록</> },
+  { icon: "🎁", label: "참가 혜택", value: <>참여자 전원 <b>「50개국 진출 전략」 E-book</b><br />1:1 진출 상담 · 현장 온보딩</> },
 ];
 
 const SESSIONS: { org: string; title: string }[] = [
@@ -65,7 +65,7 @@ const SESSIONS: { org: string; title: string }[] = [
 const GALLERY = [
   { src: "/bhseminar/venue-building.jpg", cap: "섬유센터 (테헤란로 518)" },
   { src: "/bhseminar/venue-lounge.jpg", cap: "17층 스카이 라운지" },
-  { src: "/bhseminar/venue-hall.jpg", cap: "세미나홀 · 100석" },
+  { src: "/bhseminar/venue-hall.jpg", cap: "세미나홀" },
 ];
 
 const REGIONS = [["🇺🇸", "미국"], ["🇻🇳🇹🇭", "동남아"], ["🇸🇦🇦🇪", "중동"], ["🇯🇵", "일본"]];
@@ -115,7 +115,7 @@ export default function BhSeminarPage() {
               <span className="inline-flex items-center rounded-lg bg-white px-3 py-2"><AmazonMark className="text-[16px]" /></span>
             </div>
             <div className="mt-7 flex flex-wrap gap-2">
-              {["2026.9.8(화) 13:30–18:00", "서울 섬유센터 17층", "선착순 100명"].map((c) => (
+              {["2026.9.8(화) 13:30–18:00", "서울 섬유센터 17층", "참여자 전원 E-book 제공"].map((c) => (
                 <span key={c} className="rounded-full border border-white/15 bg-white/5 px-4 py-1.5 text-[12.5px] font-semibold text-slate-200">{c}</span>
               ))}
             </div>
@@ -148,6 +148,19 @@ export default function BhSeminarPage() {
               <div className="mt-1 text-[14px] leading-relaxed">{f.value}</div>
             </div>
           ))}
+        </section>
+
+        {/* E-book 강조 배너 */}
+        <section className="mt-6">
+          <div className="flex flex-col items-start gap-4 rounded-2xl border border-[var(--accent,#ec4899)] bg-[var(--accent-light,#fdf2f8)] p-6 sm:flex-row sm:items-center sm:p-7">
+            <div className="text-[40px] leading-none">📘</div>
+            <div className="flex-1">
+              <div className="text-[12px] font-extrabold uppercase tracking-[2px] text-[var(--accent,#ec4899)]">참여자·신청자 전원 제공</div>
+              <div className="mt-1 text-[19px] font-black leading-snug sm:text-[22px]">「50개국 글로벌 진출 전략」 E-book</div>
+              <div className="mt-1 text-[13.5px] text-[var(--muted,#64748b)]">세미나 종료 후, 참석 여부와 무관하게 <b className="text-[var(--fg,#2d3748)]">신청자 전원</b>에게 발송됩니다.</div>
+            </div>
+            <span className="shrink-0 rounded-full bg-[var(--accent,#ec4899)] px-4 py-2 text-[13px] font-extrabold text-white">전원 무료 제공</span>
+          </div>
         </section>
 
         {/* 글로벌 리치 — 이미지 배경 배너 */}
@@ -195,7 +208,7 @@ export default function BhSeminarPage() {
         <section className="mt-20">
           <div className="text-[12px] font-extrabold uppercase tracking-[3px] text-sky-600">Venue</div>
           <h2 className="mt-2 text-[28px] font-black tracking-tight sm:text-[36px]">프리미엄 행사장</h2>
-          <p className="mt-2 text-[14px] text-[var(--muted,#64748b)]">테헤란로 섬유센터 17층 — 스카이 라운지와 100석 규모 세미나홀.</p>
+          <p className="mt-2 text-[14px] text-[var(--muted,#64748b)]">테헤란로 섬유센터 17층 — 스카이 라운지와 세미나홀.</p>
           <div className="mt-7 grid gap-4 md:grid-cols-3">
             {GALLERY.map((g) => (
               <figure key={g.src} className="group overflow-hidden rounded-2xl ring-1 ring-[var(--border,#e2e8f0)]">
@@ -245,8 +258,8 @@ export default function BhSeminarPage() {
           <div className="pointer-events-none absolute -bottom-24 -left-24 h-72 w-72 rounded-full bg-sky-500 opacity-25 blur-[90px]" />
           <div className="relative">
             <div className="text-[12px] font-extrabold uppercase tracking-[3px] text-pink-300">Register Now</div>
-            <h2 className="mt-3 text-[28px] font-black leading-tight tracking-tight sm:text-[40px]">선착순 100명 · 사전 등록</h2>
-            <p className="mx-auto mt-4 max-w-[560px] text-[15px] leading-relaxed text-slate-300">좌석이 한정되어 조기 마감될 수 있습니다. 지금 온라인 신청서로 등록해 주세요.</p>
+            <h2 className="mt-3 text-[28px] font-black leading-tight tracking-tight sm:text-[40px]">지금 사전 등록하세요</h2>
+            <p className="mx-auto mt-4 max-w-[600px] text-[15px] leading-relaxed text-slate-300">참여자·신청자 <b className="text-white">전원</b>에게 세미나 종료 후 <b className="text-white">「50개국 글로벌 진출 전략」 E-book</b>을 드립니다. 지금 온라인 신청서로 등록해 주세요.</p>
             <div className="mt-7"><Apply big /></div>
             <p className="mt-4 text-[12px] text-slate-500">신청은 외부 온라인 신청서(Google Forms)로 접수됩니다.</p>
           </div>
