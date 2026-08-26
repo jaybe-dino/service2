@@ -7,7 +7,7 @@ import Link from "next/link";
 import PageShell from "@/components/ktrend/PageShell";
 import {
   ShieldCheck, Loader2, ArrowLeft, Upload, Trash2, Send, RefreshCw, Users, Package,
-  Filter, Mail, History, UserCog, Check, X, Play, Inbox, BarChart3, Link2, Save, ChevronDown,
+  Filter, Mail, History, UserCog, Check, X, Play, Inbox, BarChart3, Link2, Save, ChevronDown, LayoutDashboard,
 } from "lucide-react";
 
 /* ── 타입 ── */
@@ -69,6 +69,7 @@ function parseCSV(text: string): Record<string, string>[] {
 }
 
 const TABS = [
+  { k: "dashboard", label: "대시보드", icon: LayoutDashboard },
   { k: "data", label: "데이터", icon: Upload },
   { k: "products", label: "제품·컨셉", icon: Package },
   { k: "creators", label: "크리에이터 필터", icon: Filter },
@@ -84,7 +85,7 @@ type TabKey = (typeof TABS)[number]["k"];
 export default function OcConsole() {
   const [authed, setAuthed] = useState<boolean | null>(null);
   const [u, setU] = useState(""); const [p, setP] = useState(""); const [err, setErr] = useState<string | null>(null);
-  const [tab, setTab] = useState<TabKey>("data");
+  const [tab, setTab] = useState<TabKey>("dashboard");
 
   // 공용 데이터
   const [products, setProducts] = useState<Product[]>([]);
@@ -172,6 +173,7 @@ export default function OcConsole() {
         ))}
       </div>
 
+      {tab === "dashboard" && <DashboardTab go={setTab} />}
       {tab === "data" && <DataTab stat={importStat} onDone={loadAll} />}
       {tab === "products" && <ProductsTab products={products} reload={loadAll} />}
       {tab === "creators" && (
@@ -253,6 +255,115 @@ function MappingCheck() {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+/* ── 대시보드 홈(운영 현황) ── */
+interface Dash {
+  creators: { total: number; with_email: number };
+  campaigns: { total: number; sending: number; done: number; draft: number };
+  funnel: { sent: number; opened: number; clicked: number; queued: number; failed: number };
+  today: { sent: number; dailyLimit: number; dailyRemaining: number };
+  replies: { total: number; new: number };
+  suppression: number;
+  senders: { total: number; active: number; configured: boolean };
+  recentCampaigns: { id: number; name: string; status: string; total: number; sent: number; failed: number; created_at: string; product_name: string | null }[];
+}
+function DashboardTab({ go }: { go: (t: TabKey) => void }) {
+  const [d, setD] = useState<Dash | null>(null);
+  const [busy, setBusy] = useState(false);
+  const load = useCallback(() => { setBusy(true); fetch("/api/admin/oc/dashboard").then((r) => r.json()).then(setD).finally(() => setBusy(false)); }, []);
+  useEffect(() => { load(); }, [load]);
+  const rate = (n: number, dd: number) => (dd ? ((n / dd) * 100).toFixed(1) : "0") + "%";
+  const K = (n: number) => (n >= 1000 ? (n / 1000).toFixed(n >= 10000 ? 0 : 1) + "K" : String(n));
+
+  if (!d) return <div className="kt-card p-8 text-center text-[var(--muted)]"><Loader2 className="mx-auto animate-spin" /></div>;
+
+  const Stat = ({ label, value, sub, tone, onClick }: { label: string; value: React.ReactNode; sub?: string; tone?: string; onClick?: () => void }) => (
+    <button onClick={onClick} disabled={!onClick} className={`kt-card p-4 text-left ${onClick ? "cursor-pointer hover:border-[var(--accent)]" : "cursor-default"}`}>
+      <div className="text-[11px] text-[var(--muted)]">{label}</div>
+      <div className={`mt-1 text-[22px] font-black leading-none ${tone || ""}`}>{value}</div>
+      {sub && <div className="mt-1.5 text-[11px] text-[var(--muted)]">{sub}</div>}
+    </button>
+  );
+
+  return (
+    <div className="space-y-4">
+      {/* 준비 상태 배너 */}
+      {(!d.senders.configured || d.creators.total === 0) && (
+        <div className="kt-card border-amber-200 bg-amber-50 p-4 text-[12.5px] text-amber-800">
+          <b>시작 전 준비</b> —
+          {d.creators.total === 0 && <> 크리에이터 데이터가 없습니다. <button onClick={() => go("data")} className="underline">데이터 업로드</button>.</>}
+          {!d.senders.configured && <> 발신계정(서비스계정)이 설정되지 않았습니다. <button onClick={() => go("senders")} className="underline">발신·안전</button>에서 확인.</>}
+        </div>
+      )}
+
+      {/* 핵심 지표 */}
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+        <Stat label="크리에이터" value={K(d.creators.total)} sub={`이메일 ${K(d.creators.with_email)}`} onClick={() => go("creators")} />
+        <Stat label="캠페인" value={d.campaigns.total} sub={`진행중 ${d.campaigns.sending} · 완료 ${d.campaigns.done}`} onClick={() => go("compose")} />
+        <Stat label="오늘 발송" value={K(d.today.sent)} sub={`잔여 ${K(d.today.dailyRemaining)} / ${K(d.today.dailyLimit)}`} tone="text-[var(--accent)]" />
+        <Stat label="신규 회신" value={d.replies.new} sub={`누적 회신 ${d.replies.total}`} tone={d.replies.new ? "text-emerald-600" : ""} onClick={() => go("inbox")} />
+        <Stat label="발신 메일함" value={`${d.senders.active}/${d.senders.total}`} sub={d.senders.configured ? "SA 설정됨" : "SA 미설정"} tone={d.senders.configured ? "" : "text-rose-500"} onClick={() => go("senders")} />
+        <Stat label="제외목록" value={K(d.suppression)} sub="수신거부·바운스" onClick={() => go("senders")} />
+      </div>
+
+      {/* 퍼널 */}
+      <div className="kt-card p-5">
+        <div className="flex items-center justify-between">
+          <h2 className="text-[14px] font-black">발송 퍼널 (전체 누적)</h2>
+          <div className="flex gap-2">
+            <button onClick={() => go("stats")} className="kt-btn kt-btn-outline px-2.5 py-1 text-[11px]"><BarChart3 size={12} /> 성과 상세</button>
+            <button onClick={load} className="kt-btn kt-btn-outline px-2.5 py-1 text-[11px]"><RefreshCw size={12} className={busy ? "animate-spin" : ""} /></button>
+          </div>
+        </div>
+        <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
+          {[["발송", d.funnel.sent, ""], ["오픈", d.funnel.opened, rate(d.funnel.opened, d.funnel.sent)], ["클릭", d.funnel.clicked, rate(d.funnel.clicked, d.funnel.sent)], ["회신", d.replies.total, rate(d.replies.total, d.funnel.sent)]].map(([a, b, c]) => (
+            <div key={a as string} className="rounded-lg border border-[var(--border)] p-3">
+              <div className="text-[11px] text-[var(--muted)]">{a}</div>
+              <div className="text-[20px] font-black">{Number(b).toLocaleString()}</div>
+              {c && <div className="text-[11px] text-[var(--accent)]">{c}</div>}
+            </div>
+          ))}
+        </div>
+        {(d.funnel.queued > 0 || d.funnel.failed > 0) && <div className="mt-2 text-[11px] text-[var(--muted)]">대기 {d.funnel.queued.toLocaleString()} · 실패 {d.funnel.failed.toLocaleString()}</div>}
+      </div>
+
+      {/* 빠른 실행 + 최근 캠페인 */}
+      <div className="grid gap-4 lg:grid-cols-[260px_1fr]">
+        <div className="kt-card p-5">
+          <h2 className="text-[14px] font-black">빠른 실행</h2>
+          <div className="mt-3 space-y-2">
+            <button onClick={() => go("products")} className="kt-btn kt-btn-outline w-full justify-start px-3 py-2 text-[12px]"><Package size={14} /> 제품·컨셉 등록</button>
+            <button onClick={() => go("creators")} className="kt-btn kt-btn-outline w-full justify-start px-3 py-2 text-[12px]"><Filter size={14} /> 크리에이터 필터·선택</button>
+            <button onClick={() => go("compose")} className="kt-btn kt-btn-primary w-full justify-start px-3 py-2 text-[12px]"><Mail size={14} /> 새 캠페인·발송</button>
+            <button onClick={() => go("inbox")} className="kt-btn kt-btn-outline w-full justify-start px-3 py-2 text-[12px]"><Inbox size={14} /> 회신함 확인{d.replies.new ? ` (${d.replies.new})` : ""}</button>
+          </div>
+        </div>
+        <div className="kt-card p-5">
+          <div className="flex items-center justify-between">
+            <h2 className="text-[14px] font-black">최근 캠페인</h2>
+            <button onClick={() => go("history")} className="text-[11px] text-[var(--muted)] underline">발송이력</button>
+          </div>
+          <div className="mt-3 space-y-2">
+            {d.recentCampaigns.map((c) => {
+              const pct = c.total ? Math.round(((c.sent + c.failed) / c.total) * 100) : 0;
+              return (
+                <div key={c.id} className="rounded-lg border border-[var(--border)] p-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="min-w-0 truncate text-[13px] font-bold">{c.name} {c.product_name && <span className="text-[11px] font-normal text-[var(--muted)]">· {c.product_name}</span>}</div>
+                    <span className={`shrink-0 rounded px-1.5 py-0.5 text-[10px] font-bold ${c.status === "done" ? "bg-emerald-100 text-emerald-700" : c.status === "sending" ? "bg-sky-100 text-sky-700" : "bg-slate-100 text-slate-600"}`}>{c.status}</span>
+                  </div>
+                  <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-slate-100"><div className="h-full rounded-full bg-[var(--accent)]" style={{ width: `${pct}%` }} /></div>
+                  <div className="mt-1 text-[11px] text-[var(--muted)]">총 {c.total.toLocaleString()} · 발송 {c.sent.toLocaleString()} · 실패 {c.failed.toLocaleString()}</div>
+                </div>
+              );
+            })}
+            {!d.recentCampaigns.length && <p className="text-[12px] text-[var(--muted)]">아직 캠페인이 없습니다. <button onClick={() => go("compose")} className="underline">새 캠페인</button></p>}
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
