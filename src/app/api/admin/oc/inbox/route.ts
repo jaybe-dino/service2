@@ -71,13 +71,25 @@ export async function POST(req: Request) {
 
   // 수신거부 의사 감지 키워드
   const UNSUB_RE = /(수신\s*거부|수신\s*동의\s*철회|그만\s*보내|보내지\s*마|unsubscribe|opt[-\s]?out|remove me|stop email|더\s*이상\s*(메일|연락))/i;
+  const msgs = res.msgs || [];
+  // ── 배치 매칭: 발신자 이메일 전체를 한 번에 조회(핸들·캠페인) → 메시지별 개별 쿼리 제거 ──
+  const emails = Array.from(new Set(msgs.map((m) => m.fromEmail).filter(Boolean)));
+  const handleMap = new Map<string, string>();
+  const campMap = new Map<string, number>();
+  if (emails.length) {
+    const crRows = await sql.query(`SELECT handle, lower(email) AS em FROM oc_creators WHERE lower(email) = ANY($1::text[])`, [emails]);
+    for (const r of crRows.rows) if (!handleMap.has(r.em)) handleMap.set(r.em, r.handle);
+    const cmRows = await sql.query(
+      `SELECT DISTINCT ON (to_email) to_email, campaign_id FROM oc_messages
+       WHERE to_email = ANY($1::text[]) ORDER BY to_email, sent_at DESC NULLS LAST`, [emails]);
+    for (const r of cmRows.rows) campMap.set(r.to_email, r.campaign_id);
+  }
+
   let stored = 0, matched = 0, unsub = 0;
-  for (const m of res.msgs || []) {
+  for (const m of msgs) {
     const fromEmail = m.fromEmail;
-    const cr = await sql`SELECT handle FROM oc_creators WHERE lower(email) = ${fromEmail} LIMIT 1`;
-    const handle = cr.rows[0]?.handle || null;
-    const cm = await sql`SELECT campaign_id FROM oc_messages WHERE to_email = ${fromEmail} ORDER BY sent_at DESC NULLS LAST LIMIT 1`;
-    const campaignId = cm.rows[0]?.campaign_id || null;
+    const handle = handleMap.get(fromEmail) || null;
+    const campaignId = campMap.get(fromEmail) || null;
     if (handle || campaignId) matched++;
     const nameMatch = m.from.match(/^\s*"?([^"<]*?)"?\s*</);
     const fromName = nameMatch ? nameMatch[1].trim() : null;

@@ -140,7 +140,8 @@ export async function POST(req: Request) {
     const subject = render(subjectTpl, vars);
     const rawBody = render(c.body, vars);
     const looksHtml = /<[a-z][\s\S]*>/i.test(rawBody);
-    let html = looksHtml ? rawBody : esc(rawBody).replace(/\n/g, "<br>");
+    // 순수 텍스트 본문의 맨 URL을 <a>로 자동 링크화 → 클릭 추적 가능
+    let html = looksHtml ? rawBody : esc(rawBody).replace(/(https?:\/\/[^\s<]+)/g, '<a href="$1">$1</a>').replace(/\n/g, "<br>");
     const text = looksHtml ? undefined : rawBody;
 
     if (dry) {

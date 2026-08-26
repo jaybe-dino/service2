@@ -65,7 +65,10 @@ async function getAccessToken(subject: string, scope: string): Promise<string> {
     body: new URLSearchParams({ grant_type: "urn:ietf:params:oauth:grant-type:jwt-bearer", assertion }),
   });
   const j = (await res.json().catch(() => ({}))) as { access_token?: string; expires_in?: number; error_description?: string; error?: string };
-  if (!res.ok || !j.access_token) throw new Error(`토큰 발급 실패: ${j.error_description || j.error || res.status} (도메인 위임/scope 확인)`);
+  if (!res.ok || !j.access_token) {
+    const scopeName = scope.includes("readonly") ? "gmail.readonly(읽기/회신)" : "gmail.send(발송)";
+    throw new Error(`토큰 발급 실패(${scopeName}): ${j.error_description || j.error || res.status} — Workspace 도메인 위임에 이 scope가 추가돼 있는지 확인하세요.`);
+  }
   tokCache.set(key, { token: j.access_token, exp: now + (j.expires_in || 3600) });
   return j.access_token;
 }
@@ -175,17 +178,23 @@ export async function listInbox(mailbox: string, opts?: { max?: number; query?: 
     const lj = (await listRes.json().catch(() => ({}))) as { messages?: { id: string; threadId: string }[]; error?: { message?: string } };
     if (!listRes.ok) return { ok: false, error: lj.error?.message || `list HTTP ${listRes.status}` };
     const ids = (lj.messages || []).slice(0, max);
-    const msgs: InboxMsg[] = [];
-    for (const { id } of ids) {
+    // 병렬(동시성 제한)로 메시지 상세 조회 — 순차 N+1 제거로 대폭 가속.
+    async function fetchMsg(id: string): Promise<InboxMsg | null> {
       const mRes = await fetch(`${base}/messages/${id}?format=full`, { headers: { Authorization: `Bearer ${token}` } });
       const mj = (await mRes.json().catch(() => ({}))) as { id?: string; threadId?: string; snippet?: string; payload?: GmailPart };
-      if (!mRes.ok) continue;
+      if (!mRes.ok) return null;
       const headers = mj.payload?.headers || [];
       const h = (n: string) => headers.find((x) => x.name.toLowerCase() === n)?.value || "";
       const from = h("From");
       const m = from.match(/<([^>]+)>/);
       const fromEmail = (m ? m[1] : from).trim().toLowerCase();
-      msgs.push({ id: mj.id || id, threadId: mj.threadId, from, fromEmail, subject: h("Subject"), date: h("Date"), snippet: mj.snippet || "", body: extractBody(mj.payload).slice(0, 20000) });
+      return { id: mj.id || id, threadId: mj.threadId, from, fromEmail, subject: h("Subject"), date: h("Date"), snippet: mj.snippet || "", body: extractBody(mj.payload).slice(0, 20000) };
+    }
+    const CONC = 8;
+    const msgs: InboxMsg[] = [];
+    for (let i = 0; i < ids.length; i += CONC) {
+      const batch = await Promise.all(ids.slice(i, i + CONC).map((x) => fetchMsg(x.id).catch(() => null)));
+      for (const m of batch) if (m) msgs.push(m);
     }
     return { ok: true, msgs };
   } catch (e) {
