@@ -70,6 +70,9 @@ const GALLERY = [
 
 const REGIONS = [["🇺🇸", "미국"], ["🇻🇳🇹🇭", "동남아"], ["🇸🇦🇦🇪", "중동"], ["🇯🇵", "일본"]];
 
+// 파트너 (실제 로고 파일 수령 시 <img>로 교체)
+const PARTNERS = ["The Influencer Marketing Factory", "Eastern Air Logistics", "KANTANA", "Ecomobi", "Best Practice Media"];
+
 const MAPS = [
   { label: "네이버 지도", url: "https://map.naver.com/p/search/" + encodeURIComponent("섬유센터 테헤란로 518") },
   { label: "카카오맵", url: "https://map.kakao.com/?q=" + encodeURIComponent("테헤란로 518 섬유센터") },
@@ -294,7 +297,18 @@ export default function BhSeminarPage() {
             {/* 슈크란코리아 — 로고 재현(주황 SHUKRAN + 회색 KOREA) */}
             <ShukranMark className="text-[22px]" />
           </div>
-          <div className="mt-9 text-center text-[12px] text-[var(--muted,#64748b)]">
+
+          {/* 파트너 밴드 */}
+          <div className="mt-12 border-t border-[var(--border,#e2e8f0)] pt-10">
+            <div className="text-center text-[12px] font-bold uppercase tracking-[3px] text-[var(--muted,#64748b)]">Partners · 파트너</div>
+            <div className="mt-7 flex flex-wrap items-center justify-center gap-x-9 gap-y-6 text-slate-500">
+              {PARTNERS.map((p) => (
+                <span key={p} className="text-[15px] font-semibold tracking-tight sm:text-[16px]">{p}</span>
+              ))}
+            </div>
+          </div>
+
+          <div className="mt-11 text-center text-[12px] text-[var(--muted,#64748b)]">
             문의 <a href={`mailto:${CONTACT}`} className="font-semibold text-[var(--accent,#ec4899)]">{CONTACT}</a>
           </div>
         </div>
