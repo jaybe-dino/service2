@@ -258,8 +258,9 @@ export default function BhSeminarPage() {
         <div className="mx-auto max-w-[1180px] px-5 py-12 sm:px-8">
           <div className="text-center text-[12px] font-bold uppercase tracking-[3px] text-[var(--muted,#64748b)]">주관 · 협력</div>
           <div className="mt-7 flex flex-wrap items-center justify-center gap-x-10 gap-y-7">
-            {/* 디노스튜디오 — 텍스트 */}
-            <span className="text-[22px] font-black tracking-tight text-slate-900">DINO<span className="text-[var(--accent,#ec4899)]">STUDIO</span></span>
+            {/* 디노스튜디오 — 로고 이미지 */}
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/bhseminar/logo-dino.png" alt="DINO STUDIO" className="h-11 w-auto object-contain" />
             {/* 전경련 바이오 CEO Club — 텍스트 */}
             <span className="text-[15px] font-bold text-slate-700">전경련 바이오 CEO Club</span>
             {/* SF Express — 로고 이미지 */}
