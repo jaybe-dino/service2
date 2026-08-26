@@ -6,7 +6,7 @@ const CONTACT = "dino_glovek@dinostudio.kr";
 
 export const metadata: Metadata = {
   title: "뷰티 & 헬스케어 글로벌 진출 원스톱 전략 세미나 | 2026",
-  description: "2026.9.8(화) 13:30–18:00 · 서울 섬유센터. 글로벌 TikTok Shop/Amazon 구축·운영·물류·정산·인증까지 한 번에. 참여자·신청자 전원 「50개국 글로벌 진출 전략」 E-book 제공.",
+  description: "2026.9.8(화) 13:00–18:00 · 서울 섬유센터. 글로벌 TikTok Shop/Amazon 구축·운영·물류·정산·인증까지 한 번에. 참여자·신청자 전원 「50개국 글로벌 진출 전략」 E-book 제공.",
   openGraph: {
     title: "뷰티 & 헬스케어 글로벌 진출 원스톱 전략 세미나",
     description: "글로벌 TikTok Shop/Amazon — 구축·운영·물류·정산·인증까지. 2026.9.8 서울 섬유센터.",
@@ -47,7 +47,7 @@ function ShukranMark({ className = "" }: { className?: string }) {
 }
 
 const FACTS: { icon: string; label: string; value: React.ReactNode }[] = [
-  { icon: "🗓", label: "일시", value: <>2026년 9월 8일(화)<br />13:30 – 18:00</> },
+  { icon: "🗓", label: "일시", value: <>2026년 9월 8일(화)<br />13:00 – 18:00</> },
   { icon: "📍", label: "장소", value: <>{ADDRESS}</> },
   { icon: "👥", label: "대상", value: <>뷰티·헬스케어 브랜드/제조사<br />대표·실무자 · 사전 등록</> },
   { icon: "🎁", label: "참가 혜택", value: <>참여자 전원 <b>「50개국 진출 전략」 E-book</b><br />1:1 진출 상담 · 현장 온보딩</> },
@@ -100,12 +100,17 @@ export default function BhSeminarPage() {
             <div className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-3.5 py-1.5 text-[11px] font-extrabold uppercase tracking-[4px] text-pink-300">
               Offline Seminar · 2026
             </div>
-            <h1 className="mt-5 text-[34px] font-black leading-[1.12] tracking-tight sm:text-[54px]">
+            <h1 className="mt-5 text-[38px] font-black leading-[1.08] tracking-tight sm:text-[60px]">
               뷰티 &amp; 헬스케어
               <br className="hidden sm:block" />{" "}
               <span className="bg-gradient-to-r from-pink-400 via-fuchsia-400 to-orange-300 bg-clip-text text-transparent">글로벌 진출</span> 전략 세미나
             </h1>
-            <p className="mt-5 max-w-[540px] text-[16px] leading-relaxed text-slate-300 sm:text-[18.5px]">
+            <p className="mt-5 text-[20px] font-extrabold leading-snug text-white sm:text-[26px]">
+              가장 빠른 글로벌 진출 성공전략 —
+              <br className="hidden sm:block" />{" "}
+              <span className="bg-gradient-to-r from-pink-300 to-orange-200 bg-clip-text text-transparent">정확하게, 그리고 빠르게.</span>
+            </p>
+            <p className="mt-4 max-w-[540px] text-[15px] leading-relaxed text-slate-300 sm:text-[17px]">
               글로벌 <b className="text-white">TikTok Shop · Amazon</b> — 구축 · 운영 · 물류 · 정산 · 인증까지 한 번에.
               지금 해외로 나가려는 브랜드·제조사를 위한 원스톱 실무 전략.
             </p>
@@ -115,7 +120,7 @@ export default function BhSeminarPage() {
               <span className="inline-flex items-center rounded-lg bg-white px-3 py-2"><AmazonMark className="text-[16px]" /></span>
             </div>
             <div className="mt-7 flex flex-wrap gap-2">
-              {["2026.9.8(화) 13:30–18:00", "서울 섬유센터 17층", "참여자 전원 E-book 제공"].map((c) => (
+              {["2026.9.8(화) 13:00–18:00", "서울 섬유센터 17층", "참여자 전원 E-book 제공"].map((c) => (
                 <span key={c} className="rounded-full border border-white/15 bg-white/5 px-4 py-1.5 text-[12.5px] font-semibold text-slate-200">{c}</span>
               ))}
             </div>
