@@ -22,7 +22,7 @@ const OC_CATEGORIES = [{ id: "스킨케어", ko: "스킨케어" }, { id: "메이
 const OC_COUNTRIES = [{ id: "US", ko: "미국", flag: "🇺🇸" }, { id: "TH", ko: "태국", flag: "🇹🇭" }, { id: "VN", ko: "베트남", flag: "🇻🇳" }, { id: "MY", ko: "말레이시아", flag: "🇲🇾" }, { id: "SG", ko: "싱가포르", flag: "🇸🇬" }];
 const COUNTRY_KO: Record<string, string> = Object.fromEntries(OC_COUNTRIES.map((c) => [c.id, `${c.flag} ${c.ko}`]));
 interface Sender { id: number; email: string; display_name: string | null; daily_limit: number; active: boolean; configured: boolean; warmup_start: string | null; }
-interface InboxRow { id: number; mailbox: string; from_email: string; from_name: string | null; subject: string | null; snippet: string | null; body_text: string | null; received_at: string | null; matched_handle: string | null; matched_campaign_id: number | null; status: string; }
+interface InboxRow { id: number; mailbox: string; from_email: string; from_name: string | null; subject: string | null; snippet: string | null; body_text: string | null; received_at: string | null; matched_handle: string | null; matched_campaign_id: number | null; status: string; is_bounce: boolean; }
 interface Campaign { id: number; name: string; status: string; total: number; sent: number; failed: number; created_at: string; product_name: string | null; sender_email: string | null; }
 interface CreatorRow { handle: string; email: string | null; avg_views: number | null; total_views: number | null; videos: number | null; brands: string | null; region: string | null; }
 interface MsgRow { id: number; handle: string | null; to_email: string; status: string; error: string | null; subject: string | null; sent_at: string | null; }
@@ -1155,6 +1155,8 @@ function InboxTab({ senders }: { senders: Sender[] }) {
   const [camp, setCamp] = useState<CampReply[]>([]);
   const [mail, setMail] = useState<MailReply[]>([]);
   const [open, setOpen] = useState<number | null>(null);
+  const [hideBounce, setHideBounce] = useState(true);
+  const [draft, setDraft] = useState<{ id: number; subject: string; body: string; busy: boolean; sent?: boolean } | null>(null);
   const inp = "rounded-md border border-[var(--border)] px-3 py-2 text-[12px] outline-none focus:border-[var(--accent)]";
 
   const load = useCallback((mb: string, st: string) => {
@@ -1163,6 +1165,22 @@ function InboxTab({ senders }: { senders: Sender[] }) {
     if (st) qs.set("status", st);
     fetch(`/api/admin/oc/inbox?${qs}`).then((r) => r.json()).then((j) => setRows(j.rows || [])).catch(() => {});
   }, []);
+
+  async function genDraft(id: number) {
+    setDraft({ id, subject: "", body: "", busy: true });
+    const r = await fetch("/api/admin/oc/reply-draft", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id }) });
+    const j = await r.json();
+    if (r.ok) setDraft({ id, subject: j.subject || "Re:", body: j.draft, busy: false });
+    else { setDraft(null); alert("초안 실패: " + (j.error || "")); }
+  }
+  async function sendReply() {
+    if (!draft || !draft.body.trim()) return;
+    setDraft({ ...draft, busy: true });
+    const r = await fetch("/api/admin/oc/inbox", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "sendReply", id: draft.id, subject: draft.subject, body: draft.body }) });
+    const j = await r.json();
+    if (r.ok) { setDraft({ ...draft, busy: false, sent: true }); load(mailbox, status); loadSummary(); }
+    else { setDraft({ ...draft, busy: false }); alert("발송 실패: " + (j.error || "")); }
+  }
   const loadSummary = useCallback(() => {
     fetch("/api/admin/oc/inbox?summary=1").then((r) => r.json()).then((j) => { setCamp(j.perCampaign || []); setMail(j.perMailbox || []); }).catch(() => {});
   }, []);
@@ -1244,7 +1262,8 @@ function InboxTab({ senders }: { senders: Sender[] }) {
             <option value="new">신규</option><option value="handled">처리완료</option><option value="ignored">무시</option>
           </select>
           <button onClick={sync} disabled={busy || !mailbox} className="kt-btn kt-btn-primary px-3 py-1.5 text-[11px]">{busy ? <Loader2 size={12} className="animate-spin" /> : <RefreshCw size={12} />} 최근 30일 동기화</button>
-          <span className="text-[11px] text-[var(--muted)]">{rows.length}건</span>
+          <label className="flex items-center gap-1.5 text-[11px] text-[var(--muted)]"><input type="checkbox" checked={hideBounce} onChange={(e) => setHideBounce(e.target.checked)} /> 반송·시스템 메일 숨기기</label>
+          <span className="text-[11px] text-[var(--muted)]">{rows.filter((r) => !hideBounce || !r.is_bounce).length}건</span>
         </div>
         {msg && <p className="mt-2 text-[12px] font-semibold text-[var(--accent)]">{msg}</p>}
         <div className="mt-3 max-h-[520px] overflow-auto rounded-lg border border-[var(--border)]">
@@ -1253,11 +1272,15 @@ function InboxTab({ senders }: { senders: Sender[] }) {
               <tr><th className="px-2 py-1.5 w-6"></th><th className="px-2 py-1.5">상태</th><th className="px-2 py-1.5">보낸사람</th><th className="px-2 py-1.5">제목</th><th className="px-2 py-1.5">내용</th><th className="px-2 py-1.5">매칭</th><th className="px-2 py-1.5">처리</th></tr>
             </thead>
             <tbody>
-              {rows.map((m) => (
+              {rows.filter((r) => !hideBounce || !r.is_bounce).map((m) => (
                 <Fragment key={m.id}>
-                <tr className="border-t border-[var(--border)] align-top">
+                <tr className={`border-t border-[var(--border)] align-top ${m.is_bounce ? "opacity-60" : ""}`}>
                   <td className="px-2 py-1.5"><button onClick={() => setOpen(open === m.id ? null : m.id)} className="text-slate-400 hover:text-[var(--accent)]"><ChevronDown size={13} className={open === m.id ? "rotate-180 transition" : "transition"} /></button></td>
-                  <td className="px-2 py-1.5"><span className={`rounded px-1.5 py-0.5 text-[10px] font-bold ${sc[m.status] || ""}`}>{m.status === "new" ? "신규" : m.status === "handled" ? "완료" : "무시"}</span></td>
+                  <td className="px-2 py-1.5">
+                    {m.is_bounce
+                      ? <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-bold text-slate-500">반송</span>
+                      : <span className={`rounded px-1.5 py-0.5 text-[10px] font-bold ${sc[m.status] || ""}`}>{m.status === "new" ? "신규" : m.status === "handled" ? "완료" : "무시"}</span>}
+                  </td>
                   <td className="px-2 py-1.5"><div className="font-medium">{m.from_name || "—"}</div><div className="text-[var(--muted)]">{m.from_email}</div></td>
                   <td className="cursor-pointer px-2 py-1.5 max-w-[180px]" onClick={() => setOpen(open === m.id ? null : m.id)}>{m.subject || "—"}</td>
                   <td className="px-2 py-1.5 max-w-[240px] text-[var(--muted)]">{m.snippet || ""}</td>
@@ -1268,8 +1291,8 @@ function InboxTab({ senders }: { senders: Sender[] }) {
                   </td>
                   <td className="px-2 py-1.5">
                     <div className="flex gap-1">
+                      {!m.is_bounce && <button onClick={() => { setOpen(m.id); genDraft(m.id); }} className="rounded bg-[var(--accent-light)] px-1.5 py-0.5 text-[10px] font-bold text-[var(--accent)] hover:opacity-80">🤖 답장</button>}
                       {m.status !== "handled" && <button onClick={() => setRowStatus(m.id, "handled")} className="rounded bg-emerald-50 px-1.5 py-0.5 text-[10px] font-bold text-emerald-700 hover:bg-emerald-100">완료</button>}
-                      {m.status !== "new" && <button onClick={() => setRowStatus(m.id, "new")} className="rounded bg-amber-50 px-1.5 py-0.5 text-[10px] font-bold text-amber-700 hover:bg-amber-100">신규</button>}
                       {m.status !== "ignored" && <button onClick={() => setRowStatus(m.id, "ignored")} className="rounded bg-slate-50 px-1.5 py-0.5 text-[10px] text-slate-500 hover:bg-slate-100">무시</button>}
                     </div>
                   </td>
@@ -1277,7 +1300,31 @@ function InboxTab({ senders }: { senders: Sender[] }) {
                 {open === m.id && (
                   <tr className="border-t border-[var(--border)] bg-slate-50/60"><td colSpan={7} className="px-4 py-3">
                     <div className="text-[11px] text-[var(--muted)]">{m.received_at}</div>
-                    <div className="mt-1 whitespace-pre-wrap break-words text-[12px] text-[var(--fg)]">{m.body_text || m.snippet || "(본문 없음)"}</div>
+                    <div className="mt-1 max-h-52 overflow-auto whitespace-pre-wrap break-words text-[12px] text-[var(--fg)]">{m.body_text || m.snippet || "(본문 없음)"}</div>
+                    {/* AI 답장 초안 */}
+                    {!m.is_bounce && (
+                      <div className="mt-3 rounded-lg border border-[var(--accent)] bg-white p-3">
+                        <div className="flex items-center justify-between">
+                          <div className="text-[12px] font-bold text-[var(--accent)]">🤖 AI 답장</div>
+                          {draft?.id !== m.id && <button onClick={() => genDraft(m.id)} className="kt-btn kt-btn-outline px-2.5 py-1 text-[11px]">답장 초안 생성</button>}
+                        </div>
+                        {draft?.id === m.id && (
+                          draft.busy && !draft.body
+                            ? <div className="mt-2 flex items-center gap-2 text-[12px] text-[var(--muted)]"><Loader2 size={13} className="animate-spin" /> 초안 생성 중…</div>
+                            : draft.sent
+                              ? <div className="mt-2 text-[12px] font-semibold text-emerald-600">✓ 답장을 보냈습니다 · 상태 완료 처리됨</div>
+                              : <div className="mt-2 space-y-2">
+                                  <input className={`${inp} w-full`} value={draft.subject} onChange={(e) => setDraft({ ...draft, subject: e.target.value })} placeholder="제목" />
+                                  <textarea className={`${inp} w-full`} rows={7} value={draft.body} onChange={(e) => setDraft({ ...draft, body: e.target.value })} />
+                                  <div className="flex gap-2">
+                                    <button onClick={sendReply} disabled={draft.busy} className="kt-btn kt-btn-primary px-3 py-1.5 text-[11px]">{draft.busy ? "보내는 중…" : "답장 보내기"}</button>
+                                    <button onClick={() => genDraft(m.id)} disabled={draft.busy} className="kt-btn kt-btn-outline px-3 py-1.5 text-[11px]">다시 생성</button>
+                                    <button onClick={() => { navigator.clipboard?.writeText(draft.body); }} className="kt-btn kt-btn-outline px-3 py-1.5 text-[11px]">복사</button>
+                                  </div>
+                                </div>
+                        )}
+                      </div>
+                    )}
                   </td></tr>
                 )}
                 </Fragment>

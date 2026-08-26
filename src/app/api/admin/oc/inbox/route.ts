@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { isAdminAuthed } from "@/lib/admin-auth";
 import { sql, isConfigured, ensureSchema } from "@/lib/db";
-import { listInbox } from "@/lib/gmail";
+import { listInbox, sendViaSender } from "@/lib/gmail";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -50,7 +50,7 @@ export async function GET(req: Request) {
 // POST { mailbox } 동기화  또는  { action:'setStatus', id, status }
 export async function POST(req: Request) {
   const g = await guard(); if (g) return g;
-  const b = (await req.json().catch(() => ({}))) as { mailbox?: string; max?: number; action?: string; id?: number; status?: string };
+  const b = (await req.json().catch(() => ({}))) as { mailbox?: string; max?: number; action?: string; id?: number; status?: string; subject?: string; body?: string };
 
   if (b.action === "setStatus") {
     const id = Number(b.id);
@@ -58,6 +58,25 @@ export async function POST(req: Request) {
     if (!id || !["new", "handled", "ignored"].includes(status)) return NextResponse.json({ error: "id/status 오류" }, { status: 400 });
     await sql`UPDATE oc_inbox SET status = ${status} WHERE id = ${id}`;
     return NextResponse.json({ ok: true });
+  }
+
+  // 답장 보내기 — 해당 메일함 명의로 발신 후 상태 handled
+  if (b.action === "sendReply") {
+    const id = Number(b.id);
+    const subject = String(b.subject || "").trim();
+    const body = String(b.body || "").trim();
+    if (!id || !body) return NextResponse.json({ error: "id/body 필요" }, { status: 400 });
+    const row = (await sql`SELECT i.mailbox, i.from_email, s.display_name
+      FROM oc_inbox i LEFT JOIN oc_senders s ON s.email = i.mailbox WHERE i.id = ${id}`).rows[0];
+    if (!row) return NextResponse.json({ error: "회신 없음" }, { status: 404 });
+    const looksHtml = /<[a-z][\s\S]*>/i.test(body);
+    const html = looksHtml ? body : body.replace(/(https?:\/\/[^\s<]+)/g, '<a href="$1">$1</a>').replace(/\n/g, "<br>");
+    const r = await sendViaSender({ email: row.mailbox, display_name: row.display_name }, {
+      to: row.from_email, subject: subject || "Re:", html, text: looksHtml ? undefined : body,
+    });
+    if (!r.ok) return NextResponse.json({ error: r.error || "발송 실패" }, { status: 400 });
+    await sql`UPDATE oc_inbox SET status = 'handled' WHERE id = ${id}`;
+    return NextResponse.json({ ok: true, id: r.id });
   }
 
   const mailbox = String(b.mailbox || "").trim().toLowerCase();
@@ -97,10 +116,12 @@ export async function POST(req: Request) {
     const nameMatch = m.from.match(/^\s*"?([^"<]*?)"?\s*</);
     const fromName = nameMatch ? nameMatch[1].trim() : null;
     const isUnsub = UNSUB_RE.test((m.subject || "") + " " + (m.body || ""));
-    const r = await sql`INSERT INTO oc_inbox (mailbox, msg_id, thread_id, from_email, from_name, subject, snippet, body_text, received_at, matched_handle, matched_campaign_id, status)
-      VALUES (${mailbox}, ${m.id}, ${m.threadId || null}, ${fromEmail}, ${fromName}, ${m.subject || null}, ${m.snippet || null}, ${m.body || null}, ${m.date || null}, ${handle}, ${campaignId}, ${isUnsub ? "new" : "new"})
+    // 반송/시스템 메일 분류(회신 아님)
+    const isBounce = /mailer-daemon|postmaster|no-?reply|mail delivery|delivery status notification|undeliverable|delivery failure|returned mail|rejected/i.test(fromEmail + " " + (m.subject || ""));
+    const r = await sql`INSERT INTO oc_inbox (mailbox, msg_id, thread_id, from_email, from_name, subject, snippet, body_text, received_at, matched_handle, matched_campaign_id, status, is_bounce)
+      VALUES (${mailbox}, ${m.id}, ${m.threadId || null}, ${fromEmail}, ${fromName}, ${m.subject || null}, ${m.snippet || null}, ${m.body || null}, ${m.date || null}, ${handle}, ${campaignId}, 'new', ${isBounce})
       ON CONFLICT (mailbox, msg_id) DO UPDATE SET
-        matched_handle = EXCLUDED.matched_handle, matched_campaign_id = EXCLUDED.matched_campaign_id, body_text = EXCLUDED.body_text
+        matched_handle = EXCLUDED.matched_handle, matched_campaign_id = EXCLUDED.matched_campaign_id, body_text = EXCLUDED.body_text, is_bounce = EXCLUDED.is_bounce
       RETURNING (xmax = 0) AS inserted`;
     if (r.rows[0]?.inserted) stored++;
     // 수신거부 → 제외목록 자동 등록(재발송 방지)

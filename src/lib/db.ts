@@ -619,6 +619,7 @@ export function ensureSchema(): Promise<void> {
       await sql`ALTER TABLE oc_campaigns ADD COLUMN IF NOT EXISTS sender_ids int[]`;
       await sql`ALTER TABLE oc_inbox ADD COLUMN IF NOT EXISTS status text NOT NULL DEFAULT 'new'`; // new|handled|ignored
       await sql`ALTER TABLE oc_inbox ADD COLUMN IF NOT EXISTS body_text text`; // 회신 본문 전체
+      await sql`ALTER TABLE oc_inbox ADD COLUMN IF NOT EXISTS is_bounce boolean NOT NULL DEFAULT false`; // 반송/시스템 메일 분류
       // 발송 제외 목록(수신거부·바운스·스팸신고) — 재발송 방지
       await sql`CREATE TABLE IF NOT EXISTS oc_suppression (
         email text PRIMARY KEY,
