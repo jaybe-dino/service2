@@ -170,7 +170,8 @@ export async function listInbox(mailbox: string, opts?: { max?: number; query?: 
   if (!EMAIL_RE.test(mailbox)) return { ok: false, error: "메일함 형식 오류" };
   if (!saConfigured()) return { ok: false, error: "GOOGLE_SA_KEY_JSON 미설정" };
   const max = Math.min(Math.max(1, opts?.max || 50), 200);
-  const q = opts?.query || "newer_than:30d -in:spam -in:trash";
+  // in:inbox = 받은편지함만(보낸편지함/스팸/휴지통 제외) → 실제 회신만 조회
+  const q = opts?.query || "newer_than:30d in:inbox";
   try {
     const token = await getAccessToken(mailbox, SCOPE_READ);
     const base = `https://gmail.googleapis.com/gmail/v1/users/${encodeURIComponent(mailbox)}`;

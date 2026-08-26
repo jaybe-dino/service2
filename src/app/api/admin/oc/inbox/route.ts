@@ -68,6 +68,8 @@ export async function POST(req: Request) {
 
   const res = await listInbox(mailbox, { max: Math.min(Math.max(1, Number(b.max) || 80), 200) });
   if (!res.ok) return NextResponse.json({ error: res.error }, { status: 400 });
+  // 과거 동기화에서 잘못 적재된 '내가 보낸 메일'(보낸편지함) 정리
+  await sql`DELETE FROM oc_inbox WHERE mailbox = ${mailbox} AND from_email = ${mailbox}`;
 
   // 수신거부 의사 감지 키워드
   const UNSUB_RE = /(수신\s*거부|수신\s*동의\s*철회|그만\s*보내|보내지\s*마|unsubscribe|opt[-\s]?out|remove me|stop email|더\s*이상\s*(메일|연락))/i;
@@ -88,6 +90,7 @@ export async function POST(req: Request) {
   let stored = 0, matched = 0, unsub = 0;
   for (const m of msgs) {
     const fromEmail = m.fromEmail;
+    if (!fromEmail || fromEmail === mailbox) continue; // 내가 보낸 메일 제외
     const handle = handleMap.get(fromEmail) || null;
     const campaignId = campMap.get(fromEmail) || null;
     if (handle || campaignId) matched++;
