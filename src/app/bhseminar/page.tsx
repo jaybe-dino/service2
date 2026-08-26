@@ -70,8 +70,14 @@ const GALLERY = [
 
 const REGIONS = [["🇺🇸", "미국"], ["🇻🇳🇹🇭", "동남아"], ["🇸🇦🇦🇪", "중동"], ["🇯🇵", "일본"]];
 
-// 파트너 (실제 로고 파일 수령 시 <img>로 교체)
-const PARTNERS = ["The Influencer Marketing Factory", "Eastern Air Logistics", "KANTANA", "Ecomobi", "Best Practice Media"];
+// 파트너 — 브랜드 색상 워드마크(실제 로고 파일 수령 시 <img>로 교체)
+const PARTNER_MARKS: { key: string; node: React.ReactNode }[] = [
+  { key: "imf", node: <span className="text-[12px] font-black uppercase leading-[1.1] tracking-tight text-[#E6007E]">The Influencer<br />Marketing Factory</span> },
+  { key: "eal", node: <span className="text-[16px] font-black tracking-tight"><span className="text-[#0a7ec0]">EASTERN AIR</span> <span className="text-[#8dc63f]">LOGISTICS</span></span> },
+  { key: "kantana", node: <span className="text-[18px] font-black tracking-tight text-[#0b3b8c]">KANTANA</span> },
+  { key: "ecomobi", node: <span className="inline-flex flex-col items-center leading-none"><span className="text-[17px] font-black tracking-tight text-slate-800">ECOM<span className="text-[#f5333f]">O</span>BI</span><span className="mt-0.5 text-[8px] text-slate-500">Do the right thing</span></span> },
+  { key: "bpm", node: <span style={{ fontFamily: "Georgia, 'Times New Roman', serif" }} className="text-[16px] font-bold tracking-wide text-slate-900">BEST PRACTICE <span className="text-[11px] tracking-[0.25em]">MEDIA</span></span> },
+];
 
 const MAPS = [
   { label: "네이버 지도", url: "https://map.naver.com/p/search/" + encodeURIComponent("섬유센터 테헤란로 518") },
@@ -301,9 +307,9 @@ export default function BhSeminarPage() {
           {/* 파트너 밴드 */}
           <div className="mt-12 border-t border-[var(--border,#e2e8f0)] pt-10">
             <div className="text-center text-[12px] font-bold uppercase tracking-[3px] text-[var(--muted,#64748b)]">Partners · 파트너</div>
-            <div className="mt-7 flex flex-wrap items-center justify-center gap-x-9 gap-y-6 text-slate-500">
-              {PARTNERS.map((p) => (
-                <span key={p} className="text-[15px] font-semibold tracking-tight sm:text-[16px]">{p}</span>
+            <div className="mt-7 flex flex-wrap items-center justify-center gap-x-10 gap-y-7">
+              {PARTNER_MARKS.map((p) => (
+                <span key={p.key} className="inline-flex items-center">{p.node}</span>
               ))}
             </div>
           </div>
