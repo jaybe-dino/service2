@@ -185,7 +185,7 @@ export async function listInbox(mailbox: string, opts?: { max?: number; query?: 
       const mj = (await mRes.json().catch(() => ({}))) as { id?: string; threadId?: string; snippet?: string; payload?: GmailPart };
       if (!mRes.ok) return null;
       const headers = mj.payload?.headers || [];
-      const h = (n: string) => headers.find((x) => x.name.toLowerCase() === n)?.value || "";
+      const h = (n: string) => headers.find((x) => x.name.toLowerCase() === n.toLowerCase())?.value || "";
       const from = h("From");
       const m = from.match(/<([^>]+)>/);
       const fromEmail = (m ? m[1] : from).trim().toLowerCase();

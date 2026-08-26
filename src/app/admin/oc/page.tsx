@@ -7,7 +7,7 @@ import Link from "next/link";
 import PageShell from "@/components/ktrend/PageShell";
 import {
   ShieldCheck, Loader2, ArrowLeft, Upload, Trash2, Send, RefreshCw, Users, Package,
-  Filter, Mail, History, UserCog, Check, X, Play, Inbox, BarChart3, Link2, Save, ChevronDown, LayoutDashboard,
+  Filter, Mail, History, UserCog, Check, X, Play, Inbox, BarChart3, Link2, Save, LayoutDashboard,
 } from "lucide-react";
 
 /* ── 타입 ── */
@@ -1200,7 +1200,8 @@ function InboxTab({ senders }: { senders: Sender[] }) {
     setRows((prev) => prev.map((x) => (x.id === id ? { ...x, status: st } : x)));
     loadSummary();
   }
-  const sc: Record<string, string> = { new: "bg-amber-100 text-amber-700", handled: "bg-emerald-100 text-emerald-700", ignored: "bg-slate-100 text-slate-500" };
+  const visible = rows.filter((r) => !hideBounce || !r.is_bounce);
+  const selected = open ? rows.find((r) => r.id === open) || null : null;
 
   return (
     <div className="space-y-4">
@@ -1250,8 +1251,8 @@ function InboxTab({ senders }: { senders: Sender[] }) {
         </div>
       </div>
 
-      {/* 회신 목록 + 상태 관리 */}
-      <div className="kt-card p-5">
+      {/* 수신함 — 2단(목록 / 본문·컨텍스트·AI답장) */}
+      <div className="kt-card p-4">
         <div className="flex flex-wrap items-center gap-2">
           <select className={inp} value={mailbox} onChange={(e) => setMailbox(e.target.value)}>
             <option value="">전체 메일함</option>
@@ -1262,75 +1263,88 @@ function InboxTab({ senders }: { senders: Sender[] }) {
             <option value="new">신규</option><option value="handled">처리완료</option><option value="ignored">무시</option>
           </select>
           <button onClick={sync} disabled={busy || !mailbox} className="kt-btn kt-btn-primary px-3 py-1.5 text-[11px]">{busy ? <Loader2 size={12} className="animate-spin" /> : <RefreshCw size={12} />} 최근 30일 동기화</button>
-          <label className="flex items-center gap-1.5 text-[11px] text-[var(--muted)]"><input type="checkbox" checked={hideBounce} onChange={(e) => setHideBounce(e.target.checked)} /> 반송·시스템 메일 숨기기</label>
-          <span className="text-[11px] text-[var(--muted)]">{rows.filter((r) => !hideBounce || !r.is_bounce).length}건</span>
+          <label className="flex items-center gap-1.5 text-[11px] text-[var(--muted)]"><input type="checkbox" checked={hideBounce} onChange={(e) => setHideBounce(e.target.checked)} /> 반송 숨기기</label>
+          <span className="text-[11px] text-[var(--muted)]">{visible.length}건</span>
         </div>
         {msg && <p className="mt-2 text-[12px] font-semibold text-[var(--accent)]">{msg}</p>}
-        <div className="mt-3 max-h-[520px] overflow-auto rounded-lg border border-[var(--border)]">
-          <table className="w-full text-[11.5px]">
-            <thead className="sticky top-0 bg-slate-50 text-left text-[var(--muted)]">
-              <tr><th className="px-2 py-1.5 w-6"></th><th className="px-2 py-1.5">상태</th><th className="px-2 py-1.5">보낸사람</th><th className="px-2 py-1.5">제목</th><th className="px-2 py-1.5">내용</th><th className="px-2 py-1.5">매칭</th><th className="px-2 py-1.5">처리</th></tr>
-            </thead>
-            <tbody>
-              {rows.filter((r) => !hideBounce || !r.is_bounce).map((m) => (
-                <Fragment key={m.id}>
-                <tr className={`border-t border-[var(--border)] align-top ${m.is_bounce ? "opacity-60" : ""}`}>
-                  <td className="px-2 py-1.5"><button onClick={() => setOpen(open === m.id ? null : m.id)} className="text-slate-400 hover:text-[var(--accent)]"><ChevronDown size={13} className={open === m.id ? "rotate-180 transition" : "transition"} /></button></td>
-                  <td className="px-2 py-1.5">
-                    {m.is_bounce
-                      ? <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-bold text-slate-500">반송</span>
-                      : <span className={`rounded px-1.5 py-0.5 text-[10px] font-bold ${sc[m.status] || ""}`}>{m.status === "new" ? "신규" : m.status === "handled" ? "완료" : "무시"}</span>}
-                  </td>
-                  <td className="px-2 py-1.5"><div className="font-medium">{m.from_name || "—"}</div><div className="text-[var(--muted)]">{m.from_email}</div></td>
-                  <td className="cursor-pointer px-2 py-1.5 max-w-[180px]" onClick={() => setOpen(open === m.id ? null : m.id)}>{m.subject || "—"}</td>
-                  <td className="px-2 py-1.5 max-w-[240px] text-[var(--muted)]">{m.snippet || ""}</td>
-                  <td className="px-2 py-1.5">
-                    {m.matched_handle && <span className="rounded bg-emerald-100 px-1.5 py-0.5 text-[10px] font-bold text-emerald-700">@{m.matched_handle}</span>}
-                    {m.matched_campaign_id && <span className="ml-1 rounded bg-sky-100 px-1.5 py-0.5 text-[10px] font-bold text-sky-700">#{m.matched_campaign_id}</span>}
-                    {!m.matched_handle && !m.matched_campaign_id && <span className="text-slate-400">—</span>}
-                  </td>
-                  <td className="px-2 py-1.5">
-                    <div className="flex gap-1">
-                      {!m.is_bounce && <button onClick={() => { setOpen(m.id); genDraft(m.id); }} className="rounded bg-[var(--accent-light)] px-1.5 py-0.5 text-[10px] font-bold text-[var(--accent)] hover:opacity-80">🤖 답장</button>}
-                      {m.status !== "handled" && <button onClick={() => setRowStatus(m.id, "handled")} className="rounded bg-emerald-50 px-1.5 py-0.5 text-[10px] font-bold text-emerald-700 hover:bg-emerald-100">완료</button>}
-                      {m.status !== "ignored" && <button onClick={() => setRowStatus(m.id, "ignored")} className="rounded bg-slate-50 px-1.5 py-0.5 text-[10px] text-slate-500 hover:bg-slate-100">무시</button>}
-                    </div>
-                  </td>
-                </tr>
-                {open === m.id && (
-                  <tr className="border-t border-[var(--border)] bg-slate-50/60"><td colSpan={7} className="px-4 py-3">
-                    <div className="text-[11px] text-[var(--muted)]">{m.received_at}</div>
-                    <div className="mt-1 max-h-52 overflow-auto whitespace-pre-wrap break-words text-[12px] text-[var(--fg)]">{m.body_text || m.snippet || "(본문 없음)"}</div>
-                    {/* AI 답장 초안 */}
-                    {!m.is_bounce && (
-                      <div className="mt-3 rounded-lg border border-[var(--accent)] bg-white p-3">
-                        <div className="flex items-center justify-between">
-                          <div className="text-[12px] font-bold text-[var(--accent)]">🤖 AI 답장</div>
-                          {draft?.id !== m.id && <button onClick={() => genDraft(m.id)} className="kt-btn kt-btn-outline px-2.5 py-1 text-[11px]">답장 초안 생성</button>}
-                        </div>
-                        {draft?.id === m.id && (
-                          draft.busy && !draft.body
-                            ? <div className="mt-2 flex items-center gap-2 text-[12px] text-[var(--muted)]"><Loader2 size={13} className="animate-spin" /> 초안 생성 중…</div>
-                            : draft.sent
-                              ? <div className="mt-2 text-[12px] font-semibold text-emerald-600">✓ 답장을 보냈습니다 · 상태 완료 처리됨</div>
-                              : <div className="mt-2 space-y-2">
-                                  <input className={`${inp} w-full`} value={draft.subject} onChange={(e) => setDraft({ ...draft, subject: e.target.value })} placeholder="제목" />
-                                  <textarea className={`${inp} w-full`} rows={7} value={draft.body} onChange={(e) => setDraft({ ...draft, body: e.target.value })} />
-                                  <div className="flex gap-2">
-                                    <button onClick={sendReply} disabled={draft.busy} className="kt-btn kt-btn-primary px-3 py-1.5 text-[11px]">{draft.busy ? "보내는 중…" : "답장 보내기"}</button>
-                                    <button onClick={() => genDraft(m.id)} disabled={draft.busy} className="kt-btn kt-btn-outline px-3 py-1.5 text-[11px]">다시 생성</button>
-                                    <button onClick={() => { navigator.clipboard?.writeText(draft.body); }} className="kt-btn kt-btn-outline px-3 py-1.5 text-[11px]">복사</button>
-                                  </div>
-                                </div>
-                        )}
-                      </div>
-                    )}
-                  </td></tr>
+
+        <div className="mt-3 grid gap-3 lg:grid-cols-[340px_1fr]">
+          {/* 좌: 메일 목록 */}
+          <div className="max-h-[560px] overflow-auto rounded-lg border border-[var(--border)]">
+            {visible.map((m) => (
+              <button key={m.id} onClick={() => { setOpen(m.id); setDraft(null); }}
+                className={`block w-full border-b border-[var(--border)] px-3 py-2.5 text-left ${open === m.id ? "bg-[var(--accent-light)]" : "hover:bg-slate-50"}`}>
+                <div className="flex items-center justify-between gap-2">
+                  <div className="truncate text-[12px] font-bold">{m.from_name || m.from_email || "—"}</div>
+                  <div className="flex shrink-0 items-center gap-1">
+                    {m.is_bounce && <span className="rounded bg-slate-100 px-1 text-[9px] font-bold text-slate-500">반송</span>}
+                    {m.status === "new" && !m.is_bounce && <span className="h-1.5 w-1.5 rounded-full bg-[var(--accent)]" />}
+                  </div>
+                </div>
+                <div className="truncate text-[11.5px] text-[var(--fg)]">{m.subject || "(제목 없음)"}</div>
+                <div className="truncate text-[11px] text-[var(--muted)]">{m.snippet || ""}</div>
+                <div className="mt-0.5 flex items-center gap-1 text-[10px] text-[var(--muted)]">
+                  {m.matched_campaign_id && <span className="rounded bg-sky-100 px-1 font-bold text-sky-700">#{m.matched_campaign_id}</span>}
+                  {m.matched_handle && <span className="rounded bg-emerald-100 px-1 font-bold text-emerald-700">@{m.matched_handle}</span>}
+                  <span className="ml-auto">{(m.received_at || "").slice(0, 22)}</span>
+                </div>
+              </button>
+            ))}
+            {!visible.length && <div className="p-6 text-center text-[12px] text-[var(--muted)]">메일함을 선택하고 [동기화]하세요.</div>}
+          </div>
+
+          {/* 우: 본문 + 컨텍스트 + AI 답장 */}
+          <div className="min-h-[300px] rounded-lg border border-[var(--border)] p-4">
+            {!selected ? (
+              <div className="grid h-full min-h-[260px] place-items-center text-[13px] text-[var(--muted)]">왼쪽에서 메일을 선택하세요.</div>
+            ) : (
+              <div>
+                <div className="flex items-start justify-between gap-2">
+                  <div>
+                    <div className="text-[15px] font-black">{selected.subject || "(제목 없음)"}</div>
+                    <div className="mt-0.5 text-[12px] text-[var(--muted)]">{selected.from_name ? `${selected.from_name} · ` : ""}{selected.from_email} → {selected.mailbox}</div>
+                    <div className="text-[11px] text-[var(--muted)]">{selected.received_at}</div>
+                  </div>
+                  <div className="flex shrink-0 gap-1">
+                    {selected.status !== "handled" && <button onClick={() => setRowStatus(selected.id, "handled")} className="rounded bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-700">완료</button>}
+                    {selected.status !== "ignored" && <button onClick={() => setRowStatus(selected.id, "ignored")} className="rounded bg-slate-50 px-2 py-0.5 text-[10px] text-slate-500">무시</button>}
+                  </div>
+                </div>
+                {(selected.matched_campaign_id || selected.matched_handle) && (
+                  <div className="mt-2 flex flex-wrap gap-1.5 text-[10px]">
+                    {selected.matched_campaign_id && <span className="rounded bg-sky-100 px-1.5 py-0.5 font-bold text-sky-700">캠페인 #{selected.matched_campaign_id}</span>}
+                    {selected.matched_handle && <span className="rounded bg-emerald-100 px-1.5 py-0.5 font-bold text-emerald-700">@{selected.matched_handle}</span>}
+                  </div>
                 )}
-                </Fragment>
-              ))}
-            </tbody>
-          </table>
+                <div className="mt-3 max-h-64 overflow-auto whitespace-pre-wrap break-words rounded-md bg-slate-50 p-3 text-[12.5px] leading-relaxed">{selected.body_text || selected.snippet || "(본문 없음)"}</div>
+
+                {/* AI 답장 */}
+                {!selected.is_bounce && (
+                  <div className="mt-4 rounded-lg border border-[var(--accent)] bg-white p-3">
+                    <div className="flex items-center justify-between">
+                      <div className="text-[13px] font-black text-[var(--accent)]">🤖 AI 답장 초안</div>
+                      {draft?.id !== selected.id && <button onClick={() => genDraft(selected.id)} className="kt-btn kt-btn-primary px-3 py-1.5 text-[11px]">답장 초안 생성</button>}
+                    </div>
+                    {draft?.id === selected.id && (
+                      draft.busy && !draft.body
+                        ? <div className="mt-2 flex items-center gap-2 text-[12px] text-[var(--muted)]"><Loader2 size={13} className="animate-spin" /> 초안 생성 중…</div>
+                        : draft.sent
+                          ? <div className="mt-2 text-[12px] font-semibold text-emerald-600">✓ 답장을 보냈습니다 · 완료 처리됨</div>
+                          : <div className="mt-2 space-y-2">
+                              <input className={`${inp} w-full`} value={draft.subject} onChange={(e) => setDraft({ ...draft, subject: e.target.value })} placeholder="제목" />
+                              <textarea className={`${inp} w-full`} rows={8} value={draft.body} onChange={(e) => setDraft({ ...draft, body: e.target.value })} />
+                              <div className="flex gap-2">
+                                <button onClick={sendReply} disabled={draft.busy} className="kt-btn kt-btn-primary px-3 py-1.5 text-[11px]"><Send size={12} /> {draft.busy ? "보내는 중…" : "답장 보내기"}</button>
+                                <button onClick={() => genDraft(selected.id)} disabled={draft.busy} className="kt-btn kt-btn-outline px-3 py-1.5 text-[11px]">다시 생성</button>
+                                <button onClick={() => { navigator.clipboard?.writeText(draft.body); }} className="kt-btn kt-btn-outline px-3 py-1.5 text-[11px]">복사</button>
+                              </div>
+                            </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>
