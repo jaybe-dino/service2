@@ -296,7 +296,7 @@ export default function BhSeminarPage() {
             <img src="/bhseminar/logo-sf.png" alt="SF Express" className="h-8 w-auto object-contain" />
             {/* pingpong — 로고 이미지 */}
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/bhseminar/logo-pingpong.png" alt="PingPong" className="h-9 w-auto object-contain" />
+            <img src="/bhseminar/logo-pingpong.svg" alt="pingpong" className="h-7 w-auto object-contain" />
             {/* TikTok — SVG 마크 */}
             <TikTokMark className="text-[22px]" />
             {/* Amazon — SVG 마크 */}
