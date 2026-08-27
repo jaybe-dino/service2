@@ -10,7 +10,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: "뷰티 & 헬스케어 글로벌 진출 원스톱 전략 세미나",
     description: "글로벌 TikTok Shop/Amazon — 구축·운영·물류·정산·인증까지. 2026.9.8 서울 섬유센터.",
-    images: ["/bhseminar/venue-building.jpg"],
+    images: ["/bhseminar/venue-hall.jpg"],
     type: "website",
   },
 };
@@ -63,7 +63,6 @@ const SESSIONS: { org: string; title: string }[] = [
 ];
 
 const GALLERY = [
-  { src: "/bhseminar/venue-building.jpg", cap: "섬유센터 (테헤란로 518)" },
   { src: "/bhseminar/venue-lounge.jpg", cap: "17층 스카이 라운지" },
   { src: "/bhseminar/venue-hall.jpg", cap: "세미나홀" },
 ];
@@ -139,11 +138,11 @@ export default function BhSeminarPage() {
               <a href="#program" className="rounded-full border border-white/20 px-6 py-3.5 text-[14px] font-bold text-white hover:bg-white/10">프로그램 보기</a>
             </div>
           </div>
-          {/* 건물 이미지 */}
-          <div className="relative mx-auto w-full max-w-[400px]">
+          {/* 행사장 이미지 */}
+          <div className="relative mx-auto w-full max-w-[440px]">
             <div className="absolute -inset-3 rounded-[28px] bg-gradient-to-tr from-pink-500/30 to-sky-500/20 blur-2xl" />
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/bhseminar/venue-building.jpg" alt="섬유센터" className="relative w-full rounded-3xl object-cover shadow-2xl ring-1 ring-white/10" />
+            <img src="/bhseminar/venue-hall.jpg" alt="섬유센터 세미나홀" className="relative aspect-[4/3] w-full rounded-3xl object-cover shadow-2xl ring-1 ring-white/10" />
             <div className="absolute -bottom-4 -left-4 rounded-2xl bg-white px-4 py-3 text-slate-900 shadow-xl">
               <div className="text-[10px] font-bold text-[var(--accent,#ec4899)]">SEP</div>
               <div className="text-[26px] font-black leading-none">08</div>
@@ -224,7 +223,7 @@ export default function BhSeminarPage() {
           <div className="text-[12px] font-extrabold uppercase tracking-[3px] text-sky-600">Venue</div>
           <h2 className="mt-2 text-[28px] font-black tracking-tight sm:text-[36px]">프리미엄 행사장</h2>
           <p className="mt-2 text-[14px] text-[var(--muted,#64748b)]">테헤란로 섬유센터 17층 — 스카이 라운지와 세미나홀.</p>
-          <div className="mt-7 grid gap-4 md:grid-cols-3">
+          <div className="mt-7 grid gap-4 md:grid-cols-2">
             {GALLERY.map((g) => (
               <figure key={g.src} className="group overflow-hidden rounded-2xl ring-1 ring-[var(--border,#e2e8f0)]">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
