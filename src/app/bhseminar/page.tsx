@@ -58,7 +58,7 @@ const SESSIONS: { org: string; title: string }[] = [
   { org: "디노스튜디오", title: "한국법인으로 글로벌 틱톡샵 오픈 A to Z — 입점·구축·운영·마케팅" },
   { org: "SF Express", title: "해외에서 잘 팔리기 시작하면, 물류는 어떻게 달라져야 할까?" },
   { org: "슈크란코리아", title: "사우디·UAE 진출, 가장 빠른 길 — 등록부터 유통까지 한 번에" },
-  { org: "핑퐁페이먼트", title: "틱톡샵 글로벌 결제 시스템 효율 전략" },
+  { org: "핑퐁페이먼트", title: "핑퐁페이먼트를 통한 틱톡샵 판매 대금 수취 가이드" },
   { org: "전경련 바이오 CEO Club", title: "기업 소개 등" },
 ];
 
