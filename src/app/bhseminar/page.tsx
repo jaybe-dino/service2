@@ -77,6 +77,7 @@ const PARTNER_MARKS: { key: string; node: React.ReactNode }[] = [
   { key: "kantana", node: <span className="text-[18px] font-black tracking-tight text-[#0b3b8c]">KANTANA</span> },
   { key: "ecomobi", node: <span className="inline-flex flex-col items-center leading-none"><span className="text-[17px] font-black tracking-tight text-slate-800">ECOM<span className="text-[#f5333f]">O</span>BI</span><span className="mt-0.5 text-[8px] text-slate-500">Do the right thing</span></span> },
   { key: "bpm", node: <span style={{ fontFamily: "Georgia, 'Times New Roman', serif" }} className="text-[16px] font-bold tracking-wide text-slate-900">BEST PRACTICE <span className="text-[11px] tracking-[0.25em]">MEDIA</span></span> },
+  { key: "kindnet", node: <span className="text-[17px] font-black tracking-tight"><span className="text-slate-900">Kind</span><span className="text-[#16a34a]">net</span></span> },
 ];
 
 const MAPS = [
