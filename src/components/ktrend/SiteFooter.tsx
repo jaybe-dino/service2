@@ -37,6 +37,7 @@ export default function SiteFooter() {
               <li><Link href="/signup" className="hover:text-[var(--accent)]">회원가입</Link></li>
               <li><Link href="/terms" className="hover:text-[var(--accent)]">이용약관</Link></li>
               <li><Link href="/privacy" className="hover:text-[var(--accent)]">개인정보처리방침</Link></li>
+              <li><Link href="/refund" className="hover:text-[var(--accent)]">취소·환불 정책</Link></li>
               <li><Link href="/partner" className="hover:text-[var(--accent)]">추천인 로그인</Link></li>
             </ul>
           </div>
@@ -63,6 +64,8 @@ export default function SiteFooter() {
             <Link href="/terms" className="hover:text-[var(--accent)]">이용약관</Link>
             <span className="mx-1.5">·</span>
             <Link href="/privacy" className="font-semibold hover:text-[var(--accent)]">개인정보처리방침</Link>
+            <span className="mx-1.5">·</span>
+            <Link href="/refund" className="hover:text-[var(--accent)]">취소·환불 정책</Link>
           </p>
           <p className="mt-2">© 2026 DINOSTUDIO. Glovek. All rights reserved.</p>
         </div>

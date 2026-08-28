@@ -126,7 +126,10 @@ export default function CheckoutPage() {
             <button onClick={pay} disabled={busy} className="kt-btn kt-btn-primary mt-4 w-full py-2.5 text-[12px] disabled:opacity-50">
               {busy ? <Loader2 size={14} className="animate-spin" /> : <CreditCard size={14} />} {busy ? "처리 중…" : `${wonFmt(displayAmt)} 결제하고 Pro 시작`}
             </button>
-            <p className="mt-2 text-center text-[9px] text-[var(--muted)]">등록 즉시 첫 결제되며 이후 30일마다 자동결제됩니다. 해지는 고객센터·담당 매니저를 통해 처리됩니다.</p>
+            <p className="mt-2 text-center text-[9px] text-[var(--muted)]">
+              등록 즉시 첫 결제되며 이후 30일마다 자동결제됩니다. 해지는 고객센터·담당 매니저를 통해 처리됩니다.<br />
+              결제 진행 시 <Link href="/refund" target="_blank" className="font-bold text-[var(--accent)] underline underline-offset-2">취소·환불 정책</Link>에 동의한 것으로 간주됩니다. (7일 이내 미사용 전액 환불 · 중도해지 일할 환불)
+            </p>
           </div>
         )}
       </div>

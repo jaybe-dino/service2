@@ -595,7 +595,8 @@ function OnboardingInner() {
                   {busy ? "결제 진행 중…" : !user ? "로그인하고 결제" : firstChargeAmt === 0 ? "무료로 입점 시작" : `${won(displayCharge)} 결제하고 입점`}
                 </button>
                 <p className="mt-2 text-center text-[9px] text-[var(--muted)]">
-                  {term === "6month" ? "6개월 합계 일시 결제 · 이후 6개월마다 자동결제." : "카드 등록 즉시 첫 달 결제 · 매월 자동결제."} 결제 후 상세 정보를 입력합니다.
+                  {term === "6month" ? "6개월 합계 일시 결제 · 이후 6개월마다 자동결제." : "카드 등록 즉시 첫 달 결제 · 매월 자동결제."} 결제 후 상세 정보를 입력합니다.<br />
+                  결제 진행 시 <Link href="/refund" target="_blank" className="font-bold text-[var(--accent)] underline underline-offset-2">취소·환불 정책</Link>에 동의한 것으로 간주됩니다. (업무 착수 전 전액 환불 · 착수 후 구간별 환불)
                 </p>
               </div>
             </div>

@@ -61,7 +61,8 @@ export default function Plans2Page() {
 
       <p className="mx-auto mt-6 max-w-[720px] text-center text-[11px] leading-relaxed text-[var(--muted)]">
         모든 구독은 <b className="text-[var(--fg)]">월 단위(30일)</b>로 제공·결제되며, 마이페이지 또는 고객센터를 통해 언제든 해지할 수 있습니다.
-        서비스 제공기간이 3개월을 초과하는 연간·장기 상품은 판매하지 않습니다.
+        서비스 제공기간이 3개월을 초과하는 연간·장기 상품은 판매하지 않습니다.<br />
+        결제 취소·해지·환불 기준은 <Link href="/refund" className="font-bold text-[var(--accent)] underline underline-offset-2">취소·환불 정책</Link>을 따릅니다. (7일 이내 미사용 전액 환불 · 중도해지 일할 환불)
       </p>
 
       {ONBOARDING.enabled && (

@@ -63,6 +63,7 @@ export default function MallPlansPage() {
           <div className="border-t border-[var(--border)] px-5 py-3 text-[11px] leading-relaxed text-[var(--muted)]">
             등급은 자가체크(해외 판매 경험 5개 지표)로 산정됩니다 · <b className="text-[var(--fg)]">C·B</b> 입문·진출 계획 → Live Focus · <b className="text-[var(--fg)]">A·S</b> 성장·스케일업 → Onboarding
             <div className="mt-1.5 font-semibold text-[var(--fg)]">※ 입점 트랙은 월 단위 요금이며, 플랫폼 구독의 월간/연간 할인은 적용되지 않습니다.</div>
+            <div className="mt-1.5">※ 결제 취소·해지·환불 기준은 <Link href="/refund" className="font-bold text-[var(--accent)] underline underline-offset-2">취소·환불 정책</Link>을 따릅니다. (업무 착수 전 전액 환불 · 착수 후 구간별 환불)</div>
           </div>
         </div>
 
