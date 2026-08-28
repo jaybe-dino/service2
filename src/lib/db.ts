@@ -14,9 +14,18 @@ if (!process.env.POSTGRES_URL) {
 // Postgres 스키마 초기화 (최초 호출 시 1회). Vercel Postgres / Neon / Supabase 호환.
 let schemaReady: Promise<void> | null = null;
 
+// ⚠️ 스키마 버전 — 아래 DDL(테이블·컬럼·인덱스)을 추가/변경하면 반드시 이 숫자를 +1 하세요.
+// 저장된 버전과 일치하면 140여 개 DDL 전체를 건너뛰어(쿼리 1번) 콜드스타트를 수십 초 → 수십 ms로 줄입니다.
+const SCHEMA_VERSION = 1;
+
 export function ensureSchema(): Promise<void> {
   if (!schemaReady) {
     schemaReady = (async () => {
+      // 빠른 경로: 저장된 스키마 버전이 현재 코드와 같으면 전체 DDL 스킵
+      try {
+        const v = await sql`SELECT value FROM admin_settings WHERE key = 'schema_version' LIMIT 1`;
+        if (Number(v.rows[0]?.value) === SCHEMA_VERSION) return;
+      } catch { /* admin_settings 미존재(최초 배포) → 전체 실행 */ }
       await sql`CREATE TABLE IF NOT EXISTS users (
         id text PRIMARY KEY,
         email text UNIQUE NOT NULL,
@@ -689,7 +698,13 @@ export function ensureSchema(): Promise<void> {
       // 기존 DB 보정(테스트2): 데모 계정 플랜을 Pro/Advance로 정렬 (멱등)
       await sql`UPDATE users SET plan='pro' WHERE email='pro@ktrend.demo'`;
       await sql`UPDATE users SET plan='enterprise' WHERE email='advance@ktrend.demo'`;
-    })();
+      // 완료 스탬프 — 다음 콜드스타트부터 빠른 경로로 전체 DDL 스킵
+      await sql`INSERT INTO admin_settings (key, value, updated_at) VALUES ('schema_version', ${String(SCHEMA_VERSION)}::jsonb, now())
+        ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = now()`;
+    })().catch((e) => {
+      schemaReady = null; // 실패 시 다음 요청에서 재시도 (실패 프라미스 영구 캐시 방지)
+      throw e;
+    });
   }
   return schemaReady;
 }
