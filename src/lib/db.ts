@@ -16,7 +16,7 @@ let schemaReady: Promise<void> | null = null;
 
 // ⚠️ 스키마 버전 — 아래 DDL(테이블·컬럼·인덱스)을 추가/변경하면 반드시 이 숫자를 +1 하세요.
 // 저장된 버전과 일치하면 140여 개 DDL 전체를 건너뛰어(쿼리 1번) 콜드스타트를 수십 초 → 수십 ms로 줄입니다.
-const SCHEMA_VERSION = 1;
+const SCHEMA_VERSION = 2; // v2: kb_* K-Beauty 크리에이터 인텔리전스 테이블
 
 export function ensureSchema(): Promise<void> {
   if (!schemaReady) {
@@ -686,6 +686,168 @@ export function ensureSchema(): Promise<void> {
       )`;
       await sql`CREATE INDEX IF NOT EXISTS idx_oc_messages_campaign ON oc_messages(campaign_id, status)`;
       await sql`CREATE UNIQUE INDEX IF NOT EXISTS idx_oc_messages_dedup ON oc_messages(campaign_id, to_email)`;
+
+      // ── K-Beauty 크리에이터 인텔리전스 (kbeauty_schema_docs 기준, kb_* 프리픽스) ──
+      // 원 스키마: dim_shop/dim_creator/fact_brand_video/fact_category_video/stg_hashtag_creator/dim_brand/bridge_creator_brand/import_batch
+      await sql`CREATE TABLE IF NOT EXISTS kb_shops (
+        seller_id text PRIMARY KEY,
+        region text NOT NULL,
+        shop_name text NOT NULL,
+        tier text NOT NULL,
+        tier_name text,
+        brand_en text,
+        brand_ko text,
+        brand_count int DEFAULT 0,
+        creator_pool int,
+        gmv_local_30d numeric(18,2),
+        currency text,
+        gmv_usd_30d numeric(18,2),
+        sold_30d int,
+        avg_price_local numeric(18,2),
+        gmv_growth numeric(10,4),
+        new_items int,
+        seller_type text,
+        match_reason text,
+        top_items text,
+        snapshot_date date NOT NULL DEFAULT CURRENT_DATE
+      )`;
+      await sql`CREATE INDEX IF NOT EXISTS idx_kb_shops_region_tier ON kb_shops(region, tier)`;
+      await sql`CREATE INDEX IF NOT EXISTS idx_kb_shops_gmv ON kb_shops(gmv_usd_30d DESC)`;
+      await sql`CREATE TABLE IF NOT EXISTS kb_creators (
+        creator_uid text PRIMARY KEY,
+        handle text,
+        nickname text,
+        region text,
+        followers int DEFAULT 0,
+        mapping_tier text NOT NULL,
+        tier_desc text,
+        email text,
+        instagram_id text,
+        youtube_channel text,
+        bio_link text,
+        messaging_platforms text,
+        contact_channels text,
+        kb_videos int DEFAULT 0,
+        kb_brands_count int DEFAULT 0,
+        kb_brands text,
+        kb_products_count int DEFAULT 0,
+        kb_video_gmv_usd numeric(18,2) DEFAULT 0,
+        kb_plays bigint DEFAULT 0,
+        kb_rpm_usd numeric(12,4) DEFAULT 0,
+        aff_sold_90d int DEFAULT 0,
+        aff_gmv_local numeric(18,2) DEFAULT 0,
+        aff_video_count int DEFAULT 0,
+        aff_live_rooms int DEFAULT 0,
+        aff_avg_plays bigint DEFAULT 0,
+        tiktok_url text,
+        snapshot_date date NOT NULL DEFAULT CURRENT_DATE
+      )`;
+      await sql`CREATE INDEX IF NOT EXISTS idx_kb_creators_tier ON kb_creators(mapping_tier)`;
+      await sql`CREATE INDEX IF NOT EXISTS idx_kb_creators_email ON kb_creators(email) WHERE email IS NOT NULL AND email <> ''`;
+      await sql`CREATE INDEX IF NOT EXISTS idx_kb_creators_rpm ON kb_creators(kb_rpm_usd DESC)`;
+      await sql`CREATE INDEX IF NOT EXISTS idx_kb_creators_followers ON kb_creators(followers DESC)`;
+      await sql`CREATE TABLE IF NOT EXISTS kb_brand_videos (
+        video_id text NOT NULL,
+        item_id text NOT NULL,
+        brand_en text NOT NULL,
+        region text NOT NULL,
+        creator_uid text,
+        creator_handle text,
+        creator_name text,
+        followers int,
+        plays bigint DEFAULT 0,
+        likes bigint DEFAULT 0,
+        comments int DEFAULT 0,
+        shares int DEFAULT 0,
+        sold int DEFAULT 0,
+        gmv_local numeric(18,2) DEFAULT 0,
+        gmv_usd numeric(18,2) DEFAULT 0,
+        rpm numeric(12,4) DEFAULT 0,
+        conv_rate numeric(10,6) DEFAULT 0,
+        duration_sec numeric(8,1),
+        created_at timestamptz,
+        caption text,
+        video_url text,
+        snapshot_date date NOT NULL DEFAULT CURRENT_DATE,
+        PRIMARY KEY (video_id, item_id)
+      )`;
+      await sql`CREATE INDEX IF NOT EXISTS idx_kb_bv_creator ON kb_brand_videos(creator_uid)`;
+      await sql`CREATE INDEX IF NOT EXISTS idx_kb_bv_brand ON kb_brand_videos(brand_en)`;
+      await sql`CREATE INDEX IF NOT EXISTS idx_kb_bv_gmv ON kb_brand_videos(gmv_usd DESC)`;
+      await sql`CREATE TABLE IF NOT EXISTS kb_category_videos (
+        video_id text PRIMARY KEY,
+        region text NOT NULL,
+        creator_uid text,
+        creator_handle text,
+        creator_nickname text,
+        followers int,
+        item_id text,
+        item_name text,
+        price_usd numeric(14,2),
+        video_gmv_usd numeric(18,2),
+        video_sold int,
+        plays bigint,
+        engage_rate numeric(10,6),
+        rpm_local numeric(14,4),
+        duration_sec numeric(8,1),
+        created_at timestamptz,
+        caption text,
+        video_url text,
+        snapshot_date date NOT NULL DEFAULT CURRENT_DATE
+      )`;
+      await sql`CREATE INDEX IF NOT EXISTS idx_kb_cv_creator ON kb_category_videos(creator_uid)`;
+      await sql`CREATE TABLE IF NOT EXISTS kb_hashtag_creators (
+        creator_uid text PRIMARY KEY,
+        author_name text,
+        region text,
+        followers int,
+        likes bigint,
+        video_count int,
+        related_videos int,
+        categories text,
+        src_hashtag text,
+        src_region text,
+        in_affiliate_db text,
+        contact_status text,
+        tiktok_url text,
+        snapshot_date date NOT NULL DEFAULT CURRENT_DATE
+      )`;
+      await sql`CREATE TABLE IF NOT EXISTS kb_brands (
+        brand_en text PRIMARY KEY,
+        brand_ko text,
+        shop_count int DEFAULT 0,
+        creator_count int DEFAULT 0,
+        video_count int DEFAULT 0,
+        product_count int DEFAULT 0,
+        total_gmv_usd numeric(18,2) DEFAULT 0,
+        regions text,
+        updated_at timestamptz DEFAULT now()
+      )`;
+      await sql`CREATE TABLE IF NOT EXISTS kb_creator_brand (
+        creator_uid text NOT NULL,
+        brand_en text NOT NULL,
+        video_count int DEFAULT 0,
+        product_count int DEFAULT 0,
+        gmv_usd numeric(18,2) DEFAULT 0,
+        plays bigint DEFAULT 0,
+        rpm_usd numeric(12,4) DEFAULT 0,
+        PRIMARY KEY (creator_uid, brand_en)
+      )`;
+      await sql`CREATE INDEX IF NOT EXISTS idx_kb_cb_brand ON kb_creator_brand(brand_en, gmv_usd DESC)`;
+      await sql`CREATE TABLE IF NOT EXISTS kb_import_batches (
+        batch_id bigserial PRIMARY KEY,
+        file_name text NOT NULL,
+        dataset text NOT NULL,
+        row_count int DEFAULT 0,
+        inserted_count int DEFAULT 0,
+        updated_count int DEFAULT 0,
+        rejected_count int DEFAULT 0,
+        status text DEFAULT 'running',
+        error_log text,
+        uploaded_by text,
+        started_at timestamptz DEFAULT now(),
+        finished_at timestamptz
+      )`;
 
       // 데모/관리자 계정 시드 (bcrypt("ktrend2026")) — 서버 세션 로그인 가능하도록
       const DEMO_HASH = "$2b$10$mLc7sBm3zK4a83l6/Tg9NOoDGLLYsfp4SXRfZcls4.LTw6Tsy/8Oy";
