@@ -138,6 +138,7 @@ function SegmentBuilder() {
   const [withEmail, setWithEmail] = useState(0);
   const [busy, setBusy] = useState(false);
   const [exporting, setExporting] = useState<string | null>(null);
+  const [merging, setMerging] = useState(false);
 
   useEffect(() => {
     fetch("/api/admin/kb/segment").then((r) => r.json()).then((j) => setBrands(j.brands || [])).catch(() => {});
@@ -264,10 +265,22 @@ function SegmentBuilder() {
           </span>
         )}
         {count !== null && count > 0 && (
-          <button onClick={exportCsv} disabled={!!exporting}
-            className="ml-auto inline-flex items-center gap-1.5 rounded-lg border border-emerald-400 bg-emerald-50 px-4 py-2 text-[12px] font-bold text-emerald-700 disabled:opacity-40">
-            {exporting ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />} {exporting ? `내보내는 중 ${exporting}` : "CSV 내보내기"}
-          </button>
+          <div className="ml-auto flex gap-2">
+            <button onClick={exportCsv} disabled={!!exporting || merging}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-400 bg-emerald-50 px-4 py-2 text-[12px] font-bold text-emerald-700 disabled:opacity-40">
+              {exporting ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />} {exporting ? `내보내는 중 ${exporting}` : "CSV 내보내기"}
+            </button>
+            <button disabled={merging || !!exporting} onClick={async () => {
+              if (!confirm(`이 세그먼트 ${fmt(count!)}명을 아웃리치(oc_creators)로 편입할까요?\n\n· 기존 데이터는 지워지지 않습니다 — 이메일·브랜드 등은 비어있을 때만 채우고, 지표는 큰 값 유지\n· handle 없는 크리에이터(M5 다수)는 편입되지 않습니다\n· 편입 후 /admin/oc 크리에이터·발송 탭에서 바로 사용 가능`)) return;
+              setMerging(true);
+              const r = await fetch("/api/admin/kb/segment", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "toOutreach", filter: toApiFilter(f) }) }).then((x) => x.json()).catch(() => null);
+              setMerging(false);
+              if (r?.ok) alert(`아웃리치 편입 완료\n신규 ${fmt(r.inserted)} · 기존 보강 ${fmt(r.updated)} · 제외(핸들 없음 등) ${fmt(r.skipped)}${r.capped ? "\n※ 10만 명 상한 적용 — RPM 상위 우선" : ""}`);
+              else alert(r?.error || "편입 실패");
+            }} className="inline-flex items-center gap-1.5 rounded-lg bg-slate-900 px-4 py-2 text-[12px] font-bold text-white disabled:opacity-40">
+              {merging ? <Loader2 size={14} className="animate-spin" /> : <Upload size={14} />} {merging ? "편입 중…" : "아웃리치로 편입"}
+            </button>
+          </div>
         )}
       </div>
 
@@ -332,7 +345,11 @@ export default function KbImportPage() {
   function pickFiles(list: FileList | null) {
     if (!list) return;
     const next: FileJob[] = [];
+    const seen = new Set<string>();
     for (const f of Array.from(list)) {
+      const key = `${f.name}:${f.size}`;
+      if (seen.has(key)) continue; // 같은 파일 중복 선택 방지
+      seen.add(key);
       const ds = detectDataset(f.name);
       next.push({ file: f, dataset: (ds || "shops") as Dataset, status: ds ? "wait" : "skip", rowsSent: 0, inserted: 0, updated: 0, rejected: 0, errors: [], msg: ds ? undefined : "파일명에서 데이터셋 인식 실패" });
     }

@@ -130,6 +130,15 @@ export default function InfluencersPage() {
         </p>
       </div>
 
+      {/* 글로벌 크리에이터 DB 안내 배너 */}
+      <Link href="/influencers/global" className="mb-4 flex items-center justify-between gap-3 rounded-xl bg-gradient-to-r from-[#7C3AED] to-[#1A56DB] px-5 py-3.5 text-white transition hover:opacity-95">
+        <div>
+          <div className="text-[13px] font-black">글로벌 크리에이터 DB <span className="ml-1 rounded-full bg-white/20 px-2 py-0.5 text-[9px] font-bold">NEW</span></div>
+          <div className="mt-0.5 text-[11px] text-white/85">K-뷰티 판매 실적으로 검증된 US·TH·VN 크리에이터 — 이메일·메시징 컨택 포함, RPM순 탐색</div>
+        </div>
+        <span className="shrink-0 rounded-lg bg-white px-3.5 py-1.5 text-[11px] font-black text-[#1A56DB]">둘러보기 →</span>
+      </Link>
+
       {/* 상위 정렬 버튼 */}
       <div className="mb-3 flex flex-wrap gap-1.5">
         {SORTS.map((s) => (

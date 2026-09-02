@@ -54,11 +54,49 @@ export async function GET() {
 }
 
 // POST { filter, limit?, offset?, countOnly? } → { count, withEmail, rows }
+// POST { action:'toOutreach', filter, cap? } → 세그먼트를 oc_creators(메일링 대상)로 병합 편입.
+//   병합 규칙(비파괴): 기존 행의 이메일·브랜드·지역·프로필은 비어있을 때만 채움, 지표는 GREATEST.
+//   handle 없는 행(M5 다수)은 편입 불가 → skipped로 집계. 재실행해도 안전(멱등).
 export async function POST(req: Request) {
   if (!(await isAdminAuthed())) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   if (!isConfigured()) return NextResponse.json({ error: "DB 미설정" }, { status: 503 });
   await ensureSchema();
-  const b = (await req.json().catch(() => ({}))) as { filter?: SegFilter; limit?: number; offset?: number; countOnly?: boolean };
+  const b = (await req.json().catch(() => ({}))) as { action?: string; filter?: SegFilter; limit?: number; offset?: number; countOnly?: boolean; cap?: number };
+
+  if (b.action === "toOutreach") {
+    const { where, params } = buildWhere(b.filter || {});
+    const cap = Math.min(Math.max(1, b.cap || 100_000), 200_000);
+    try {
+      const totalQ = await sql.query(`SELECT COUNT(*)::int AS n FROM kb_creators ${where}`, params);
+      const total = totalQ.rows[0].n as number;
+      params.push(cap);
+      const r = await sql.query(
+        `INSERT INTO oc_creators AS t (handle, profile_url, email, contact_status, videos, total_views, avg_views, brands, region, source_list, source_creator_id)
+         SELECT DISTINCT ON (lower(ltrim(handle, '@')))
+           lower(ltrim(handle, '@')), tiktok_url, NULLIF(email, ''), 'kb_' || mapping_tier,
+           COALESCE(kb_videos, 0), COALESCE(kb_plays, 0), COALESCE(aff_avg_plays, 0),
+           NULLIF(kb_brands, ''), region, 'kbeauty-dataset', creator_uid
+         FROM kb_creators ${where ? where + " AND" : "WHERE"} handle IS NOT NULL AND ltrim(handle, '@') <> ''
+         ORDER BY lower(ltrim(handle, '@')), kb_rpm_usd DESC NULLS LAST
+         LIMIT $${params.length}
+         ON CONFLICT (handle) DO UPDATE SET
+           email = COALESCE(NULLIF(t.email, ''), EXCLUDED.email),
+           profile_url = COALESCE(NULLIF(t.profile_url, ''), EXCLUDED.profile_url),
+           brands = COALESCE(NULLIF(t.brands, ''), EXCLUDED.brands),
+           region = COALESCE(NULLIF(t.region, ''), EXCLUDED.region),
+           contact_status = COALESCE(NULLIF(t.contact_status, ''), EXCLUDED.contact_status),
+           videos = GREATEST(COALESCE(t.videos, 0), COALESCE(EXCLUDED.videos, 0)),
+           total_views = GREATEST(COALESCE(t.total_views, 0), COALESCE(EXCLUDED.total_views, 0)),
+           avg_views = GREATEST(COALESCE(t.avg_views, 0), COALESCE(EXCLUDED.avg_views, 0)),
+           source_creator_id = COALESCE(NULLIF(t.source_creator_id, ''), EXCLUDED.source_creator_id)
+         RETURNING (xmax = 0) AS inserted`, params);
+      let inserted = 0, updated = 0;
+      for (const row of r.rows) { if (row.inserted) inserted++; else updated++; }
+      return NextResponse.json({ ok: true, total, inserted, updated, skipped: Math.max(0, total - inserted - updated), capped: total > cap });
+    } catch (e) {
+      return NextResponse.json({ error: String(e instanceof Error ? e.message : e).slice(0, 300) }, { status: 500 });
+    }
+  }
   const filter = b.filter || {};
   const limit = Math.min(Math.max(1, b.limit || 100), 5000);
   const offset = Math.max(0, b.offset || 0);
