@@ -5,7 +5,7 @@
 // - 데이터셋 순서 강제(shops → creators → brand_videos → category_videos → hashtag_creators)
 // - 중단 시 이어올리기(행 프리픽스 기준, 업서트 멱등이라 중복 안전) · 배치 이력 · 커버리지
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Database, Upload, RefreshCw, CheckCircle2, XCircle, Loader2, Play } from "lucide-react";
+import { Database, Upload, RefreshCw, CheckCircle2, XCircle, Loader2, Play, Filter, Download, Search } from "lucide-react";
 
 const CHUNK_ROWS = 1000;
 
@@ -91,6 +91,219 @@ interface Coverage { shops: number; shops_measured: number; creators: number; wi
 
 const fmt = (n?: number) => (n ?? 0).toLocaleString();
 const resumeKey = (f: File) => `kb.upload.${f.name}.${f.size}`;
+
+/* ── 세그먼트 빌더 ─────────────────────────────────────────────── */
+interface SegFilter {
+  regions: string[]; tiers: string[]; followersMin: string; followersMax: string;
+  emailOnly: boolean; contactAny: boolean; brand: string; rpmMin: string; kbBrandsMin: string; platform: string;
+}
+const EMPTY_FILTER: SegFilter = { regions: [], tiers: [], followersMin: "", followersMax: "", emailOnly: false, contactAny: false, brand: "", rpmMin: "", kbBrandsMin: "", platform: "" };
+
+// 03_views.sql 운영 뷰 상당 프리셋
+const PRESETS: { name: string; desc: string; f: Partial<SegFilter> }[] = [
+  { name: "M1 아웃리치 준비", desc: "연락처+판매실적 검증", f: { tiers: ["M1"] } },
+  { name: "마이크로 고효율", desc: "M1 · 1천~15만 팔로워 · 이메일", f: { tiers: ["M1"], followersMin: "1000", followersMax: "150000", emailOnly: true } },
+  { name: "멀티브랜드 3+", desc: "한국 브랜드 3개 이상 판매", f: { kbBrandsMin: "3" } },
+  { name: "콜드 풀", desc: "M3 · 이메일 보유(미검증)", f: { tiers: ["M3"], emailOnly: true } },
+  { name: "초대장 대상", desc: "M4 · 실적 있으나 연락처 없음", f: { tiers: ["M4"] } },
+  { name: "태국 LINE", desc: "TH · LINE 연락 가능", f: { regions: ["TH"], platform: "LINE" } },
+];
+
+interface SegRow {
+  creator_uid: string; handle: string | null; nickname: string | null; region: string | null;
+  followers: number; mapping_tier: string; email: string | null; instagram_id: string | null;
+  messaging_platforms: string | null; contact_channels: string | null; kb_videos: number;
+  kb_brands_count: number; kb_brands: string | null; kb_video_gmv_usd: string | null; kb_rpm_usd: string | null; tiktok_url: string | null;
+}
+
+function toApiFilter(f: SegFilter) {
+  return {
+    regions: f.regions, tiers: f.tiers,
+    followersMin: f.followersMin ? Number(f.followersMin) : undefined,
+    followersMax: f.followersMax ? Number(f.followersMax) : undefined,
+    emailOnly: f.emailOnly || undefined, contactAny: f.contactAny || undefined,
+    brand: f.brand || undefined, rpmMin: f.rpmMin ? Number(f.rpmMin) : undefined,
+    kbBrandsMin: f.kbBrandsMin ? Number(f.kbBrandsMin) : undefined, platform: f.platform || undefined,
+  };
+}
+
+const EXPORT_CAP = 100_000;
+const EXPORT_PAGE = 5000;
+
+function SegmentBuilder() {
+  const [f, setF] = useState<SegFilter>(EMPTY_FILTER);
+  const [brands, setBrands] = useState<{ brand_en: string; creator_count: number }[]>([]);
+  const [rows, setRows] = useState<SegRow[]>([]);
+  const [count, setCount] = useState<number | null>(null);
+  const [withEmail, setWithEmail] = useState(0);
+  const [busy, setBusy] = useState(false);
+  const [exporting, setExporting] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetch("/api/admin/kb/segment").then((r) => r.json()).then((j) => setBrands(j.brands || [])).catch(() => {});
+  }, []);
+
+  const toggle = (key: "regions" | "tiers", v: string) =>
+    setF((p) => ({ ...p, [key]: p[key].includes(v) ? p[key].filter((x) => x !== v) : [...p[key], v] }));
+
+  async function search(filter: SegFilter = f) {
+    setBusy(true);
+    const r = await fetch("/api/admin/kb/segment", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ filter: toApiFilter(filter), limit: 100 }),
+    }).then((x) => x.json()).catch(() => null);
+    setBusy(false);
+    if (r?.error || !r) { alert(r?.error || "검색 실패"); return; }
+    setRows(r.rows || []); setCount(r.count ?? 0); setWithEmail(r.withEmail ?? 0);
+  }
+
+  function applyPreset(preset: Partial<SegFilter>) {
+    const nf = { ...EMPTY_FILTER, ...preset } as SegFilter;
+    setF(nf); search(nf);
+  }
+
+  async function exportCsv() {
+    if (!count) return;
+    const total = Math.min(count, EXPORT_CAP);
+    setExporting(`0 / ${fmt(total)}`);
+    const header = ["creator_uid", "handle", "nickname", "region", "followers", "mapping_tier", "email", "instagram_id", "messaging_platforms", "contact_channels", "kb_videos", "kb_brands_count", "kb_brands", "kb_video_gmv_usd", "kb_rpm_usd", "tiktok_url"];
+    const esc = (v: unknown) => { const s = v == null ? "" : String(v); return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; };
+    const parts: string[] = [header.join(",") + "\n"];
+    for (let off = 0; off < total; off += EXPORT_PAGE) {
+      const r = await fetch("/api/admin/kb/segment", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ filter: toApiFilter(f), limit: EXPORT_PAGE, offset: off }),
+      }).then((x) => x.json()).catch(() => null);
+      if (!r || r.error) { alert(r?.error || "내보내기 실패"); setExporting(null); return; }
+      for (const row of r.rows as SegRow[]) parts.push(header.map((h) => esc(row[h as keyof SegRow])).join(",") + "\n");
+      setExporting(`${fmt(Math.min(off + EXPORT_PAGE, total))} / ${fmt(total)}`);
+      if (!r.rows?.length) break;
+    }
+    const url = URL.createObjectURL(new Blob(["﻿", ...parts], { type: "text/csv;charset=utf-8" }));
+    const a = document.createElement("a"); a.href = url; a.download = `kb_segment_${Date.now()}.csv`; a.click();
+    URL.revokeObjectURL(url);
+    setExporting(null);
+  }
+
+  const inputCls = "w-full rounded-lg border border-slate-200 px-2.5 py-1.5 text-[12px]";
+  const chip = (on: boolean) => `rounded-full border px-2.5 py-1 text-[11px] font-bold ${on ? "border-violet-500 bg-violet-50 text-violet-700" : "border-slate-200 text-slate-500"}`;
+
+  return (
+    <div className="mt-5 rounded-2xl border border-slate-200 bg-white p-5">
+      <div className="flex items-center gap-2">
+        <Filter size={15} className="text-violet-600" />
+        <h2 className="text-[14px] font-black">세그먼트 빌더</h2>
+        <span className="text-[10px] text-slate-400">필터 → 미리보기 → CSV 내보내기 (RPM 내림차순)</span>
+      </div>
+
+      {/* 프리셋 */}
+      <div className="mt-3 flex flex-wrap gap-2">
+        {PRESETS.map((pz) => (
+          <button key={pz.name} onClick={() => applyPreset(pz.f)} title={pz.desc}
+            className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 text-[11px] font-bold hover:border-violet-400 hover:text-violet-700">
+            {pz.name}
+          </button>
+        ))}
+      </div>
+
+      {/* 필터 */}
+      <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <div>
+          <div className="mb-1 text-[10px] font-bold uppercase text-slate-400">지역</div>
+          <div className="flex gap-1.5">{["US", "TH", "VN"].map((r) => <button key={r} onClick={() => toggle("regions", r)} className={chip(f.regions.includes(r))}>{r}</button>)}</div>
+        </div>
+        <div>
+          <div className="mb-1 text-[10px] font-bold uppercase text-slate-400">매핑 티어</div>
+          <div className="flex gap-1.5">{["M1", "M3", "M4", "M5"].map((t) => <button key={t} onClick={() => toggle("tiers", t)} className={chip(f.tiers.includes(t))}>{t}</button>)}</div>
+        </div>
+        <div>
+          <div className="mb-1 text-[10px] font-bold uppercase text-slate-400">팔로워</div>
+          <div className="flex items-center gap-1.5">
+            <input inputMode="numeric" value={f.followersMin} onChange={(e) => setF({ ...f, followersMin: e.target.value.replace(/\D/g, "") })} placeholder="최소" className={inputCls} />
+            <span className="text-slate-300">~</span>
+            <input inputMode="numeric" value={f.followersMax} onChange={(e) => setF({ ...f, followersMax: e.target.value.replace(/\D/g, "") })} placeholder="최대" className={inputCls} />
+          </div>
+        </div>
+        <div>
+          <div className="mb-1 text-[10px] font-bold uppercase text-slate-400">브랜드 (파생 리빌드 후)</div>
+          <select value={f.brand} onChange={(e) => setF({ ...f, brand: e.target.value })} className={inputCls}>
+            <option value="">전체</option>
+            {brands.map((b) => <option key={b.brand_en} value={b.brand_en}>{b.brand_en} ({fmt(b.creator_count)})</option>)}
+          </select>
+        </div>
+        <div>
+          <div className="mb-1 text-[10px] font-bold uppercase text-slate-400">RPM 최소 (USD/1천뷰)</div>
+          <input inputMode="decimal" value={f.rpmMin} onChange={(e) => setF({ ...f, rpmMin: e.target.value.replace(/[^\d.]/g, "") })} placeholder="예: 5" className={inputCls} />
+        </div>
+        <div>
+          <div className="mb-1 text-[10px] font-bold uppercase text-slate-400">한국 브랜드 수 최소</div>
+          <input inputMode="numeric" value={f.kbBrandsMin} onChange={(e) => setF({ ...f, kbBrandsMin: e.target.value.replace(/\D/g, "") })} placeholder="예: 3" className={inputCls} />
+        </div>
+        <div>
+          <div className="mb-1 text-[10px] font-bold uppercase text-slate-400">메시징 플랫폼</div>
+          <select value={f.platform} onChange={(e) => setF({ ...f, platform: e.target.value })} className={inputCls}>
+            <option value="">전체</option>
+            {["LINE", "Zalo", "WhatsApp", "Telegram", "KakaoTalk", "Instagram", "YouTube", "Linktree"].map((pl) => <option key={pl} value={pl}>{pl}</option>)}
+          </select>
+        </div>
+        <div className="flex items-end gap-3 pb-0.5">
+          <label className="flex items-center gap-1.5 text-[11px] font-bold"><input type="checkbox" checked={f.emailOnly} onChange={(e) => setF({ ...f, emailOnly: e.target.checked })} /> 이메일 보유</label>
+          <label className="flex items-center gap-1.5 text-[11px] font-bold"><input type="checkbox" checked={f.contactAny} onChange={(e) => setF({ ...f, contactAny: e.target.checked })} /> 연락채널 有</label>
+        </div>
+      </div>
+
+      <div className="mt-4 flex flex-wrap items-center gap-2">
+        <button onClick={() => search()} disabled={busy}
+          className="inline-flex items-center gap-1.5 rounded-lg bg-violet-600 px-4 py-2 text-[12px] font-bold text-white disabled:opacity-40">
+          {busy ? <Loader2 size={14} className="animate-spin" /> : <Search size={14} />} 검색
+        </button>
+        <button onClick={() => { setF(EMPTY_FILTER); setRows([]); setCount(null); }} className="rounded-lg border border-slate-200 px-3 py-2 text-[12px] font-semibold text-slate-500">초기화</button>
+        {count !== null && (
+          <span className="text-[12px] font-bold">
+            {fmt(count)}명 <span className="font-normal text-slate-400">· 이메일 {fmt(withEmail)}명{count > EXPORT_CAP && ` · 내보내기는 상위 ${fmt(EXPORT_CAP)}명까지`}</span>
+          </span>
+        )}
+        {count !== null && count > 0 && (
+          <button onClick={exportCsv} disabled={!!exporting}
+            className="ml-auto inline-flex items-center gap-1.5 rounded-lg border border-emerald-400 bg-emerald-50 px-4 py-2 text-[12px] font-bold text-emerald-700 disabled:opacity-40">
+            {exporting ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />} {exporting ? `내보내는 중 ${exporting}` : "CSV 내보내기"}
+          </button>
+        )}
+      </div>
+
+      {rows.length > 0 && (
+        <div className="mt-4 overflow-x-auto">
+          <table className="w-full min-w-[860px] text-[11.5px]">
+            <thead><tr className="border-b border-slate-200 text-left text-[10px] uppercase text-slate-400">
+              <th className="py-2 pr-3">핸들</th><th className="py-2 pr-3">지역</th><th className="py-2 pr-3">티어</th>
+              <th className="py-2 pr-3">팔로워</th><th className="py-2 pr-3">이메일</th><th className="py-2 pr-3">플랫폼</th>
+              <th className="py-2 pr-3">KB영상</th><th className="py-2 pr-3">브랜드수</th><th className="py-2 pr-3">GMV$</th><th className="py-2">RPM$</th>
+            </tr></thead>
+            <tbody>
+              {rows.map((r) => (
+                <tr key={r.creator_uid} className="border-b border-slate-100 last:border-0">
+                  <td className="py-1.5 pr-3 font-semibold">
+                    {r.tiktok_url ? <a href={r.tiktok_url} target="_blank" rel="noreferrer noopener" className="text-violet-600 hover:underline">@{r.handle || r.creator_uid}</a> : `@${r.handle || r.creator_uid}`}
+                  </td>
+                  <td className="py-1.5 pr-3">{r.region || "—"}</td>
+                  <td className="py-1.5 pr-3">{r.mapping_tier}</td>
+                  <td className="py-1.5 pr-3 tabular-nums">{fmt(r.followers)}</td>
+                  <td className="py-1.5 pr-3">{r.email || "—"}</td>
+                  <td className="py-1.5 pr-3 text-[10px] text-slate-500">{r.messaging_platforms || "—"}</td>
+                  <td className="py-1.5 pr-3 tabular-nums">{fmt(r.kb_videos)}</td>
+                  <td className="py-1.5 pr-3 tabular-nums">{fmt(r.kb_brands_count)}</td>
+                  <td className="py-1.5 pr-3 tabular-nums">{fmt(Math.round(Number(r.kb_video_gmv_usd || 0)))}</td>
+                  <td className="py-1.5 tabular-nums">{Number(r.kb_rpm_usd || 0).toFixed(2)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <p className="mt-2 text-[10px] text-slate-400">미리보기 상위 100명 — 전체는 CSV 내보내기로 받으세요.</p>
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function KbImportPage() {
   const [authed, setAuthed] = useState<boolean | null>(null);
@@ -331,6 +544,9 @@ export default function KbImportPage() {
             </div>
           )}
         </div>
+
+        {/* 세그먼트 빌더 */}
+        <SegmentBuilder />
 
         {/* 배치 이력 */}
         <div className="mt-5 rounded-2xl border border-slate-200 bg-white p-5">
