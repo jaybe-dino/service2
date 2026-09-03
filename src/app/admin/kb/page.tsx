@@ -386,9 +386,29 @@ export default function KbImportPage() {
     let sent = resumeFrom, ins = job.inserted, upd = job.updated, rej = job.rejected;
     const errs = [...job.errors];
 
+    let preflighted = resumeFrom > 0; // 이어올리기면 이미 검증된 파일
+
     const flush = async (): Promise<boolean> => {
       if (!buf.length) return true;
       const payload = buf; buf = [];
+
+      // ① 사전 검증(dry-run): 첫 청크를 쓰기 없이 검증 — 거부율 20% 초과면 적재 자체를 차단
+      if (!preflighted) {
+        const d = await fetch("/api/admin/kb/import", {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ dataset, rows: payload, startRow: 0, dryRun: true }),
+        }).then((x) => x.json()).catch((e) => ({ error: String(e) }));
+        if (d.error) { patchJob(idx, { status: "error", msg: d.error }); return false; }
+        if (d.wouldReject / d.checked > 0.2) {
+          const why = Object.entries(d.reasons as Record<string, number>).sort((a, b) => b[1] - a[1]).slice(0, 3).map(([k, n]) => `${k}(${n})`).join(", ");
+          const msg = `사전검증 실패 — 샘플 ${d.checked}행 중 ${d.wouldReject}행 거부: ${why}`;
+          patchJob(idx, { status: "error", msg, errors: d.errors || [] });
+          await fetch("/api/admin/kb/import", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "fail", batchId, error: msg }) });
+          return false;
+        }
+        preflighted = true;
+      }
+
       const r = await fetch("/api/admin/kb/import", {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ dataset, batchId, rows: payload, startRow: sent }),
@@ -398,6 +418,13 @@ export default function KbImportPage() {
       if (Array.isArray(r.errors) && errs.length < 100) errs.push(...r.errors.slice(0, 100 - errs.length));
       try { localStorage.setItem(resumeKey(file), String(sent)); } catch { /* ignore */ }
       patchJob(idx, { rowsSent: sent, inserted: ins, updated: upd, rejected: rej, errors: errs });
+      // ② 회로차단기: 적재 중 누적 거부율 30% 초과 시 즉시 중단 (전량 밀어넣고 후회하는 상황 방지)
+      if (sent - resumeFrom >= 3000 && rej / (sent - resumeFrom) > 0.3) {
+        const msg = `거부율 과다(${Math.round((rej / (sent - resumeFrom)) * 100)}%) — 적재 중단. 거부 사유를 확인하세요.`;
+        patchJob(idx, { status: "error", msg });
+        await fetch("/api/admin/kb/import", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "fail", batchId, error: msg }) });
+        return false;
+      }
       return true;
     };
 

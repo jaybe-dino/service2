@@ -174,6 +174,7 @@ export async function POST(req: Request) {
   const b = (await req.json().catch(() => null)) as {
     action?: string; dataset?: string; fileName?: string; rowsDeclared?: number;
     batchId?: number; rows?: Record<string, string>[]; startRow?: number; error?: string;
+    dryRun?: boolean; // true면 검증만 수행, DB 쓰기·배치 집계 없음 (사전 점검용)
   } | null;
   if (!b) return NextResponse.json({ error: "본문 파싱 실패" }, { status: 400 });
 
@@ -208,6 +209,14 @@ export async function POST(req: Request) {
     const c = convertRow(spec, b.dataset!, rows[i], startRow + i + 2, rejects); // +2 = 헤더+1기준 행번호
     if (c) converted.push(c);
   }
+
+  // 사전 검증(dry-run): 쓰기 없이 거부율·사유 요약만 반환 — 형식 불일치를 적재 시작 전에 차단
+  if (b.dryRun) {
+    const reasons: Record<string, number> = {};
+    for (const e of rejects) { const k = `${e.column}: ${e.message}`; reasons[k] = (reasons[k] || 0) + 1; }
+    return NextResponse.json({ ok: true, dryRun: true, checked: rows.length, wouldReject: rejects.length, reasons, errors: rejects.slice(0, 20) });
+  }
+
   // 청크 내 PK 중복 제거(뒤 행 우선) — ON CONFLICT는 같은 문장 내 중복 시 에러
   const byPk = new Map<string, Record<string, string | null>>();
   for (const c of converted) byPk.set(spec.pk.map((k) => c[k]).join(""), c);
