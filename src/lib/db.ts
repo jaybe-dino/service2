@@ -16,7 +16,7 @@ let schemaReady: Promise<void> | null = null;
 
 // ⚠️ 스키마 버전 — 아래 DDL(테이블·컬럼·인덱스)을 추가/변경하면 반드시 이 숫자를 +1 하세요.
 // 저장된 버전과 일치하면 140여 개 DDL 전체를 건너뛰어(쿼리 1번) 콜드스타트를 수십 초 → 수십 ms로 줄입니다.
-const SCHEMA_VERSION = 2; // v2: kb_* K-Beauty 크리에이터 인텔리전스 테이블
+const SCHEMA_VERSION = 3; // v3: kb_* 숫자 컬럼 자릿수 제한 해제(overflow 방지) · v2: kb_* 테이블 추가
 
 export function ensureSchema(): Promise<void> {
   if (!schemaReady) {
@@ -699,12 +699,12 @@ export function ensureSchema(): Promise<void> {
         brand_ko text,
         brand_count int DEFAULT 0,
         creator_pool int,
-        gmv_local_30d numeric(18,2),
+        gmv_local_30d numeric,
         currency text,
-        gmv_usd_30d numeric(18,2),
+        gmv_usd_30d numeric,
         sold_30d int,
-        avg_price_local numeric(18,2),
-        gmv_growth numeric(10,4),
+        avg_price_local numeric,
+        gmv_growth numeric,
         new_items int,
         seller_type text,
         match_reason text,
@@ -731,11 +731,11 @@ export function ensureSchema(): Promise<void> {
         kb_brands_count int DEFAULT 0,
         kb_brands text,
         kb_products_count int DEFAULT 0,
-        kb_video_gmv_usd numeric(18,2) DEFAULT 0,
+        kb_video_gmv_usd numeric DEFAULT 0,
         kb_plays bigint DEFAULT 0,
-        kb_rpm_usd numeric(12,4) DEFAULT 0,
+        kb_rpm_usd numeric DEFAULT 0,
         aff_sold_90d int DEFAULT 0,
-        aff_gmv_local numeric(18,2) DEFAULT 0,
+        aff_gmv_local numeric DEFAULT 0,
         aff_video_count int DEFAULT 0,
         aff_live_rooms int DEFAULT 0,
         aff_avg_plays bigint DEFAULT 0,
@@ -760,11 +760,11 @@ export function ensureSchema(): Promise<void> {
         comments int DEFAULT 0,
         shares int DEFAULT 0,
         sold int DEFAULT 0,
-        gmv_local numeric(18,2) DEFAULT 0,
-        gmv_usd numeric(18,2) DEFAULT 0,
-        rpm numeric(12,4) DEFAULT 0,
-        conv_rate numeric(10,6) DEFAULT 0,
-        duration_sec numeric(8,1),
+        gmv_local numeric DEFAULT 0,
+        gmv_usd numeric DEFAULT 0,
+        rpm numeric DEFAULT 0,
+        conv_rate numeric DEFAULT 0,
+        duration_sec numeric,
         created_at timestamptz,
         caption text,
         video_url text,
@@ -783,13 +783,13 @@ export function ensureSchema(): Promise<void> {
         followers int,
         item_id text,
         item_name text,
-        price_usd numeric(14,2),
-        video_gmv_usd numeric(18,2),
+        price_usd numeric,
+        video_gmv_usd numeric,
         video_sold int,
         plays bigint,
-        engage_rate numeric(10,6),
-        rpm_local numeric(14,4),
-        duration_sec numeric(8,1),
+        engage_rate numeric,
+        rpm_local numeric,
+        duration_sec numeric,
         created_at timestamptz,
         caption text,
         video_url text,
@@ -819,7 +819,7 @@ export function ensureSchema(): Promise<void> {
         creator_count int DEFAULT 0,
         video_count int DEFAULT 0,
         product_count int DEFAULT 0,
-        total_gmv_usd numeric(18,2) DEFAULT 0,
+        total_gmv_usd numeric DEFAULT 0,
         regions text,
         updated_at timestamptz DEFAULT now()
       )`;
@@ -828,9 +828,9 @@ export function ensureSchema(): Promise<void> {
         brand_en text NOT NULL,
         video_count int DEFAULT 0,
         product_count int DEFAULT 0,
-        gmv_usd numeric(18,2) DEFAULT 0,
+        gmv_usd numeric DEFAULT 0,
         plays bigint DEFAULT 0,
-        rpm_usd numeric(12,4) DEFAULT 0,
+        rpm_usd numeric DEFAULT 0,
         PRIMARY KEY (creator_uid, brand_en)
       )`;
       await sql`CREATE INDEX IF NOT EXISTS idx_kb_cb_brand ON kb_creator_brand(brand_en, gmv_usd DESC)`;
@@ -848,6 +848,25 @@ export function ensureSchema(): Promise<void> {
         started_at timestamptz DEFAULT now(),
         finished_at timestamptz
       )`;
+      // v3: 기배포 kb_* 테이블의 numeric(p,s) 자릿수 제한 해제 — 소스 이상치(gmv_growth 10억 등)로 인한
+      // "numeric field overflow" 방지. numeric→numeric은 메타데이터만 변경(테이블 재작성 없음).
+      await sql`ALTER TABLE kb_shops
+        ALTER COLUMN gmv_local_30d TYPE numeric, ALTER COLUMN gmv_usd_30d TYPE numeric,
+        ALTER COLUMN avg_price_local TYPE numeric, ALTER COLUMN gmv_growth TYPE numeric`;
+      await sql`ALTER TABLE kb_creators
+        ALTER COLUMN kb_video_gmv_usd TYPE numeric, ALTER COLUMN kb_rpm_usd TYPE numeric,
+        ALTER COLUMN aff_gmv_local TYPE numeric`;
+      await sql`ALTER TABLE kb_brand_videos
+        ALTER COLUMN gmv_local TYPE numeric, ALTER COLUMN gmv_usd TYPE numeric,
+        ALTER COLUMN rpm TYPE numeric, ALTER COLUMN conv_rate TYPE numeric,
+        ALTER COLUMN duration_sec TYPE numeric`;
+      await sql`ALTER TABLE kb_category_videos
+        ALTER COLUMN price_usd TYPE numeric, ALTER COLUMN video_gmv_usd TYPE numeric,
+        ALTER COLUMN engage_rate TYPE numeric, ALTER COLUMN rpm_local TYPE numeric,
+        ALTER COLUMN duration_sec TYPE numeric`;
+      await sql`ALTER TABLE kb_creator_brand
+        ALTER COLUMN gmv_usd TYPE numeric, ALTER COLUMN rpm_usd TYPE numeric`;
+      await sql`ALTER TABLE kb_brands ALTER COLUMN total_gmv_usd TYPE numeric`;
 
       // 데모/관리자 계정 시드 (bcrypt("ktrend2026")) — 서버 세션 로그인 가능하도록
       const DEMO_HASH = "$2b$10$mLc7sBm3zK4a83l6/Tg9NOoDGLLYsfp4SXRfZcls4.LTw6Tsy/8Oy";
