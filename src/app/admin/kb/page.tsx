@@ -86,7 +86,7 @@ interface FileJob {
   errors: { row: number; column: string; value: string; message: string }[];
 }
 
-interface Batch { batch_id: number; file_name: string; dataset: string; row_count: number; inserted_count: number; updated_count: number; rejected_count: number; status: string; started_at: string; finished_at?: string }
+interface Batch { batch_id: number; file_name: string; dataset: string; row_count: number; inserted_count: number; updated_count: number; rejected_count: number; status: string; error_log?: string | null; started_at: string; finished_at?: string }
 interface Coverage { shops: number; shops_measured: number; creators: number; with_email: number; contactable: number; m1_ready: number; brand_videos: number; category_videos: number; hashtag_creators: number; brands: number }
 
 const fmt = (n?: number) => (n ?? 0).toLocaleString();
@@ -582,7 +582,11 @@ export default function KbImportPage() {
                     <td className="py-2 pr-3">{b.dataset}</td>
                     <td className="py-2 pr-3 tabular-nums">{fmt(b.inserted_count)}</td>
                     <td className="py-2 pr-3 tabular-nums">{fmt(b.updated_count)}</td>
-                    <td className="py-2 pr-3 tabular-nums">{fmt(b.rejected_count)}</td>
+                    <td className="py-2 pr-3 tabular-nums">
+                      {b.rejected_count > 0
+                        ? <span className="cursor-help font-bold text-rose-600 underline decoration-dotted" title={b.error_log || "사유 미기록(구버전 적재)"}>{fmt(b.rejected_count)}</span>
+                        : 0}
+                    </td>
                     <td className="py-2 pr-3">
                       <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${b.status === "done" ? "bg-emerald-50 text-emerald-600" : b.status === "failed" ? "bg-rose-50 text-rose-600" : "bg-amber-50 text-amber-600"}`}>{b.status}</span>
                     </td>

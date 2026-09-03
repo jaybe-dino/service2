@@ -93,25 +93,34 @@ const TS_RE = /^\d{4}-\d{2}-\d{2}([ T]\d{2}:\d{2}(:\d{2})?)?/;
 
 interface RejectRow { row: number; column: string; value: string; message: string }
 
+// 타임스탬프 관용 파싱: ISO/일반 포맷·epoch(초/밀리초)·Date 파싱 가능값 → ISO 문자열, 실패 시 null.
+function parseTs(v: string): string | null {
+  if (TS_RE.test(v)) return v;
+  if (/^\d{13}$/.test(v)) return new Date(Number(v)).toISOString();
+  if (/^\d{10}$/.test(v)) return new Date(Number(v) * 1000).toISOString();
+  const d = new Date(v);
+  return Number.isNaN(d.getTime()) ? null : d.toISOString();
+}
+
 // 행 검증 + DB 컬럼 객체 변환. null 반환 시 rejects에 사유 기록.
+// 거부는 필수키 누락·enum 위반만 — 숫자/시간 파싱 실패는 해당 필드만 NULL 처리(행은 등록).
 function convertRow(spec: DatasetSpec, dataset: string, raw: Record<string, string>, rowNo: number, rejects: RejectRow[]): Record<string, string | null> | null {
   const out: Record<string, string | null> = {};
   for (const req of spec.required) {
     if (!(raw[req] ?? "").trim()) { rejects.push({ row: rowNo, column: req, value: "", message: "required" }); return null; }
   }
-  const region = (raw.region ?? "").trim();
+  const region = (raw.region ?? "").trim().toUpperCase(); // 대소문자 정규화
   if (region && !REGIONS.has(region)) { rejects.push({ row: rowNo, column: "region", value: region, message: "region not allowed" }); return null; }
-  if (dataset === "shops" && !SHOP_TIERS.has((raw.tier ?? "").trim())) { rejects.push({ row: rowNo, column: "tier", value: raw.tier ?? "", message: "tier not in T1..T5" }); return null; }
-  if (dataset === "creators" && !MAP_TIERS.has((raw.mapping_tier ?? "").trim())) { rejects.push({ row: rowNo, column: "mapping_tier", value: raw.mapping_tier ?? "", message: "mapping_tier not in M1,M3,M4,M5" }); return null; }
+  if (dataset === "shops" && !SHOP_TIERS.has((raw.tier ?? "").trim().toUpperCase())) { rejects.push({ row: rowNo, column: "tier", value: raw.tier ?? "", message: "tier not in T1..T5" }); return null; }
+  if (dataset === "creators" && !MAP_TIERS.has((raw.mapping_tier ?? "").trim().toUpperCase())) { rejects.push({ row: rowNo, column: "mapping_tier", value: raw.mapping_tier ?? "", message: "mapping_tier not in M1,M3,M4,M5" }); return null; }
   for (const [csvName, [dbCol, type]] of Object.entries(spec.cols)) {
-    const v = (raw[csvName] ?? "").trim();
+    let v = (raw[csvName] ?? "").trim();
     if (!v) { out[dbCol] = null; continue; } // 빈 값 = NULL (스펙 §2)
+    if (dbCol === "region" || dbCol === "tier" || dbCol === "mapping_tier" || dbCol === "src_region") v = v.toUpperCase();
     if (type === "num") {
-      if (!Number.isFinite(Number(v))) { rejects.push({ row: rowNo, column: csvName, value: v.slice(0, 40), message: "numeric parse failed" }); return null; }
-      out[dbCol] = v;
+      out[dbCol] = Number.isFinite(Number(v)) ? v : null; // 파싱 실패 → NULL (행 유지)
     } else if (type === "ts") {
-      if (!TS_RE.test(v)) { rejects.push({ row: rowNo, column: csvName, value: v.slice(0, 40), message: "timestamp parse failed" }); return null; }
-      out[dbCol] = v;
+      out[dbCol] = parseTs(v); // 파싱 실패 → NULL (행 유지)
     } else out[dbCol] = v;
   }
   return out;
@@ -214,8 +223,16 @@ export async function POST(req: Request) {
     }
   }
   if (b.batchId) {
+    // 거부 사유 샘플을 이력에 남김(최대 ~800자) — 대량 거부 시 원인을 이력에서 바로 확인 가능
+    const sample = rejects.length
+      ? rejects.slice(0, 3).map((e) => `행${e.row} ${e.column}="${e.value}" ${e.message}`).join(" | ")
+      : null;
     await sql`UPDATE kb_import_batches SET inserted_count=inserted_count+${inserted},
-      updated_count=updated_count+${updated}, rejected_count=rejected_count+${rejects.length} WHERE batch_id=${b.batchId}`;
+      updated_count=updated_count+${updated}, rejected_count=rejected_count+${rejects.length},
+      error_log=CASE WHEN ${sample}::text IS NULL THEN error_log
+        WHEN error_log IS NULL THEN ${sample}
+        WHEN length(error_log) < 800 THEN error_log || ' | ' || ${sample} ELSE error_log END
+      WHERE batch_id=${b.batchId}`;
   }
   return NextResponse.json({ ok: true, inserted, updated, rejected: rejects.length, errors: rejects.slice(0, 100) });
 }
