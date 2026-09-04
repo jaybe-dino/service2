@@ -16,7 +16,7 @@ let schemaReady: Promise<void> | null = null;
 
 // ⚠️ 스키마 버전 — 아래 DDL(테이블·컬럼·인덱스)을 추가/변경하면 반드시 이 숫자를 +1 하세요.
 // 저장된 버전과 일치하면 140여 개 DDL 전체를 건너뛰어(쿼리 1번) 콜드스타트를 수십 초 → 수십 ms로 줄입니다.
-const SCHEMA_VERSION = 3; // v3: kb_* 숫자 컬럼 자릿수 제한 해제(overflow 방지) · v2: kb_* 테이블 추가
+const SCHEMA_VERSION = 4; // v4: oc_senders.pause_reason · v3: kb_* 숫자 제한 해제 · v2: kb_* 테이블
 
 export function ensureSchema(): Promise<void> {
   if (!schemaReady) {
@@ -644,6 +644,8 @@ export function ensureSchema(): Promise<void> {
       await sql`ALTER TABLE oc_messages ADD COLUMN IF NOT EXISTS variant text`; // A|B
       // 발신 메일함 워밍업 시작일 — 초기 소량→점증
       await sql`ALTER TABLE oc_senders ADD COLUMN IF NOT EXISTS warmup_start date`;
+      // 반송률 임계 초과로 자동 일시정지된 사유 (active=false 시 참고)
+      await sql`ALTER TABLE oc_senders ADD COLUMN IF NOT EXISTS pause_reason text`;
       // 캠페인 A/B 제목(선택)
       await sql`ALTER TABLE oc_campaigns ADD COLUMN IF NOT EXISTS subject_b text`;
       // 저장 세그먼트(필터 조합 재사용)

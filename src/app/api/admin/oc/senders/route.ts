@@ -16,7 +16,7 @@ const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 
 export async function GET() {
   const g = await guard(); if (g) return g;
-  const { rows } = await sql`SELECT id, email, display_name, backend, env_key, daily_limit, active, warmup_start, created_at
+  const { rows } = await sql`SELECT id, email, display_name, backend, env_key, daily_limit, active, warmup_start, pause_reason, created_at
     FROM oc_senders ORDER BY created_at DESC`;
   // 서비스계정 키 준비 여부(configured) 부가 — 공용(모든 발신계정 동일)
   const ok = saConfigured();

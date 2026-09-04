@@ -121,7 +121,7 @@ function stripHtml(html: string): string {
 /** 공용 메일함 명의로 발송 */
 export async function sendViaSender(
   sender: OcSender,
-  msg: { to: string; subject: string; html?: string; text?: string; replyTo?: string },
+  msg: { to: string; subject: string; html?: string; text?: string; replyTo?: string; extraHeaders?: string[] },
 ): Promise<GmailSendResult> {
   const to = String(msg.to || "").trim();
   if (!EMAIL_RE.test(to)) return { ok: false, error: "수신 이메일 형식 오류" };
@@ -138,6 +138,7 @@ export async function sendViaSender(
       `To: ${to}`,
       `Subject: ${encodeHeader(subject)}`,
       msg.replyTo ? `Reply-To: ${msg.replyTo}` : "",
+      ...(msg.extraHeaders || []), // List-Unsubscribe 등 (개행 불가 헤더만)
       "MIME-Version: 1.0",
       html ? `Content-Type: multipart/alternative; boundary="${boundary}"` : `Content-Type: text/plain; charset="UTF-8"`,
     ].filter(Boolean);

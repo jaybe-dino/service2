@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { isAdminAuthed } from "@/lib/admin-auth";
 import { sql, isConfigured, ensureSchema } from "@/lib/db";
 import { sendViaSender, saConfigured, type OcSender } from "@/lib/gmail";
+import { unsubUrl } from "@/lib/oc-unsub";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -78,8 +79,21 @@ export async function POST(req: Request) {
   // 메일함별 오늘(KST) 발송량 → 잔여 한도 계산(워밍업 반영). 발송 주체는 oc_messages.sender_id 기준.
   interface Slot { id: number; sender: OcSender; remaining: number }
   const pool: Slot[] = [];
+  const pausedNotes: string[] = [];
   let dailyRemaining = 0;
   for (const s of sRes.rows) {
+    // 반송률 회로차단기: 최근 7일 발송 50건 이상 & 반송(하드 실패)률 2% 초과 → 자동 일시정지(평판 보호)
+    const hb = (await sql`SELECT
+        COUNT(*) FILTER (WHERE status='sent')::int AS sent,
+        COUNT(*) FILTER (WHERE status='failed' AND error ~* 'invalid|no such|not found|disabled|unavailable|550|5\\.[0-9]\\.[0-9]')::int AS hard
+      FROM oc_messages WHERE sender_id = ${s.id} AND sent_at > now() - interval '7 days'`).rows[0];
+    const vol = (hb.sent || 0) + (hb.hard || 0);
+    if (vol >= 50 && hb.hard / vol > 0.02) {
+      const reason = `반송률 ${(hb.hard / vol * 100).toFixed(1)}% (7일 ${vol}건 중 ${hb.hard}) — 자동 일시정지`;
+      await sql`UPDATE oc_senders SET active = false, pause_reason = ${reason} WHERE id = ${s.id}`;
+      pausedNotes.push(`${s.email}: ${reason}`);
+      continue; // 이 메일함은 발송 풀에서 제외
+    }
     const sentTodayRes = await sql`SELECT COUNT(*)::int AS n FROM oc_messages
       WHERE sender_id = ${s.id} AND status = 'sent'
         AND (sent_at AT TIME ZONE 'Asia/Seoul')::date = (now() AT TIME ZONE 'Asia/Seoul')::date`;
@@ -88,6 +102,7 @@ export async function POST(req: Request) {
     pool.push({ id: Number(s.id), sender: { email: s.email, display_name: s.display_name }, remaining });
     dailyRemaining += remaining;
   }
+  if (!pool.length) return NextResponse.json({ error: `발송 가능한 메일함 없음${pausedNotes.length ? " — " + pausedNotes.join(" · ") : ""}` }, { status: 400 });
   if (!dry && dailyRemaining <= 0) {
     return NextResponse.json({ sentNow: 0, failedNow: 0, dailyRemaining: 0, note: "오늘 일일한도 소진(전 메일함)" });
   }
@@ -153,7 +168,15 @@ export async function POST(req: Request) {
     const slot = pickSlot();
     if (!slot) break; // 전 메일함 한도 소진
     html = injectTracking(html, m.id, SITE); // 오픈/클릭 추적 주입
-    const res = await sendViaSender(slot.sender, { to: m.to_email, subject, html, text });
+    // C1: 원클릭 수신거부 — RFC 8058 헤더 + 본문 하단 가시 링크(추적 미적용, 직접 링크)
+    const uUrl = unsubUrl(SITE, m.to_email);
+    const extraHeaders = [
+      `List-Unsubscribe: <mailto:${slot.sender.email}?subject=unsubscribe>, <${uUrl}>`,
+      `List-Unsubscribe-Post: List-Unsubscribe=One-Click`,
+    ];
+    html += `<p style="margin-top:24px;font-size:11px;color:#94a3b8">더 이상 제안을 원치 않으시면 <a href="${uUrl}" style="color:#94a3b8">수신거부(Unsubscribe)</a>를 눌러주세요.</p>`;
+    const textFinal = text ? text + `\n\n---\n수신거부(Unsubscribe): ${uUrl}` : undefined;
+    const res = await sendViaSender(slot.sender, { to: m.to_email, subject, html, text: textFinal, extraHeaders });
     if (res.ok) {
       slot.remaining--;
       await sql`UPDATE oc_messages SET status='sent', sender_id=${slot.id}, variant=${variant}, subject=${subject}, body=${rawBody}, provider_id=${res.id || null}, error=NULL, sent_at=now() WHERE id=${m.id}`;
@@ -162,13 +185,13 @@ export async function POST(req: Request) {
       const err = res.error || "발송 실패";
       await sql`UPDATE oc_messages SET status='failed', sender_id=${slot.id}, variant=${variant}, subject=${subject}, body=${rawBody}, error=${err.slice(0, 300)}, sent_at=now() WHERE id=${m.id}`;
       failedNow++;
-      // 영구 실패(잘못된/없는 주소)로 보이면 제외목록 자동 등록
-      if (/invalid.*(recipient|address)|no such|not found|disabled|mailbox.*unavailable|550|5\.1\.[0-9]/i.test(err)) {
+      // C3: 하드 바운스(영구 실패)만 제외목록 등록 — 소프트(일시) 실패는 재시도 여지 유지
+      if (/invalid.*(recipient|address)|no such|not found|disabled|mailbox.*unavailable|550|5\.[0-9]\.[0-9]/i.test(err)) {
         await sql`INSERT INTO oc_suppression (email, reason, source) VALUES (${m.to_email}, 'bounce', 'send') ON CONFLICT (email) DO NOTHING`;
       }
     }
-    // 완만한 발송(스팸/스로틀 방지)
-    await new Promise((r) => setTimeout(r, 350));
+    // C2: 완만한 발송 + 랜덤 지터(기계적 등간격 패턴 제거 — 스팸 필터 회피)
+    await new Promise((r) => setTimeout(r, 300 + Math.floor(Math.random() * 600)));
   }
 
   // 카운터/상태 갱신
@@ -186,5 +209,6 @@ export async function POST(req: Request) {
     remainingQueued: a.queued,
     dailyRemaining: Math.max(0, dailyRemaining - sentNow),
     done: a.queued === 0,
+    ...(pausedNotes.length ? { note: `자동 일시정지: ${pausedNotes.join(" · ")}` } : {}),
   });
 }

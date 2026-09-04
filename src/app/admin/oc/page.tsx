@@ -21,7 +21,7 @@ interface Product { id: number; name: string; brand: string | null; category: st
 const OC_CATEGORIES = [{ id: "스킨케어", ko: "스킨케어" }, { id: "메이크업", ko: "메이크업" }, { id: "헤어케어", ko: "헤어케어" }];
 const OC_COUNTRIES = [{ id: "US", ko: "미국", flag: "🇺🇸" }, { id: "TH", ko: "태국", flag: "🇹🇭" }, { id: "VN", ko: "베트남", flag: "🇻🇳" }, { id: "MY", ko: "말레이시아", flag: "🇲🇾" }, { id: "SG", ko: "싱가포르", flag: "🇸🇬" }];
 const COUNTRY_KO: Record<string, string> = Object.fromEntries(OC_COUNTRIES.map((c) => [c.id, `${c.flag} ${c.ko}`]));
-interface Sender { id: number; email: string; display_name: string | null; daily_limit: number; active: boolean; configured: boolean; warmup_start: string | null; }
+interface Sender { id: number; email: string; display_name: string | null; daily_limit: number; active: boolean; configured: boolean; warmup_start: string | null; pause_reason?: string | null; }
 interface InboxRow { id: number; mailbox: string; from_email: string; from_name: string | null; subject: string | null; snippet: string | null; body_text: string | null; received_at: string | null; matched_handle: string | null; matched_campaign_id: number | null; status: string; is_bounce: boolean; }
 interface Campaign { id: number; name: string; status: string; total: number; sent: number; failed: number; created_at: string; product_name: string | null; sender_email: string | null; }
 interface CreatorRow { handle: string; email: string | null; avg_views: number | null; total_views: number | null; videos: number | null; brands: string | null; region: string | null; }
@@ -663,6 +663,14 @@ function ComposeTab({ filter, products, senders, campaigns, preview, runPreview,
   const [body, setBody] = useState(DEFAULT_BODY);
   const [busy, setBusy] = useState(false);
   const [transBusy, setTransBusy] = useState(false);
+  const [spam, setSpam] = useState<{ score: number; grade: string; issues: { level: string; msg: string }[] } | null>(null);
+  const [spamBusy, setSpamBusy] = useState(false);
+  async function checkSpam() {
+    setSpamBusy(true);
+    const r = await fetch("/api/admin/oc/spam-check", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ subject, body }) }).then((x) => x.json()).catch(() => null);
+    setSpamBusy(false);
+    if (r && !r.error) setSpam(r);
+  }
   const [useSelection, setUseSelection] = useState(true);
   const [sendState, setSendState] = useState<{ id: number; sent: number; failed: number; queued: number; running: boolean; note?: string } | null>(null);
   const inp = "w-full rounded-md border border-[var(--border)] px-3 py-2 text-[12px] outline-none focus:border-[var(--accent)]";
@@ -766,6 +774,26 @@ function ComposeTab({ filter, products, senders, campaigns, preview, runPreview,
             <span className="text-[10px] text-[var(--muted)]">한국어로 작성 후 → 해당 국가 언어로 변환(제품 국가 자동)</span>
           </div>
           <div className="text-[11px] text-[var(--muted)]">변수: <code>{"{{handle}} {{views}} {{brands}} {{product}} {{brand}} {{category}} {{concept}} {{usp}} {{region}}"}</code></div>
+          {/* C4: 발송 전 스팸 점검 */}
+          <div className="rounded-md bg-slate-50 px-2.5 py-2 text-[11px]">
+            <div className="flex items-center gap-2">
+              <button onClick={checkSpam} disabled={spamBusy || !body.trim()} className="kt-btn kt-btn-outline px-2.5 py-1 text-[11px]">{spamBusy ? "점검 중…" : "🛡 스팸 점검"}</button>
+              {spam && (
+                <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${spam.grade === "안전" ? "bg-emerald-100 text-emerald-700" : spam.grade === "주의" ? "bg-amber-100 text-amber-700" : "bg-rose-100 text-rose-700"}`}>
+                  {spam.grade} · 위험도 {spam.score}/100
+                </span>
+              )}
+              <span className="text-[10px] text-[var(--muted)]">수신거부 헤더·링크는 발송 시 자동 삽입</span>
+            </div>
+            {spam && spam.issues.length > 0 && (
+              <ul className="mt-1.5 space-y-0.5">
+                {spam.issues.map((i, k) => (
+                  <li key={k} className={`text-[10px] ${i.level === "high" ? "text-rose-600" : i.level === "mid" ? "text-amber-600" : "text-[var(--muted)]"}`}>· {i.msg}</li>
+                ))}
+              </ul>
+            )}
+            {spam && !spam.issues.length && <div className="mt-1 text-[10px] text-emerald-600">발견된 문제 없음 — 발송해도 좋습니다.</div>}
+          </div>
           <button onClick={createCampaign} disabled={busy} className="kt-btn kt-btn-primary w-full py-2 text-[12px]">{busy ? "생성 중…" : "캠페인 생성(수신자 확정)"}</button>
         </div>
       </div>
@@ -1049,6 +1077,7 @@ function SendersTab({ senders, reload }: { senders: Sender[]; reload: () => void
                     {s.configured ? <span className="ml-1 text-emerald-600"><Check size={11} className="inline" /> SA</span> : <span className="ml-1 text-rose-500"><X size={11} className="inline" /> SA 미설정</span>}
                     {s.warmup_start && <span className="ml-1 rounded bg-orange-100 px-1 text-[9px] font-bold text-orange-700">워밍업</span>}
                     {!s.active && <span className="ml-1 text-slate-400">· 비활성</span>}
+                    {!s.active && s.pause_reason && <span className="ml-1 rounded bg-rose-50 px-1 text-[9px] font-bold text-rose-600" title={s.pause_reason}>자동정지: {s.pause_reason.slice(0, 40)}</span>}
                   </div>
                 </div>
                 <div className="flex shrink-0 gap-1.5">

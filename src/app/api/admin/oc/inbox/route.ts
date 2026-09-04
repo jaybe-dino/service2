@@ -118,6 +118,17 @@ export async function POST(req: Request) {
     const isUnsub = UNSUB_RE.test((m.subject || "") + " " + (m.body || ""));
     // 반송/시스템 메일 분류(회신 아님)
     const isBounce = /mailer-daemon|postmaster|no-?reply|mail delivery|delivery status notification|undeliverable|delivery failure|returned mail|rejected/i.test(fromEmail + " " + (m.subject || ""));
+    // C3: 반송 통지(DSN) 본문에서 원 수신자 주소 추출 → 실제 발송 이력 있는 주소만 하드 바운스 격리
+    if (isBounce && m.body) {
+      const found = Array.from(new Set((m.body.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g) || [])
+        .map((e) => e.toLowerCase()).filter((e) => e !== mailbox && !/mailer-daemon|postmaster|no-?reply/.test(e)))).slice(0, 10);
+      if (found.length) {
+        const hit = await sql.query(`SELECT DISTINCT to_email FROM oc_messages WHERE to_email = ANY($1::text[])`, [found]);
+        for (const r2 of hit.rows) {
+          await sql`INSERT INTO oc_suppression (email, reason, source) VALUES (${r2.to_email}, 'bounce', 'inbox-dsn') ON CONFLICT (email) DO NOTHING`;
+        }
+      }
+    }
     const r = await sql`INSERT INTO oc_inbox (mailbox, msg_id, thread_id, from_email, from_name, subject, snippet, body_text, received_at, matched_handle, matched_campaign_id, status, is_bounce)
       VALUES (${mailbox}, ${m.id}, ${m.threadId || null}, ${fromEmail}, ${fromName}, ${m.subject || null}, ${m.snippet || null}, ${m.body || null}, ${m.date || null}, ${handle}, ${campaignId}, 'new', ${isBounce})
       ON CONFLICT (mailbox, msg_id) DO UPDATE SET
