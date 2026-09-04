@@ -43,7 +43,7 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   const g = await guard(); if (g) return g;
   const b = (await req.json().catch(() => ({}))) as {
-    name?: string; productId?: number; senderId?: number; senderIds?: number[]; subject?: string; subjectB?: string; body?: string; filter?: OcFilter; emails?: string[];
+    name?: string; productId?: number; senderId?: number; senderIds?: number[]; subject?: string; subjectB?: string; body?: string; filter?: OcFilter; emails?: string[]; aiLevel?: string;
   };
   const name = String(b.name || "").trim();
   const subject = String(b.subject || "").trim();
@@ -63,10 +63,11 @@ export async function POST(req: Request) {
   if (!validIds.length) return NextResponse.json({ error: "유효한(활성) 발신 메일함이 없습니다" }, { status: 400 });
   const senderId = validIds[0]; // 대표(표시용)
 
+  const aiLevel = b.aiLevel === "L2" ? "L2" : "L1"; // L2 = AI 개인화 오프닝(발송 시 생성)
   const created = await sql.query(
-    `INSERT INTO oc_campaigns (name, product_id, sender_id, sender_ids, subject, subject_b, body, filter, status, created_by)
-     VALUES ($1, $2, $3, $4::int[], $5, $6, $7, $8::jsonb, 'draft', 'admin') RETURNING id`,
-    [name, productId, senderId, validIds, subject, subjectB, body, JSON.stringify(filter)],
+    `INSERT INTO oc_campaigns (name, product_id, sender_id, sender_ids, subject, subject_b, body, filter, status, created_by, ai_level)
+     VALUES ($1, $2, $3, $4::int[], $5, $6, $7, $8::jsonb, 'draft', 'admin', $9) RETURNING id`,
+    [name, productId, senderId, validIds, subject, subjectB, body, JSON.stringify(filter), aiLevel],
   );
   const campaignId = Number(created.rows[0].id);
 

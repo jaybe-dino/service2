@@ -3,6 +3,7 @@ import { isAdminAuthed } from "@/lib/admin-auth";
 import { sql, isConfigured, ensureSchema } from "@/lib/db";
 import { sendViaSender, saConfigured, type OcSender } from "@/lib/gmail";
 import { unsubUrl } from "@/lib/oc-unsub";
+import { askClaude, aiConfigured } from "@/lib/ai";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -128,6 +129,22 @@ export async function POST(req: Request) {
     return NextResponse.json({ sentNow: 0, failedNow: 0, dailyRemaining, remainingQueued: 0, done: true });
   }
 
+  // L2 하이브리드: 크리에이터별 개인화 오프닝 1~2문장을 발송 전에 병렬 생성(실패 시 오프닝 없이 발송)
+  const openings = new Map<number, string>();
+  if (!dry && c.ai_level === "L2" && aiConfigured()) {
+    const CONC = 3;
+    for (let i = 0; i < msgs.length; i += CONC) {
+      await Promise.all(msgs.slice(i, i + CONC).map(async (m) => {
+        const r = await askClaude(
+          "Write ONLY the opening 1-2 sentences of a friendly B2B outreach email to a TikTok creator, personalized with the facts given. " +
+          "Same language as the email body draft provided. No greeting line like 'Hi' (the template has it), no placeholder, no quotes.",
+          `크리에이터: @${m.handle || ""} · 평균 조회 ${m.avg_views || "?"} · 영상 ${m.videos || "?"}개 · 판매 브랜드: ${m.brands || "-"}\n` +
+          `제품: ${c.p_name || ""} (${c.p_brand || ""} / ${c.p_category || ""})\n본문 초안(언어 참고용):\n${String(c.body).slice(0, 400)}`, 200);
+        if (r.ok && r.text) openings.set(Number(m.id), r.text.trim());
+      }));
+    }
+  }
+
   await sql`UPDATE oc_campaigns SET status = 'sending', updated_at = now() WHERE id = ${campaignId}`;
 
   // 로테이션 커서: 잔여 한도가 있는 메일함을 순환 선택
@@ -153,7 +170,8 @@ export async function POST(req: Request) {
     const variant = c.subject_b ? (m.id % 2 === 0 ? "A" : "B") : "A";
     const subjectTpl = variant === "B" && c.subject_b ? c.subject_b : c.subject;
     const subject = render(subjectTpl, vars);
-    const rawBody = render(c.body, vars);
+    const opening = openings.get(Number(m.id));
+    const rawBody = (opening ? opening + "\n\n" : "") + render(c.body, vars);
     const looksHtml = /<[a-z][\s\S]*>/i.test(rawBody);
     // 순수 텍스트 본문의 맨 URL을 <a>로 자동 링크화 → 클릭 추적 가능
     let html = looksHtml ? rawBody : esc(rawBody).replace(/(https?:\/\/[^\s<]+)/g, '<a href="$1">$1</a>').replace(/\n/g, "<br>");

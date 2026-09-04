@@ -22,7 +22,7 @@ const OC_CATEGORIES = [{ id: "스킨케어", ko: "스킨케어" }, { id: "메이
 const OC_COUNTRIES = [{ id: "US", ko: "미국", flag: "🇺🇸" }, { id: "TH", ko: "태국", flag: "🇹🇭" }, { id: "VN", ko: "베트남", flag: "🇻🇳" }, { id: "MY", ko: "말레이시아", flag: "🇲🇾" }, { id: "SG", ko: "싱가포르", flag: "🇸🇬" }];
 const COUNTRY_KO: Record<string, string> = Object.fromEntries(OC_COUNTRIES.map((c) => [c.id, `${c.flag} ${c.ko}`]));
 interface Sender { id: number; email: string; display_name: string | null; daily_limit: number; active: boolean; configured: boolean; warmup_start: string | null; pause_reason?: string | null; }
-interface InboxRow { id: number; mailbox: string; from_email: string; from_name: string | null; subject: string | null; snippet: string | null; body_text: string | null; received_at: string | null; matched_handle: string | null; matched_campaign_id: number | null; status: string; is_bounce: boolean; }
+interface InboxRow { id: number; mailbox: string; from_email: string; from_name: string | null; subject: string | null; snippet: string | null; body_text: string | null; received_at: string | null; matched_handle: string | null; matched_campaign_id: number | null; status: string; is_bounce: boolean; intent?: string | null; draft_reply?: string | null; }
 interface Campaign { id: number; name: string; status: string; total: number; sent: number; failed: number; created_at: string; product_name: string | null; sender_email: string | null; }
 interface CreatorRow { handle: string; email: string | null; avg_views: number | null; total_views: number | null; videos: number | null; brands: string | null; region: string | null; }
 interface MsgRow { id: number; handle: string | null; to_email: string; status: string; error: string | null; subject: string | null; sent_at: string | null; }
@@ -673,6 +673,49 @@ function ComposeTab({ filter, products, senders, campaigns, preview, runPreview,
   }
   const [useSelection, setUseSelection] = useState(true);
   const [sendState, setSendState] = useState<{ id: number; sent: number; failed: number; queued: number; running: boolean; note?: string } | null>(null);
+  // AI 개인화 레벨: L1=템플릿 변수만 · L2=크리에이터별 AI 오프닝(발송 시 생성)
+  const [aiLevel, setAiLevel] = useState<"L1" | "L2">("L1");
+  // 제품 맞춤 추천 (유사 제품·콘텐츠 이력 + 활성도)
+  const [recCountry, setRecCountry] = useState("");
+  const [recCount, setRecCount] = useState("100");
+  const [recBusy, setRecBusy] = useState(false);
+  const [rec, setRec] = useState<{ total: number; basis: { sameBrands: string[]; catBrandCount: number }; rows: { handle: string; email: string; score: number; same_videos: number; cat_videos: number; kb_rpm_usd: string }[] } | null>(null);
+  const [recEmails, setRecEmails] = useState<string[]>([]);
+  // 테스트 발송
+  const [testTo, setTestTo] = useState("");
+  const [testBusy, setTestBusy] = useState(false);
+
+  async function runRecommend() {
+    if (!productId) { alert("제품을 먼저 선택하세요 — 추천은 제품 기준으로 동작합니다"); return; }
+    setRecBusy(true); setRec(null); setRecEmails([]);
+    const r = await fetch("/api/admin/oc/recommend", { method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ productId, country: recCountry || undefined, count: Number(recCount) || 100 }) }).then((x) => x.json()).catch(() => null);
+    setRecBusy(false);
+    if (!r || r.error) { alert(r?.error || "추천 실패"); return; }
+    setRec(r);
+  }
+  async function confirmRecommend() {
+    if (!rec?.rows?.length) return;
+    const emails = rec.rows.map((x) => x.email).filter(Boolean);
+    setRecBusy(true);
+    const r = await fetch("/api/admin/oc/recommend", { method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "materialize", emails }) }).then((x) => x.json()).catch(() => null);
+    setRecBusy(false);
+    if (!r || r.error) { alert(r?.error || "확정 실패"); return; }
+    setRecEmails(r.emails);
+    alert(`추천 ${r.emails.length}명 확정 — 이 대상으로 캠페인이 생성됩니다`);
+  }
+  async function sendTest() {
+    if (!testTo.trim()) { alert("테스트 수신 이메일을 입력하세요"); return; }
+    if (!subject.trim() || !body.trim()) { alert("제목·본문을 먼저 작성하세요"); return; }
+    if (!senderIds.length) { alert("발신 메일함을 선택하세요"); return; }
+    setTestBusy(true);
+    const r = await fetch("/api/admin/oc/test-send", { method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ to: testTo, senderId: senderIds[0], subject, body, productId: productId || undefined, aiLevel }) }).then((x) => x.json()).catch(() => null);
+    setTestBusy(false);
+    if (r?.ok) alert(`테스트 발송 완료 → ${r.to}\n발신: ${r.from}${r.aiOpening ? "\nAI 오프닝: " + r.aiOpening : ""}\n받은편지함/스팸함 도착 위치를 확인하세요.`);
+    else alert(r?.error || "테스트 발송 실패");
+  }
   const inp = "w-full rounded-md border border-[var(--border)] px-3 py-2 text-[12px] outline-none focus:border-[var(--accent)]";
 
   const selProduct = products.find((p) => p.id === productId);
@@ -700,8 +743,10 @@ function ComposeTab({ filter, products, senders, campaigns, preview, runPreview,
     if (!name.trim() || !subject.trim() || !body.trim()) { alert("캠페인명·제목·본문을 입력하세요"); return; }
     if (!senderIds.length) { alert("발신 메일함을 1개 이상 선택하세요"); return; }
     setBusy(true);
-    const payload: Record<string, unknown> = { name, productId: productId || null, senderIds, subject, subjectB: subjectB || null, body };
-    if (usingSelection) payload.emails = selectedEmails; else payload.filter = filter;
+    const payload: Record<string, unknown> = { name, productId: productId || null, senderIds, subject, subjectB: subjectB || null, body, aiLevel };
+    if (recEmails.length) payload.emails = recEmails;
+    else if (usingSelection) payload.emails = selectedEmails;
+    else payload.filter = filter;
     const r = await fetch("/api/admin/oc/campaigns", {
       method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload),
     });
@@ -760,6 +805,34 @@ function ComposeTab({ filter, products, senders, campaigns, preview, runPreview,
             </div>
             {senderIds.length > 1 && <div className="mt-1 text-[10px] text-[var(--accent)]">{senderIds.length}개 메일함 로테이션 · 합산 일일한도까지 분산 발송</div>}
           </div>
+          {/* 제품 맞춤 크리에이터 추천 — 유사 제품·콘텐츠 이력 + 활성도 */}
+          <div className="rounded-md border border-violet-200 bg-violet-50/50 px-2.5 py-2 text-[11px]">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="font-bold text-violet-700">🎯 제품 맞춤 추천</span>
+              <select className="rounded border border-[var(--border)] px-1.5 py-1 text-[11px]" value={recCountry} onChange={(e) => setRecCountry(e.target.value)}>
+                <option value="">국가: 제품 설정</option><option value="US">US</option><option value="TH">TH</option><option value="VN">VN</option>
+              </select>
+              <input className="w-20 rounded border border-[var(--border)] px-1.5 py-1 text-[11px]" inputMode="numeric" value={recCount} onChange={(e) => setRecCount(e.target.value.replace(/\D/g, ""))} placeholder="수량" />
+              <button onClick={runRecommend} disabled={recBusy} className="kt-btn kt-btn-outline px-2.5 py-1 text-[11px]">{recBusy ? "매칭 중…" : "추천 실행"}</button>
+              {rec && <span className="font-bold">{rec.total}명 매칭</span>}
+              {rec && rec.rows.length > 0 && !recEmails.length && <button onClick={confirmRecommend} disabled={recBusy} className="kt-btn kt-btn-primary px-2.5 py-1 text-[11px]">이 대상으로 확정</button>}
+              {recEmails.length > 0 && <span className="rounded-full bg-violet-600 px-2 py-0.5 text-[10px] font-bold text-white">✓ 추천 {recEmails.length}명 확정됨</span>}
+              {recEmails.length > 0 && <button onClick={() => { setRecEmails([]); setRec(null); }} className="text-[10px] text-[var(--muted)] underline">해제</button>}
+            </div>
+            {rec && <div className="mt-1 text-[10px] text-[var(--muted)]">기준: 동일 브랜드 {rec.basis.sameBrands.length ? rec.basis.sameBrands.join(",") : "없음"} · 동일 카테고리 브랜드 {rec.basis.catBrandCount}종 · 활성도(최근 영상일) 반영 · 이메일 보유만</div>}
+            {rec && rec.rows.length > 0 && (
+              <div className="mt-1 max-h-24 overflow-auto text-[10px] text-[var(--muted)]">
+                {rec.rows.slice(0, 12).map((x) => <div key={x.handle}>@{x.handle} · 점수 {x.score} (동일브랜드 {x.same_videos} · 카테고리 {x.cat_videos} · RPM {Number(x.kb_rpm_usd || 0).toFixed(1)})</div>)}
+                {rec.rows.length > 12 && <div>… 외 {rec.rows.length - 12}명</div>}
+              </div>
+            )}
+          </div>
+          {/* AI 개인화 레벨 */}
+          <div className="flex items-center gap-3 rounded-md bg-slate-50 px-2.5 py-2 text-[11px]">
+            <span className="font-bold text-[var(--muted)]">🤖 개인화</span>
+            <label className="flex items-center gap-1"><input type="radio" checked={aiLevel === "L1"} onChange={() => setAiLevel("L1")} /> L1 템플릿 변수</label>
+            <label className="flex items-center gap-1"><input type="radio" checked={aiLevel === "L2"} onChange={() => setAiLevel("L2")} /> L2 AI 오프닝 <span className="text-[9px] text-[var(--muted)]">(크리에이터별 첫 1~2문장 AI 생성 · 발송 속도 소폭 감소)</span></label>
+          </div>
           <input className={inp} placeholder="제목 (A)" value={subject} onChange={(e) => setSubject(e.target.value)} />
           <input className={inp} placeholder="제목 B (선택 · 입력 시 A/B 테스트 자동 분할)" value={subjectB} onChange={(e) => setSubjectB(e.target.value)} />
           <textarea className={`${inp} font-mono`} rows={9} value={body} onChange={(e) => setBody(e.target.value)} />
@@ -793,6 +866,13 @@ function ComposeTab({ filter, products, senders, campaigns, preview, runPreview,
               </ul>
             )}
             {spam && !spam.issues.length && <div className="mt-1 text-[10px] text-emerald-600">발견된 문제 없음 — 발송해도 좋습니다.</div>}
+          </div>
+          {/* 테스트 발송 — 실제 헤더/수신거부 링크 포함 1통 */}
+          <div className="flex flex-wrap items-center gap-2 rounded-md bg-slate-50 px-2.5 py-2 text-[11px]">
+            <span className="font-bold text-[var(--muted)]">✉️ 테스트 발송</span>
+            <input className="w-56 rounded border border-[var(--border)] px-2 py-1 text-[11px]" placeholder="테스트 수신 이메일 직접 입력" value={testTo} onChange={(e) => setTestTo(e.target.value)} />
+            <button onClick={sendTest} disabled={testBusy} className="kt-btn kt-btn-outline px-2.5 py-1 text-[11px]">{testBusy ? "발송 중…" : "테스트 보내기"}</button>
+            <span className="text-[9px] text-[var(--muted)]">[TEST] 제목 · 샘플 변수 렌더 · 수신거부 헤더 포함(스팸함 도착 점검) · 한도 미차감</span>
           </div>
           <button onClick={createCampaign} disabled={busy} className="kt-btn kt-btn-primary w-full py-2 text-[12px]">{busy ? "생성 중…" : "캠페인 생성(수신자 확정)"}</button>
         </div>
@@ -1199,8 +1279,20 @@ function InboxTab({ senders }: { senders: Sender[] }) {
     setDraft({ id, subject: "", body: "", busy: true });
     const r = await fetch("/api/admin/oc/reply-draft", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id }) });
     const j = await r.json();
-    if (r.ok) setDraft({ id, subject: j.subject || "Re:", body: j.draft, busy: false });
+    if (r.ok) {
+      if (j.unsubscribed) { alert("수신거부 의도로 분류 — 제외목록에 자동 등록했습니다(답장 불필요)"); setDraft(null); }
+      else setDraft({ id, subject: j.subject || "Re:", body: j.draft, busy: false });
+      if (j.intent) setRows((prev) => prev.map((x) => x.id === id ? { ...x, intent: j.intent, draft_reply: j.draft || x.draft_reply } : x));
+    }
     else { setDraft(null); alert("초안 실패: " + (j.error || "")); }
+  }
+  const [batchBusy, setBatchBusy] = useState(false);
+  async function batchDrafts() {
+    setBatchBusy(true);
+    const r = await fetch("/api/admin/oc/reply-draft", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ batch: true, max: 10 }) }).then((x) => x.json()).catch(() => null);
+    setBatchBusy(false);
+    if (r?.ok) { alert(`신규 회신 ${r.processed}건 처리 — 의도 분류·초안 저장 완료 (목록의 배지·"저장된 초안 열기"로 확인)`); load(mailbox, status); }
+    else alert(r?.error || "일괄 생성 실패");
   }
   async function sendReply() {
     if (!draft || !draft.body.trim()) return;
@@ -1292,6 +1384,7 @@ function InboxTab({ senders }: { senders: Sender[] }) {
             <option value="new">신규</option><option value="handled">처리완료</option><option value="ignored">무시</option>
           </select>
           <button onClick={sync} disabled={busy || !mailbox} className="kt-btn kt-btn-primary px-3 py-1.5 text-[11px]">{busy ? <Loader2 size={12} className="animate-spin" /> : <RefreshCw size={12} />} 최근 30일 동기화</button>
+          <button onClick={batchDrafts} disabled={batchBusy} className="kt-btn kt-btn-outline px-3 py-1.5 text-[11px]">{batchBusy ? <Loader2 size={12} className="animate-spin" /> : "🤖"} 신규 회신 초안 일괄 생성</button>
           <label className="flex items-center gap-1.5 text-[11px] text-[var(--muted)]"><input type="checkbox" checked={hideBounce} onChange={(e) => setHideBounce(e.target.checked)} /> 반송 숨기기</label>
           <span className="text-[11px] text-[var(--muted)]">{visible.length}건</span>
         </div>
@@ -1307,6 +1400,7 @@ function InboxTab({ senders }: { senders: Sender[] }) {
                   <div className="truncate text-[12px] font-bold">{m.from_name || m.from_email || "—"}</div>
                   <div className="flex shrink-0 items-center gap-1">
                     {m.is_bounce && <span className="rounded bg-slate-100 px-1 text-[9px] font-bold text-slate-500">반송</span>}
+                    {m.intent && !m.is_bounce && <span className={`rounded px-1 text-[9px] font-bold ${m.intent === "관심" || m.intent === "샘플요청" ? "bg-emerald-100 text-emerald-700" : m.intent === "거절" || m.intent === "수신거부" ? "bg-rose-100 text-rose-600" : "bg-amber-100 text-amber-700"}`}>{m.intent}</span>}
                     {m.status === "new" && !m.is_bounce && <span className="h-1.5 w-1.5 rounded-full bg-[var(--accent)]" />}
                   </div>
                 </div>
@@ -1352,7 +1446,13 @@ function InboxTab({ senders }: { senders: Sender[] }) {
                   <div className="mt-4 rounded-lg border border-[var(--accent)] bg-white p-3">
                     <div className="flex items-center justify-between">
                       <div className="text-[13px] font-black text-[var(--accent)]">🤖 AI 답장 초안</div>
-                      {draft?.id !== selected.id && <button onClick={() => genDraft(selected.id)} className="kt-btn kt-btn-primary px-3 py-1.5 text-[11px]">답장 초안 생성</button>}
+                      <div className="flex gap-1.5">
+                        {selected.draft_reply && draft?.id !== selected.id && (
+                          <button onClick={() => setDraft({ id: selected.id, subject: `Re: ${(selected.subject || "").replace(/^re:\s*/i, "")}`, body: selected.draft_reply || "", busy: false })}
+                            className="kt-btn kt-btn-outline px-3 py-1.5 text-[11px]">저장된 초안 열기</button>
+                        )}
+                        {draft?.id !== selected.id && <button onClick={() => genDraft(selected.id)} className="kt-btn kt-btn-primary px-3 py-1.5 text-[11px]">{selected.draft_reply ? "다시 생성" : "답장 초안 생성"}</button>}
+                      </div>
                     </div>
                     {draft?.id === selected.id && (
                       draft.busy && !draft.body

@@ -16,7 +16,7 @@ let schemaReady: Promise<void> | null = null;
 
 // ⚠️ 스키마 버전 — 아래 DDL(테이블·컬럼·인덱스)을 추가/변경하면 반드시 이 숫자를 +1 하세요.
 // 저장된 버전과 일치하면 140여 개 DDL 전체를 건너뛰어(쿼리 1번) 콜드스타트를 수십 초 → 수십 ms로 줄입니다.
-const SCHEMA_VERSION = 4; // v4: oc_senders.pause_reason · v3: kb_* 숫자 제한 해제 · v2: kb_* 테이블
+const SCHEMA_VERSION = 5; // v5: 코파일럿(회신 intent/초안·캠페인 ai_level·kb 활성도) · v4: pause_reason · v3: kb 숫자 제한 해제
 
 export function ensureSchema(): Promise<void> {
   if (!schemaReady) {
@@ -646,6 +646,11 @@ export function ensureSchema(): Promise<void> {
       await sql`ALTER TABLE oc_senders ADD COLUMN IF NOT EXISTS warmup_start date`;
       // 반송률 임계 초과로 자동 일시정지된 사유 (active=false 시 참고)
       await sql`ALTER TABLE oc_senders ADD COLUMN IF NOT EXISTS pause_reason text`;
+      // v5 코파일럿: 회신 의도 분류·AI 초안 저장, 캠페인 AI 개인화 레벨, kb 크리에이터 활성도(최근 영상일)
+      await sql`ALTER TABLE oc_inbox ADD COLUMN IF NOT EXISTS intent text`;
+      await sql`ALTER TABLE oc_inbox ADD COLUMN IF NOT EXISTS draft_reply text`;
+      await sql`ALTER TABLE oc_campaigns ADD COLUMN IF NOT EXISTS ai_level text NOT NULL DEFAULT 'L1'`;
+      await sql`ALTER TABLE kb_creators ADD COLUMN IF NOT EXISTS kb_last_video_at timestamptz`;
       // 캠페인 A/B 제목(선택)
       await sql`ALTER TABLE oc_campaigns ADD COLUMN IF NOT EXISTS subject_b text`;
       // 저장 세그먼트(필터 조합 재사용)

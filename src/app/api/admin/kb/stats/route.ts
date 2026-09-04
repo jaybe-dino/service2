@@ -47,6 +47,13 @@ export async function POST(req: Request) {
     FROM kb_brand_videos WHERE creator_uid IS NOT NULL AND creator_uid <> ''
     GROUP BY creator_uid, brand_en`;
 
+  // 활성도: 크리에이터별 최근 영상 게시일 → 추천 점수의 활성도 축에 사용
+  await sql`UPDATE kb_creators c SET kb_last_video_at = v.last_at
+    FROM (SELECT creator_uid, MAX(created_at) AS last_at FROM kb_brand_videos
+          WHERE creator_uid IS NOT NULL AND creator_uid <> '' AND created_at IS NOT NULL
+          GROUP BY creator_uid) v
+    WHERE v.creator_uid = c.creator_uid`;
+
   await sql`TRUNCATE kb_brands`;
   await sql`INSERT INTO kb_brands (brand_en, shop_count, creator_count, video_count, product_count, total_gmv_usd, regions, updated_at)
     SELECT v.brand_en,
