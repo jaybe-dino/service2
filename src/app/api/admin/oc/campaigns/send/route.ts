@@ -201,6 +201,15 @@ export async function POST(req: Request) {
       sentNow++;
     } else {
       const err = res.error || "발송 실패";
+      // Gmail 계정 쿼터/속도 제한 — 수신자 문제가 아님: 메시지를 큐로 유지하고 이 메일함을 오늘 제외.
+      // (내일 다시 [발송]하면 남은 큐부터 이어서 발송됨)
+      if (/quota|rate ?limit|limit exceeded|sending limit|한도/i.test(err)) {
+        await sql`UPDATE oc_messages SET status='queued', sender_id=NULL, error=${("Gmail 한도: " + err).slice(0, 300)}, sent_at=NULL WHERE id=${m.id}`;
+        slot.remaining = 0; // 이 메일함은 오늘 더 못 보냄
+        pausedNotes.push(`${slot.sender.email}: Gmail 계정 일일 한도 도달(내일 자동 회복) — 미발송분은 큐 유지`);
+        if (!pool.some((p2) => p2.remaining > 0)) break; // 전 메일함 한도면 배치 종료
+        continue;
+      }
       await sql`UPDATE oc_messages SET status='failed', sender_id=${slot.id}, variant=${variant}, subject=${subject}, body=${rawBody}, error=${err.slice(0, 300)}, sent_at=now() WHERE id=${m.id}`;
       failedNow++;
       // C3: 하드 바운스(영구 실패)만 제외목록 등록 — 소프트(일시) 실패는 재시도 여지 유지
