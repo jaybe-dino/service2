@@ -8,6 +8,8 @@ const nextConfig: NextConfig = {
   images: { unoptimized: true },
   basePath: base || undefined,
   assetPrefix: base ? `${base}/` : undefined,
+  // /guidebook 라우트가 런타임에 읽는 E-book 원문을 서버리스 번들에 포함
+  outputFileTracingIncludes: { "/guidebook": ["./src/app/guidebook/ebook.html"] },
 };
 
 export default nextConfig;
