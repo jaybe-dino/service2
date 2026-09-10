@@ -27,7 +27,7 @@ export default function robots(): MetadataRoute.Robots {
       {
         userAgent: "*",
         allow: "/",
-        disallow: ["/admin", "/api/", "/checkout", "/mypage", "/tiktokmarketing", "/tiktoksit", "/tiktokmarketing3", "/tiktokshop", "/deck", "/deck2"],
+        disallow: ["/admin", "/api/", "/checkout", "/mypage", "/guidebook", "/tiktokmarketing", "/tiktoksit", "/tiktokmarketing3", "/tiktokshop", "/deck", "/deck2"],
       },
     ],
     sitemap: `${SITE_URL}/sitemap.xml`,
