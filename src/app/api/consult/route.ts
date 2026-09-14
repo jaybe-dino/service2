@@ -92,7 +92,7 @@ export async function POST(req: Request) {
       b.overseas ? `해외: ${s(b.overseas, 40)}` : "",
       b.brandUrl ? `URL: ${s(b.brandUrl, 200)}` : "",
     ].filter(Boolean).join(" / ");
-    const qs = new URLSearchParams({ key, source: src, company, name: managerName, email, category: s(b.category, 80), memo });
+    const qs = new URLSearchParams({ key, source: src, company, name: managerName, email, phone: contact.replace(/\D/g, ""), category: s(b.category, 80), memo });
     const leadhookUrl = `${base}?${qs.toString()}`;
     after(async () => {
       try {

@@ -87,10 +87,12 @@ function gatePage(err = ""): NextResponse {
     <input name="company" required maxlength="80" placeholder="예: 디노코스메틱" />
     <label>업무용 이메일</label>
     <input name="email" type="email" required maxlength="120" placeholder="name@company.com" />
+    <label>전화번호</label>
+    <input name="phone" type="tel" required maxlength="40" placeholder="010-0000-0000" />
     <input class="gb-hp" type="text" name="website" tabindex="-1" autocomplete="off" />
     ${err ? `<div class="gb-err">${err}</div>` : ""}
     <button type="submit">가이드북 열람하기</button>
-    <div class="gb-ft">입력하신 정보는 가이드북 열람 및 글로벌 진출 관련 안내 목적에 한해 이용됩니다. 본 콘텐츠는 무단 복제·배포가 금지됩니다.</div>
+    <div class="gb-ft">입력하신 정보(회사명·이메일·전화번호)는 가이드북 열람 및 글로벌 진출 관련 안내 목적에 한해 이용됩니다. 본 콘텐츠는 무단 복제·배포가 금지됩니다.</div>
   </form></div>
   </body></html>`;
   const teaser = raw.slice(0, cut).replace("</head>", PROTECT + "\n</head>") + OVERLAY;
@@ -109,16 +111,18 @@ export async function POST(req: Request) {
   const form = await req.formData().catch(() => null);
   const company = String(form?.get("company") || "").trim().slice(0, 80);
   const email = String(form?.get("email") || "").trim().toLowerCase().slice(0, 120);
+  const phone = String(form?.get("phone") || "").trim().slice(0, 40);
   const honeypot = String(form?.get("website") || "");
   if (honeypot) return gatePage(); // 봇 폼 자동입력 차단
   if (!company || !EMAIL_RE.test(email)) return gatePage("회사명과 올바른 이메일을 입력해 주세요.");
+  if (phone.replace(/\D/g, "").length < 9) return gatePage("전화번호를 정확히 입력해 주세요.");
 
   // 리드 저장 — 기존 inquiries 테이블(kind='guidebook'), 어드민에서 열람 가능. 실패해도 열람은 허용.
   if (isConfigured()) {
     try {
       await ensureSchema();
       await sql`INSERT INTO inquiries (kind, user_email, payload)
-        VALUES ('guidebook', ${email}, ${JSON.stringify({ company })}::jsonb)`;
+        VALUES ('guidebook', ${email}, ${JSON.stringify({ company, phone })}::jsonb)`;
     } catch { /* 리드 저장 실패 무시 */ }
   }
 
