@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import crypto from "node:crypto";
 import { cookies } from "next/headers";
-import { NextResponse } from "next/server";
+import { NextResponse, after } from "next/server";
 import { sql, isConfigured, ensureSchema } from "@/lib/db";
 
 // 글로벌 50 E-book — 온라인 열람 전용 (glovek.space/guidebook)
@@ -124,6 +124,23 @@ export async function POST(req: Request) {
       await sql`INSERT INTO inquiries (kind, user_email, payload)
         VALUES ('guidebook', ${email}, ${JSON.stringify({ company, phone })}::jsonb)`;
     } catch { /* 리드 저장 실패 무시 */ }
+  }
+
+  // 통합 어드민(admin.glovek.space) 리드훅 — consult와 동일 방식. 응답 이후 비차단 전송.
+  {
+    const base = process.env.LEADHOOK_URL || "https://admin.glovek.space/api/leadhook";
+    const key = process.env.LEADHOOK_KEY || "dinoffice1029";
+    const src = process.env.LEADHOOK_SOURCE || "HfbbIVFL9p29ZtG2sNI21sCC";
+    const qs = new URLSearchParams({
+      key, source: src, company, name: company, email,
+      phone: phone.replace(/\D/g, ""), category: "guidebook",
+      memo: `[가이드북 열람] 글로벌50 E-book · 회사 ${company} · 연락처 ${phone}`,
+    });
+    const leadhookUrl = `${base}?${qs.toString()}`;
+    after(async () => {
+      try { await fetch(leadhookUrl, { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" }); }
+      catch { /* 리드훅 실패 무시 — 열람은 이미 허용 */ }
+    });
   }
 
   const res = new NextResponse(null, { status: 303, headers: { location: "/guidebook" } });
