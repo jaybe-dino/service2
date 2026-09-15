@@ -6,7 +6,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { Check, CalendarClock, Loader2, Sparkles } from "lucide-react";
 
-const COUNTRIES = ["미국", "일본", "태국", "베트남", "인도네시아", "말레이시아", "필리핀", "미정"];
+const COUNTRIES = ["미국", "일본", "태국", "베트남", "인도네시아", "말레이시아", "필리핀", "싱가포르", "미정"];
 
 export default function FashionSeminarApply() {
   const [brand, setBrand] = useState("");
