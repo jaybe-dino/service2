@@ -40,7 +40,7 @@ interface ShopStat { brand_name: string; products: number; avg_commission: strin
 interface Track { brand_name: string; tracked: boolean; interval_hours: number; hashtags: string | null; last_collected_at: string | null; }
 
 const KIND_LABEL: Record<string, string> = {
-  marketing: "마케팅 1:1", tiktokshop: "틱톡샵 온보딩", proposal: "인플루언서 제안", sales: "도입 문의", password_reset: "비밀번호 재설정",
+  marketing: "마케팅 1:1", tiktokshop: "틱톡샵 온보딩", proposal: "인플루언서 제안", sales: "도입 문의", password_reset: "비밀번호 재설정", guidebook: "가이드북 열람",
 };
 
 const won = (n: number) => "₩" + Number(n || 0).toLocaleString();
@@ -793,8 +793,8 @@ export default function AdminPage() {
               <tr key={q.id} className="border-b border-[var(--border)] last:border-0 align-top">
                 <td className="p-2"><span className="kt-badge-brand">{KIND_LABEL[q.kind] ?? q.kind}</span></td>
                 <td className="p-2">{q.user_email ?? String(pl.email ?? "—")}</td>
-                <td className="p-2 text-[10px]">{String(pl.context ?? "—")}</td>
-                <td className="p-2 text-[10px] text-[var(--muted)]">{String(pl.message ?? "")}{pl.budget ? ` · 예산 ${pl.budget}` : ""}</td>
+                <td className="p-2 text-[10px]">{String(pl.company ?? pl.context ?? "—")}</td>
+                <td className="p-2 text-[10px] text-[var(--muted)]">{String(pl.message ?? "")}{pl.phone ? ` · ☎ ${pl.phone}` : ""}{pl.budget ? ` · 예산 ${pl.budget}` : ""}</td>
                 <td className="p-2 min-w-[220px]"><InquiryReply q={q} onSave={replyInquiry} /></td>
                 <td className="p-2 text-[var(--muted)]">{dt(q.created_at)}</td>
               </tr>
