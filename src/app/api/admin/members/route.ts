@@ -19,6 +19,6 @@ export async function GET() {
   const members = await sql`
     SELECT id,email,name,brand,role,plan,pro_until,created_at FROM users ORDER BY created_at DESC LIMIT 500`;
   const inquiries = await sql`
-    SELECT id,kind,user_email,created_at FROM inquiries ORDER BY created_at DESC LIMIT 200`;
+    SELECT id,kind,user_email,payload,status,response,created_at FROM inquiries ORDER BY created_at DESC LIMIT 200`;
   return NextResponse.json({ members: members.rows, inquiries: inquiries.rows });
 }

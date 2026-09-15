@@ -786,21 +786,32 @@ export default function AdminPage() {
       )}
 
       {tab === "inquiries" && (
-        <Table head={["유형", "보낸 사람", "대상", "내용", "상태·답변", "시각"]}>
+        <Table head={["유형", "보낸 사람", "회사/브랜드", "전화", "상세 DB", "상태·답변", "시각"]}>
           {inquiries.map((q) => {
-            const pl = q.payload ?? {};
+            const pl = (q.payload ?? {}) as Record<string, unknown>;
+            const PL_LABEL: Record<string, string> = { company: "회사", phone: "전화", context: "대상", budget: "예산", message: "내용", requestedAt: "요청시각" };
+            const detail = Object.entries(pl).filter(([, v]) => v != null && String(v).trim() !== "");
             return (
-              <tr key={q.id} className="border-b border-[var(--border)] last:border-0 align-top">
-                <td className="p-2"><span className="kt-badge-brand">{KIND_LABEL[q.kind] ?? q.kind}</span></td>
-                <td className="p-2">{q.user_email ?? String(pl.email ?? "—")}</td>
-                <td className="p-2 text-[10px]">{String(pl.company ?? pl.context ?? "—")}</td>
-                <td className="p-2 text-[10px] text-[var(--muted)]">{String(pl.message ?? "")}{pl.phone ? ` · ☎ ${pl.phone}` : ""}{pl.budget ? ` · 예산 ${pl.budget}` : ""}</td>
+              <tr key={q.id} className="border-b border-[var(--border)] last:border-0 align-middle">
+                <td className="p-2 whitespace-nowrap"><span className="kt-badge-brand">{KIND_LABEL[q.kind] ?? q.kind}</span></td>
+                <td className="p-2 whitespace-nowrap">{q.user_email ?? String(pl.email ?? "—")}</td>
+                <td className="p-2 text-[11px]">{String(pl.company ?? pl.context ?? "—")}</td>
+                <td className="p-2 whitespace-nowrap text-[11px]">{pl.phone ? String(pl.phone) : pl.contact ? String(pl.contact) : "—"}</td>
+                <td className="p-2 text-[10px] text-[var(--muted)]">
+                  {detail.length ? (
+                    <div className="flex flex-col gap-0.5">
+                      {detail.map(([k, v]) => (
+                        <span key={k}><b className="text-[var(--fg)]">{PL_LABEL[k] ?? k}</b>: {String(v).slice(0, 200)}</span>
+                      ))}
+                    </div>
+                  ) : "—"}
+                </td>
                 <td className="p-2 min-w-[220px]"><InquiryReply q={q} onSave={replyInquiry} /></td>
-                <td className="p-2 text-[var(--muted)]">{dt(q.created_at)}</td>
+                <td className="p-2 whitespace-nowrap text-[var(--muted)]">{dt(q.created_at)}</td>
               </tr>
             );
           })}
-          {!inquiries.length && <EmptyRow cols={6} text="문의·제안 없음" />}
+          {!inquiries.length && <EmptyRow cols={7} text="문의·제안 없음" />}
         </Table>
       )}
 
