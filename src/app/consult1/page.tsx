@@ -17,7 +17,7 @@ const CATEGORIES = ["스킨케어", "메이크업", "헤어케어", "바디·퍼
 
 export default function ConsultPage() {
   const [f, setF] = useState({ company: "", category: "", managerName: "", email: "", contact: "", message: "" });
-  const [agree, setAgree] = useState(false);
+  const [agree, setAgree] = useState(true); // 필수 동의 기본 체크
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [done, setDone] = useState<{ meetingUrl: string } | null>(null);

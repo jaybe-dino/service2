@@ -77,6 +77,8 @@ function gatePage(err = ""): NextResponse {
     .gb-card button:hover{background:#1e293b}
     .gb-err{margin-top:10px;font-size:12px;color:#e11d48;font-weight:700}
     .gb-ft{margin-top:14px;font-size:10px;color:#94a3b8;line-height:1.6}
+    .gb-agree{display:flex;gap:7px;align-items:flex-start;margin-top:16px;font-size:11px;color:#64748b;line-height:1.5;cursor:pointer}
+    .gb-agree input{width:auto;margin-top:2px;accent-color:#7c3aed}
     .gb-hp{position:absolute;left:-9999px}
   </style>
   <div class="gb-ov"><form class="gb-card" method="POST" autocomplete="on">
@@ -90,9 +92,10 @@ function gatePage(err = ""): NextResponse {
     <label>전화번호</label>
     <input name="phone" type="tel" required maxlength="40" placeholder="010-0000-0000" />
     <input class="gb-hp" type="text" name="website" tabindex="-1" autocomplete="off" />
+    <label class="gb-agree"><input type="checkbox" name="agree" checked required /> <span><b>[필수]</b> 개인정보 수집·이용에 동의합니다. (수집: 회사명·이메일·전화번호 / 목적: 가이드북 열람 및 안내 / 보유: 1년)</span></label>
     ${err ? `<div class="gb-err">${err}</div>` : ""}
     <button type="submit">가이드북 열람하기</button>
-    <div class="gb-ft">입력하신 정보(회사명·이메일·전화번호)는 가이드북 열람 및 글로벌 진출 관련 안내 목적에 한해 이용됩니다. 본 콘텐츠는 무단 복제·배포가 금지됩니다.</div>
+    <div class="gb-ft">본 콘텐츠는 무단 복제·배포가 금지됩니다.</div>
   </form></div>
   </body></html>`;
   const teaser = raw.slice(0, cut).replace("</head>", PROTECT + "\n</head>") + OVERLAY;
@@ -116,6 +119,7 @@ export async function POST(req: Request) {
   if (honeypot) return gatePage(); // 봇 폼 자동입력 차단
   if (!company || !EMAIL_RE.test(email)) return gatePage("회사명과 올바른 이메일을 입력해 주세요.");
   if (phone.replace(/\D/g, "").length < 9) return gatePage("전화번호를 정확히 입력해 주세요.");
+  if (!form?.get("agree")) return gatePage("개인정보 수집·이용에 동의해 주세요.");
 
   // 리드 저장 — 기존 inquiries 테이블(kind='guidebook'), 어드민에서 열람 가능. 실패해도 열람은 허용.
   if (isConfigured()) {

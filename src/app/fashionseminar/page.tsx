@@ -13,7 +13,7 @@ export default function FashionSeminarApply() {
   const [email, setEmail] = useState("");
   const [contact, setContact] = useState("");
   const [countries, setCountries] = useState<string[]>([]);
-  const [agree, setAgree] = useState(false);
+  const [agree, setAgree] = useState(true); // 필수 동의 기본 체크
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
   const [done, setDone] = useState(false);
