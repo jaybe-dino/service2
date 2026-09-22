@@ -104,9 +104,9 @@ export async function approvePayment({ tid, amount }: { tid: string; amount: num
 export async function cancelPayment({ tid, orderId, reason, cancelAmt }: { tid: string; orderId: string; reason: string; cancelAmt?: number }): Promise<ApproveResult & { cancelledTid?: string }> {
   if (!isConfigured()) return { ok: false, resultCode: "ENV", resultMsg: "NICEPAY keys not set", raw: null };
   try {
-    // 일부 상점은 취소에 서명 필수: signData = hex(sha256(orderId + ediDate + SecretKey)).
+    // NICEpay V2 취소 서명 규격: signData = hex(sha256(tid + ediDate + SecretKey)). (orderId 아님 — 과거 오류)
     const ediDate = new Date().toISOString();
-    const signData = crypto.createHash("sha256").update(`${orderId}${ediDate}${SECRET_KEY}`).digest("hex");
+    const signData = crypto.createHash("sha256").update(`${tid}${ediDate}${SECRET_KEY}`).digest("hex");
     const res = await fetch(`${API_BASE}/v1/payments/${encodeURIComponent(tid)}/cancel`, {
       method: "POST",
       headers: { Authorization: basicAuth(), "Content-Type": "application/json" },
