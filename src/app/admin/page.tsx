@@ -20,6 +20,7 @@ interface Member {
 }
 interface Order {
   order_id: string; user_id: string; plan: string; amount: number; status: string; created_at: string; paid: boolean;
+  user_brand?: string | null; user_email?: string | null; user_name?: string | null;
 }
 interface MemberDetail {
   user: { id: string; email: string; name: string; brand: string | null; role: string | null; plan: string; pro_until: number | string; referred_by: string | null; markets: string | null; admin_note: string | null; created_at: string };
@@ -761,11 +762,15 @@ export default function AdminPage() {
       )}
 
       {tab === "payments" && (
-        <Table head={["주문번호", "회원ID", "플랜", "금액", "상태", "결제됨", "시각", "취소"]}>
+        <Table head={["주문번호", "회원(브랜드·이메일)", "플랜", "금액", "상태", "결제됨", "시각", "취소"]}>
           {orders.map((o) => (
-            <tr key={o.order_id} className="border-b border-[var(--border)] last:border-0">
+            <tr key={o.order_id} className="border-b border-[var(--border)] last:border-0 align-middle">
               <td className="p-2 font-mono text-[10px]">{o.order_id}</td>
-              <td className="p-2 text-[10px]">{o.user_id.slice(0, 12)}</td>
+              <td className="p-2 text-[11px]">
+                <div className="font-semibold">{o.user_brand || o.user_name || <span className="text-slate-400">(미상)</span>}</div>
+                <div className="text-[10px] text-[var(--muted)]">{o.user_email || "—"}</div>
+                <div className="font-mono text-[9px] text-slate-400">{o.user_id.slice(0, 12)}</div>
+              </td>
               <td className="p-2">{o.plan}</td>
               <td className="p-2 text-right">{won(o.amount)}</td>
               <td className="p-2"><span className={o.status === "paid" ? "text-emerald-600" : o.status === "cancelled" ? "text-slate-400" : o.status === "failed" ? "text-rose-600" : "text-[var(--muted)]"}>{o.status}</span></td>

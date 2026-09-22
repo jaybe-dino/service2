@@ -39,9 +39,11 @@ async function loadOverview() {
 
   const orders = await sql`
     SELECT o.order_id, o.user_id, o.plan, o.amount, o.status, o.created_at,
+           u.brand AS user_brand, u.email AS user_email, u.name AS user_name,
            CASE WHEN pm.payment_id IS NULL THEN false ELSE true END AS paid
     FROM orders o
     LEFT JOIN payments pm ON pm.order_id = o.order_id
+    LEFT JOIN users u ON u.id = o.user_id
     ORDER BY o.created_at DESC LIMIT 300`;
 
   const inquiries = await sql`SELECT id, kind, user_email, payload, status, response, created_at FROM inquiries ORDER BY created_at DESC LIMIT 200`;
