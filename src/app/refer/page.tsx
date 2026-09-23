@@ -13,15 +13,19 @@ export const metadata: Metadata = {
   alternates: { canonical: "/refer" },
 };
 
-// 흰/밝은 로고는 어두운 배경 타일에 올려 가독성 확보 (파일명 기준 선별)
-const DARK_BG = new Set(["3M", "SAMWHA"]);
+// 흰/밝은 로고(투명 배경)는 어두운 타일에 올려 가독성 확보
+const DARK_BG = new Set(["3M", "SAMWHA", "안나어드바이스랩"]);
+// 배경이 박힌(투명 아님) 로고는 연회색 타일로 감싸 회색 박스 이질감 완화
+const SOFT_BG = new Set(["닥터노바메디"]);
 
 function LogoTile({ brand, logo, isCompany }: { brand: string; logo: string; isCompany: boolean }) {
   const dark = DARK_BG.has(brand);
+  const soft = SOFT_BG.has(brand);
+  const tile = dark ? "border-slate-700 bg-slate-800" : soft ? "border-slate-200 bg-slate-100" : "border-[var(--border)] bg-white";
   return (
-    <div className={`group relative flex aspect-[3/2] items-center justify-center rounded-xl border p-4 transition hover:shadow-md ${dark ? "border-slate-700 bg-slate-800" : "border-[var(--border)] bg-white"}`}>
+    <div className={`group relative flex aspect-[3/2] items-center justify-center overflow-hidden rounded-xl border p-4 transition hover:shadow-md ${tile}`}>
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={logo} alt={brand} className="max-h-[62%] max-w-[82%] object-contain" loading="lazy" />
+      <img src={logo} alt={brand} className={`object-contain ${soft ? "max-h-[86%] max-w-[94%]" : "max-h-[68%] max-w-[86%]"}`} loading="lazy" />
       {isCompany && (
         <span className="absolute right-1.5 top-1.5 rounded-full bg-slate-900/70 px-1.5 py-0.5 text-[8px] font-bold text-white">회사</span>
       )}
@@ -107,7 +111,7 @@ export default function ReferPage() {
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {REFER_TIKTOK.map((t) => (
               <div key={t.brand} className="flex gap-3 rounded-xl border border-[var(--border)] bg-white p-4">
-                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg border border-[var(--border)] bg-white p-1.5">
+                <div className={`flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-lg border p-1.5 ${DARK_BG.has(t.brand.split(" ")[0]) || /안나어드바이스랩/.test(t.brand) ? "border-slate-700 bg-slate-800" : /닥터노바메디/.test(t.brand) ? "border-slate-200 bg-slate-100" : "border-[var(--border)] bg-white"}`}>
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   {t.logo ? <img src={t.logo} alt={t.brand} className="max-h-full max-w-full object-contain" loading="lazy" /> : <span className="text-[9px] text-slate-300">—</span>}
                 </div>
