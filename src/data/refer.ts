@@ -36,3 +36,15 @@ export const REFER_REEL = {
   role: "",                    // 디노스튜디오 수행 역할 — 확인 후 입력(편집 가능 필드)
   note: "원문 크레딧을 유지한 중립 소개. 상세 수행 역할은 확인 후 업데이트됩니다.",
 };
+
+// 글로벌 콘텐츠 사례(썸네일) — @hyp 채널 콘텐츠. GENIE 크레딧 유지, 특정 역할 단정 없음.
+// url·caption·role은 확인 후 채우는 편집 가능 필드(개별 릴 URL이 확인되면 교체).
+export interface ReferCase { img: string; url: string; account: string; credit: string; caption: string; role: string }
+export const REFER_CASES: ReferCase[] = [
+  { img: "/refer/cases/case_0226.webp", url: "https://www.instagram.com/reel/DXanAvrk1OZ/", account: "hyp", credit: "GENIE", caption: "", role: "" },
+  { img: "/refer/cases/case_0225.webp", url: "https://www.instagram.com/hyp/", account: "hyp", credit: "GENIE", caption: "", role: "" },
+  { img: "/refer/cases/case_0224.webp", url: "https://www.instagram.com/hyp/", account: "hyp", credit: "GENIE", caption: "", role: "" },
+];
+
+// '더 많은 사례' 채널 링크(편집 가능)
+export const REFER_CASE_MORE = "https://www.instagram.com/hyp/";

@@ -4,6 +4,7 @@ import SiteHeader from "@/components/ktrend/SiteHeader";
 import SiteFooter from "@/components/ktrend/SiteFooter";
 import {
   REFER_LOGOS, SIZE_ORDER, SIZE_LABEL, REFER_TIKTOK, REFER_YOUTUBE, REFER_YT_THUMBS, REFER_REEL,
+  REFER_CASES, REFER_CASE_MORE,
   type LogoSize,
 } from "@/data/refer";
 
@@ -166,25 +167,35 @@ export default function ReferPage() {
       {/* 글로벌 콘텐츠 사례 */}
       <div className="border-t border-[var(--border)] bg-slate-900 text-white">
         <Section id="global" kicker="Global" title="글로벌 콘텐츠 사례"
-          desc="해외에서 확산된 콘텐츠 사례입니다.">
-          <div className="flex flex-col gap-5 rounded-2xl border border-white/10 bg-white/[0.04] p-6 sm:flex-row sm:items-center">
-            <div className="flex-1">
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="rounded-full bg-white/10 px-2.5 py-1 text-[11px] font-bold">Instagram Reel</span>
-                <span className="rounded-full bg-white/10 px-2.5 py-1 text-[11px] font-semibold text-white/70">@{REFER_REEL.account}</span>
-                <span className="rounded-full border border-amber-300/40 bg-amber-300/10 px-2.5 py-1 text-[11px] font-bold text-amber-200">Credit · {REFER_REEL.credit}</span>
-              </div>
-              <p className="mt-3 text-[14px] leading-relaxed text-white/80">
-                글로벌 채널에서 확산된 콘텐츠 사례입니다. 원문 제작 크레딧(<b className="text-white">{REFER_REEL.credit}</b>)을 그대로 유지해 소개하며,
-                디노스튜디오의 세부 수행 역할은 확인 후 업데이트됩니다.
-              </p>
-              {REFER_REEL.role && <p className="mt-2 text-[13px] font-semibold text-amber-200">수행 역할: {REFER_REEL.role}</p>}
+          desc="해외 채널에서 확산된 콘텐츠 사례입니다. 원문 제작 크레딧을 그대로 유지해 소개하며, 세부 수행 역할은 확인 후 업데이트됩니다.">
+          {/* 대표 릴 안내 */}
+          <div className="mb-5 flex flex-col gap-3 rounded-2xl border border-white/10 bg-white/[0.04] p-5 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="rounded-full bg-white/10 px-2.5 py-1 text-[11px] font-bold">Instagram · @{REFER_REEL.account}</span>
+              <span className="rounded-full border border-amber-300/40 bg-amber-300/10 px-2.5 py-1 text-[11px] font-bold text-amber-200">Credit · {REFER_REEL.credit}</span>
+              {REFER_REEL.role && <span className="text-[12px] font-semibold text-amber-200">수행 역할: {REFER_REEL.role}</span>}
             </div>
-            <a href={REFER_REEL.url} target="_blank" rel="noreferrer noopener"
-              className="inline-flex shrink-0 items-center gap-2 rounded-xl bg-white px-5 py-3 text-[13px] font-black text-slate-900 transition hover:bg-white/90">
-              릴 보기 →
+            <a href={REFER_CASE_MORE} target="_blank" rel="noreferrer noopener"
+              className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-white/25 px-4 py-2 text-[12px] font-bold text-white hover:bg-white/10">
+              @{REFER_REEL.account} 채널에서 더 보기 →
             </a>
           </div>
+          {/* 콘텐츠 사례 썸네일 그리드 */}
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+            {REFER_CASES.map((c, i) => (
+              <a key={i} href={c.url} target="_blank" rel="noreferrer noopener"
+                className="group relative block overflow-hidden rounded-xl border border-white/10 bg-black">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={c.img} alt={c.caption || `글로벌 콘텐츠 사례 ${i + 1}`} loading="lazy"
+                  className="aspect-[9/16] w-full object-cover transition duration-300 group-hover:scale-[1.03]" />
+                <div className="pointer-events-none absolute inset-x-0 bottom-0 flex items-end justify-between gap-2 bg-gradient-to-t from-black/80 to-transparent p-2.5">
+                  <span className="text-[10px] font-bold text-white/90">@{c.account}</span>
+                  <span className="rounded-full border border-amber-300/40 bg-amber-300/10 px-1.5 py-0.5 text-[9px] font-bold text-amber-200">{c.credit}</span>
+                </div>
+              </a>
+            ))}
+          </div>
+          <p className="mt-4 text-[11px] text-white/40">※ 콘텐츠에 표기된 제작 크레딧(GENIE)을 유지한 중립 소개입니다. 개별 콘텐츠 링크·세부 역할은 확인 후 업데이트됩니다.</p>
         </Section>
       </div>
 
