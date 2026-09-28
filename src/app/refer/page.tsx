@@ -3,14 +3,13 @@ import Link from "next/link";
 import SiteHeader from "@/components/ktrend/SiteHeader";
 import SiteFooter from "@/components/ktrend/SiteFooter";
 import {
-  REFER_LOGOS, SIZE_ORDER, SIZE_LABEL, REFER_TIKTOK, REFER_YOUTUBE, REFER_YT_THUMBS, REFER_REEL,
-  REFER_CASES, REFER_CASE_MORE,
+  REFER_LOGOS, SIZE_ORDER, SIZE_LABEL, REFER_TIKTOK, REFER_CASES,
   type LogoSize,
 } from "@/data/refer";
 
 export const metadata: Metadata = {
   title: "브랜드 협업 레퍼런스 — 디노스튜디오",
-  description: "디노스튜디오가 함께한 브랜드 협업 · 글로벌 TikTok Shop 온보딩 · YouTube 콘텐츠 레퍼런스.",
+  description: "유한양행·클리오·LG생활건강 등 대기업이 함께한 디노스튜디오의 글로벌 TikTok Shop 입점·운영·셀링 콘텐츠 레퍼런스.",
   alternates: { canonical: "/refer" },
 };
 
@@ -63,29 +62,30 @@ export default function ReferPage() {
         <div className="pointer-events-none absolute -right-24 -top-28 h-80 w-80 rounded-full bg-[var(--accent)] opacity-[0.08] blur-3xl" />
         <div className="pointer-events-none absolute -bottom-28 left-24 h-72 w-72 rounded-full bg-sky-400 opacity-[0.08] blur-3xl" />
         <div className="mx-auto max-w-[1180px] px-5 py-16 sm:px-8 sm:py-24">
-          <div className="text-[12px] font-extrabold tracking-[4px] text-sky-600">DINO STUDIO · REFERENCE</div>
-          <h1 className="mt-3 max-w-[880px] text-[34px] font-black leading-[1.12] tracking-tight sm:text-[50px]">
-            브랜드와 함께 만든<br /><span className="text-[var(--accent)]">글로벌 콘텐츠 · 커머스</span> 레퍼런스
+          <div className="text-[12px] font-extrabold tracking-[4px] text-sky-600">DINO STUDIO · TIKTOK SHOP</div>
+          <h1 className="mt-3 max-w-[900px] text-[34px] font-black leading-[1.12] tracking-tight sm:text-[50px]">
+            대기업이 먼저 선택한<br /><span className="text-[var(--accent)]">글로벌 틱톡샵</span> 파트너
           </h1>
-          <p className="mt-4 max-w-[720px] text-[15px] leading-relaxed text-[var(--muted)] sm:text-[17px]">
-            대기업부터 성장 브랜드까지 — 디노스튜디오가 함께한 브랜드 협업, 글로벌 TikTok Shop 온보딩, YouTube 콘텐츠 작업을 소개합니다.
+          <p className="mt-4 max-w-[740px] text-[15px] leading-relaxed text-[var(--muted)] sm:text-[17px]">
+            유한양행·클리오·LG생활건강·CJ제일제당·애경·농협·3M — 이미 검증된 브랜드들과 글로벌 TikTok Shop 입점·운영·콘텐츠를 함께해 왔습니다.
+            디노스튜디오는 브랜드의 상황에 맞춰 진출 국가·샵 개설·운영까지 설계합니다.
           </p>
           <div className="mt-7 flex flex-wrap gap-2.5">
-            {[["#logos", "브랜드 로고"], ["#tiktok", "TikTok Shop"], ["#youtube", "YouTube 콘텐츠"], ["#global", "글로벌 사례"]].map(([href, label]) => (
+            {[["#logos", "함께한 브랜드"], ["#tiktok", "TikTok Shop 실적"], ["#content", "콘텐츠 레퍼런스"]].map(([href, label]) => (
               <a key={href} href={href} className="rounded-full border border-[var(--border)] bg-white px-4 py-2 text-[13px] font-semibold text-[var(--muted)] transition hover:border-[var(--accent)] hover:text-[var(--accent)]">{label}</a>
             ))}
           </div>
-          <div className="mt-8 flex flex-wrap gap-6 text-[13px] text-[var(--muted)]">
-            <div><b className="text-[22px] font-black text-[var(--fg)]">{REFER_LOGOS.length}</b> 협업 브랜드</div>
-            <div><b className="text-[22px] font-black text-[var(--fg)]">{REFER_TIKTOK.length}</b> TikTok Shop 업무</div>
-            <div><b className="text-[22px] font-black text-[var(--fg)]">{REFER_YOUTUBE.length}</b> YouTube 콘텐츠 유형</div>
+          <div className="mt-9 flex flex-wrap gap-x-10 gap-y-4 text-[13px] text-[var(--muted)]">
+            <div><b className="text-[24px] font-black text-[var(--fg)]">{REFER_LOGOS.length}+</b> 협업 브랜드</div>
+            <div><b className="text-[24px] font-black text-[var(--fg)]">{REFER_TIKTOK.length}</b> TikTok Shop 프로젝트</div>
+            <div><b className="text-[24px] font-black text-[var(--fg)]">4</b>개국 <span className="text-[11px]">(미국·태국·베트남·싱가포르)</span> 진출 지원</div>
           </div>
         </div>
       </header>
 
       {/* 브랜드 로고 그리드 */}
-      <Section id="logos" kicker="Clients" title="함께한 브랜드"
-        desc="2024 회사소개서 클라이언트 표기 및 협업 이력 기준. 규모 분류는 진열용 잠정값이며, 확인 중인 브랜드는 별도로 표시합니다.">
+      <Section id="logos" kicker="Clients" title="이미 검증된 브랜드들이 함께합니다"
+        desc="제약·뷰티·식품·유통 대기업부터 성장 브랜드까지 — 디노스튜디오와 협업한 브랜드들입니다. 규모 분류는 진열용 잠정값이며, 확인 중인 브랜드는 별도 표시합니다.">
         <div className="space-y-10">
           {bySize.map((g) => (
             <div key={g.size}>
@@ -107,8 +107,8 @@ export default function ReferPage() {
 
       {/* TikTok Shop */}
       <div className="border-y border-[var(--border)] bg-slate-50/60">
-        <Section id="tiktok" kicker="TikTok Shop" title="글로벌 TikTok Shop 온보딩"
-          desc="브랜드별 진출 국가와 확인된 수행 범위(온보딩·샵 개설·운영)를 정리했습니다. 일반 YouTube 콘텐츠 작업과는 별개 영역입니다.">
+        <Section id="tiktok" kicker="TikTok Shop" title="글로벌 TikTok Shop 입점·운영 실적"
+          desc="브랜드별 진출 국가와 확인된 수행 범위(온보딩·샵 개설·운영)입니다. 미국·동남아 현지 입점부터 샵 개설·상품 등록·GMV 연결까지 실제로 진행하고 있습니다.">
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {REFER_TIKTOK.map((t) => (
               <div key={t.brand} className="flex gap-3 rounded-xl border border-[var(--border)] bg-white p-4">
@@ -130,72 +130,23 @@ export default function ReferPage() {
         </Section>
       </div>
 
-      {/* YouTube */}
-      <Section id="youtube" kicker="YouTube" title="YouTube 콘텐츠 작업"
-        desc="PPL·시딩부터 브랜디드·롱폼, 쇼츠, 공동구매까지 유형별로 함께한 브랜드를 정리했습니다.">
-        <div className="grid gap-3 sm:grid-cols-2">
-          {REFER_YOUTUBE.map((c) => (
-            <div key={c.category} className="rounded-xl border border-[var(--border)] bg-white p-4">
-              <div className="flex items-center justify-between">
-                <span className="text-[14px] font-black">{c.category}</span>
-                <span className="rounded-full bg-[var(--accent-light)] px-2 py-0.5 text-[11px] font-bold text-[var(--accent)]">{c.brands.length} 브랜드</span>
-              </div>
-              <div className="mt-2.5 flex flex-wrap gap-1.5">
-                {c.brands.map((b) => (
-                  <span key={b} className="rounded-md bg-slate-100 px-2 py-0.5 text-[11px] text-slate-600">{b}</span>
-                ))}
-              </div>
-            </div>
-          ))}
-        </div>
-
-        {/* 콘텐츠 썸네일 */}
-        <div className="mt-8">
-          <div className="mb-3 text-[13px] font-bold">콘텐츠 예시</div>
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-            {REFER_YT_THUMBS.map((src, i) => (
-              <div key={i} className="overflow-hidden rounded-xl border border-[var(--border)] bg-slate-50">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={src} alt={`YouTube 콘텐츠 예시 ${i + 1}`} className="aspect-video w-full object-cover" loading="lazy" />
-              </div>
-            ))}
-          </div>
-          <p className="mt-4 text-[11px] text-slate-400">※ 실제 작업 콘텐츠 화면입니다. 조회수·영상 링크는 확인된 자료만 추후 연결됩니다.</p>
-        </div>
-      </Section>
-
-      {/* 글로벌 콘텐츠 사례 */}
+      {/* 콘텐츠 레퍼런스 (틱톡샵 중심) */}
       <div className="border-t border-[var(--border)] bg-slate-900 text-white">
-        <Section id="global" kicker="Global" title="글로벌 콘텐츠 사례"
-          desc="해외 채널에서 확산된 콘텐츠 사례입니다. 원문 제작 크레딧을 그대로 유지해 소개하며, 세부 수행 역할은 확인 후 업데이트됩니다.">
-          {/* 대표 릴 안내 */}
-          <div className="mb-5 flex flex-col gap-3 rounded-2xl border border-white/10 bg-white/[0.04] p-5 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="rounded-full bg-white/10 px-2.5 py-1 text-[11px] font-bold">Instagram · @{REFER_REEL.account}</span>
-              <span className="rounded-full border border-amber-300/40 bg-amber-300/10 px-2.5 py-1 text-[11px] font-bold text-amber-200">Credit · {REFER_REEL.credit}</span>
-              {REFER_REEL.role && <span className="text-[12px] font-semibold text-amber-200">수행 역할: {REFER_REEL.role}</span>}
-            </div>
-            <a href={REFER_CASE_MORE} target="_blank" rel="noreferrer noopener"
-              className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-white/25 px-4 py-2 text-[12px] font-bold text-white hover:bg-white/10">
-              @{REFER_REEL.account} 채널에서 더 보기 →
-            </a>
-          </div>
-          {/* 콘텐츠 사례 썸네일 그리드 */}
+        <Section id="content" kicker="Content" title="글로벌 셀링 콘텐츠 레퍼런스"
+          desc="현지 크리에이터를 활용한 글로벌 틱톡샵 셀링 콘텐츠 사례입니다. 미국 등 해외 시장에서 K-뷰티·헬스 제품을 소개하는 실제 콘텐츠입니다.">
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
             {REFER_CASES.map((c, i) => (
-              <a key={i} href={c.url} target="_blank" rel="noreferrer noopener"
-                className="group relative block overflow-hidden rounded-xl border border-white/10 bg-black">
+              <div key={i} className="group relative block overflow-hidden rounded-xl border border-white/10 bg-black">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={c.img} alt={c.caption || `글로벌 콘텐츠 사례 ${i + 1}`} loading="lazy"
+                <img src={c.img} alt={c.caption || `글로벌 셀링 콘텐츠 사례 ${i + 1}`} loading="lazy"
                   className="aspect-[9/16] w-full object-cover transition duration-300 group-hover:scale-[1.03]" />
-                <div className="pointer-events-none absolute inset-x-0 bottom-0 flex items-end justify-between gap-2 bg-gradient-to-t from-black/80 to-transparent p-2.5">
-                  <span className="text-[10px] font-bold text-white/90">@{c.account}</span>
-                  <span className="rounded-full border border-amber-300/40 bg-amber-300/10 px-1.5 py-0.5 text-[9px] font-bold text-amber-200">{c.credit}</span>
+                <div className="pointer-events-none absolute inset-x-0 bottom-0 flex items-end justify-end gap-2 bg-gradient-to-t from-black/70 to-transparent p-2.5">
+                  <span className="rounded-full border border-amber-300/30 bg-amber-300/10 px-1.5 py-0.5 text-[9px] font-bold text-amber-200/90">{c.credit}</span>
                 </div>
-              </a>
+              </div>
             ))}
           </div>
-          <p className="mt-4 text-[11px] text-white/40">※ 콘텐츠에 표기된 제작 크레딧(GENIE)을 유지한 중립 소개입니다. 개별 콘텐츠 링크·세부 역할은 확인 후 업데이트됩니다.</p>
+          <p className="mt-4 text-[11px] text-white/40">※ 콘텐츠에 표기된 제작 크레딧을 유지한 중립 소개입니다. 세부 수행 역할은 계약·확인 기준에 따릅니다.</p>
         </Section>
       </div>
 
