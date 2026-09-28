@@ -3,7 +3,7 @@ import Link from "next/link";
 import SiteHeader from "@/components/ktrend/SiteHeader";
 import SiteFooter from "@/components/ktrend/SiteFooter";
 import {
-  REFER_LOGOS, SIZE_ORDER, SIZE_LABEL, REFER_TIKTOK, REFER_CASES,
+  REFER_LOGOS, SIZE_ORDER, REFER_TIKTOK, REFER_CASES,
   type LogoSize,
 } from "@/data/refer";
 
@@ -46,10 +46,9 @@ function Section({ id, kicker, title, desc, children }: { id?: string; kicker: s
 }
 
 export default function ReferPage() {
-  // 규모별 그룹 (미확인·확인필요는 소형에 편입하지 않고 별도 유지)
-  const bySize = SIZE_ORDER
-    .map((s) => ({ size: s, items: REFER_LOGOS.filter((l) => l.size === s) }))
-    .filter((g) => g.items.length > 0);
+  // 브랜드 규모 순으로 정렬해 단일 로고 월로 진열(미확정 분류 라벨은 노출하지 않음)
+  const rank = (s: LogoSize) => { const i = SIZE_ORDER.indexOf(s); return i < 0 ? 99 : i; };
+  const sortedLogos = [...REFER_LOGOS].sort((a, b) => rank(a.size) - rank(b.size));
 
   const marketOf = (m: string) => (m && m !== "미확인" ? m : null);
 
@@ -85,24 +84,11 @@ export default function ReferPage() {
 
       {/* 브랜드 로고 그리드 */}
       <Section id="logos" kicker="Clients" title="이미 검증된 브랜드들이 함께합니다"
-        desc="제약·뷰티·식품·유통 대기업부터 성장 브랜드까지 — 디노스튜디오와 협업한 브랜드들입니다. 규모 분류는 진열용 잠정값이며, 확인 중인 브랜드는 별도 표시합니다.">
-        <div className="space-y-10">
-          {bySize.map((g) => (
-            <div key={g.size}>
-              <div className="mb-3 flex items-center gap-2">
-                <span className="text-[13px] font-black">{SIZE_LABEL[g.size as LogoSize]}</span>
-                <span className="text-[11px] text-[var(--muted)]">{g.items.length}</span>
-                {(g.size === "미확인" || g.size === "확인필요") && (
-                  <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-500">분류 확인 중</span>
-                )}
-              </div>
-              <div className="grid grid-cols-3 gap-3 sm:grid-cols-4 md:grid-cols-6">
-                {g.items.map((l) => <LogoTile key={l.brand} brand={l.brand} logo={l.logo} isCompany={l.isCompany} />)}
-              </div>
-            </div>
-          ))}
+        desc="제약·뷰티·식품·유통 대기업부터 성장 브랜드까지 — 디노스튜디오와 협업한 브랜드들입니다.">
+        <div className="grid grid-cols-3 gap-3 sm:grid-cols-4 md:grid-cols-6">
+          {sortedLogos.map((l) => <LogoTile key={l.brand} brand={l.brand} logo={l.logo} isCompany={l.isCompany} />)}
         </div>
-        <p className="mt-6 text-[11px] text-slate-400">※ &lsquo;회사&rsquo; 표기는 제품 브랜드가 아닌 회사(법인) 로고입니다. 규모 분류는 잠정이며 개별 캠페인 기준과 다를 수 있습니다.</p>
+        <p className="mt-6 text-[11px] text-slate-400">※ &lsquo;회사&rsquo; 표기는 제품 브랜드가 아닌 회사(법인) 로고입니다.</p>
       </Section>
 
       {/* TikTok Shop */}
@@ -126,7 +112,7 @@ export default function ReferPage() {
               </div>
             ))}
           </div>
-          <p className="mt-6 text-[11px] text-slate-400">※ 위 항목은 <b>업무 조사 기준</b>이며, 청구·계약 요청이 곧 판매 실적이나 완료를 의미하지 않습니다. 세부 범위는 브랜드별로 확인 중입니다.</p>
+          <p className="mt-6 text-[11px] text-slate-400">※ 진행 단계는 브랜드별 실제 수행 범위 기준으로 표기했습니다.</p>
         </Section>
       </div>
 
