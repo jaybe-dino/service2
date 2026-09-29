@@ -6,7 +6,7 @@ export const dynamic = "force-dynamic";
 
 // 상담 폼 입력 퍼널 추적(공개) — 어느 필드까지 채웠는지만 기록(비식별). PII 값은 저장 안 함.
 // 프론트가 필드 blur / 이탈 시 best-effort로 호출. sid로 upsert.
-const FIELD_KEYS = new Set(["company", "category", "managerName", "email", "contact", "message", "agreed"]);
+const FIELD_KEYS = new Set(["company", "brandUrl", "category", "managerName", "email", "contact", "message", "agreed"]);
 
 export async function POST(req: Request) {
   if (!isConfigured()) return NextResponse.json({ ok: false }, { status: 200 });

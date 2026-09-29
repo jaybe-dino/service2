@@ -16,7 +16,7 @@ const MEETING_URL = process.env.NEXT_PUBLIC_GLOVEK_MEETING_URL
 const CATEGORIES = ["스킨케어", "메이크업", "헤어케어", "바디·퍼스널케어", "이너뷰티/건기식", "패션·잡화", "푸드", "기타"];
 
 export default function ConsultPage() {
-  const [f, setF] = useState({ company: "", category: "", managerName: "", email: "", contact: "", message: "" });
+  const [f, setF] = useState({ company: "", brandUrl: "", category: "", managerName: "", email: "", contact: "", message: "" });
   const [agree, setAgree] = useState(true); // 필수 동의 기본 체크
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
@@ -40,7 +40,7 @@ export default function ConsultPage() {
   }, []);
   const filledFields = (st: typeof stateRef.current) => {
     const keys: string[] = [];
-    (["company", "category", "managerName", "email", "contact", "message"] as const).forEach((k) => { if (String(st.f[k] || "").trim()) keys.push(k); });
+    (["company", "brandUrl", "category", "managerName", "email", "contact", "message"] as const).forEach((k) => { if (String(st.f[k] || "").trim()) keys.push(k); });
     if (st.agree) keys.push("agreed");
     return keys;
   };
@@ -116,6 +116,7 @@ export default function ConsultPage() {
               <p className="mb-4 mt-1 text-[12px] text-slate-500"><span className="text-rose-500">*</span> 필수 항목</p>
               <div className="grid gap-3">
                 <Field label="회사명/브랜드명" req><input required value={f.company} onChange={set("company")} onBlur={() => sendTrack()} className="inp" placeholder="(주)글로우랩 / 브랜드명" /></Field>
+                <Field label="웹사이트 / 브랜드 링크"><input type="url" inputMode="url" value={f.brandUrl} onChange={set("brandUrl")} onBlur={() => sendTrack()} className="inp" placeholder="https://brand.com · 인스타그램 · 스마트스토어 링크" /></Field>
                 <Field label="카테고리" req>
                   <select required value={f.category} onChange={set("category")} onBlur={() => sendTrack()} className="inp">
                     <option value="">선택</option>
@@ -133,7 +134,7 @@ export default function ConsultPage() {
               <label className="mt-4 flex items-start gap-2 text-[12px] text-slate-600">
                 <input type="checkbox" checked={agree} onChange={(e) => { setAgree(e.target.checked); setTimeout(() => sendTrack(), 0); }} className="mt-0.5" />
                 <span>
-                  <b>[필수]</b> 개인정보 수집·이용에 동의합니다. (수집항목: 회사명·담당자·이메일·전화번호 등 / 목적: 입점 상담 / 보유: 상담 종료 후 1년)
+                  <b>[필수]</b> 개인정보 수집·이용에 동의합니다. (수집항목: 회사명·웹사이트·담당자·이메일·전화번호 등 / 목적: 입점 상담 / 보유: 상담 종료 후 1년)
                   {" "}<Link href="/privacy" target="_blank" className="text-[#7C3AED] underline">전문 보기</Link>
                 </span>
               </label>
