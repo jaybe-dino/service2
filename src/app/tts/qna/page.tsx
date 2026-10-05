@@ -1,24 +1,36 @@
 import Link from "next/link";
 import PageShell from "@/components/ktrend/PageShell";
 import QnaClient from "./QnaClient";
-import { FAQ_API_URL, QNA_COMMON_NOTICE, QNA_CONSULT_HREF, guardStandaloneOnboarding, type FaqEntry } from "@/data/ktrend/qna";
+import { QNA_COMMON_NOTICE, QNA_CONSULT_HREF, guardStandaloneOnboarding, type FaqEntry } from "@/data/ktrend/qna";
+import { sql, isConfigured } from "@/lib/db";
 
-// 관리자(admin.glovek.space) 승인 QnA를 런타임에 가져와 렌더 — 항상 최신 승인 답변 반영.
+// 관리자 승인 QnA(qna_entries, approved=true)를 공유 glovek Postgres에서 직접 읽어 렌더 — 항상 최신 승인 답변 반영.
+// (이전엔 admin API를 HTTP fetch했으나 도메인 오설정·미배포로 로드 실패 → 동일 원장 DB 직접 조회로 교체.)
+export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
 interface Loaded { ok: boolean; entries: FaqEntry[]; updatedAt: string | null; error?: string }
 
 async function loadFaq(): Promise<Loaded> {
+  if (!isConfigured()) return { ok: false, entries: [], updatedAt: null, error: "DB 미설정" };
   try {
-    const res = await fetch(FAQ_API_URL, { next: { revalidate: 300 } });
-    if (!res.ok) return { ok: false, entries: [], updatedAt: null, error: `HTTP ${res.status}` };
-    const j = (await res.json()) as { ok?: boolean; entries?: FaqEntry[]; updatedAt?: string; error?: string };
-    if (j.ok === false) return { ok: false, entries: [], updatedAt: null, error: j.error || "source error" };
-    const entries = (Array.isArray(j.entries) ? j.entries.filter((e) => e && e.question && e.answer) : [])
+    // admin /api/faq 와 동일 소스·조건(approved=true, 공개 컬럼만). 미승인·내부메모·고객정보는 조회하지 않음.
+    const { rows } = await sql<{ question: string; answer: string; category: string | null; usage_count: number; created_at: string }>`
+      SELECT question, answer, category, usage_count, created_at
+        FROM qna_entries
+       WHERE approved = true AND answer IS NOT NULL AND btrim(answer) <> ''
+       ORDER BY category NULLS LAST, usage_count DESC, created_at DESC
+       LIMIT 500`;
+    const entries: FaqEntry[] = rows
+      .filter((e) => e && e.question && e.answer)
+      .map((e) => ({ question: e.question, answer: e.answer, category: e.category, usage_count: e.usage_count }))
       // 사업 조건 가드: '입점 준비·초기 세팅만 단독 제공' 취지 답변을 지정 문구로 대체(질문 유지)
       .map(guardStandaloneOnboarding);
-    return { ok: true, entries, updatedAt: j.updatedAt ? j.updatedAt.slice(0, 10) : null };
+    const updatedAt = rows.length
+      ? rows.reduce((m, r) => (r.created_at > m ? r.created_at : m), rows[0].created_at).slice(0, 10)
+      : null;
+    return { ok: true, entries, updatedAt };
   } catch (e) {
     return { ok: false, entries: [], updatedAt: null, error: String(e instanceof Error ? e.message : e).slice(0, 120) };
   }
