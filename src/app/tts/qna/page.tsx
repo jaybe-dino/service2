@@ -36,7 +36,9 @@ async function loadFaq(): Promise<Loaded> {
   }
 }
 
-export default async function TtsQnaPage() {
+export default async function TtsQnaPage({ searchParams }: { searchParams?: Promise<Record<string, string | string[] | undefined>> }) {
+  const sp = (await searchParams) ?? {};
+  const diag = sp.diag === "1" || sp.diag === "true";
   const data = await loadFaq();
   const items = data.entries.map((e, i) => ({ ...e, id: i, cat: (e.category || "일반").trim() || "일반" }));
 
@@ -59,6 +61,9 @@ export default async function TtsQnaPage() {
           <div className="mt-6 rounded-xl border border-amber-200 bg-amber-50 px-5 py-8 text-center">
             <p className="text-[14px] font-bold text-amber-800">FAQ를 불러오지 못했습니다.</p>
             <p className="mt-1 text-[12px] text-amber-700">일시적인 문제일 수 있습니다. 잠시 후 다시 시도해 주세요.</p>
+            {diag && (
+              <pre className="mx-auto mt-3 max-w-full overflow-x-auto rounded-md bg-amber-100 px-3 py-2 text-left text-[11px] text-amber-900">src=db · {data.error || "(no error detail)"}</pre>
+            )}
             <Link href={QNA_CONSULT_HREF} className="mt-4 inline-flex rounded-lg bg-[var(--accent)] px-5 py-2.5 text-[12px] font-bold text-white hover:bg-[var(--accent-deep)]">1:1 상담 신청</Link>
           </div>
         </div>
