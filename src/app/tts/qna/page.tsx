@@ -16,7 +16,7 @@ async function loadFaq(): Promise<Loaded> {
   if (!isConfigured()) return { ok: false, entries: [], updatedAt: null, error: "DB 미설정" };
   try {
     // admin /api/faq 와 동일 소스·조건(approved=true, 공개 컬럼만). 미승인·내부메모·고객정보는 조회하지 않음.
-    const { rows } = await sql<{ question: string; answer: string; category: string | null; usage_count: number; created_at: string }>`
+    const { rows } = await sql<{ question: string; answer: string; category: string | null; usage_count: number; created_at: string | Date }>`
       SELECT question, answer, category, usage_count, created_at
         FROM qna_entries
        WHERE approved = true AND answer IS NOT NULL AND btrim(answer) <> ''
@@ -27,18 +27,16 @@ async function loadFaq(): Promise<Loaded> {
       .map((e) => ({ question: e.question, answer: e.answer, category: e.category, usage_count: e.usage_count }))
       // 사업 조건 가드: '입점 준비·초기 세팅만 단독 제공' 취지 답변을 지정 문구로 대체(질문 유지)
       .map(guardStandaloneOnboarding);
-    const updatedAt = rows.length
-      ? rows.reduce((m, r) => (r.created_at > m ? r.created_at : m), rows[0].created_at).slice(0, 10)
-      : null;
+    // created_at 은 드라이버에 따라 Date/문자열 모두 올 수 있어 안전하게 ms로 변환해 최신일 계산.
+    const latestMs = rows.reduce((m, r) => { const t = new Date(r.created_at).getTime(); return Number.isFinite(t) && t > m ? t : m; }, 0);
+    const updatedAt = latestMs > 0 ? new Date(latestMs).toISOString().slice(0, 10) : null;
     return { ok: true, entries, updatedAt };
   } catch (e) {
     return { ok: false, entries: [], updatedAt: null, error: String(e instanceof Error ? e.message : e).slice(0, 120) };
   }
 }
 
-export default async function TtsQnaPage({ searchParams }: { searchParams?: Promise<Record<string, string | string[] | undefined>> }) {
-  const sp = (await searchParams) ?? {};
-  const diag = sp.diag === "1" || sp.diag === "true";
+export default async function TtsQnaPage() {
   const data = await loadFaq();
   const items = data.entries.map((e, i) => ({ ...e, id: i, cat: (e.category || "일반").trim() || "일반" }));
 
@@ -61,9 +59,6 @@ export default async function TtsQnaPage({ searchParams }: { searchParams?: Prom
           <div className="mt-6 rounded-xl border border-amber-200 bg-amber-50 px-5 py-8 text-center">
             <p className="text-[14px] font-bold text-amber-800">FAQ를 불러오지 못했습니다.</p>
             <p className="mt-1 text-[12px] text-amber-700">일시적인 문제일 수 있습니다. 잠시 후 다시 시도해 주세요.</p>
-            {diag && (
-              <pre className="mx-auto mt-3 max-w-full overflow-x-auto rounded-md bg-amber-100 px-3 py-2 text-left text-[11px] text-amber-900">src=db · {data.error || "(no error detail)"}</pre>
-            )}
             <Link href={QNA_CONSULT_HREF} className="mt-4 inline-flex rounded-lg bg-[var(--accent)] px-5 py-2.5 text-[12px] font-bold text-white hover:bg-[var(--accent-deep)]">1:1 상담 신청</Link>
           </div>
         </div>
