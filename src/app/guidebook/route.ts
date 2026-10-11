@@ -15,7 +15,6 @@ export const dynamic = "force-dynamic";
 const SECRET = process.env.UNSUB_SECRET || process.env.SESSION_SECRET || "glovek-guidebook";
 const COOKIE = "gb_access";
 const REG_COOKIE = "gb_reg"; // 최초 저장 성공 1회 전환(CompleteRegistration) 발화용 — GET에서 소비 후 즉시 만료
-const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 // glovek 기존 Meta 픽셀(공개 식별자) — 신규 픽셀 생성/대체 금지. layout과 동일 ID.
 const PIXEL_ID = process.env.NEXT_PUBLIC_META_PIXEL_ID || "1726953618432069";
 
@@ -51,17 +50,7 @@ function verifyToken(tok: string | undefined): boolean {
   } catch { return false; }
 }
 
-// ── 브랜드 웹사이트(선택) 정규화·검증 — 빈 값 허용, 스킴 없으면 https 보정 ──
-function normalizeBrandUrl(raw: string): { ok: boolean; url: string } {
-  let s = (raw || "").trim().slice(0, 200);
-  if (!s) return { ok: true, url: "" }; // 선택 항목 — 비워도 열람 허용
-  if (!/^https?:\/\//i.test(s)) s = "https://" + s;
-  try {
-    const u = new URL(s);
-    if (!u.hostname.includes(".") || u.hostname.length < 4) return { ok: false, url: "" };
-    return { ok: true, url: u.toString().slice(0, 200) };
-  } catch { return { ok: false, url: "" }; }
-}
+// 브랜드 웹사이트는 선택 항목이며 형식 제한 없음 — trim + 최대길이만 적용해 입력 그대로 저장(http 없는 bare domain 허용).
 
 // ── 무료 세미나 회차 — 매주 월요일 10:30(KST) 고정, 매주 월요일 09:00 KST(=월 00:00 UTC)에 다음 주로 이동 ──
 // 서버가 요청 시각 기준으로 공통 계산 → 표시·저장 동일 값 보장. (route는 force-dynamic + no-store 라 캐시로 이전 날짜가 남지 않음)
@@ -141,11 +130,11 @@ function gatePage(err = "", utm: Utm = EMPTY_UTM): NextResponse {
     <label>회사명 (브랜드명)</label>
     <input name="company" required maxlength="80" placeholder="예: 디노코스메틱" />
     <label>업무용 이메일</label>
-    <input name="email" type="email" required maxlength="120" placeholder="name@company.com" />
+    <input name="email" type="text" required maxlength="120" placeholder="name@company.com" />
     <label>전화번호</label>
     <input name="phone" type="tel" required maxlength="40" placeholder="010-0000-0000" />
     <label>브랜드 웹사이트 <span style="color:#94a3b8;font-weight:400">(선택 — 없으면 비워 두세요)</span></label>
-    <input name="brand_url" type="url" maxlength="200" placeholder="https://yourbrand.com" />
+    <input name="brand_url" type="text" maxlength="200" placeholder="예: brand.co.kr" />
     <input class="gb-hp" type="text" name="website" tabindex="-1" autocomplete="off" />
     ${utmHidden(utm)}
     <label class="gb-agree"><input type="checkbox" name="agree" checked required /> <span><b>[필수]</b> 개인정보 수집·이용에 동의합니다. (수집: 회사명·웹사이트·이메일·전화번호 / 목적: 가이드북 열람 및 안내 / 보유: 1년)</span></label>
@@ -174,7 +163,7 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   const form = await req.formData().catch(() => null);
   const company = String(form?.get("company") || "").trim().slice(0, 80);
-  const email = String(form?.get("email") || "").trim().toLowerCase().slice(0, 120);
+  const email = String(form?.get("email") || "").trim().slice(0, 120); // 형식 제한 없음 — trim + 최대길이만
   const phone = String(form?.get("phone") || "").trim().slice(0, 40);
   const honeypot = String(form?.get("website") || "");
   // 광고 UTM(소재 추적) — 히든 필드로 전달받아 리드에 보존(관리자 소재별 확인). Meta로는 전송하지 않음.
@@ -183,13 +172,14 @@ export async function POST(req: Request) {
     campaign: cleanUtm(form?.get("utm_campaign")), content: cleanUtm(form?.get("utm_content")),
   };
   if (honeypot) return gatePage(); // 봇 폼 자동입력 차단
-  if (!company || !EMAIL_RE.test(email)) return gatePage("회사명과 올바른 이메일을 입력해 주세요.", utm);
+  // 필수: 회사명·이메일(입력 여부만, 형식 미검증)·전화번호·개인정보 동의. 이메일/URL 형식은 차단하지 않음.
+  if (!company) return gatePage("회사명을 입력해 주세요.", utm);
+  if (!email) return gatePage("이메일을 입력해 주세요.", utm);
   if (phone.replace(/\D/g, "").length < 9) return gatePage("전화번호를 정확히 입력해 주세요.", utm);
   if (!form?.get("agree")) return gatePage("개인정보 수집·이용에 동의해 주세요.", utm);
 
-  // 브랜드 웹사이트(선택) — 서버 검증. 빈 값은 통과, 형식 오류만 반려(세미나 체크는 열람 조건 아님).
-  const brand = normalizeBrandUrl(String(form?.get("brand_url") || ""));
-  if (!brand.ok) return gatePage("브랜드 웹사이트 주소를 확인해 주세요. (없으면 비워 두세요)", utm);
+  // 브랜드 웹사이트(선택) — 형식 제한 없이 trim + 최대길이만. 빈 값 허용, 입력 그대로 저장(파싱/차단 없음).
+  const brandUrl = String(form?.get("brand_url") || "").trim().slice(0, 200);
   // 세미나 선택 신청 — 체크된 경우에만 신청자. 표시·저장 동일하도록 서버에서 회차 계산.
   const seminarOptIn = !!form?.get("seminar");
   const sem = seminarSession();
@@ -200,7 +190,7 @@ export async function POST(req: Request) {
   if (isConfigured()) {
     try {
       await ensureSchema();
-      const payload = { company, phone, brandUrl: brand.url || null, seminar: { applied: seminarOptIn, at: sem.atKst }, utm };
+      const payload = { company, phone, brandUrl: brandUrl || null, seminar: { applied: seminarOptIn, at: sem.atKst }, utm };
       await sql`INSERT INTO inquiries (kind, user_email, payload)
         VALUES ('guidebook', ${email}, ${JSON.stringify(payload)}::jsonb)`;
       leadSaved = true;
@@ -217,11 +207,11 @@ export async function POST(req: Request) {
       key, source: src, company, name: company, email,
       phone: phone.replace(/\D/g, ""), category: "guidebook",
       memo: `[가이드북 열람] K-코스메틱·소비재 글로벌 50개국 진출 실무서 · 회사 ${company} · 연락처 ${phone}`
-        + (brand.url ? ` · 사이트 ${brand.url}` : "")
+        + (brandUrl ? ` · 사이트 ${brandUrl}` : "")
         + ` · 무료세미나 ${seminarOptIn ? `신청(${sem.atKst})` : "미신청"}`
         + (utmMemo(utm) ? ` · UTM ${utmMemo(utm)}` : ""),
     });
-    if (brand.url) qs.set("url", brand.url);
+    if (brandUrl) qs.set("url", brandUrl);
     const leadhookUrl = `${base}?${qs.toString()}`;
     after(async () => {
       try { await fetch(leadhookUrl, { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" }); }
