@@ -32,6 +32,10 @@ const utmHidden = (u: Utm) => (["source", "medium", "campaign", "content"] as co
   .map((k) => (u[k] ? `<input type="hidden" name="utm_${k}" value="${esc(u[k])}" />` : "")).join("");
 const utmMemo = (u: Utm) => [u.source && `src:${u.source}`, u.medium && `med:${u.medium}`, u.campaign && `cmp:${u.campaign}`, u.content && `con:${u.content}`].filter(Boolean).join("/");
 
+// 브랜드 주력 카테고리(선택) — consult 폼과 동일 분류. 어드민 brands.category 로 전달되어 브랜드 360 헤더에 표시.
+const CATEGORIES = ["스킨케어", "메이크업", "헤어케어", "바디·퍼스널케어", "이너뷰티/건기식", "패션·잡화", "푸드", "기타"];
+const CATEGORY_SET = new Set(CATEGORIES);
+
 // Meta Pixel — 라우트 핸들러는 app layout을 거치지 않아 기존 픽셀이 적용되지 않으므로 동일 ID로 직접 주입.
 // 원문 PII(회사명·이메일·전화·URL)는 전송하지 않음 — 이벤트명만. extra 로 CompleteRegistration 1회 발화.
 const pixelBlock = (extra = "") => `
@@ -113,8 +117,8 @@ function gatePage(err = "", utm: Utm = EMPTY_UTM): NextResponse {
     .gb-card h1{font-size:23px;margin:8px 0 6px;letter-spacing:-.5px;line-height:1.3}
     .gb-card p{font-size:13px;color:#64748b;line-height:1.7;margin:0 0 16px}
     .gb-card label{display:block;font-size:12px;font-weight:700;margin:13px 0 5px;color:#334155}
-    .gb-card input{width:100%;box-sizing:border-box;border:1px solid #e2e8f0;border-radius:10px;padding:11px 13px;font-size:14px;outline:none;font-family:inherit}
-    .gb-card input:focus{border-color:#7c3aed}
+    .gb-card input,.gb-card select{width:100%;box-sizing:border-box;border:1px solid #e2e8f0;border-radius:10px;padding:11px 13px;font-size:14px;outline:none;font-family:inherit;background:#fff;color:#0f172a}
+    .gb-card input:focus,.gb-card select:focus{border-color:#7c3aed}
     .gb-card button{width:100%;margin-top:20px;background:#0f172a;color:#fff;border:0;border-radius:10px;padding:13px;font-size:14px;font-weight:800;cursor:pointer}
     .gb-card button:hover{background:#1e293b}
     .gb-err{margin-top:10px;font-size:12px;color:#e11d48;font-weight:700}
@@ -129,6 +133,8 @@ function gatePage(err = "", utm: Utm = EMPTY_UTM): NextResponse {
     <p>온라인 열람 전용 가이드북입니다.<br>아래 정보 입력 후 전체 내용을 바로 열람하실 수 있습니다.</p>
     <label>회사명 (브랜드명)</label>
     <input name="company" required maxlength="80" placeholder="예: 디노코스메틱" />
+    <label>브랜드 주력 카테고리 <span style="color:#94a3b8;font-weight:400">(선택)</span></label>
+    <select name="category"><option value="">선택</option>${CATEGORIES.map((c) => `<option value="${esc(c)}">${esc(c)}</option>`).join("")}</select>
     <label>업무용 이메일</label>
     <input name="email" type="text" required maxlength="120" placeholder="name@company.com" />
     <label>전화번호</label>
@@ -180,6 +186,9 @@ export async function POST(req: Request) {
 
   // 브랜드 웹사이트(선택) — 형식 제한 없이 trim + 최대길이만. 빈 값 허용, 입력 그대로 저장(파싱/차단 없음).
   const brandUrl = String(form?.get("brand_url") || "").trim().slice(0, 200);
+  // 브랜드 주력 카테고리(선택) — 허용 목록만 수용(그 외/빈값은 ""). 저장·어드민 brands.category 전달.
+  const categoryIn = String(form?.get("category") || "").trim();
+  const category = CATEGORY_SET.has(categoryIn) ? categoryIn : "";
   // 세미나 선택 신청 — 체크된 경우에만 신청자. 표시·저장 동일하도록 서버에서 회차 계산.
   const seminarOptIn = !!form?.get("seminar");
   const sem = seminarSession();
@@ -190,7 +199,7 @@ export async function POST(req: Request) {
   if (isConfigured()) {
     try {
       await ensureSchema();
-      const payload = { company, phone, brandUrl: brandUrl || null, seminar: { applied: seminarOptIn, at: sem.atKst }, utm };
+      const payload = { company, category: category || null, phone, brandUrl: brandUrl || null, seminar: { applied: seminarOptIn, at: sem.atKst }, utm };
       await sql`INSERT INTO inquiries (kind, user_email, payload)
         VALUES ('guidebook', ${email}, ${JSON.stringify(payload)}::jsonb)`;
       leadSaved = true;
@@ -198,15 +207,17 @@ export async function POST(req: Request) {
   }
 
   // 통합 어드민(admin.glovek.space) 리드훅 — consult와 동일 방식. 응답 이후 비차단 전송.
-  // 어드민 leadhook: url→brand_url 컬럼, memo→메모(관리자 확인). 세미나는 신청 시에만 '신청'으로 표기.
+  // 어드민 leadhook: category→brands.category(브랜드 360 헤더), url→brand_url, memo→메모. '가이드북' 식별은 memo·source로 유지.
   {
     const base = process.env.LEADHOOK_URL || "https://admin.glovek.space/api/leadhook";
     const key = process.env.LEADHOOK_KEY || "dinoffice1029";
     const src = process.env.LEADHOOK_SOURCE || "HfbbIVFL9p29ZtG2sNI21sCC";
     const qs = new URLSearchParams({
       key, source: src, company, name: company, email,
-      phone: phone.replace(/\D/g, ""), category: "guidebook",
-      memo: `[가이드북 열람] K-코스메틱·소비재 글로벌 50개국 진출 실무서 · 회사 ${company} · 연락처 ${phone}`
+      phone: phone.replace(/\D/g, ""), category,
+      memo: `[가이드북 열람] K-코스메틱·소비재 글로벌 50개국 진출 실무서 · 회사 ${company}`
+        + (category ? ` · 카테고리 ${category}` : "")
+        + ` · 연락처 ${phone}`
         + (brandUrl ? ` · 사이트 ${brandUrl}` : "")
         + ` · 무료세미나 ${seminarOptIn ? `신청(${sem.atKst})` : "미신청"}`
         + (utmMemo(utm) ? ` · UTM ${utmMemo(utm)}` : ""),
