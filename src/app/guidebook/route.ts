@@ -124,7 +124,6 @@ function gatePage(err = "", utm: Utm = EMPTY_UTM): NextResponse {
     .gb-hp{position:absolute;left:-9999px}
   </style>
   <div class="gb-ov"><form class="gb-card" method="POST" autocomplete="on">
-    <div class="gb-k">Glovek Guidebook</div>
     <h1>K-코스메틱·소비재<br>글로벌 50개국 진출 실무서</h1>
     <p>아래 정보를 입력하면 전체 내용을 바로 열람할 수 있습니다.</p>
     <label>회사명 (브랜드명)</label>
@@ -137,8 +136,8 @@ function gatePage(err = "", utm: Utm = EMPTY_UTM): NextResponse {
     <input name="brand_url" type="text" maxlength="200" placeholder="예: brand.co.kr" />
     <input class="gb-hp" type="text" name="website" tabindex="-1" autocomplete="off" />
     ${utmHidden(utm)}
-    <label class="gb-agree"><input type="checkbox" name="agree" checked required /> <span><b>[필수]</b> 개인정보 수집·이용에 동의합니다. (수집: 회사명·웹사이트·이메일·전화번호 / 목적: 가이드북 열람 및 안내 / 보유: 1년)</span></label>
-    <label class="gb-agree"><input type="checkbox" name="seminar" checked /> <span><b>[선택]</b> ${sem.ko} 틱톡샵 글로벌 진출 온라인 무료 세미나 신청</span></label>
+    <label class="gb-agree"><input type="checkbox" name="agree" checked required /> <span><b>[필수]</b> 개인정보 수집·이용에 동의합니다.</span></label>
+    <label class="gb-agree"><input type="checkbox" name="seminar" checked /> <span><b>[선택]</b> ${sem.ko} 무료 세미나 신청</span></label>
     ${err ? `<div class="gb-err">${err}</div>` : ""}
     <button type="submit">가이드북 열람하기</button>
     <div class="gb-ft">본 콘텐츠는 무단 복제·배포가 금지됩니다.</div>
