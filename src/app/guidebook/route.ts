@@ -139,7 +139,7 @@ function gatePage(err = "", utm: Utm = EMPTY_UTM): NextResponse {
     <input name="email" type="text" required maxlength="120" placeholder="name@company.com" />
     <label>전화번호</label>
     <input name="phone" type="tel" required maxlength="40" placeholder="010-0000-0000" />
-    <label>브랜드 웹사이트 <span style="color:#94a3b8;font-weight:400">(선택 — 없으면 비워 두세요)</span></label>
+    <label>브랜드 웹사이트 <span style="color:#94a3b8;font-weight:400">(선택)</span></label>
     <input name="brand_url" type="text" maxlength="200" placeholder="예: brand.co.kr" />
     <input class="gb-hp" type="text" name="website" tabindex="-1" autocomplete="off" />
     ${utmHidden(utm)}
