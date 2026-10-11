@@ -14,7 +14,30 @@ export const dynamic = "force-dynamic";
 
 const SECRET = process.env.UNSUB_SECRET || process.env.SESSION_SECRET || "glovek-guidebook";
 const COOKIE = "gb_access";
+const REG_COOKIE = "gb_reg"; // 최초 저장 성공 1회 전환(CompleteRegistration) 발화용 — GET에서 소비 후 즉시 만료
 const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
+// glovek 기존 Meta 픽셀(공개 식별자) — 신규 픽셀 생성/대체 금지. layout과 동일 ID.
+const PIXEL_ID = process.env.NEXT_PUBLIC_META_PIXEL_ID || "1726953618432069";
+
+const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+type Utm = { source: string; medium: string; campaign: string; content: string };
+const EMPTY_UTM: Utm = { source: "", medium: "", campaign: "", content: "" };
+const cleanUtm = (v: unknown) => String(v ?? "").trim().slice(0, 120);
+function utmFromUrl(url: string): Utm {
+  try {
+    const p = new URL(url).searchParams;
+    return { source: cleanUtm(p.get("utm_source")), medium: cleanUtm(p.get("utm_medium")), campaign: cleanUtm(p.get("utm_campaign")), content: cleanUtm(p.get("utm_content")) };
+  } catch { return { ...EMPTY_UTM }; }
+}
+const utmHidden = (u: Utm) => (["source", "medium", "campaign", "content"] as const)
+  .map((k) => (u[k] ? `<input type="hidden" name="utm_${k}" value="${esc(u[k])}" />` : "")).join("");
+const utmMemo = (u: Utm) => [u.source && `src:${u.source}`, u.medium && `med:${u.medium}`, u.campaign && `cmp:${u.campaign}`, u.content && `con:${u.content}`].filter(Boolean).join("/");
+
+// Meta Pixel — 라우트 핸들러는 app layout을 거치지 않아 기존 픽셀이 적용되지 않으므로 동일 ID로 직접 주입.
+// 원문 PII(회사명·이메일·전화·URL)는 전송하지 않음 — 이벤트명만. extra 로 CompleteRegistration 1회 발화.
+const pixelBlock = (extra = "") => `
+<script>!function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,document,'script','https://connect.facebook.net/en_US/fbevents.js');fbq('init','${PIXEL_ID}');fbq('track','PageView');${extra}</script>
+<noscript><img height="1" width="1" style="display:none" src="https://www.facebook.com/tr?id=${PIXEL_ID}&ev=PageView&noscript=1"/></noscript>`;
 
 const sign = (email: string) => crypto.createHmac("sha256", SECRET).update("gb:" + email).digest("hex").slice(0, 24);
 const makeToken = (email: string) => Buffer.from(email).toString("base64url") + "." + sign(email);
@@ -26,6 +49,35 @@ function verifyToken(tok: string | undefined): boolean {
     const email = Buffer.from(b64, "base64url").toString("utf-8");
     return crypto.timingSafeEqual(Buffer.from(sign(email)), Buffer.from(sig));
   } catch { return false; }
+}
+
+// ── 브랜드 웹사이트(선택) 정규화·검증 — 빈 값 허용, 스킴 없으면 https 보정 ──
+function normalizeBrandUrl(raw: string): { ok: boolean; url: string } {
+  let s = (raw || "").trim().slice(0, 200);
+  if (!s) return { ok: true, url: "" }; // 선택 항목 — 비워도 열람 허용
+  if (!/^https?:\/\//i.test(s)) s = "https://" + s;
+  try {
+    const u = new URL(s);
+    if (!u.hostname.includes(".") || u.hostname.length < 4) return { ok: false, url: "" };
+    return { ok: true, url: u.toString().slice(0, 200) };
+  } catch { return { ok: false, url: "" }; }
+}
+
+// ── 무료 세미나 회차 — 매주 월요일 10:30(KST) 고정, 매주 월요일 09:00 KST(=월 00:00 UTC)에 다음 주로 이동 ──
+// 서버가 요청 시각 기준으로 공통 계산 → 표시·저장 동일 값 보장. (route는 force-dynamic + no-store 라 캐시로 이전 날짜가 남지 않음)
+function seminarSession(now: Date = new Date()): { ymd: string; ko: string; atKst: string } {
+  const t = now.getTime();
+  const DAY = 86400000;
+  let cand = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()); // 오늘 00:00 UTC
+  for (let i = 0; i < 14; i++) {
+    const g = new Date(cand);
+    if (g.getUTCDay() === 1 && cand > t) break; // 월 00:00 UTC(=월 09:00 KST) 경계 중 now보다 엄격히 이후인 첫 월요일
+    cand += DAY;
+  }
+  const g = new Date(cand); // 월 00:00 UTC = 월 09:00 KST → KST 캘린더 날짜 동일
+  const y = g.getUTCFullYear(), m = g.getUTCMonth() + 1, d = g.getUTCDate();
+  const ymd = `${y}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+  return { ymd, ko: `${m}월 ${d}일(월) 오전 10시 30분`, atKst: `${ymd} 10:30 (Asia/Seoul)` };
 }
 
 const PROTECT = `
@@ -56,10 +108,11 @@ const noindexHeaders = {
 
 // 게이트: 책의 표지·서장(티저)만 실루엣(블러)으로 깔고 레이어 팝업으로 정보 입력.
 // 전체 본문은 응답에 포함하지 않음 — 개발자도구로 팝업을 지워도 나머지 내용은 존재하지 않음.
-function gatePage(err = ""): NextResponse {
+function gatePage(err = "", utm: Utm = EMPTY_UTM): NextResponse {
   const raw = readFileSync(join(process.cwd(), "src/app/guidebook/ebook.html"), "utf-8");
   const cuts = [...raw.matchAll(/<section/g)].map((m) => m.index!);
   const cut = cuts[2] ?? Math.min(raw.length, 14000); // 표지 + 서장 + 1챕터 도입부까지
+  const sem = seminarSession();
   const OVERLAY = `
   </main></div>
   <style>
@@ -83,7 +136,7 @@ function gatePage(err = ""): NextResponse {
   </style>
   <div class="gb-ov"><form class="gb-card" method="POST" autocomplete="on">
     <div class="gb-k">Glovek Guidebook</div>
-    <h1>글로벌 50<br>첫 12개월을 통과하는 법</h1>
+    <h1>K-코스메틱·소비재<br>글로벌 50개국 진출 실무서</h1>
     <p>온라인 열람 전용 가이드북입니다.<br>아래 정보 입력 후 전체 내용을 바로 열람하실 수 있습니다.</p>
     <label>회사명 (브랜드명)</label>
     <input name="company" required maxlength="80" placeholder="예: 디노코스메틱" />
@@ -91,23 +144,31 @@ function gatePage(err = ""): NextResponse {
     <input name="email" type="email" required maxlength="120" placeholder="name@company.com" />
     <label>전화번호</label>
     <input name="phone" type="tel" required maxlength="40" placeholder="010-0000-0000" />
+    <label>브랜드 웹사이트 <span style="color:#94a3b8;font-weight:400">(선택 — 없으면 비워 두세요)</span></label>
+    <input name="brand_url" type="url" maxlength="200" placeholder="https://yourbrand.com" />
     <input class="gb-hp" type="text" name="website" tabindex="-1" autocomplete="off" />
-    <label class="gb-agree"><input type="checkbox" name="agree" checked required /> <span><b>[필수]</b> 개인정보 수집·이용에 동의합니다. (수집: 회사명·이메일·전화번호 / 목적: 가이드북 열람 및 안내 / 보유: 1년)</span></label>
+    ${utmHidden(utm)}
+    <label class="gb-agree"><input type="checkbox" name="agree" checked required /> <span><b>[필수]</b> 개인정보 수집·이용에 동의합니다. (수집: 회사명·웹사이트·이메일·전화번호 / 목적: 가이드북 열람 및 안내 / 보유: 1년)</span></label>
+    <label class="gb-agree"><input type="checkbox" name="seminar" checked /> <span><b>[선택]</b> ${sem.ko} 틱톡샵 글로벌 진출 온라인 무료 세미나 신청</span></label>
     ${err ? `<div class="gb-err">${err}</div>` : ""}
     <button type="submit">가이드북 열람하기</button>
     <div class="gb-ft">본 콘텐츠는 무단 복제·배포가 금지됩니다.</div>
   </form></div>
   </body></html>`;
-  const teaser = raw.slice(0, cut).replace("</head>", PROTECT + "\n</head>") + OVERLAY;
+  const teaser = raw.slice(0, cut).replace("</head>", PROTECT + pixelBlock() + "\n</head>") + OVERLAY;
   return new NextResponse(teaser, { headers: noindexHeaders });
 }
 
-export async function GET() {
+export async function GET(req: Request) {
   const c = await cookies();
-  if (!verifyToken(c.get(COOKIE)?.value)) return gatePage();
+  if (!verifyToken(c.get(COOKIE)?.value)) return gatePage("", utmFromUrl(req.url));
+  // 최초 저장 성공 직후 1회만 CompleteRegistration — 쿠키를 소비(즉시 만료)해 새로고침·재열람 중복 방지.
+  const fireReg = c.get(REG_COOKIE)?.value === "1";
   const html = readFileSync(join(process.cwd(), "src/app/guidebook/ebook.html"), "utf-8")
-    .replace("</head>", PROTECT + "\n</head>");
-  return new NextResponse(html, { headers: noindexHeaders });
+    .replace("</head>", PROTECT + pixelBlock(fireReg ? "fbq('track','CompleteRegistration');" : "") + "\n</head>");
+  const res = new NextResponse(html, { headers: noindexHeaders });
+  if (fireReg) res.cookies.set(REG_COOKIE, "", { httpOnly: true, secure: true, sameSite: "lax", maxAge: 0, path: "/guidebook" });
+  return res;
 }
 
 export async function POST(req: Request) {
@@ -116,21 +177,38 @@ export async function POST(req: Request) {
   const email = String(form?.get("email") || "").trim().toLowerCase().slice(0, 120);
   const phone = String(form?.get("phone") || "").trim().slice(0, 40);
   const honeypot = String(form?.get("website") || "");
+  // 광고 UTM(소재 추적) — 히든 필드로 전달받아 리드에 보존(관리자 소재별 확인). Meta로는 전송하지 않음.
+  const utm: Utm = {
+    source: cleanUtm(form?.get("utm_source")), medium: cleanUtm(form?.get("utm_medium")),
+    campaign: cleanUtm(form?.get("utm_campaign")), content: cleanUtm(form?.get("utm_content")),
+  };
   if (honeypot) return gatePage(); // 봇 폼 자동입력 차단
-  if (!company || !EMAIL_RE.test(email)) return gatePage("회사명과 올바른 이메일을 입력해 주세요.");
-  if (phone.replace(/\D/g, "").length < 9) return gatePage("전화번호를 정확히 입력해 주세요.");
-  if (!form?.get("agree")) return gatePage("개인정보 수집·이용에 동의해 주세요.");
+  if (!company || !EMAIL_RE.test(email)) return gatePage("회사명과 올바른 이메일을 입력해 주세요.", utm);
+  if (phone.replace(/\D/g, "").length < 9) return gatePage("전화번호를 정확히 입력해 주세요.", utm);
+  if (!form?.get("agree")) return gatePage("개인정보 수집·이용에 동의해 주세요.", utm);
+
+  // 브랜드 웹사이트(선택) — 서버 검증. 빈 값은 통과, 형식 오류만 반려(세미나 체크는 열람 조건 아님).
+  const brand = normalizeBrandUrl(String(form?.get("brand_url") || ""));
+  if (!brand.ok) return gatePage("브랜드 웹사이트 주소를 확인해 주세요. (없으면 비워 두세요)", utm);
+  // 세미나 선택 신청 — 체크된 경우에만 신청자. 표시·저장 동일하도록 서버에서 회차 계산.
+  const seminarOptIn = !!form?.get("seminar");
+  const sem = seminarSession();
 
   // 리드 저장 — 기존 inquiries 테이블(kind='guidebook'), 어드민에서 열람 가능. 실패해도 열람은 허용.
+  // seminar.applied=false 는 '열람했으나 미신청' — 신청자로 취급하지 않음. leadSaved 는 최초 저장 성공 전환용.
+  let leadSaved = false;
   if (isConfigured()) {
     try {
       await ensureSchema();
+      const payload = { company, phone, brandUrl: brand.url || null, seminar: { applied: seminarOptIn, at: sem.atKst }, utm };
       await sql`INSERT INTO inquiries (kind, user_email, payload)
-        VALUES ('guidebook', ${email}, ${JSON.stringify({ company, phone })}::jsonb)`;
-    } catch { /* 리드 저장 실패 무시 */ }
+        VALUES ('guidebook', ${email}, ${JSON.stringify(payload)}::jsonb)`;
+      leadSaved = true;
+    } catch { /* 리드 저장 실패 무시 — 전환(CompleteRegistration)도 발화하지 않음 */ }
   }
 
   // 통합 어드민(admin.glovek.space) 리드훅 — consult와 동일 방식. 응답 이후 비차단 전송.
+  // 어드민 leadhook: url→brand_url 컬럼, memo→메모(관리자 확인). 세미나는 신청 시에만 '신청'으로 표기.
   {
     const base = process.env.LEADHOOK_URL || "https://admin.glovek.space/api/leadhook";
     const key = process.env.LEADHOOK_KEY || "dinoffice1029";
@@ -138,8 +216,12 @@ export async function POST(req: Request) {
     const qs = new URLSearchParams({
       key, source: src, company, name: company, email,
       phone: phone.replace(/\D/g, ""), category: "guidebook",
-      memo: `[가이드북 열람] 글로벌50 E-book · 회사 ${company} · 연락처 ${phone}`,
+      memo: `[가이드북 열람] K-코스메틱·소비재 글로벌 50개국 진출 실무서 · 회사 ${company} · 연락처 ${phone}`
+        + (brand.url ? ` · 사이트 ${brand.url}` : "")
+        + ` · 무료세미나 ${seminarOptIn ? `신청(${sem.atKst})` : "미신청"}`
+        + (utmMemo(utm) ? ` · UTM ${utmMemo(utm)}` : ""),
     });
+    if (brand.url) qs.set("url", brand.url);
     const leadhookUrl = `${base}?${qs.toString()}`;
     after(async () => {
       try { await fetch(leadhookUrl, { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" }); }
@@ -149,5 +231,7 @@ export async function POST(req: Request) {
 
   const res = new NextResponse(null, { status: 303, headers: { location: "/guidebook" } });
   res.cookies.set(COOKIE, makeToken(email), { httpOnly: true, secure: true, sameSite: "lax", maxAge: 60 * 60 * 24 * 30, path: "/guidebook" });
+  // 저장 성공한 최초 제출에만 1회 전환 플래그. 다음 GET이 소비 후 즉시 만료 → 새로고침·재열람 중복 전환 방지.
+  if (leadSaved) res.cookies.set(REG_COOKIE, "1", { httpOnly: true, secure: true, sameSite: "lax", maxAge: 300, path: "/guidebook" });
   return res;
 }
