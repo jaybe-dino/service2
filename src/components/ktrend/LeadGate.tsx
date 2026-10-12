@@ -6,7 +6,6 @@ export default function LeadGate({ kind, semKo, utm = EMPTY_UTM, err = false }: 
   const hidden = (["source", "medium", "campaign", "content"] as const).filter((k) => utm[k]);
   return (
     <div className="lg-ov">
-      {/* eslint-disable-next-line @next/next/no-css-tags */}
       <style dangerouslySetInnerHTML={{ __html: `
         .lg-ov{position:fixed;inset:0;z-index:50;overflow-y:auto;-webkit-overflow-scrolling:touch;display:flex;justify-content:center;align-items:flex-start;padding:18px 14px;background:linear-gradient(160deg,#1e1b4b,#1a56db);font-family:'Apple SD Gothic Neo','Malgun Gothic',system-ui,sans-serif}
         .lg-card{background:#fff;border-radius:18px;padding:26px 22px;max-width:400px;width:100%;box-shadow:0 24px 70px rgba(0,0,0,.4);color:#0f172a}
