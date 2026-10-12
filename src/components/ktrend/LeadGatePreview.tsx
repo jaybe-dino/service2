@@ -14,16 +14,16 @@ export default function LeadGatePreview({ kind, semKo, utm = EMPTY_UTM, err = fa
   return (
     <div className="lgp-root">
       <style dangerouslySetInnerHTML={{ __html: `
-        .lgp-root{position:relative;height:100vh;overflow:hidden;background:var(--bg)}
-        .lgp-blur{filter:blur(6px) saturate(.85);transform:scale(1.02);pointer-events:none;user-select:none;-webkit-user-select:none;opacity:.85}
-        .lgp-ov{position:fixed;inset:0;z-index:50;overflow-y:auto;-webkit-overflow-scrolling:touch;display:flex;justify-content:center;align-items:center;padding:20px 14px;background:linear-gradient(160deg,rgba(15,23,42,.42),rgba(26,86,219,.34));font-family:'Apple SD Gothic Neo','Malgun Gothic',system-ui,sans-serif}
-        .lgp-cta{text-align:center;color:#fff;max-width:360px;width:100%}
-        .lgp-badge{display:inline-flex;align-items:center;gap:6px;border-radius:999px;background:rgba(255,255,255,.16);padding:6px 13px;font-size:11px;font-weight:800;letter-spacing:.3px;backdrop-filter:blur(4px)}
-        .lgp-h{margin:16px 0 6px;font-size:23px;font-weight:900;line-height:1.3;letter-spacing:-.5px;text-shadow:0 2px 20px rgba(0,0,0,.3)}
-        .lgp-sub{margin:0 0 20px;font-size:13px;line-height:1.6;color:rgba(255,255,255,.85)}
-        .lgp-btn{width:100%;border:0;border-radius:12px;background:#fff;color:#0f172a;padding:15px;font-size:15px;font-weight:900;cursor:pointer;box-shadow:0 12px 40px rgba(0,0,0,.3);transition:transform .12s}
-        .lgp-btn:hover{transform:translateY(-1px)}
-        .lgp-ft{margin-top:14px;font-size:10.5px;color:rgba(255,255,255,.6)}
+        .lgp-root{position:relative;min-height:100vh;overflow:hidden;background:var(--bg)}
+        .lgp-blur{filter:blur(5px) saturate(.92);transform:scale(1.03);pointer-events:none;user-select:none;-webkit-user-select:none}
+        .lgp-ov{position:fixed;inset:0;z-index:50;overflow-y:auto;-webkit-overflow-scrolling:touch;display:flex;justify-content:center;align-items:center;padding:20px 16px;background:rgba(241,245,249,.32);font-family:'Apple SD Gothic Neo','Malgun Gothic',system-ui,sans-serif}
+        .lgp-cta{text-align:center;color:#0f172a;max-width:360px;width:100%;background:rgba(255,255,255,.8);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,.65);border-radius:22px;padding:30px 26px;box-shadow:0 24px 70px rgba(15,23,42,.3)}
+        .lgp-badge{display:inline-flex;align-items:center;gap:6px;border-radius:999px;background:var(--accent-light);color:var(--accent-deep);padding:6px 13px;font-size:11px;font-weight:800;letter-spacing:.2px}
+        .lgp-h{margin:14px 0 6px;font-size:22px;font-weight:900;line-height:1.3;letter-spacing:-.5px;color:#0f172a}
+        .lgp-sub{margin:0 0 20px;font-size:13px;line-height:1.6;color:#64748b}
+        .lgp-btn{width:100%;border:0;border-radius:12px;background:var(--accent);color:#fff;padding:15px;font-size:15px;font-weight:900;cursor:pointer;box-shadow:0 12px 34px rgba(236,72,153,.4);transition:transform .12s,background .12s}
+        .lgp-btn:hover{transform:translateY(-1px);background:var(--accent-deep)}
+        .lgp-ft{margin-top:13px;font-size:10.5px;color:#94a3b8}
         /* 입력 모달(열렸을 때) */
         .lg-card{background:#fff;border-radius:18px;padding:24px 22px;max-width:400px;width:100%;box-shadow:0 24px 70px rgba(0,0,0,.45);color:#0f172a}
         .lg-card h1{font-size:19px;margin:0 0 5px;letter-spacing:-.5px;line-height:1.25;font-weight:900}

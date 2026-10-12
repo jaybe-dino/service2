@@ -111,12 +111,12 @@ function RetailTeaser({ byCountry, total }: { byCountry: { c: string; n: number 
         <section className="mt-12">
           <h2 className="text-[20px] font-black tracking-tight sm:text-[24px]">전체 조사 업체 <span className="text-[14px] font-bold text-[var(--muted)]">{total}곳</span></h2>
           <div className="mt-4 overflow-hidden rounded-2xl border border-[var(--border)] bg-white">
-            {Array.from({ length: 9 }).map((_, i) => (
+            {Array.from({ length: 18 }).map((_, i) => (
               <div key={i} className="flex items-center gap-4 border-b border-[var(--border)] px-4 py-3.5 last:border-0">
                 <div className="h-3.5 w-10 rounded bg-slate-200" />
-                <div className="h-3.5 flex-1 rounded bg-slate-200" />
+                <div className="h-3.5 rounded bg-slate-200" style={{ width: `${30 + ((i * 37) % 45)}%` }} />
                 <div className="hidden h-3.5 w-40 rounded bg-slate-100 sm:block" />
-                <div className="h-6 w-16 rounded-lg bg-[var(--accent-light)]" />
+                <div className="ml-auto h-6 w-16 rounded-lg bg-[var(--accent-light)]" />
               </div>
             ))}
           </div>
