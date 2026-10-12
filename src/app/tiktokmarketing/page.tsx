@@ -1,6 +1,10 @@
 import { Fragment } from "react";
 import type { Metadata } from "next";
+import { cookies } from "next/headers";
 import ScrollSpy from "./ScrollSpy";
+import LeadGate from "@/components/ktrend/LeadGate";
+import GateComplete from "@/components/ktrend/GateComplete";
+import { verifyAccessToken, accessCookieName, utmFromSearch, seminarSession } from "@/lib/leadgate";
 
 // 검색엔진 색인 차단(비공개 자료). robots.ts에도 disallow 추가됨.
 export const metadata: Metadata = {
@@ -80,9 +84,15 @@ function Call({ children, pink }: { children: React.ReactNode; pink?: boolean })
   );
 }
 
-export default function TiktokMarketingPage() {
+export default async function TiktokMarketingPage({ searchParams }: { searchParams?: Promise<Record<string, string | string[] | undefined>> }) {
+  const sp = (await searchParams) ?? {};
+  const c = await cookies();
+  if (!verifyAccessToken("tiktokmarketing", c.get(accessCookieName("tiktokmarketing"))?.value)) {
+    return <LeadGate kind="tiktokmarketing" semKo={seminarSession().ko} utm={utmFromSearch(sp)} err={sp.gerr === "1"} />;
+  }
   return (
     <div className="min-h-screen bg-[var(--bg)] text-[var(--fg)]">
+      <GateComplete fireReg={sp.reg === "1"} kind="tiktokmarketing" />
       <div className="mx-auto flex max-w-[1400px]">
         {/* 사이드바 */}
         <nav data-spy className="sticky top-0 hidden h-screen w-[240px] shrink-0 overflow-y-auto border-r border-[var(--border)] bg-slate-50/60 p-5 lg:block">
