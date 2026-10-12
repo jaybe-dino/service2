@@ -8,7 +8,7 @@ import { RETAIL_COS } from "@/data/retail";
 
 // 비공개 자료 — 색인 차단. 열람은 리드 게이트 통과자만.
 export const metadata: Metadata = {
-  title: "글로벌 유통채널 바이어 리서치 DB",
+  title: "7개국 오프라인 바이어 정보 (9,000여 매장)",
   description: "브랜드사 대상 설명자료 (비공개)",
   robots: { index: false, follow: false, nocache: true, googleBot: { index: false, follow: false } },
 };
@@ -48,7 +48,7 @@ function Hero() {
   return (
     <>
       <div className="text-[11px] font-extrabold uppercase tracking-[3px] text-sky-600">Global Retail Buyer Research</div>
-      <h1 className="mt-2 text-[28px] font-black leading-tight tracking-tight sm:text-[38px]">글로벌 유통채널 바이어 리서치 DB</h1>
+      <h1 className="mt-2 text-[28px] font-black leading-tight tracking-tight sm:text-[38px]">7개국 오프라인 바이어 정보 <span className="whitespace-nowrap text-[var(--accent)]">(9,000여 매장)</span></h1>
       <p className="mt-3 max-w-[720px] text-[14px] leading-relaxed text-[var(--muted)]">
         미국·베트남·태국·필리핀·말레이시아·싱가포르·일본 <b>7개국</b>의 유통사·리테일 바이어와 오프라인 매장망을 직접 조사·정리한 자료입니다.
         디노스튜디오는 이 바이어 네트워크를 기반으로 브랜드의 현지 입점·유통을 연결합니다.

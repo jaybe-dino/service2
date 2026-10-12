@@ -2,7 +2,7 @@ import { Fragment } from "react";
 import type { Metadata } from "next";
 import { cookies } from "next/headers";
 import ScrollSpy from "./ScrollSpy";
-import LeadGate from "@/components/ktrend/LeadGate";
+import LeadGatePreview from "@/components/ktrend/LeadGatePreview";
 import GateComplete from "@/components/ktrend/GateComplete";
 import { verifyAccessToken, accessCookieName, utmFromSearch, seminarSession } from "@/lib/leadgate";
 
@@ -84,11 +84,44 @@ function Call({ children, pink }: { children: React.ReactNode; pink?: boolean })
   );
 }
 
+function TBar({ w, h = "h-3.5" }: { w: string; h?: string }) {
+  return <div className={`${h} rounded bg-slate-200`} style={{ width: w }} />;
+}
+function MarketingTeaser() {
+  return (
+    <div className="min-h-screen bg-[var(--bg)]">
+      <div className="border-b border-[var(--border)] bg-white">
+        <div className="mx-auto max-w-[1000px] px-6 py-4">
+          <div className="text-[12px] font-extrabold tracking-[3px] text-sky-600">TIKTOK <b className="text-[var(--accent)]">SHOP</b></div>
+          <div className="mt-1 text-[16px] font-black">온보딩 · 마케팅 가이드</div>
+        </div>
+      </div>
+      <div className="mx-auto max-w-[900px] space-y-8 px-6 py-10">
+        {Array.from({ length: 4 }).map((_, s) => (
+          <div key={s} className="space-y-3">
+            <TBar w="42%" h="h-6" />
+            <TBar w="94%" /><TBar w="90%" /><TBar w="96%" /><TBar w="68%" />
+            <div className="mt-3 overflow-hidden rounded-xl border border-[var(--border)] bg-white">
+              {Array.from({ length: 4 }).map((_, r) => (
+                <div key={r} className="flex gap-4 border-b border-[var(--border)] px-4 py-3 last:border-0"><TBar w="20%" /><TBar w="34%" /><TBar w="26%" /></div>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export default async function TiktokMarketingPage({ searchParams }: { searchParams?: Promise<Record<string, string | string[] | undefined>> }) {
   const sp = (await searchParams) ?? {};
   const c = await cookies();
   if (!verifyAccessToken("tiktokmarketing", c.get(accessCookieName("tiktokmarketing"))?.value)) {
-    return <LeadGate kind="tiktokmarketing" semKo={seminarSession().ko} utm={utmFromSearch(sp)} err={sp.gerr === "1"} />;
+    return (
+      <LeadGatePreview kind="tiktokmarketing" semKo={seminarSession().ko} utm={utmFromSearch(sp)} err={sp.gerr === "1"}>
+        <MarketingTeaser />
+      </LeadGatePreview>
+    );
   }
   return (
     <div className="min-h-screen bg-[var(--bg)] text-[var(--fg)]">

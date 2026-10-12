@@ -107,9 +107,14 @@ function gatePage(err = "", utm: Utm = EMPTY_UTM): NextResponse {
   <style>
     body{overflow:hidden}
     #wrap{filter:blur(7px) saturate(.7);pointer-events:none;user-select:none;-webkit-user-select:none}
-    .gb-ov{position:fixed;inset:0;z-index:50;overflow-y:auto;-webkit-overflow-scrolling:touch;display:flex;justify-content:center;align-items:flex-start;padding:18px 14px;background:linear-gradient(160deg,rgba(30,27,75,.55),rgba(26,86,219,.45));backdrop-filter:blur(2px);font-family:'Apple SD Gothic Neo','Malgun Gothic',system-ui,sans-serif}
+    .gb-ov{position:fixed;inset:0;z-index:50;overflow-y:auto;-webkit-overflow-scrolling:touch;display:flex;justify-content:center;align-items:flex-start;padding:18px 14px;background:linear-gradient(160deg,rgba(241,245,249,.34),rgba(237,233,254,.42));backdrop-filter:blur(1px);font-family:'Apple SD Gothic Neo','Malgun Gothic',system-ui,sans-serif}
+    .gb-cta{text-align:center;max-width:380px;width:100%;margin-top:6vh;background:rgba(255,255,255,.82);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,.65);border-radius:22px;padding:30px 26px;box-shadow:0 24px 70px rgba(15,23,42,.3);color:#0f172a}
+    .gb-badge{display:inline-flex;align-items:center;gap:6px;border-radius:999px;background:#fdf2f8;color:#db2777;padding:6px 13px;font-size:11px;font-weight:800}
+    .gb-ctah{font-size:21px;font-weight:900;line-height:1.3;letter-spacing:-.5px;margin:14px 0 6px;color:#0f172a}
+    .gb-ctap{font-size:13px;line-height:1.6;color:#64748b;margin:0 0 20px}
+    .gb-ctabtn{width:100%;border:0;border-radius:12px;background:#ec4899;color:#fff;padding:15px;font-size:15px;font-weight:900;cursor:pointer;box-shadow:0 12px 34px rgba(236,72,153,.4)}
+    .gb-ctabtn:hover{background:#db2777}
     .gb-card{background:#fff;border-radius:18px;padding:26px 22px;max-width:400px;width:100%;box-shadow:0 24px 70px rgba(0,0,0,.4);color:#0f172a}
-    .gb-k{font-size:10.5px;font-weight:800;letter-spacing:3px;color:#7c3aed;text-transform:uppercase}
     .gb-card h1{font-size:20px;margin:7px 0 5px;letter-spacing:-.5px;line-height:1.25}
     .gb-card p{font-size:12.5px;color:#64748b;line-height:1.5;margin:0 0 10px}
     .gb-card label{display:block;font-size:12px;font-weight:700;margin:10px 0 4px;color:#334155}
@@ -123,7 +128,15 @@ function gatePage(err = "", utm: Utm = EMPTY_UTM): NextResponse {
     .gb-agree input{width:auto;margin-top:2px;accent-color:#7c3aed}
     .gb-hp{position:absolute;left:-9999px}
   </style>
-  <div class="gb-ov"><form class="gb-card" method="POST" autocomplete="on">
+  <div class="gb-ov">
+    <div class="gb-cta" id="gbcta"${err ? ` style="display:none"` : ""}>
+      <span class="gb-badge">🔒 비공개 실무서</span>
+      <h2 class="gb-ctah">K-코스메틱·소비재<br>글로벌 50개국 진출 실무서</h2>
+      <p class="gb-ctap">정보를 입력하면 전체 내용을 바로 열람할 수 있습니다.</p>
+      <button type="button" class="gb-ctabtn" onclick="document.getElementById('gbcta').style.display='none';document.getElementById('gbform').style.display='block';">정보 입력하고 열람하기</button>
+      <div class="gb-ft" style="color:#94a3b8;margin-top:13px">본 콘텐츠는 무단 복제·배포가 금지됩니다.</div>
+    </div>
+    <form class="gb-card" id="gbform" method="POST" autocomplete="on"${err ? "" : ` style="display:none"`}>
     <h1>K-코스메틱·소비재<br>글로벌 50개국 진출 실무서</h1>
     <p>아래 정보를 입력하면 전체 내용을 바로 열람할 수 있습니다.</p>
     <label>회사명 (브랜드명)</label>

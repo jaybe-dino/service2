@@ -9,8 +9,8 @@ export const GATE_PAGES: Record<string, { path: string; title: string; subtitle:
   },
   retail: {
     path: "/retail",
-    title: "글로벌 유통채널<br>바이어 리서치 DB",
-    subtitle: "7개국 309개 유통·리테일 바이어와 9,967개 매장을 조사한 비공개 자료입니다.",
+    title: "7개국 오프라인 바이어 정보<br>(9,000여 매장)",
+    subtitle: "미국·베트남·태국·필리핀·말레이시아·싱가포르·일본 7개국의 오프라인 유통·리테일 바이어와 9,000여 매장을 직접 조사한 비공개 자료입니다.",
   },
 };
 
