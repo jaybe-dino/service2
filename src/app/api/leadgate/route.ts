@@ -24,8 +24,8 @@ export async function POST(req: Request) {
   const utm = utmFromForm(form);
 
   if (honeypot) return bounce("gerr=1"); // 봇 차단
-  // 필수: 회사명·이메일(입력 여부만)·전화번호·동의. 이메일/URL 형식은 차단하지 않음.
-  if (!company || !email || phone.replace(/\D/g, "").length < 9 || !form?.get("agree")) return bounce("gerr=1");
+  // 필수: 회사명·이메일·전화번호·브랜드 사이트·동의. (이메일/사이트 형식은 검증하지 않음 — 빈 값만 차단)
+  if (!company || !email || phone.replace(/\D/g, "").length < 9 || !brandUrl || !form?.get("agree")) return bounce("gerr=1");
 
   const sem = seminarSession();
 

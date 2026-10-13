@@ -145,8 +145,8 @@ function gatePage(err = "", utm: Utm = EMPTY_UTM): NextResponse {
     <input name="email" type="text" required maxlength="120" placeholder="name@company.com" />
     <label>전화번호</label>
     <input name="phone" type="tel" required maxlength="40" placeholder="010-0000-0000" />
-    <label>브랜드 웹사이트 <span style="color:#94a3b8;font-weight:400">(선택)</span></label>
-    <input name="brand_url" type="text" maxlength="200" placeholder="예: brand.co.kr" />
+    <label>브랜드 웹사이트</label>
+    <input name="brand_url" type="text" required maxlength="200" placeholder="예: brand.co.kr (형식 무관)" />
     <input class="gb-hp" type="text" name="website" tabindex="-1" autocomplete="off" />
     ${utmHidden(utm)}
     <label class="gb-agree"><input type="checkbox" name="agree" checked required /> <span><b>[필수]</b> 개인정보 수집·이용에 동의합니다.</span></label>
@@ -190,8 +190,9 @@ export async function POST(req: Request) {
   if (phone.replace(/\D/g, "").length < 9) return gatePage("전화번호를 정확히 입력해 주세요.", utm);
   if (!form?.get("agree")) return gatePage("개인정보 수집·이용에 동의해 주세요.", utm);
 
-  // 브랜드 웹사이트(선택) — 형식 제한 없이 trim + 최대길이만. 빈 값 허용, 입력 그대로 저장(파싱/차단 없음).
+  // 브랜드 웹사이트(필수) — 형식 제한 없이 trim + 최대길이만. 빈 값만 차단(파싱/양식 검증 없음).
   const brandUrl = String(form?.get("brand_url") || "").trim().slice(0, 200);
+  if (!brandUrl) return gatePage("브랜드 웹사이트를 입력해 주세요.", utm);
   // 세미나 선택 신청 — 체크된 경우에만 신청자. 표시·저장 동일하도록 서버에서 회차 계산.
   const seminarOptIn = !!form?.get("seminar");
   const sem = seminarSession();

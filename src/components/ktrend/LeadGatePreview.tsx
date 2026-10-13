@@ -59,8 +59,8 @@ export default function LeadGatePreview({ kind, semKo, utm = EMPTY_UTM, err = fa
             <input name="email" type="text" required maxLength={120} placeholder="name@company.com" />
             <label>전화번호</label>
             <input name="phone" type="tel" required maxLength={40} placeholder="010-0000-0000" />
-            <label>브랜드 웹사이트 <span style={{ color: "#94a3b8", fontWeight: 400 }}>(선택)</span></label>
-            <input name="brand_url" type="text" maxLength={200} placeholder="예: brand.co.kr" />
+            <label>브랜드 웹사이트</label>
+            <input name="brand_url" type="text" required maxLength={200} placeholder="예: brand.co.kr (형식 무관)" />
             <input className="lg-hp" type="text" name="website" tabIndex={-1} autoComplete="off" />
             {hidden.map((k) => <input key={k} type="hidden" name={`utm_${k}`} value={utm[k]} />)}
             <label className="lg-agree"><input type="checkbox" name="agree" defaultChecked required /> <span><b>[필수]</b> 개인정보 수집·이용에 동의합니다.</span></label>
