@@ -64,7 +64,7 @@ export default function LeadGatePreview({ kind, semKo, utm = EMPTY_UTM, err = fa
             <input className="lg-hp" type="text" name="website" tabIndex={-1} autoComplete="off" />
             {hidden.map((k) => <input key={k} type="hidden" name={`utm_${k}`} value={utm[k]} />)}
             <label className="lg-agree"><input type="checkbox" name="agree" defaultChecked required /> <span><b>[필수]</b> 개인정보 수집·이용에 동의합니다.</span></label>
-            <label className="lg-agree"><input type="checkbox" name="seminar" defaultChecked /> <span><b>[선택]</b> {semKo} 무료 세미나 신청</span></label>
+            <label className="lg-agree"><input type="checkbox" name="seminar" defaultChecked /> <span><b>[선택]</b> {semKo} 줌(Zoom) 무료 세미나 신청 <span style={{ color: "#94a3b8" }}>(신청 시 별도 문자 안내)</span></span></label>
             {err && <div className="lg-err">입력값을 확인해 주세요. (회사명·이메일·전화번호·동의 필수)</div>}
             <button type="submit" className="lg-submit">전체 자료 열람하기</button>
           </form>

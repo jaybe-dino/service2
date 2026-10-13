@@ -150,7 +150,7 @@ function gatePage(err = "", utm: Utm = EMPTY_UTM): NextResponse {
     <input class="gb-hp" type="text" name="website" tabindex="-1" autocomplete="off" />
     ${utmHidden(utm)}
     <label class="gb-agree"><input type="checkbox" name="agree" checked required /> <span><b>[필수]</b> 개인정보 수집·이용에 동의합니다.</span></label>
-    <label class="gb-agree"><input type="checkbox" name="seminar" checked /> <span><b>[선택]</b> ${sem.ko} 무료 세미나 신청</span></label>
+    <label class="gb-agree"><input type="checkbox" name="seminar" checked /> <span><b>[선택]</b> ${sem.ko} 줌(Zoom) 무료 세미나 신청 <span style="color:#94a3b8">(신청 시 별도 문자 안내)</span></span></label>
     ${err ? `<div class="gb-err">${err}</div>` : ""}
     <button type="submit">가이드북 열람하기</button>
     <div class="gb-ft">본 콘텐츠는 무단 복제·배포가 금지됩니다.</div>
