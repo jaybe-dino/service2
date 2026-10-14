@@ -126,6 +126,8 @@ function gatePage(err = "", utm: Utm = EMPTY_UTM): NextResponse {
     .gb-ft{margin-top:12px;font-size:10px;color:#94a3b8;line-height:1.5}
     .gb-agree{display:flex;gap:7px;align-items:flex-start;margin-top:12px;font-size:11px;color:#64748b;line-height:1.45;cursor:pointer}
     .gb-agree input{width:auto;margin-top:2px;accent-color:#7c3aed}
+    .gb-seminar{background:#fdf2f8;border:1px solid #f9a8d4;border-radius:11px;padding:11px 12px;font-size:11.5px}
+    .gb-seminar .gb-semt{display:block;color:#db2777;font-weight:800;margin-bottom:2px}
     .gb-hp{position:absolute;left:-9999px}
   </style>
   <div class="gb-ov">
@@ -150,7 +152,7 @@ function gatePage(err = "", utm: Utm = EMPTY_UTM): NextResponse {
     <input class="gb-hp" type="text" name="website" tabindex="-1" autocomplete="off" />
     ${utmHidden(utm)}
     <label class="gb-agree"><input type="checkbox" name="agree" checked required /> <span><b>[필수]</b> 개인정보 수집·이용에 동의합니다.</span></label>
-    <label class="gb-agree"><input type="checkbox" name="seminar" checked /> <span><b>[선택]</b> ${sem.ko} 줌(Zoom) 무료 세미나 신청 <span style="color:#94a3b8">(신청 시 별도 문자 안내)</span></span></label>
+    <label class="gb-agree gb-seminar"><input type="checkbox" name="seminar" checked /> <span><b class="gb-semt">[선택] 한국 법인으로 “틱톡샵” 온보딩&운영 세미나</b>${sem.ko} (zoom) 무료세미나 신청</span></label>
     ${err ? `<div class="gb-err">${err}</div>` : ""}
     <button type="submit">가이드북 열람하기</button>
     <div class="gb-ft">본 콘텐츠는 무단 복제·배포가 금지됩니다.</div>
