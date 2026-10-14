@@ -89,7 +89,7 @@ export default function ConsultPage() {
           <span className="inline-flex items-center gap-1 rounded-full bg-[var(--accent-light)]/60 px-3 py-1 text-[11px] font-bold text-[#7C3AED]">
             <ShoppingBag size={12} /> TikTok Shop · 인플루언서 마케팅
           </span>
-          <h1 className="mt-3 text-[26px] font-black leading-tight md:text-[32px]">틱톡샵 및 인플루언서 마케팅 <span className="text-[#7C3AED]">상담신청</span></h1>
+          <h1 className="mt-3 break-keep text-[26px] font-black leading-tight md:text-[32px]">틱톡샵 및 인플루언서 마케팅 <span className="whitespace-nowrap text-[#7C3AED]">상담신청</span></h1>
           <p className="mt-2 text-[13px] text-slate-500">브랜드 정보를 남겨 주시면 담당자가 확인 후 1:1 상담을 도와드립니다.</p>
         </div>
 
