@@ -6,6 +6,7 @@ import {
   REFER_LOGOS, SIZE_ORDER, REFER_TIKTOK, REFER_CASES,
   type LogoSize,
 } from "@/data/refer";
+import { sql, isConfigured as dbConfigured } from "@/lib/db";
 
 export const metadata: Metadata = {
   title: "브랜드 협업 레퍼런스 — 디노스튜디오",
@@ -13,8 +14,33 @@ export const metadata: Metadata = {
   alternates: { canonical: "/refer" },
 };
 
-// 흰/밝은 로고(투명 배경)는 어두운 타일에 올려 가독성 확보
-const DARK_BG = new Set(["3M", "SAMWHA", "안나어드바이스랩"]);
+// 콘텐츠 피드를 요청마다 랜덤 표시(최신 영상 풀에서 무작위) — 캐시로 고정되지 않게.
+export const dynamic = "force-dynamic";
+
+interface FeedItem { handle: string; brand: string | null; views: number; url: string; cover: string }
+// glovek 콘텐츠 레퍼런스(videos) — 최신 영상 풀을 받아 서버에서 셔플 후 20~50개 노출.
+async function loadContentFeed(): Promise<FeedItem[]> {
+  if (!dbConfigured()) return [];
+  try {
+    const { rows } = await sql<{ handle: string; brand_name: string | null; views: number; url: string | null; cover_url: string }>`
+      SELECT handle, brand_name, views, url, cover_url
+        FROM videos
+       WHERE cover_url IS NOT NULL AND handle IS NOT NULL
+       ORDER BY posted_at DESC NULLS LAST
+       LIMIT 300`;
+    const pool = rows.map((r) => ({
+      handle: r.handle, brand: r.brand_name, views: Number(r.views) || 0,
+      url: r.url || `https://www.tiktok.com/@${r.handle}`, cover: r.cover_url,
+    }));
+    for (let i = pool.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [pool[i], pool[j]] = [pool[j], pool[i]]; }
+    return pool.slice(0, 40);
+  } catch { return []; }
+}
+
+const fmtViews = (n: number) => (n >= 1e6 ? `${(n / 1e6).toFixed(1)}M` : n >= 1e3 ? `${(n / 1e3).toFixed(0)}K` : String(n));
+
+// 다크 타일 로고 없음(검정 배경 브랜드 제거) — 호환 위해 빈 셋 유지
+const DARK_BG = new Set<string>();
 // 배경이 박힌(투명 아님) 로고는 연회색 타일로 감싸 회색 박스 이질감 완화
 const SOFT_BG = new Set(["닥터노바메디"]);
 
@@ -45,12 +71,13 @@ function Section({ id, kicker, title, desc, children }: { id?: string; kicker: s
   );
 }
 
-export default function ReferPage() {
+export default async function ReferPage() {
   // 브랜드 규모 순으로 정렬해 단일 로고 월로 진열(미확정 분류 라벨은 노출하지 않음)
   const rank = (s: LogoSize) => { const i = SIZE_ORDER.indexOf(s); return i < 0 ? 99 : i; };
   const sortedLogos = [...REFER_LOGOS].sort((a, b) => rank(a.size) - rank(b.size));
 
   const marketOf = (m: string) => (m && m !== "미확인" ? m : null);
+  const feed = await loadContentFeed();
 
   return (
     <div className="flex min-h-screen flex-col bg-[var(--bg)] text-[var(--fg)]">
@@ -66,7 +93,7 @@ export default function ReferPage() {
             대기업이 먼저 선택한<br /><span className="text-[var(--accent)]">글로벌 틱톡샵</span> 파트너
           </h1>
           <p className="mt-4 max-w-[740px] text-[15px] leading-relaxed text-[var(--muted)] sm:text-[17px]">
-            유한양행·클리오·LG생활건강·CJ제일제당·애경·농협·3M — 이미 검증된 브랜드들과 글로벌 TikTok Shop 입점·운영·콘텐츠를 함께해 왔습니다.
+            유한양행·클리오·LG생활건강·CJ제일제당·애경·농협·톤28·블리블리 — 이미 검증된 브랜드들과 글로벌 TikTok Shop 입점·운영·콘텐츠를 함께해 왔습니다.
             디노스튜디오는 브랜드의 상황에 맞춰 진출 국가·샵 개설·운영까지 설계합니다.
           </p>
           <div className="mt-7 flex flex-wrap gap-2.5">
@@ -94,45 +121,63 @@ export default function ReferPage() {
       {/* TikTok Shop */}
       <div className="border-y border-[var(--border)] bg-slate-50/60">
         <Section id="tiktok" kicker="TikTok Shop" title="글로벌 TikTok Shop 입점·운영 실적"
-          desc="브랜드별 진출 국가와 확인된 수행 범위(온보딩·샵 개설·운영)입니다. 미국·동남아 현지 입점부터 샵 개설·상품 등록·GMV 연결까지 실제로 진행하고 있습니다.">
+          desc="미국·동남아 등 현지 TikTok Shop 입점·운영을 함께한 브랜드들입니다.">
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {REFER_TIKTOK.map((t) => (
-              <div key={t.brand} className="flex gap-3 rounded-xl border border-[var(--border)] bg-white p-4">
-                <div className={`flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-lg border p-1.5 ${DARK_BG.has(t.brand.split(" ")[0]) || /안나어드바이스랩/.test(t.brand) ? "border-slate-700 bg-slate-800" : /닥터노바메디/.test(t.brand) ? "border-slate-200 bg-slate-100" : "border-[var(--border)] bg-white"}`}>
+              <div key={t.brand} className="flex items-center gap-3 rounded-xl border border-[var(--border)] bg-white p-4">
+                <div className={`flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-lg border p-1.5 ${/닥터노바메디/.test(t.brand) ? "border-slate-200 bg-slate-100" : "border-[var(--border)] bg-white"}`}>
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   {t.logo ? <img src={t.logo} alt={t.brand} className="max-h-full max-w-full object-contain" loading="lazy" /> : <span className="text-[9px] text-slate-300">—</span>}
                 </div>
                 <div className="min-w-0">
                   <div className="text-[13.5px] font-bold leading-tight">{t.brand}</div>
-                  <div className="mt-1 flex flex-wrap gap-1">
-                    {marketOf(t.market) && <span className="rounded-full bg-sky-50 px-2 py-0.5 text-[10px] font-semibold text-sky-700">{t.market}</span>}
-                  </div>
-                  <div className="mt-1.5 text-[11.5px] leading-snug text-[var(--muted)]">{t.scope}</div>
+                  {marketOf(t.market) && <span className="mt-1 inline-flex rounded-full bg-sky-50 px-2 py-0.5 text-[10px] font-semibold text-sky-700">{t.market}</span>}
                 </div>
               </div>
             ))}
           </div>
-          <p className="mt-6 text-[11px] text-slate-400">※ 진행 단계는 브랜드별 실제 수행 범위 기준으로 표기했습니다.</p>
         </Section>
       </div>
 
       {/* 콘텐츠 레퍼런스 (틱톡샵 중심) */}
       <div className="border-t border-[var(--border)] bg-slate-900 text-white">
-        <Section id="content" kicker="Content" title="글로벌 셀링 콘텐츠 레퍼런스"
-          desc="현지 크리에이터를 활용한 글로벌 틱톡샵 셀링 콘텐츠 사례입니다. 미국 등 해외 시장에서 K-뷰티·헬스 제품을 소개하는 실제 콘텐츠입니다.">
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-            {REFER_CASES.map((c, i) => (
-              <div key={i} className="group relative block overflow-hidden rounded-xl border border-white/10 bg-black">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={c.img} alt={c.caption || `글로벌 셀링 콘텐츠 사례 ${i + 1}`} loading="lazy"
-                  className="aspect-[9/16] w-full object-cover transition duration-300 group-hover:scale-[1.03]" />
-                <div className="pointer-events-none absolute inset-x-0 bottom-0 flex items-end justify-end gap-2 bg-gradient-to-t from-black/70 to-transparent p-2.5">
-                  <span className="rounded-full border border-amber-300/30 bg-amber-300/10 px-1.5 py-0.5 text-[9px] font-bold text-amber-200/90">{c.credit}</span>
-                </div>
+        <Section id="content" kicker="Content" title="글로벌 콘텐츠 레퍼런스"
+          desc="glovek이 수집·분석한 최신 글로벌 틱톡 콘텐츠 레퍼런스입니다. 새로고침할 때마다 무작위로 노출됩니다.">
+          {feed.length > 0 ? (
+            <>
+              <div className="kt-noscrollbar flex snap-x gap-3 overflow-x-auto pb-3">
+                {feed.map((v, i) => (
+                  <a key={`${v.handle}-${i}`} href={v.url} target="_blank" rel="noopener noreferrer"
+                    className="group relative block w-[150px] shrink-0 snap-start overflow-hidden rounded-xl border border-white/10 bg-black sm:w-[168px]">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={v.cover} alt={v.brand || v.handle} loading="lazy" referrerPolicy="no-referrer"
+                      className="aspect-[9/16] w-full object-cover transition duration-300 group-hover:scale-[1.04]" />
+                    <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent p-2.5">
+                      <div className="truncate text-[11px] font-bold text-white">@{v.handle}</div>
+                      <div className="text-[10px] font-semibold text-amber-200/90">▶ {fmtViews(v.views)}</div>
+                    </div>
+                  </a>
+                ))}
               </div>
-            ))}
-          </div>
-          <p className="mt-4 text-[11px] text-white/40">※ 콘텐츠에 표기된 제작 크레딧을 유지한 중립 소개입니다. 세부 수행 역할은 계약·확인 기준에 따릅니다.</p>
+              <p className="mt-4 text-[11px] text-white/40">※ glovek 콘텐츠 레퍼런스 DB의 공개 틱톡 영상입니다(무작위 {feed.length}개). 썸네일 클릭 시 원본으로 이동합니다.</p>
+            </>
+          ) : (
+            <>
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                {REFER_CASES.map((c, i) => (
+                  <div key={i} className="group relative block overflow-hidden rounded-xl border border-white/10 bg-black">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={c.img} alt={c.caption || `글로벌 셀링 콘텐츠 사례 ${i + 1}`} loading="lazy"
+                      className="aspect-[9/16] w-full object-cover transition duration-300 group-hover:scale-[1.03]" />
+                    <div className="pointer-events-none absolute inset-x-0 bottom-0 flex items-end justify-end gap-2 bg-gradient-to-t from-black/70 to-transparent p-2.5">
+                      <span className="rounded-full border border-amber-300/30 bg-amber-300/10 px-1.5 py-0.5 text-[9px] font-bold text-amber-200/90">{c.credit}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <p className="mt-4 text-[11px] text-white/40">※ 콘텐츠에 표기된 제작 크레딧을 유지한 중립 소개입니다. 세부 수행 역할은 계약·확인 기준에 따릅니다.</p>
+            </>
+          )}
         </Section>
       </div>
 
