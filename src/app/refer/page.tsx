@@ -7,6 +7,7 @@ import {
   type LogoSize,
 } from "@/data/refer";
 import { sql, isConfigured as dbConfigured } from "@/lib/db";
+import ReferFeed, { type FeedItem } from "@/components/ktrend/ReferFeed";
 
 export const metadata: Metadata = {
   title: "브랜드 협업 레퍼런스 — 디노스튜디오",
@@ -17,27 +18,24 @@ export const metadata: Metadata = {
 // 콘텐츠 피드를 요청마다 랜덤 표시(최신 영상 풀에서 무작위) — 캐시로 고정되지 않게.
 export const dynamic = "force-dynamic";
 
-interface FeedItem { handle: string; brand: string | null; views: number; url: string; cover: string }
-// glovek 콘텐츠 레퍼런스(videos) — 최신 영상 풀을 받아 서버에서 셔플 후 20~50개 노출.
+// glovek 콘텐츠 레퍼런스(videos) — 샵(is_shop) 콘텐츠 우선 + 최신 풀을 서버에서 셔플 후 ~40개 노출.
 async function loadContentFeed(): Promise<FeedItem[]> {
   if (!dbConfigured()) return [];
   try {
-    const { rows } = await sql<{ handle: string; brand_name: string | null; views: number; url: string | null; cover_url: string }>`
-      SELECT handle, brand_name, views, url, cover_url
+    const { rows } = await sql<{ handle: string; brand_name: string | null; views: number; url: string | null; cover_url: string; is_shop: boolean }>`
+      SELECT handle, brand_name, views, url, cover_url, is_shop
         FROM videos
        WHERE cover_url IS NOT NULL AND handle IS NOT NULL
-       ORDER BY posted_at DESC NULLS LAST
+       ORDER BY is_shop DESC NULLS LAST, posted_at DESC NULLS LAST
        LIMIT 300`;
-    const pool = rows.map((r) => ({
+    const pool: FeedItem[] = rows.map((r) => ({
       handle: r.handle, brand: r.brand_name, views: Number(r.views) || 0,
-      url: r.url || `https://www.tiktok.com/@${r.handle}`, cover: r.cover_url,
+      url: r.url || `https://www.tiktok.com/@${r.handle}`, cover: r.cover_url, isShop: !!r.is_shop,
     }));
     for (let i = pool.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [pool[i], pool[j]] = [pool[j], pool[i]]; }
     return pool.slice(0, 40);
   } catch { return []; }
 }
-
-const fmtViews = (n: number) => (n >= 1e6 ? `${(n / 1e6).toFixed(1)}M` : n >= 1e3 ? `${(n / 1e3).toFixed(0)}K` : String(n));
 
 // 다크 타일 로고 없음(검정 배경 브랜드 제거) — 호환 위해 빈 셋 유지
 const DARK_BG = new Set<string>();
@@ -145,21 +143,8 @@ export default async function ReferPage() {
           desc="glovek이 수집·분석한 최신 글로벌 틱톡 콘텐츠 레퍼런스입니다. 새로고침할 때마다 무작위로 노출됩니다.">
           {feed.length > 0 ? (
             <>
-              <div className="kt-noscrollbar flex snap-x gap-3 overflow-x-auto pb-3">
-                {feed.map((v, i) => (
-                  <a key={`${v.handle}-${i}`} href={v.url} target="_blank" rel="noopener noreferrer"
-                    className="group relative block w-[150px] shrink-0 snap-start overflow-hidden rounded-xl border border-white/10 bg-black sm:w-[168px]">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={v.cover} alt={v.brand || v.handle} loading="lazy" referrerPolicy="no-referrer"
-                      className="aspect-[9/16] w-full object-cover transition duration-300 group-hover:scale-[1.04]" />
-                    <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent p-2.5">
-                      <div className="truncate text-[11px] font-bold text-white">@{v.handle}</div>
-                      <div className="text-[10px] font-semibold text-amber-200/90">▶ {fmtViews(v.views)}</div>
-                    </div>
-                  </a>
-                ))}
-              </div>
-              <p className="mt-4 text-[11px] text-white/40">※ glovek 콘텐츠 레퍼런스 DB의 공개 틱톡 영상입니다(무작위 {feed.length}개). 썸네일 클릭 시 원본으로 이동합니다.</p>
+              <ReferFeed items={feed} />
+              <p className="mt-4 text-[11px] text-white/40">※ glovek 콘텐츠 레퍼런스 DB의 공개 틱톡 영상입니다(무작위 {feed.length}개, SHOP 뱃지 = 틱톡샵 연동). 썸네일 클릭 시 원본으로 이동합니다.</p>
             </>
           ) : (
             <>
