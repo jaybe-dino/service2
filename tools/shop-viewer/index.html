@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>TikTok Shop 판매창 캡처 갤러리</title>
+  <meta name="description" content="미국 TikTok Shop 상품 페이지 캡처를 로컬 이미지로 모아 보는 정적 갤러리." />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="site-header">
+    <div class="wrap">
+      <p class="eyebrow">TikTok Shop</p>
+      <h1>판매창 캡처 갤러리</h1>
+      <p class="lede">
+        미국 TikTok Shop 상품 페이지를 현지에서 캡처한 <strong>정적 이미지</strong>를 모아 봅니다.
+        캡처 파일은 로컬(<code>captures/</code>)에 저장되어 한국·다른 국가에서도 원본 접속 없이 열람할 수 있습니다.
+      </p>
+      <p class="disclaimer">
+        ※ 실시간 프록시·VPN 자동 적용이 아닙니다. 아래 <b>원본 링크</b>는 지역 제한으로 한국에서 열리지 않을 수 있습니다.
+        가격·판매 실적·구매 가능 여부 등은 표기하지 않습니다.
+      </p>
+    </div>
+  </header>
+
+  <section class="controls wrap" aria-label="검색 및 필터">
+    <div class="search-box">
+      <label for="search" class="sr-only">브랜드 검색</label>
+      <input type="search" id="search" placeholder="브랜드 검색 (예: 로아띠, FAU)" autocomplete="off" />
+    </div>
+    <div class="filters" role="group" aria-label="국가 필터">
+      <button type="button" class="filter is-active" data-country="all" aria-pressed="true">전체</button>
+      <button type="button" class="filter" data-country="미국" aria-pressed="false">미국</button>
+      <button type="button" class="filter" data-country="태국" aria-pressed="false">태국</button>
+    </div>
+  </section>
+
+  <section class="summary wrap" aria-live="polite">
+    <span class="count-chip" id="count-captured">완료 캡처 0</span>
+    <span class="count-chip muted" id="count-total">표시 0 / 전체 0</span>
+  </section>
+
+  <main id="gallery" class="gallery wrap" aria-label="캡처 목록"></main>
+
+  <p id="empty" class="empty wrap" hidden>조건에 맞는 브랜드가 없습니다.</p>
+
+  <footer class="site-footer wrap">
+    <p>정적 캡처 뷰어 · 빌드 불필요 · 외부 의존성 없음</p>
+  </footer>
+
+  <dialog id="viewer" class="viewer" aria-labelledby="viewer-title">
+    <div class="viewer-head">
+      <h2 id="viewer-title">캡처 보기</h2>
+      <button type="button" id="viewer-close" class="viewer-close" aria-label="닫기">✕</button>
+    </div>
+    <div class="viewer-body">
+      <img id="viewer-img" alt="" />
+      <p id="viewer-missing" class="viewer-missing" hidden>캡처 이미지가 아직 없습니다 (확인 대기).</p>
+    </div>
+    <div class="viewer-foot">
+      <span id="viewer-meta" class="viewer-meta"></span>
+      <a id="viewer-download" class="btn btn-pink" download hidden>JPG 다운로드</a>
+    </div>
+  </dialog>
+
+  <script src="app.js"></script>
+</body>
+</html>

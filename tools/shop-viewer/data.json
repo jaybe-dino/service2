@@ -1,0 +1,121 @@
+{
+  "meta": {
+    "title": "TikTok Shop 판매창 캡처 갤러리",
+    "description": "미국 TikTok Shop 상품 페이지를 현지에서 캡처한 정적 이미지를 모아 보여줍니다. 캡처 파일은 로컬(captures/)에 저장되어 한국·다른 국가에서도 원본 접속 없이 열람할 수 있습니다. 실시간 프록시나 VPN 자동 적용이 아니며, 원본 링크는 지역 제한이 있을 수 있습니다.",
+    "statusLabels": {
+      "captured": "완료",
+      "preparing": "준비 중",
+      "pending": "확인 대기"
+    }
+  },
+  "items": [
+    {
+      "id": "roatti",
+      "name": "로아띠 ROATTI",
+      "company": null,
+      "country": "미국",
+      "productUrl": "https://shop.tiktok.com/us/pdp/1732702812517667590",
+      "storeUrl": null,
+      "image": "captures/roatti-product-us.jpg",
+      "capturedAt": null,
+      "status": "preparing",
+      "note": ""
+    },
+    {
+      "id": "wellderma",
+      "name": "웰더마",
+      "company": null,
+      "country": "미국",
+      "productUrl": "https://shop.tiktok.com/us/pdp/1732614472064275073",
+      "storeUrl": null,
+      "image": "captures/wellderma-product-us.jpg",
+      "capturedAt": null,
+      "status": "preparing",
+      "note": ""
+    },
+    {
+      "id": "fau",
+      "name": "파우 FAU",
+      "company": null,
+      "country": "미국",
+      "productUrl": "https://shop.tiktok.com/us/pdp/1732583802859066099",
+      "storeUrl": null,
+      "image": "captures/fau-product-us.jpg",
+      "capturedAt": null,
+      "status": "preparing",
+      "note": ""
+    },
+    {
+      "id": "peeven",
+      "name": "피븐 PEEVEN",
+      "company": null,
+      "country": "미국",
+      "productUrl": "https://shop.tiktok.com/us/pdp/1732664696485941375",
+      "storeUrl": null,
+      "image": "captures/peeven-product-us.jpg",
+      "capturedAt": null,
+      "status": "preparing",
+      "note": ""
+    },
+    {
+      "id": "returnu",
+      "name": "리터뉴 RETURNU",
+      "company": null,
+      "country": "미국",
+      "productUrl": "https://shop.tiktok.com/us/pdp/1732519141878305447",
+      "storeUrl": null,
+      "image": "captures/returnu-product-us.jpg",
+      "capturedAt": null,
+      "status": "preparing",
+      "note": ""
+    },
+    {
+      "id": "abso",
+      "name": "앱소 Abso",
+      "company": null,
+      "country": "미국",
+      "productUrl": "https://shop.tiktok.com/us/pdp/1732620854923268851",
+      "storeUrl": null,
+      "image": "captures/abso-product-us.jpg",
+      "capturedAt": null,
+      "status": "preparing",
+      "note": ""
+    },
+    {
+      "id": "goryo",
+      "name": "고려공작1392",
+      "company": null,
+      "country": "미국",
+      "productUrl": "https://shop.tiktok.com/us/pdp/1732456382416654397",
+      "storeUrl": null,
+      "image": "captures/goryo-product-us.jpg",
+      "capturedAt": null,
+      "status": "preparing",
+      "note": ""
+    },
+    {
+      "id": "exomera",
+      "name": "엑소메라 EXOMERA",
+      "company": "Glovek US",
+      "country": "미국",
+      "productUrl": "https://shop.tiktok.com/us/pdp/1732552600038118073",
+      "storeUrl": null,
+      "image": "captures/exomera-product-us.jpg",
+      "capturedAt": null,
+      "status": "preparing",
+      "note": ""
+    },
+    {
+      "id": "verries",
+      "name": "VERRIES",
+      "company": null,
+      "country": "태국",
+      "productUrl": null,
+      "storeUrl": null,
+      "image": null,
+      "capturedAt": null,
+      "status": "pending",
+      "note": "판매 주소 확인 대기"
+    }
+  ]
+}
