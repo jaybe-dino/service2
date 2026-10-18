@@ -141,27 +141,28 @@ export default async function ReferPage() {
       <div className="border-t border-[var(--border)] bg-slate-900 text-white">
         <Section id="content" kicker="Content" title="글로벌 콘텐츠 레퍼런스"
           desc="glovek이 수집·분석한 최신 글로벌 틱톡 콘텐츠 레퍼런스입니다. 새로고침할 때마다 무작위로 노출됩니다.">
-          {feed.length > 0 ? (
-            <>
-              <ReferFeed items={feed} />
-              <p className="mt-4 text-[11px] text-white/40">※ glovek 콘텐츠 레퍼런스 DB의 공개 틱톡 영상입니다(무작위 {feed.length}개, SHOP 뱃지 = 틱톡샵 연동). 썸네일 클릭 시 원본으로 이동합니다.</p>
-            </>
-          ) : (
-            <>
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-                {REFER_CASES.map((c, i) => (
-                  <div key={i} className="group relative block overflow-hidden rounded-xl border border-white/10 bg-black">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={c.img} alt={c.caption || `글로벌 셀링 콘텐츠 사례 ${i + 1}`} loading="lazy"
-                      className="aspect-[9/16] w-full object-cover transition duration-300 group-hover:scale-[1.03]" />
-                    <div className="pointer-events-none absolute inset-x-0 bottom-0 flex items-end justify-end gap-2 bg-gradient-to-t from-black/70 to-transparent p-2.5">
-                      <span className="rounded-full border border-amber-300/30 bg-amber-300/10 px-1.5 py-0.5 text-[9px] font-bold text-amber-200/90">{c.credit}</span>
-                    </div>
-                  </div>
-                ))}
+          {/* 1) 기존 대표 콘텐츠 사례(로컬 이미지 — 항상 노출) */}
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+            {REFER_CASES.map((c, i) => (
+              <div key={i} className="group relative block overflow-hidden rounded-xl border border-white/10 bg-black">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={c.img} alt={c.caption || `글로벌 셀링 콘텐츠 사례 ${i + 1}`} loading="lazy"
+                  className="aspect-[9/16] w-full object-cover transition duration-300 group-hover:scale-[1.03]" />
+                <div className="pointer-events-none absolute inset-x-0 bottom-0 flex items-end justify-end gap-2 bg-gradient-to-t from-black/70 to-transparent p-2.5">
+                  <span className="rounded-full border border-amber-300/30 bg-amber-300/10 px-1.5 py-0.5 text-[9px] font-bold text-amber-200/90">{c.credit}</span>
+                </div>
               </div>
-              <p className="mt-4 text-[11px] text-white/40">※ 콘텐츠에 표기된 제작 크레딧을 유지한 중립 소개입니다. 세부 수행 역할은 계약·확인 기준에 따릅니다.</p>
-            </>
+            ))}
+          </div>
+          <p className="mt-4 text-[11px] text-white/40">※ 콘텐츠에 표기된 제작 크레딧을 유지한 중립 소개입니다. 세부 수행 역할은 계약·확인 기준에 따릅니다.</p>
+
+          {/* 2) glovek 콘텐츠 레퍼런스 피드(무작위 최신 — 하위에 함께 노출) */}
+          {feed.length > 0 && (
+            <div className="mt-10 border-t border-white/10 pt-8">
+              <div className="mb-3 text-[14px] font-black text-white/90">최신 글로벌 틱톡 콘텐츠 <span className="text-[12px] font-semibold text-white/40">· 무작위 {feed.length}개</span></div>
+              <ReferFeed items={feed} />
+              <p className="mt-4 text-[11px] text-white/40">※ glovek 콘텐츠 레퍼런스 DB의 공개 틱톡 영상입니다(SHOP 뱃지 = 틱톡샵 연동). 썸네일 클릭 시 원본으로 이동합니다.</p>
+            </div>
           )}
         </Section>
       </div>

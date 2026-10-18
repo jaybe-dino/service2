@@ -23,11 +23,14 @@ export async function GET(req: Request) {
       },
       signal: AbortSignal.timeout(6000),
     });
+    if (!r.ok) return new NextResponse(null, { status: 404 });
     const ct = r.headers.get("content-type") || "";
-    if (!r.ok || !ct.startsWith("image/")) return new NextResponse(null, { status: 404 });
     const buf = await r.arrayBuffer();
+    if (buf.byteLength === 0) return new NextResponse(null, { status: 404 });
+    // 일부 TikTok CDN 응답은 content-type을 비우거나 octet-stream으로 줌 → 이미지로 간주해 스트리밍.
+    const outCt = ct.startsWith("image/") ? ct : "image/jpeg";
     return new NextResponse(buf, {
-      headers: { "content-type": ct, "cache-control": "public, max-age=86400, s-maxage=86400, stale-while-revalidate=604800" },
+      headers: { "content-type": outCt, "cache-control": "public, max-age=86400, s-maxage=86400, stale-while-revalidate=604800" },
     });
   } catch {
     return new NextResponse(null, { status: 404 });
