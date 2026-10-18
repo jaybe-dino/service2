@@ -1,7 +1,7 @@
 {
   "meta": {
     "title": "TikTok Shop 판매창 캡처 갤러리",
-    "description": "미국 TikTok Shop 상품 페이지를 현지에서 캡처한 정적 이미지를 모아 보여줍니다. 캡처 파일은 로컬(captures/)에 저장되어 한국·다른 국가에서도 원본 접속 없이 열람할 수 있습니다. 실시간 프록시나 VPN 자동 적용이 아니며, 원본 링크는 지역 제한이 있을 수 있습니다.",
+    "description": "국가별 TikTok Shop 판매창의 실제 캡처와 확인 상태를 모아 봅니다.",
     "statusLabels": {
       "captured": "완료",
       "preparing": "준비 중",
@@ -15,11 +15,11 @@
       "company": null,
       "country": "미국",
       "productUrl": "https://shop.tiktok.com/us/pdp/1732702812517667590",
-      "storeUrl": null,
+      "storeUrl": "https://shop.tiktok.com/us/store/roatti/8658616013215470342",
       "image": "captures/roatti-product-us.jpg",
-      "capturedAt": null,
-      "status": "preparing",
-      "note": ""
+      "capturedAt": "2026-10-18T15:32:42.353900+00:00",
+      "status": "captured",
+      "note": "미국 VPN에서 확인한 상품 첫 화면입니다."
     },
     {
       "id": "wellderma",
@@ -28,10 +28,10 @@
       "country": "미국",
       "productUrl": "https://shop.tiktok.com/us/pdp/1732614472064275073",
       "storeUrl": null,
-      "image": "captures/wellderma-product-us.jpg",
+      "image": null,
       "capturedAt": null,
       "status": "preparing",
-      "note": ""
+      "note": "TikTok 보안 인증으로 캡처 대기"
     },
     {
       "id": "fau",
@@ -40,10 +40,10 @@
       "country": "미국",
       "productUrl": "https://shop.tiktok.com/us/pdp/1732583802859066099",
       "storeUrl": null,
-      "image": "captures/fau-product-us.jpg",
+      "image": null,
       "capturedAt": null,
       "status": "preparing",
-      "note": ""
+      "note": "TikTok 보안 인증으로 캡처 대기"
     },
     {
       "id": "peeven",
@@ -52,10 +52,10 @@
       "country": "미국",
       "productUrl": "https://shop.tiktok.com/us/pdp/1732664696485941375",
       "storeUrl": null,
-      "image": "captures/peeven-product-us.jpg",
+      "image": null,
       "capturedAt": null,
       "status": "preparing",
-      "note": ""
+      "note": "TikTok 보안 인증으로 캡처 대기"
     },
     {
       "id": "returnu",
@@ -64,10 +64,10 @@
       "country": "미국",
       "productUrl": "https://shop.tiktok.com/us/pdp/1732519141878305447",
       "storeUrl": null,
-      "image": "captures/returnu-product-us.jpg",
+      "image": null,
       "capturedAt": null,
       "status": "preparing",
-      "note": ""
+      "note": "TikTok 보안 인증으로 캡처 대기"
     },
     {
       "id": "abso",
@@ -76,10 +76,10 @@
       "country": "미국",
       "productUrl": "https://shop.tiktok.com/us/pdp/1732620854923268851",
       "storeUrl": null,
-      "image": "captures/abso-product-us.jpg",
+      "image": null,
       "capturedAt": null,
       "status": "preparing",
-      "note": ""
+      "note": "TikTok 보안 인증으로 캡처 대기"
     },
     {
       "id": "goryo",
@@ -88,10 +88,10 @@
       "country": "미국",
       "productUrl": "https://shop.tiktok.com/us/pdp/1732456382416654397",
       "storeUrl": null,
-      "image": "captures/goryo-product-us.jpg",
+      "image": null,
       "capturedAt": null,
       "status": "preparing",
-      "note": ""
+      "note": "TikTok 보안 인증으로 캡처 대기"
     },
     {
       "id": "exomera",
@@ -100,10 +100,10 @@
       "country": "미국",
       "productUrl": "https://shop.tiktok.com/us/pdp/1732552600038118073",
       "storeUrl": null,
-      "image": "captures/exomera-product-us.jpg",
+      "image": null,
       "capturedAt": null,
       "status": "preparing",
-      "note": ""
+      "note": "TikTok 보안 인증으로 캡처 대기"
     },
     {
       "id": "verries",

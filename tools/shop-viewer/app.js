@@ -30,7 +30,7 @@
     var d = new Date(iso);
     if (isNaN(d.getTime())) return "캡처 시각 미기록";
     var p = function (n) { return String(n).padStart(2, "0"); };
-    return d.getFullYear() + "-" + p(d.getMonth() + 1) + "-" + p(d.getDate()) + " " + p(d.getHours()) + ":" + p(d.getMinutes());
+    return new Intl.DateTimeFormat("ko-KR", { timeZone: "Asia/Seoul", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hour12: false }).format(d) + " KST";
   }
 
   function downloadName(item) {
@@ -141,7 +141,7 @@
       img.src = item.image;
       thumb.appendChild(img);
     } else {
-      showPlaceholder("판매 주소 확인 대기");
+      showPlaceholder(item.status === "pending" ? "판매 주소 확인 대기" : "캡처 준비 중");
     }
 
     viewBtn.addEventListener("click", function () {
