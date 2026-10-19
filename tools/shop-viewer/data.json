@@ -39,11 +39,11 @@
       "company": null,
       "country": "미국",
       "productUrl": "https://shop.tiktok.com/us/pdp/1732583802859066099",
-      "storeUrl": null,
-      "image": null,
-      "capturedAt": null,
-      "status": "preparing",
-      "note": "TikTok 보안 인증으로 캡처 대기"
+      "storeUrl": "https://shop.tiktok.com/us/store/fau-us/8657707449288921843",
+      "image": "captures/fau-product-us.jpg",
+      "capturedAt": "2026-10-19T05:46:32.123Z",
+      "status": "captured",
+      "note": "미국 VPN에서 확인한 상품 첫 화면입니다."
     },
     {
       "id": "peeven",
