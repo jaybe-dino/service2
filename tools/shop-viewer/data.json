@@ -6,6 +6,12 @@
       "captured": "완료",
       "preparing": "준비 중",
       "pending": "확인 대기"
+    },
+    "liveViewer": {
+      "enabled": false,
+      "origin": null,
+      "verifiedAt": null,
+      "note": "tools/shop-live 실제 배포 후 미국 egress·TikTok 로드·인증을 검증한 HTTPS origin 만 입력"
     }
   },
   "items": [

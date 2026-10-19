@@ -55,6 +55,12 @@ python3 -m http.server 8080
 | `status` | `captured`(완료) / `preparing`(준비 중) / `pending`(확인 대기) |
 | `note` | 보조 메모 |
 
+## 실시간 미국 브라우저 링크 (기본 비활성)
+
+`data.json` 의 `meta.liveViewer` 는 기본값이 `{"enabled": false, "origin": null, "verifiedAt": null}` 이며, 이 상태에서는 링크가 보이지 않습니다.
+`tools/shop-live` 를 실제로 배포하고 검증을 마친 뒤 `enabled: true`, 경로 없는 HTTPS `origin`, `verifiedAt`(ISO 시각)을 모두 넣었을 때만
+미국 항목 카드에 "실시간 미국 브라우저 ↗"(새 탭)가 나타납니다. 판정은 `live-link.js` 가 합니다.
+
 ## 주의
 
 - 가격·판매 실적·구매 가능 여부 등 검증되지 않은 수치·주장은 표기하지 않습니다.

@@ -1,0 +1,20 @@
+# HTTPS 역프록시 예시 (호스트에 Caddy 설치 시). 도메인/DNS/TLS 는 운영자가 직접 준비.
+# Caddy 는 인증서 자동 발급, WebSocket 업그레이드, Host 헤더 보존을 기본 처리한다.
+# compose 의 gateway 는 127.0.0.1:8080 에만 열려 있으므로 외부에는 이 443 만 노출된다.
+# .env 에 PUBLIC_ORIGIN=https://live.example.com 를 맞춰 넣을 것.
+
+live.example.com {
+	encode gzip
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		X-Robots-Tag "noindex, nofollow"
+		-Server
+	}
+	reverse_proxy 127.0.0.1:8080 {
+		# noVNC 스트림이 오래 유지되도록
+		flush_interval -1
+	}
+	log {
+		output file /var/log/caddy/shop-live.access.log
+	}
+}

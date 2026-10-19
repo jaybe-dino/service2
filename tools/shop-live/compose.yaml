@@ -1,0 +1,85 @@
+# Shop Live — 1인용 "미국 VPN 브라우저" 뷰어 스택
+#   gluetun  : NordVPN(OpenVPN, United States) 터널 + 방화벽 킬스위치. 네트워크 namespace 소유자.
+#   browser  : 공식 Selenium standalone Chromium (Xvfb 화면 + x11vnc + noVNC). gluetun namespace 공유.
+#   gateway  : 인증/허용 brand 이동/noVNC 프록시. gluetun namespace 공유.
+# 외부(호스트)로 공개되는 포트는 gateway 하나뿐이며 127.0.0.1 에만 바인딩한다.
+# Selenium 4444 / CDP / VNC 5900 / noVNC 7900 / gluetun 제어 8000 은 어떤 포트로도 publish 하지 않는다.
+name: shop-live
+
+services:
+  gluetun:
+    image: qmcgaw/gluetun:v3.41.3@sha256:fa19cc76b2af13d57a8d3dc3066f2ada061b1c761b8aecf989b3877c0486e027
+    cap_add:
+      - NET_ADMIN
+    devices:
+      - /dev/net/tun:/dev/net/tun
+    environment:
+      VPN_SERVICE_PROVIDER: nordvpn
+      VPN_TYPE: openvpn
+      # NordVPN "service credentials"(수동 설정용). 일반 로그인 이메일/비밀번호가 아님.
+      OPENVPN_USER: ${OPENVPN_USER:?OPENVPN_USER 를 .env 에 설정하세요}
+      OPENVPN_PASSWORD: ${OPENVPN_PASSWORD:?OPENVPN_PASSWORD 를 .env 에 설정하세요}
+      SERVER_COUNTRIES: United States
+      # 제어 서버(8000)는 namespace 내부 전용. 허용 라우트는 auth-config.toml 참고.
+      HTTP_CONTROL_SERVER_AUTH_CONFIG_FILEPATH: /gluetun/auth/config.toml
+      TZ: UTC
+    volumes:
+      - ./gluetun/auth-config.toml:/gluetun/auth/config.toml:ro
+    ports:
+      # 게이트웨이만, 루프백에만. 공개는 HTTPS 역프록시(deploy/)를 통해서만.
+      - "127.0.0.1:${GATEWAY_HOST_PORT:-8080}:8080/tcp"
+    networks:
+      - vpn_only
+    restart: unless-stopped
+
+  browser:
+    image: selenium/standalone-chromium:155.0-chromedriver-155.0-grid-4.51.0-20261010@sha256:c7c17cd79c62819a8329df00e610dbc4073c279da034a6f37135d454eb0d8870
+    network_mode: "service:gluetun"
+    depends_on:
+      gluetun:
+        condition: service_healthy
+    shm_size: 2gb
+    environment:
+      # VNC/noVNC 는 namespace 밖으로 공개되지 않고, 접근은 게이트웨이 인증을 통해서만 가능.
+      SE_VNC_NO_PASSWORD: "true"
+      SE_SCREEN_WIDTH: "1440"
+      SE_SCREEN_HEIGHT: "900"
+      SE_NODE_MAX_SESSIONS: "1"
+      SE_NODE_SESSION_TIMEOUT: "21600"
+      TZ: America/Los_Angeles
+    volumes:
+      - ./chromium/policies.json:/etc/chromium/policies/managed/shop-live.json:ro
+    restart: unless-stopped
+
+  gateway:
+    build: ./gateway
+    image: shop-live-gateway:local
+    network_mode: "service:gluetun"
+    depends_on:
+      gluetun:
+        condition: service_healthy
+      browser:
+        condition: service_started
+    environment:
+      GATEWAY_ACCESS_TOKEN: ${GATEWAY_ACCESS_TOKEN:?GATEWAY_ACCESS_TOKEN 를 .env 에 설정하세요}
+      PUBLIC_ORIGIN: ${PUBLIC_ORIGIN:-}
+      COOKIE_SECURE: ${COOKIE_SECURE:-true}
+      SESSION_TTL_HOURS: ${SESSION_TTL_HOURS:-12}
+      BRANDS_DATA_PATH: /data/data.json
+      SELENIUM_URL: http://127.0.0.1:4444
+      GLUETUN_CONTROL_URL: http://127.0.0.1:8000
+      NOVNC_HOST: 127.0.0.1
+      NOVNC_PORT: "7900"
+      EGRESS_CHECK_URL: https://ipinfo.io/json
+    volumes:
+      - ../shop-viewer/data.json:/data/data.json:ro
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    restart: unless-stopped
+
+networks:
+  # gluetun 전용 브리지. 다른 컨테이너를 붙이지 않는다(내부 포트 접근 차단 목적).
+  vpn_only: {}

@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>Shop Live 뷰어</title>
+  <link rel="stylesheet" href="/viewer.css" />
+</head>
+<body>
+  <header class="bar">
+    <strong class="title">Shop Live · 미국 브라우저</strong>
+    <label for="brand" class="sr-only">브랜드</label>
+    <select id="brand" disabled><option value="">브랜드 불러오는 중…</option></select>
+    <button type="button" id="go" disabled>상품 페이지로 이동</button>
+    <button type="button" id="recheck">상태 재확인</button>
+    <form method="post" action="/logout" class="logout"><button type="submit">로그아웃</button></form>
+  </header>
+
+  <section class="status" aria-live="polite">
+    <span class="chip" id="st-vpn">VPN: 확인 중</span>
+    <span class="chip" id="st-egress">미국 egress: 확인 중</span>
+    <span class="chip" id="st-browser">브라우저: 확인 중</span>
+    <span class="chip" id="st-stream">화면 스트림: 확인 중</span>
+    <span class="msg" id="msg"></span>
+  </section>
+
+  <p class="notice">
+    아래는 서버의 실제 Chromium 화면(noVNC)입니다. 마우스/스크롤/키보드로 직접 조작하세요.
+    TikTok 보안 퍼즐(CAPTCHA)은 직접 풀어야 하며, 로그인·결제·구매는 하지 마세요.
+  </p>
+
+  <main class="stage">
+    <iframe id="screen" title="미국 브라우저 실시간 화면" src="about:blank"></iframe>
+  </main>
+
+  <script src="/viewer.js"></script>
+</body>
+</html>

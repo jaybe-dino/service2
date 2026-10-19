@@ -7,7 +7,7 @@
 (function () {
   var STATUS_LABEL = { captured: "완료", preparing: "준비 중", pending: "확인 대기" };
 
-  var state = { items: [], country: "all", query: "" };
+  var state = { items: [], country: "all", query: "", liveOrigin: null };
 
   var gallery = document.getElementById("gallery");
   var emptyMsg = document.getElementById("empty");
@@ -209,6 +209,18 @@
       actions.appendChild(store);
     }
 
+    // 실시간 미국 브라우저(검증된 HTTPS 뷰어가 설정된 경우에만, 미국 판매 URL 이 있는 항목만)
+    if (state.liveOrigin && item.country === "미국" && item.productUrl) {
+      var live = document.createElement("a");
+      live.className = "btn";
+      live.href = state.liveOrigin + "/?brand=" + encodeURIComponent(item.id);
+      live.target = "_blank";
+      live.rel = "noopener noreferrer";
+      live.textContent = "실시간 미국 브라우저 ↗";
+      live.title = "별도 인증이 필요한 1인용 뷰어가 새 탭에서 열립니다.";
+      actions.appendChild(live);
+    }
+
     // JPG 다운로드(이미지 경로가 있을 때만; 파일이 없으면 뷰어에서 안내)
     if (item.image) {
       var dl = document.createElement("a");
@@ -281,6 +293,7 @@
       })
       .then(function (json) {
         state.items = Array.isArray(json.items) ? json.items : [];
+        state.liveOrigin = window.ShopLiveLink ? window.ShopLiveLink.liveViewerOrigin(json.meta) : null;
         render();
       })
       .catch(function () { showLoadError(); });

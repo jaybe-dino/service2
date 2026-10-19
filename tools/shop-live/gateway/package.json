@@ -1,0 +1,12 @@
+{
+  "name": "shop-live-gateway",
+  "version": "0.1.0",
+  "private": true,
+  "description": "1인용 미국 VPN 브라우저 뷰어 게이트웨이 (의존성 없음)",
+  "type": "module",
+  "engines": { "node": ">=22" },
+  "scripts": {
+    "start": "node src/server.mjs",
+    "test": "node --test test/*.test.mjs"
+  }
+}

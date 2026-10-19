@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>Shop Live 로그인</title>
+  <link rel="stylesheet" href="/viewer.css" />
+</head>
+<body class="login">
+  <main class="login-box">
+    <h1>Shop Live</h1>
+    <p class="muted">1인용 미국 브라우저 뷰어. 서버 관리자가 발급한 접근 토큰을 입력하세요.</p>
+    <form method="post" action="/login" autocomplete="off">
+      <label for="token">접근 토큰</label>
+      <input id="token" name="token" type="password" required minlength="32" autocomplete="current-password" />
+      <button type="submit">로그인</button>
+    </form>
+  </main>
+</body>
+</html>
