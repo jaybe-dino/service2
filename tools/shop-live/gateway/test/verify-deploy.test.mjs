@@ -45,6 +45,8 @@ const failing = {
   "필수 명령 실패(compose ps)": [null, { FAKE_PS_FAIL: "1" }],
   "VPN running 아님": [null, { FAKE_VPN: "stopped" }],
   "미국 egress 아님": [null, { FAKE_COUNTRY: "KR" }],
+  "gateway 출력이 US여도 조회 명령 실패": [null, { FAKE_GATEWAY_COUNTRY_EXIT: "1" }],
+  "browser 출력이 US여도 조회 명령 실패": [null, { FAKE_BROWSER_COUNTRY_EXIT: "1" }],
 };
 for (const [name, [mode, fake]] of Object.entries(failing)) {
   test(`실패 집계: ${name} → nonzero`, () => {
@@ -59,6 +61,7 @@ const noDestructive = {
   "미국 egress 아님": { FAKE_COUNTRY: "KR" },
   "tun0 없음": { FAKE_TUN: "absent" },
   "양성 대조 실패": { FAKE_NO_CONTROL: "1" },
+  "양성 대조 명령 오류 문자열": { FAKE_CONTROL_ERROR: "1" },
 };
 for (const [name, fake] of Object.entries(noDestructive)) {
   test(`killswitch 전제 실패: ${name} → tun0 를 내리지 않고 nonzero`, () => {

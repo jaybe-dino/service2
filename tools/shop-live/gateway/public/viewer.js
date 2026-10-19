@@ -7,6 +7,7 @@
   var goBtn = $("go");
   var msg = $("msg");
   var screen = $("screen");
+  var screenEmpty = $("screen-empty");
   var last = null;
   var navigating = false;
 
@@ -28,16 +29,17 @@
 
   function renderStatus(s) {
     last = s;
-    chip("st-vpn", s.vpn.running, "VPN: " + (s.vpn.running ? "연결됨" : "미연결 (" + s.vpn.state + ")"));
-    if (s.egress.verified) chip("st-egress", true, "미국 egress: 확인됨 (" + s.egress.ip + ")");
-    else chip("st-egress", false, "미국 egress: 미검증" + (s.egress.country ? " (현재 " + s.egress.country + ")" : ""));
+    chip("st-vpn", s.vpn.running, "VPN: " + (s.vpn.running ? "연결됨" : "연결 대기"));
+    if (s.egress.verified) chip("st-egress", true, "미국 접속: 확인됨");
+    else chip("st-egress", false, "미국 접속: 미확인" + (s.egress.country ? " (현재 " + s.egress.country + ")" : ""));
     chip("st-browser", s.browser.seleniumReachable, "브라우저: " + (s.browser.seleniumReachable ? (s.browser.sessionActive ? "세션 사용 중" : "대기") : "응답 없음"));
-    chip("st-stream", s.stream.activeConnections > 0, "화면 스트림: " + (s.stream.activeConnections > 0 ? "연결됨" : "미연결"));
+    chip("st-stream", s.stream.activeConnections > 0, "화면 연결: " + (s.stream.activeConnections > 0 ? "연결됨" : "대기"));
     goBtn.disabled = !s.ready || navigating || !brandSel.value;
     goBtn.title = s.ready ? "" : "VPN·미국 egress·브라우저가 모두 확인돼야 이동할 수 있습니다.";
     // 브라우저 backend 가 응답할 때만 화면 iframe 연결
     if (s.browser.seleniumReachable && screen.getAttribute("src") === "about:blank") {
       screen.src = "/novnc/vnc.html?autoconnect=1&resize=scale&reconnect=1&reconnect_delay=3000&path=websockify";
+      screenEmpty.hidden = true;
     }
   }
 

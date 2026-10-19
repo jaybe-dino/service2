@@ -20,13 +20,13 @@ case "$*" in
   "exec -T gateway node -e"*)
     url="${@: -2:1}"; [ "$last" != country ] && url="$last"
     if [ "$(st)" = down ] && [ -z "${FAKE_LEAK:-}" ]; then echo blocked; exit 3; fi
-    case "$url" in *ipinfo*) echo "${FAKE_COUNTRY:-US}" ;; *) echo open ;; esac; exit 0 ;;
+    case "$url" in *ipinfo*) echo "${FAKE_COUNTRY:-US}"; exit "${FAKE_GATEWAY_COUNTRY_EXIT:-0}" ;; *) echo open ;; esac; exit 0 ;;
   "exec -T browser curl"*)
     [ "$(st)" = down ] && [ -n "${FAKE_SLOW_DOWN:-}" ] && { touch "$D/in_down_check"; sleep 3; }
     if [ "$(st)" = down ] && [ -z "${FAKE_LEAK:-}" ]; then printf 000; exit 28; fi
     case "$last" in
-      *ipinfo*) echo "${FAKE_COUNTRY:-US}"; exit 0 ;;
-      *) [ -n "${FAKE_NO_CONTROL:-}" ] && { printf 000; exit 28; }; printf 403; exit 0 ;;
+      *ipinfo*) echo "${FAKE_COUNTRY:-US}"; exit "${FAKE_BROWSER_COUNTRY_EXIT:-0}" ;;
+      *) [ -n "${FAKE_CONTROL_ERROR:-}" ] && { echo 'permission denied' >&2; exit 1; }; [ -n "${FAKE_NO_CONTROL:-}" ] && { printf 000; exit 28; }; printf 403; exit 0 ;;
     esac ;;
 esac
 echo "fake-dc: unhandled: $*" >&2; exit 99

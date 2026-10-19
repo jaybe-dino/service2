@@ -66,11 +66,13 @@ vpn_running() {
 }
 egress_us() { # $1 = 라벨
   local ok=0
-  try gw_fetch https://ipinfo.io/json country
+  try gw_fetch https://ipinfo.io/json country; local gr=$?
+  [ $gr -eq 0 ] || { fail "$1 gateway egress 조회 실패(exit=$gr)"; ok=1; }
   local gc; gc="$(printf '%s' "$LAST" | tr -d '\r' | tail -n1)"
   expect "$1 gateway egress country" US "$gc"
   [ "$gc" = US ] || ok=1
-  try $DC exec -T browser curl -s -m 10 https://ipinfo.io/country
+  try $DC exec -T browser curl -s -m 10 https://ipinfo.io/country; local br=$?
+  [ $br -eq 0 ] || { fail "$1 browser egress 조회 실패(exit=$br)"; ok=1; }
   local bc; bc="$(printf '%s' "$LAST" | tr -d '\r\n ')"
   expect "$1 browser egress country" US "$bc"
   [ "$bc" = US ] || ok=1
@@ -141,9 +143,9 @@ if [ "$MODE" = killswitch ]; then
   [ $US_OK -eq 0 ] || { fail "미국 egress 미확인 → 파괴적 단계 생략"; PRE=1; }
   if [ $PRE -eq 0 ]; then rc $DC exec -T gluetun ip link show tun0 || { fail "tun0 없음 → 파괴적 단계 생략"; PRE=1; }; fi
   if [ $PRE -eq 0 ]; then
-    try $DC exec -T browser curl -s -m 10 -o /dev/null -w '%{http_code}' "$CONTROL_TARGET"
+    try $DC exec -T browser curl -s -m 10 -o /dev/null -w '%{http_code}' "$CONTROL_TARGET"; pc_rc=$?
     pc="$(printf '%s' "$LAST" | tr -d '\r' | tail -c 3)"
-    if [ -n "$pc" ] && [ "$pc" != 000 ]; then pass "양성 대조: 끊기 전 browser→$CONTROL_TARGET 도달 (http $pc)"; else fail "양성 대조 실패: 끊기 전에도 $CONTROL_TARGET 미도달 → 차단 판정 불가"; PRE=1; fi
+    if [ $pc_rc -eq 0 ] && [[ "$pc" =~ ^[1-5][0-9]{2}$ ]]; then pass "양성 대조: 끊기 전 browser→$CONTROL_TARGET 도달 (http $pc)"; else fail "양성 대조 실패: 끊기 전에도 $CONTROL_TARGET 미도달 → 차단 판정 불가"; PRE=1; fi
   fi
   if [ $PRE -eq 0 ]; then
     TUN_DOWN=1

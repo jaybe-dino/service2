@@ -19,19 +19,23 @@
 
   <section class="status" aria-live="polite">
     <span class="chip" id="st-vpn">VPN: 확인 중</span>
-    <span class="chip" id="st-egress">미국 egress: 확인 중</span>
+    <span class="chip" id="st-egress">미국 접속: 확인 중</span>
     <span class="chip" id="st-browser">브라우저: 확인 중</span>
-    <span class="chip" id="st-stream">화면 스트림: 확인 중</span>
+    <span class="chip" id="st-stream">화면 연결: 확인 중</span>
     <span class="msg" id="msg"></span>
   </section>
 
   <p class="notice">
-    아래는 서버의 실제 Chromium 화면(noVNC)입니다. 마우스/스크롤/키보드로 직접 조작하세요.
-    TikTok 보안 퍼즐(CAPTCHA)은 직접 풀어야 하며, 로그인·결제·구매는 하지 마세요.
+    연결 후 실제 판매창을 마우스·스크롤·키보드로 조작할 수 있습니다.
+    보안 퍼즐이 나오면 화면에서 직접 처리하세요.
   </p>
 
   <main class="stage">
     <iframe id="screen" title="미국 브라우저 실시간 화면" src="about:blank"></iframe>
+    <div id="screen-empty" class="screen-empty" role="status">
+      <strong>미국 브라우저 연결 대기</strong>
+      <p>서버 연결이 준비되면 이곳에 실제 판매창이 표시됩니다.</p>
+    </div>
   </main>
 
   <script src="/viewer.js"></script>
