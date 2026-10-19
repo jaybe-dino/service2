@@ -29,7 +29,7 @@
 | Chromium 정책 | pass | 브라우저에서 `http://localhost:4444/status` → "This page is blocked / Your organization doesn't allow you to view this site" |
 | **viewer → noVNC 실제 렌더 + 실제 입력** | **pass** | Playwright로 로그인 → 뷰어 → same-origin iframe noVNC 캔버스 표시. 상태 칩: "VPN: 미연결 / 미국 egress: 미검증 / 화면 스트림: 연결됨", 이동 버튼 비활성. 캔버스 클릭 → 서버 Chromium의 버튼 텍스트 `CLICK ME` → `CLICKED 1`. 휠 → `scrollY 0 → 720`(WebDriver로 서버 측에서 읽음). 외부망 없이 `data:` 테스트 페이지 사용. 화면: [`novnc-viewer-dummy-test.png`](novnc-viewer-dummy-test.png) |
 | 갤러리 링크 기본 비활성 | pass | 저장소 상태 그대로 서빙 → 카드 9, "실시간" 링크 0. 임시 복사본에서만 `enabled:true`+https origin을 넣었을 때 미국 8개에 `https://…/?brand=<id>` 표시(태국 제외), JS 오류 0 |
-| `scripts/verify-deploy.sh killswitch` 동작 | 스크립트 정상, 결과는 더미 한계 반영 | 포트 4개 닫힘·미인증 4종 PASS. **미국 egress 2종 FAIL(실제 `error`/빈 값, 의도된 결과)**. tun0이 없어 `ip link set tun0 down` exit 1. 차단 2종 PASS(VPN 미연결이므로 당연). gluetun healthy 대기는 시간 초과(더미라 unhealthy). 스크립트 exit 1 |
+| `scripts/verify-deploy.sh killswitch` 동작 (**f49be9b 시점의 구버전 스크립트**, 아래 2차 보완에서 교체) | 결과는 더미 한계 반영 | 포트 4개 닫힘·미인증 4종 PASS. **미국 egress 2종 FAIL(실제 `error`/빈 값, 의도된 결과)**. tun0이 없어 `ip link set tun0 down` exit 1. 차단 2종 PASS(VPN 미연결이므로 당연). gluetun healthy 대기는 시간 초과(더미라 unhealthy). 스크립트 exit 1 |
 
 ### 실측으로 찾아 고친 결함
 
@@ -49,6 +49,16 @@
 | 갤러리 링크 활성화 | 위 항목이 모두 통과한 뒤 `meta.liveViewer`를 설정 |
 
 운영 서버에서 `.env` 채우기 → `docker compose up -d --build` → `./scripts/verify-deploy.sh killswitch` → README 체크리스트의 수동 5~7번 순서로 진행합니다.
+
+## 2차 보완 (검토 피드백 3건, Docker 재시험 없이 코드·회귀검사만)
+
+| 항목 | 수정 | 회귀검사 (`cd gateway && npm test`, 37/37 pass) |
+| --- | --- | --- |
+| 열린 WS 원격 제어 연결이 로그아웃/만료 뒤에도 유지됨 | 열린 WS를 세션 id별로 추적(값은 로그에 남기지 않음). 로그아웃하면 즉시, 세션이 만료되면 2초 점검 주기 안에 끊고, 서버 종료 때도 정리 | 실제 TCP fixture WS로 확인: 로그아웃 → 1초 안에 종료. 만료 → 점검 주기 안에 종료되고 다른 유효 세션은 유지. `server.close()` → 종료 |
+| 잘못된 absolute-form URL upgrade가 프로세스를 죽일 수 있음 | upgrade와 일반 요청 모두 URL 파싱을 보호하고 400 응답 | `GET http://[bad/... ` upgrade와 일반 요청 → `HTTP/1.1 400`, 이후 `/healthz` 200(프로세스 생존). 수정 전 코드에서는 같은 테스트 파일이 실패함을 확인 |
+| `verify-deploy.sh`가 실패를 놓칠 수 있음 | 필수 명령의 비정상 종료, VPN이 running이 아님, 미국 egress 미확인, 공개 주소 불일치를 모두 FAIL로 집계하고 최종 exit 1. 명령·실제 exit code를 기록. killswitch는 VPN running·미국 egress·tun0 존재·**양성 대조(끊기 전 같은 목적지 도달)**가 모두 확인된 경우에만 tun0을 내림. down 실패, 끊긴 뒤 누수, 복구 후 unhealthy·VPN/US 미확인은 FAIL. EXIT/INT/TERM trap으로 복구(tun0 up → healthy 대기 → 안 되면 스택 재시작). `GATEWAY_HOST_PORT`는 셸 환경 > `.env`(해당 줄만 읽음, source 안 함) > 8080 순서로 읽음 | 가짜 compose/curl fixture(`gateway/test/fixtures/`)로 13개 시나리오 검사: 정상(basic/killswitch → 0, `.env` 포트 사용, tun0 복구). `.env` 포트를 무시하면 실패. compose ps 실패, VPN stopped, egress KR → nonzero. killswitch 전제 실패 4종(VPN·US·tun0 없음·양성 대조 실패) → tun0을 내리지 않고 nonzero. down 명령 실패, 누수, 복구 unhealthy → nonzero. 끊긴 상태에서 SIGTERM → trap이 tun0 복구 + nonzero |
+
+새 스크립트는 실제 Docker 스택이나 실제 VPN에서 다시 돌리지 않았습니다(가짜 fixture로만 검사). shellcheck는 이 환경에 없어 실행하지 못했습니다.
 
 ## 정리
 

@@ -30,12 +30,19 @@ const BASE_HEADERS = {
 const PAGE_CSP =
   "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; frame-src 'self'; frame-ancestors 'self'; form-action 'self'; base-uri 'none'; object-src 'none'";
 
-export function createApp({ auth, allowlist, browser, status, novncUpstream, publicOrigin, logger = console }) {
+export function createApp({ auth, allowlist, browser, status, novncUpstream, publicOrigin, logger = console, streamCheckMs = 2000 }) {
   const files = {};
   for (const [route, [file, type]] of Object.entries(STATIC)) {
     files[route] = { body: readFileSync(join(PUBLIC_DIR, file)), type };
   }
   let streamConnections = 0;
+  // 열린 원격 제어(WS) 연결: 로그인 세션이 만료/로그아웃되면 streamCheckMs 안에 끊는다.
+  const streams = new Set(); // {sid, close}
+  function closeStreams(pred) {
+    for (const st of [...streams]) if (pred(st)) st.close();
+  }
+  const sweep = setInterval(() => closeStreams((st) => !auth.isSessionValid(st.sid)), streamCheckMs);
+  sweep.unref();
 
   function send(res, code, body, type = "application/json; charset=utf-8", extra = {}) {
     const buf = Buffer.isBuffer(body) ? body : Buffer.from(typeof body === "string" ? body : JSON.stringify(body));
@@ -88,8 +95,17 @@ export function createApp({ auth, allowlist, browser, status, novncUpstream, pub
     up.end();
   }
 
+  function parseUrl(raw) {
+    try {
+      return new URL(raw, "http://gateway.invalid");
+    } catch {
+      return null;
+    }
+  }
+
   async function handle(req, res) {
-    const url = new URL(req.url, "http://gateway.invalid");
+    const url = parseUrl(req.url);
+    if (!url) return send(res, 400, { error: "bad_url" });
     const path = url.pathname;
     const authed = auth.isAuthenticated(req.headers.cookie);
 
@@ -116,7 +132,10 @@ export function createApp({ auth, allowlist, browser, status, novncUpstream, pub
 
     if (path === "/logout" && req.method === "POST") {
       if (!originAllowed(req)) return send(res, 403, { error: "origin" });
-      return send(res, 303, "", "text/plain", { location: "/login", "set-cookie": auth.logout(req.headers.cookie) });
+      const sid = auth.sessionId(req.headers.cookie);
+      const cleared = auth.logout(req.headers.cookie);
+      if (sid) closeStreams((st) => st.sid === sid);
+      return send(res, 303, "", "text/plain", { location: "/login", "set-cookie": cleared });
     }
 
     // 로그인 화면 스타일은 비밀이 아니므로 인증 없이 제공
@@ -183,15 +202,21 @@ export function createApp({ auth, allowlist, browser, status, novncUpstream, pub
     const reject = (code, text) => {
       socket.end(`HTTP/1.1 ${code} ${text}\r\nConnection: close\r\nContent-Length: 0\r\n\r\n`);
     };
-    const path = new URL(req.url, "http://gateway.invalid").pathname;
-    if (path !== "/novnc/websockify") return reject(404, "Not Found");
-    if (!auth.isAuthenticated(req.headers.cookie)) return reject(401, "Unauthorized");
+    socket.on("error", () => socket.destroy());
+    const url = parseUrl(req.url);
+    if (!url) return reject(400, "Bad Request");
+    if (url.pathname !== "/novnc/websockify") return reject(404, "Not Found");
+    const sid = auth.sessionId(req.headers.cookie);
+    if (!sid) return reject(401, "Unauthorized");
     if (!originAllowed(req)) return reject(403, "Forbidden");
 
     const up = net.connect(novncUpstream.port, novncUpstream.host);
     let connected = false;
     let counted = false;
+    const entry = { sid, close: () => done() };
+    streams.add(entry);
     const done = () => {
+      streams.delete(entry);
       if (counted) {
         counted = false;
         streamConnections--;
@@ -216,6 +241,7 @@ export function createApp({ auth, allowlist, browser, status, novncUpstream, pub
     });
     up.on("error", () => {
       if (!connected) {
+        streams.delete(entry);
         up.destroy();
         reject(502, "Bad Gateway");
       } else done();
@@ -236,6 +262,13 @@ export function createApp({ auth, allowlist, browser, status, novncUpstream, pub
     });
   });
   server.on("upgrade", handleUpgrade);
+  // 서버 종료 시 열린 WS 와 점검 타이머 정리
+  const origClose = server.close.bind(server);
+  server.close = (cb) => {
+    clearInterval(sweep);
+    closeStreams(() => true);
+    return origClose(cb);
+  };
   server.headersTimeout = 15000;
   server.requestTimeout = 120000;
   return server;

@@ -48,6 +48,23 @@ export function createAuth({ token, sessionTtlMs = 12 * 3600 * 1000, cookieSecur
     return `Path=/; HttpOnly; SameSite=Strict; Max-Age=${maxAgeSec}${cookieSecure ? "; Secure" : ""}`;
   }
 
+  function isSessionValid(sid) {
+    const exp = sessions.get(sid);
+    if (!exp) return false;
+    if (exp <= now()) {
+      sessions.delete(sid);
+      return false;
+    }
+    return true;
+  }
+
+  // 유효한 세션이면 세션 id(로그 금지), 아니면 null
+  function sessionId(cookieHeader) {
+    const sid = parseCookies(cookieHeader)[COOKIE_NAME];
+    if (!sid || !/^[A-Za-z0-9_-]{43}$/.test(sid)) return null;
+    return isSessionValid(sid) ? sid : null;
+  }
+
   return {
     isLockedOut() {
       prune();
@@ -70,16 +87,10 @@ export function createAuth({ token, sessionTtlMs = 12 * 3600 * 1000, cookieSecur
       if (sid) sessions.delete(sid);
       return `${COOKIE_NAME}=; ${cookieAttrs(0)}`;
     },
+    sessionId,
+    isSessionValid,
     isAuthenticated(cookieHeader) {
-      const sid = parseCookies(cookieHeader)[COOKIE_NAME];
-      if (!sid || !/^[A-Za-z0-9_-]{43}$/.test(sid)) return false;
-      const exp = sessions.get(sid);
-      if (!exp) return false;
-      if (exp <= now()) {
-        sessions.delete(sid);
-        return false;
-      }
-      return true;
+      return sessionId(cookieHeader) !== null;
     },
   };
 }

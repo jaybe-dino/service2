@@ -34,7 +34,7 @@
 | `GET /api/status` | 필요 | VPN 상태(gluetun), **미국 egress 실측**(namespace 내부에서 ipinfo 조회, 60초 캐시), Selenium 응답, 스트림 연결 수 |
 | `GET /api/brands` | 필요 | `../shop-viewer/data.json`의 **미국 + `https://shop.tiktok.com/us/pdp/<숫자>`** 형식 항목만(현재 8개). 태국은 제외 |
 | `POST /api/navigate {brandId}` | 필요 + Origin + JSON | 허용 brandId만 받아 data.json의 URL로 이동합니다. 임의 URL은 받지 않습니다. VPN·미국 egress·Selenium이 모두 확인돼야 하며, 아니면 503(fail-closed). 브라우저 세션은 1개를 재사용하고, 이동이 겹치면 409 |
-| `GET /novnc/*`, WS `/novnc/websockify` | 필요 (+WS Origin) | noVNC 프록시. 쿠키와 Origin은 업스트림에 전달하지 않습니다 |
+| `GET /novnc/*`, WS `/novnc/websockify` | 필요 (+WS Origin) | noVNC 프록시. 쿠키와 Origin은 업스트림에 전달하지 않습니다. 열린 WS는 로그아웃하면 즉시, 세션이 만료되면 2초 안에, 서버가 종료되면 함께 끊깁니다 |
 
 로그인·결제·구매 자동화와 CAPTCHA 자동 해결은 **없습니다**. 퍼즐은 사용자가 화면에서 직접 풉니다.
 탐지 회피용 브라우저 플래그도 넣지 않았습니다. 화면 상단의 "Chrome is being controlled by automated test software" 표시는 그대로 둡니다.
@@ -91,7 +91,7 @@ docker compose down                         # 중지 (상태 없음, 볼륨 없�
 | # | 항목 | 방법 | 자동 |
 | --- | --- | --- | --- |
 | 1 | 미국 IP | `verify-deploy.sh` §3: gateway·browser 각각 ipinfo country = `US`. 뷰어 칩 "미국 egress: 확인됨" | ✅ |
-| 2 | VPN 단절 시 egress 차단 | `verify-deploy.sh killswitch`: tun0 down 상태에서 외부 요청 실패 | ✅ |
+| 2 | VPN 단절 시 egress 차단 | `verify-deploy.sh killswitch`: VPN running·미국 egress·tun0·양성 대조(끊기 전 도달)를 먼저 확인한 뒤에만 tun0 down → 외부 요청 실패 확인 → trap으로 복구 후 healthy·US 재확인. 어느 하나라도 실패하면 exit 1 | ✅ |
 | 3 | 미인증 접근 거부 | §2: `/api/*`, `/novnc/*`, WS 401. 로그아웃 후 재확인 | ✅ / 수동 |
 | 4 | 내부 포트 비노출 | §1 + 외부에서 `nmap -p 4444,5900,7900,8000,8080 <서버IP>` 결과 모두 닫힘 | 일부 |
 | 5 | TikTok 상품 로드 | 뷰어에서 브랜드 이동 후 상품 페이지가 실제로 보이는지 눈으로 확인 | 수동 |
@@ -101,5 +101,5 @@ docker compose down                         # 중지 (상태 없음, 볼륨 없�
 ## 개발
 
 ```bash
-cd tools/shop-live/gateway && npm test     # node --test, 외부 의존성 없음
+cd tools/shop-live/gateway && npm test     # node --test, 외부 의존성 없음 (verify-deploy.sh 실패 집계 검사 포함, bash 필요)
 ```

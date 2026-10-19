@@ -63,15 +63,16 @@ function fakeNovnc() {
   return { srv, seen };
 }
 
-async function setup({ ready = true } = {}) {
+async function setup({ ready = true, clock = null, streamCheckMs = 2000 } = {}) {
   const sel = fakeSelenium();
   const selPort = await listen(sel.srv);
   const nv = fakeNovnc();
   const nvPort = await listen(nv.srv);
   const browser = createBrowserController({ seleniumUrl: `http://127.0.0.1:${selPort}` });
-  const status = { ready, snapshot: async () => ({ ready: status.ready, vpn: { running: status.ready }, egress: { verified: status.ready } }) };
+  const status = { ready, snapshot: async ({ streamConnections = 0 } = {}) => ({ ready: status.ready, vpn: { running: status.ready }, egress: { verified: status.ready }, stream: { activeConnections: streamConnections } }) };
   const app = createApp({
-    auth: createAuth({ token: TOKEN, cookieSecure: false }),
+    auth: createAuth({ token: TOKEN, cookieSecure: false, sessionTtlMs: 60000, ...(clock ? { now: () => clock.t } : {}) }),
+    streamCheckMs,
     allowlist: loadAllowlist(DATA),
     browser,
     status,
@@ -82,7 +83,7 @@ async function setup({ ready = true } = {}) {
   const port = await listen(app);
   const base = `http://127.0.0.1:${port}`;
   return {
-    base, port, sel, nv, status,
+    base, port, sel, nv, status, app,
     close: () => Promise.all([app, sel.srv, nv.srv].map((s) => new Promise((r) => { s.closeAllConnections?.(); s.close(r); }))),
   };
 }
@@ -247,4 +248,77 @@ test("웹소켓: 인증+같은 Origin 이면 업스트림 연결, 외부 Origin/
   assert.equal(up.url, "/websockify");
   assert.equal(up.headers.cookie, undefined);
   assert.equal(up.headers.origin, undefined);
+});
+
+// 열린 WS 를 유지하고 닫힘을 기다릴 수 있는 fixture 클라이언트
+function openWs(port, headers) {
+  return new Promise((resolve, reject) => {
+    const s = net.connect(port, "127.0.0.1", () => {
+      let req = "GET /novnc/websockify HTTP/1.1\r\nHost: 127.0.0.1:" + port + "\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Version: 13\r\nSec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\r\n";
+      for (const [k, v] of Object.entries(headers)) req += `${k}: ${v}\r\n`;
+      s.write(req + "\r\n");
+    });
+    const closed = new Promise((r) => s.on("close", () => r(Date.now())));
+    s.once("data", (d) => (String(d).startsWith("HTTP/1.1 101") ? resolve({ s, closed }) : reject(new Error(String(d)))));
+    s.on("error", () => {});
+  });
+}
+const within = (p, ms) => Promise.race([p, new Promise((_, rej) => setTimeout(() => rej(new Error(`not closed within ${ms}ms`)), ms))]);
+
+test("WS: 로그아웃하면 열린 원격 제어 연결이 즉시 종료", async (t) => {
+  const e = await setup();
+  t.after(e.close);
+  const { cookie } = await login(e.base);
+  const ws = await openWs(e.port, { Cookie: cookie, Origin: e.base });
+  const st = await (await fetch(e.base + "/api/status", { headers: { cookie } })).json();
+  assert.equal(st.stream.activeConnections, 1);
+  const r = await fetch(e.base + "/logout", { method: "POST", headers: { cookie, origin: e.base }, redirect: "manual" });
+  assert.equal(r.status, 303);
+  await within(ws.closed, 1000);
+  assert.equal((await fetch(e.base + "/api/status", { headers: { cookie } })).status, 401);
+});
+
+test("WS: 로그인 세션 만료 후 점검 주기 안에 종료, 다른 유효 세션은 유지", async (t) => {
+  const clock = { t: Date.now() };
+  const e = await setup({ clock, streamCheckMs: 50 });
+  t.after(e.close);
+  const a = await login(e.base);
+  const wsA = await openWs(e.port, { Cookie: a.cookie, Origin: e.base });
+  clock.t += 30000;
+  const b = await login(e.base); // 나중에 로그인한 세션(만료 시점이 더 늦음)
+  const wsB = await openWs(e.port, { Cookie: b.cookie, Origin: e.base });
+  clock.t += 31000; // a 만료(61s 경과), b 는 31s 경과로 유효
+  await within(wsA.closed, 1000);
+  const stillOpen = await Promise.race([wsB.closed.then(() => false), new Promise((r) => setTimeout(() => r(true), 300))]);
+  assert.equal(stillOpen, true, "유효 세션 연결은 유지");
+  wsB.s.destroy();
+});
+
+test("WS: 서버 종료 시 열린 연결 정리", async (t) => {
+  const e = await setup();
+  t.after(e.close);
+  const { cookie } = await login(e.base);
+  const ws = await openWs(e.port, { Cookie: cookie, Origin: e.base });
+  e.app.close();
+  await within(ws.closed, 1000);
+});
+
+test("잘못된 URL: upgrade/일반 요청 모두 400, 서버는 계속 동작", async (t) => {
+  const e = await setup();
+  t.after(e.close);
+  const { cookie } = await login(e.base);
+  const raw = (line, extra = "") =>
+    new Promise((resolve) => {
+      const s = net.connect(e.port, "127.0.0.1", () => s.write(`${line}\r\nHost: 127.0.0.1\r\n${extra}\r\n`));
+      let buf = "";
+      s.on("data", (d) => (buf += d));
+      s.on("close", () => resolve(buf));
+      s.on("error", () => resolve(buf));
+      setTimeout(() => s.destroy(), 1500);
+    });
+  const ws = "Upgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Version: 13\r\nSec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\r\n" + `Cookie: ${cookie}\r\nOrigin: ${e.base}\r\n`;
+  assert.match(await raw("GET http://[bad/novnc/websockify HTTP/1.1", ws), /^HTTP\/1.1 400/);
+  assert.match(await raw("GET http://[bad/api/status HTTP/1.1", `Cookie: ${cookie}\r\nConnection: close\r\n`), /^HTTP\/1.1 400/);
+  assert.equal((await fetch(e.base + "/healthz")).status, 200, "프로세스 생존");
+  assert.equal(e.nv.seen.length, 0);
 });
