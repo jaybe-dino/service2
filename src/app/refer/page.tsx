@@ -108,7 +108,7 @@ export default async function ReferPage() {
         <div className="mx-auto grid max-w-[1180px] items-center gap-10 px-5 py-16 sm:px-8 sm:py-24 lg:grid-cols-[1.25fr_1fr]">
           <div>
             <div className="text-[12px] font-extrabold tracking-[4px] text-sky-600">DINO STUDIO · GLOBAL UGC × TIKTOK SHOP</div>
-            <h1 className="mt-3 max-w-[640px] text-[34px] font-black leading-[1.14] tracking-tight sm:text-[48px]">
+            <h1 className="mt-3 max-w-[640px] break-keep text-[34px] font-black leading-[1.14] tracking-tight sm:text-[48px]">
               우리 브랜드를,<br /><span className="text-[var(--accent)]">현지에서 선택받는 콘텐츠</span>로.
             </h1>
             <p className="mt-4 max-w-[600px] text-[15px] leading-relaxed text-[var(--muted)] sm:text-[16.5px]">
