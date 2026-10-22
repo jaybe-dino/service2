@@ -1,0 +1,2 @@
+# UGC 영상 캡처 자산 폴더
+# 파일명 규칙: <id>.jpg (예: tt-alim-7469.jpg) — refer.ts REFER_UGC 의 thumb 에 "/refer/ugc/<id>.jpg" 를 넣으면 카드에 표시됩니다.
