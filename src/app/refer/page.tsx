@@ -154,8 +154,7 @@ export default async function ReferPage() {
           desc="협업 네트워크가 실제로 제작한 크리에이터 콘텐츠입니다. 각 카드는 실제 영상 원본으로 연결됩니다. 대표 사례를 먼저 보여드리고, 전체는 '사례 더 보기'에서 확인할 수 있습니다.">
           <ReferUGC items={REFER_UGC} />
           <p className="mt-6 text-[11px] leading-relaxed text-slate-400">
-            ※ 사용자가 제공한 실제 레퍼런스 원본 링크입니다. 영상 썸네일 캡처는 순차적으로 추가되며, 현재는 원본 링크로 연결됩니다.
-            개별 캠페인 유형·수행 역할은 확인된 내용만 표기합니다.
+            영상은 각 크리에이터의 원본 페이지에서 확인할 수 있습니다.
           </p>
         </Section>
       </div>
@@ -166,7 +165,7 @@ export default async function ReferPage() {
         <div className="grid grid-cols-3 gap-3 sm:grid-cols-4 md:grid-cols-6">
           {sortedLogos.map((l) => <LogoTile key={l.brand} brand={l.brand} logo={l.logo} isCompany={l.isCompany} />)}
         </div>
-        <p className="mt-6 text-[11px] text-slate-400">※ &lsquo;회사&rsquo; 표기는 제품 브랜드가 아닌 회사(법인) 단위입니다. 공식 로고가 없는 브랜드는 이름으로 표기합니다.</p>
+        <p className="mt-6 text-[11px] text-slate-400">※ &lsquo;회사&rsquo; 표기는 제품 브랜드가 아닌 회사(법인) 단위입니다.</p>
 
         <div className="mt-12">
           <h3 id="tiktok" className="scroll-mt-8 text-[18px] font-black tracking-tight">TikTok Shop 입점·운영 브랜드</h3>

@@ -65,7 +65,7 @@ export const REFER_UGC: ReferUgc[] = [
   { id: "ig-DYS9i-WvQra", url: "https://www.instagram.com/reel/DYS9i-WvQra/", platform: "instagram", handle: "kali.patterson_", thumb: "/refer/ugc/ugc-instagram-DYS9i-WvQra.jpg", caption: "Not Just Sundays · 친구들과 제품 사용" },
   { id: "ig-DbE2YD4Ox1N", url: "https://www.instagram.com/reel/DbE2YD4Ox1N/", platform: "instagram", handle: "katyj813", thumb: "/refer/ugc/ugc-instagram-DbE2YD4Ox1N.jpg", caption: "Not Just Sundays · 가족 사용 장면" },
   { id: "tt-alim-7497", url: "https://www.tiktok.com/@alim_kh0/video/7497335502539066647", platform: "tiktok", handle: "alim_kh0", thumb: null, caption: null },
-  { id: "drive-1DgX", url: "https://drive.google.com/file/d/1DgXNSnB08iiSbtzBNgTEijTxjyc1KqMd/view", platform: "drive", handle: null, thumb: "/refer/ugc/ugc-drive-1.jpg", caption: "헤어 콘텐츠(등교 상황) · 계정·브랜드 미확인" },
+  { id: "drive-1DgX", url: "https://drive.google.com/file/d/1DgXNSnB08iiSbtzBNgTEijTxjyc1KqMd/view", platform: "drive", handle: null, thumb: "/refer/ugc/ugc-drive-1.jpg", caption: "등교 전 헤어 스타일링" },
   { id: "drive-17GU", url: "https://drive.google.com/file/d/17GUctiXoZRL39T9Z3pzA76JjDLpkVNvF/view", platform: "drive", handle: null, thumb: "/refer/ugc/ugc-drive-2.jpg", caption: "Based Texture Powder 제품 시연" },
   { id: "tt-ZP86bJc33", url: "https://www.tiktok.com/t/ZP86bJc33/", platform: "tiktok", handle: null, thumb: null, caption: null },
   { id: "tt-ZP86qcT94", url: "https://www.tiktok.com/t/ZP86qcT94/", platform: "tiktok", handle: null, thumb: null, caption: null },

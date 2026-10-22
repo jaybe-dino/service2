@@ -90,7 +90,7 @@ export default function ReferUGC({ items, fallbackInitial = 6 }: { items: UgcIte
 
       {linkOnly.length > 0 && (
         <div className="mt-10">
-          <div className="mb-3 text-[13px] font-bold text-[var(--muted)]">원본 링크 더 보기 <span className="font-normal text-slate-400">· 썸네일 캡처 준비 중</span></div>
+          <div className="mb-3 text-[13px] font-bold text-[var(--muted)]">더 많은 제작 사례 <span className="font-normal text-slate-400">· 원본 영상 보기</span></div>
           <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
             {shownLinks.map((it) => <UgcLinkChip key={it.id} item={it} />)}
           </div>
