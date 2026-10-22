@@ -3,12 +3,12 @@ import Link from "next/link";
 import SiteHeader from "@/components/ktrend/SiteHeader";
 import SiteFooter from "@/components/ktrend/SiteFooter";
 import {
-  REFER_LOGOS, SIZE_ORDER, REFER_TIKTOK, REFER_CASES, REFER_UGC, REFER_UGC_HERO,
-  type LogoSize, type ReferUgc,
+  REFER_LOGOS, SIZE_ORDER, REFER_TIKTOK, REFER_CASES, REFER_UGC,
+  type LogoSize,
 } from "@/data/refer";
 import { sql, isConfigured as dbConfigured } from "@/lib/db";
 import ReferFeed, { type FeedItem } from "@/components/ktrend/ReferFeed";
-import ReferUGC, { UgcCard } from "@/components/ktrend/ReferUGC";
+import ReferUGC from "@/components/ktrend/ReferUGC";
 
 export const metadata: Metadata = {
   title: "브랜드 협업 레퍼런스 — 디노스튜디오",
@@ -57,9 +57,9 @@ function LogoTile({ brand, logo, isCompany }: { brand: string; logo: string; isC
   const invert = INVERT_LOGO.has(brand);
   const tile = soft ? "border-slate-200 bg-slate-100" : "border-[var(--border)] bg-white";
   return (
-    <div className={`group relative flex aspect-[3/2] items-center justify-center overflow-hidden rounded-xl border p-4 transition hover:shadow-md ${tile}`}>
+    <div className={`group relative flex aspect-[3/2] items-center justify-center overflow-hidden rounded-xl border px-4 pb-5 pt-4 transition hover:shadow-md ${tile}`}>
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={logo} alt={brand} style={invert ? { filter: "brightness(0)" } : undefined} className={`object-contain ${soft ? "max-h-[86%] max-w-[94%]" : "max-h-[66%] max-w-[84%]"}`} loading="lazy" />
+      <img src={logo} alt={brand} style={invert ? { filter: "brightness(0)" } : undefined} className={`object-contain ${soft ? "max-h-[88%] max-w-[94%]" : "max-h-[74%] max-w-[92%]"}`} loading="lazy" />
       {isCompany && (
         <span className="absolute right-1.5 top-1.5 rounded-full bg-slate-900/70 px-1.5 py-0.5 text-[8px] font-bold text-white">회사</span>
       )}
@@ -93,49 +93,36 @@ export default async function ReferPage() {
 
   const marketOf = (m: string) => (m && m !== "미확인" ? m : null);
   const feed = await loadMarketFeed();
-  const heroUgc = REFER_UGC_HERO
-    .map((id) => REFER_UGC.find((u) => u.id === id))
-    .filter((u): u is ReferUgc => !!u);
 
   return (
     <div className="flex min-h-screen flex-col bg-[var(--bg)] text-[var(--fg)]">
       <SiteHeader />
 
-      {/* 히어로 */}
+      {/* 히어로 — 단일 열(레퍼런스 미리보기는 하단 섹션으로 이동) */}
       <header className="relative overflow-hidden border-b border-[var(--border)]">
         <div className="pointer-events-none absolute -right-24 -top-28 h-80 w-80 rounded-full bg-[var(--accent)] opacity-[0.08] blur-3xl" />
         <div className="pointer-events-none absolute -bottom-28 left-24 h-72 w-72 rounded-full bg-sky-400 opacity-[0.08] blur-3xl" />
-        <div className="mx-auto grid max-w-[1180px] items-center gap-10 px-5 py-16 sm:px-8 sm:py-24 lg:grid-cols-[1.25fr_1fr]">
-          <div>
-            <div className="text-[12px] font-extrabold tracking-[4px] text-sky-600">DINO STUDIO · GLOBAL UGC × TIKTOK SHOP</div>
-            <h1 className="mt-3 max-w-[640px] break-keep text-[34px] font-black leading-[1.14] tracking-tight sm:text-[48px]">
-              우리 브랜드를,<br /><span className="text-[var(--accent)]">현지에서 선택받는 콘텐츠</span>로.
-            </h1>
-            <p className="mt-4 max-w-[600px] text-[15px] leading-relaxed text-[var(--muted)] sm:text-[16.5px]">
-              진출하려는 시장과 제품 특성에 맞춘 크리에이터 콘텐츠를 만들고, TikTok Shop 입점·운영까지 연결합니다.
-              아래는 실제로 작업한 레퍼런스와 함께한 브랜드들입니다.
-            </p>
-            <div className="mt-7 flex flex-wrap gap-2.5">
-              <Link href="/consult1" className="rounded-2xl bg-[var(--accent)] px-6 py-3.5 text-[15px] font-black text-white shadow-lg transition hover:bg-[var(--accent-deep)]">
-                우리 브랜드 협업 문의 →
-              </Link>
-              <a href="#ugc" className="rounded-2xl border border-[var(--border)] bg-white px-6 py-3.5 text-[15px] font-bold text-[var(--fg)] transition hover:border-[var(--accent)] hover:text-[var(--accent)]">
-                실제 작업물 보기
-              </a>
-            </div>
-            <div className="mt-8 flex flex-wrap gap-x-9 gap-y-4 text-[13px] text-[var(--muted)]">
-              <div><b className="text-[22px] font-black text-[var(--fg)]">{REFER_LOGOS.length}+</b> 협업 브랜드</div>
-              <div><b className="text-[22px] font-black text-[var(--fg)]">{REFER_TIKTOK.length}</b> TikTok Shop 진행 브랜드</div>
-              <div><b className="text-[22px] font-black text-[var(--fg)]">미국·태국·베트남</b> 진출 지원</div>
-            </div>
+        <div className="mx-auto max-w-[1180px] px-5 py-16 sm:px-8 sm:py-24">
+          <div className="text-[12px] font-extrabold tracking-[4px] text-sky-600">DINO STUDIO · GLOBAL UGC × TIKTOK SHOP</div>
+          <h1 className="mt-3 max-w-[760px] break-keep text-[34px] font-black leading-[1.14] tracking-tight sm:text-[50px]">
+            우리 브랜드를,<br /><span className="text-[var(--accent)]">현지에서 선택받는 콘텐츠</span>로.
+          </h1>
+          <p className="mt-4 max-w-[640px] text-[15px] leading-relaxed text-[var(--muted)] sm:text-[16.5px]">
+            진출하려는 시장과 제품 특성에 맞춘 크리에이터 콘텐츠를 만들고, TikTok Shop 입점·운영까지 연결합니다.
+            함께한 브랜드와 실제 작업물을 아래에서 확인해 보세요.
+          </p>
+          <div className="mt-7 flex flex-wrap gap-2.5">
+            <Link href="/consult1" className="rounded-2xl bg-[var(--accent)] px-6 py-3.5 text-[15px] font-black text-white shadow-lg transition hover:bg-[var(--accent-deep)]">
+              우리 브랜드 협업 문의 →
+            </Link>
+            <a href="#ugc" className="rounded-2xl border border-[var(--border)] bg-white px-6 py-3.5 text-[15px] font-bold text-[var(--fg)] transition hover:border-[var(--accent)] hover:text-[var(--accent)]">
+              실제 작업물 보기
+            </a>
           </div>
-
-          {/* 실제 UGC 미리보기(원본 링크 카드) — 첫 화면에서 작업물이 보이게 */}
-          <div>
-            <div className="grid grid-cols-3 gap-2.5">
-              {heroUgc.map((it) => <UgcCard key={it.id} item={it} />)}
-            </div>
-            <p className="mt-2.5 text-center text-[11px] text-slate-400">실제 레퍼런스 영상 · 카드를 누르면 원본으로 이동합니다.</p>
+          <div className="mt-8 flex flex-wrap gap-x-9 gap-y-4 text-[13px] text-[var(--muted)]">
+            <div><b className="text-[22px] font-black text-[var(--fg)]">{REFER_LOGOS.length}+</b> 협업 브랜드</div>
+            <div><b className="text-[22px] font-black text-[var(--fg)]">{REFER_TIKTOK.length}</b> TikTok Shop 진행 브랜드</div>
+            <div><b className="text-[22px] font-black text-[var(--fg)]">미국·태국·베트남</b> 진출 지원</div>
           </div>
         </div>
       </header>
@@ -148,44 +135,35 @@ export default async function ReferPage() {
         </div>
       </Section>
 
-      {/* 실제 UGC 작업물 — 주요 섹션 */}
-      <div className="border-y border-[var(--border)] bg-slate-50/70">
-        <Section id="ugc" kicker="Our Work" title="실제 UGC 작업물"
-          desc="협업 네트워크가 실제로 제작한 크리에이터 콘텐츠입니다. 각 카드는 실제 영상 원본으로 연결됩니다. 대표 사례를 먼저 보여드리고, 전체는 '사례 더 보기'에서 확인할 수 있습니다.">
-          <ReferUGC items={REFER_UGC} />
-          <p className="mt-6 text-[11px] leading-relaxed text-slate-400">
-            영상은 각 크리에이터의 원본 페이지에서 확인할 수 있습니다.
-          </p>
+      {/* 전체 협업 브랜드 & TikTok Shop 이력 */}
+      <div className="border-t border-[var(--border)] bg-slate-50/70">
+        <Section id="all-brands" kicker="Network" title="전체 협업 브랜드 & TikTok Shop 이력"
+          desc="디노스튜디오가 콘텐츠·입점·운영 등으로 협업한 전체 브랜드입니다. 로고는 각 브랜드의 표기를 따릅니다(모든 브랜드가 TikTok Shop 고객인 것은 아닙니다).">
+          <div className="grid grid-cols-3 gap-3 sm:grid-cols-4 md:grid-cols-6">
+            {sortedLogos.map((l) => <LogoTile key={l.brand} brand={l.brand} logo={l.logo} isCompany={l.isCompany} />)}
+          </div>
+          <p className="mt-6 text-[11px] text-slate-400">※ &lsquo;회사&rsquo; 표기는 제품 브랜드가 아닌 회사(법인) 단위입니다.</p>
+
+          <div className="mt-12">
+            <h3 id="tiktok" className="scroll-mt-8 text-[18px] font-black tracking-tight">TikTok Shop 입점·운영 브랜드</h3>
+            <p className="mt-1.5 text-[13.5px] text-[var(--muted)]">미국·동남아 등 현지 TikTok Shop 입점·운영을 함께한 브랜드들입니다.</p>
+            <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {REFER_TIKTOK.map((t) => (
+                <div key={t.brand} className="flex items-center gap-3 rounded-xl border border-[var(--border)] bg-white p-4">
+                  <div className={`flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-lg border p-1.5 ${/닥터노바메디/.test(t.brand) ? "border-slate-200 bg-slate-100" : "border-[var(--border)] bg-white"}`}>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    {t.logo ? <img src={t.logo} alt={t.brand} className="max-h-full max-w-full object-contain" loading="lazy" /> : <span className="text-[9px] text-slate-300">—</span>}
+                  </div>
+                  <div className="min-w-0">
+                    <div className="text-[13.5px] font-bold leading-tight">{t.brand}</div>
+                    {marketOf(t.market) && <span className="mt-1 inline-flex rounded-full bg-sky-50 px-2 py-0.5 text-[10px] font-semibold text-sky-700">{t.market}</span>}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
         </Section>
       </div>
-
-      {/* 전체 협업 브랜드 & TikTok Shop 이력 */}
-      <Section id="all-brands" kicker="Network" title="전체 협업 브랜드 & TikTok Shop 이력"
-        desc="디노스튜디오가 콘텐츠·입점·운영 등으로 협업한 전체 브랜드입니다. 로고는 각 브랜드의 표기를 따릅니다(모든 브랜드가 TikTok Shop 고객인 것은 아닙니다).">
-        <div className="grid grid-cols-3 gap-3 sm:grid-cols-4 md:grid-cols-6">
-          {sortedLogos.map((l) => <LogoTile key={l.brand} brand={l.brand} logo={l.logo} isCompany={l.isCompany} />)}
-        </div>
-        <p className="mt-6 text-[11px] text-slate-400">※ &lsquo;회사&rsquo; 표기는 제품 브랜드가 아닌 회사(법인) 단위입니다.</p>
-
-        <div className="mt-12">
-          <h3 id="tiktok" className="scroll-mt-8 text-[18px] font-black tracking-tight">TikTok Shop 입점·운영 브랜드</h3>
-          <p className="mt-1.5 text-[13.5px] text-[var(--muted)]">미국·동남아 등 현지 TikTok Shop 입점·운영을 함께한 브랜드들입니다.</p>
-          <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {REFER_TIKTOK.map((t) => (
-              <div key={t.brand} className="flex items-center gap-3 rounded-xl border border-[var(--border)] bg-white p-4">
-                <div className={`flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-lg border p-1.5 ${/닥터노바메디/.test(t.brand) ? "border-slate-200 bg-slate-100" : "border-[var(--border)] bg-white"}`}>
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  {t.logo ? <img src={t.logo} alt={t.brand} className="max-h-full max-w-full object-contain" loading="lazy" /> : <span className="text-[9px] text-slate-300">—</span>}
-                </div>
-                <div className="min-w-0">
-                  <div className="text-[13.5px] font-bold leading-tight">{t.brand}</div>
-                  {marketOf(t.market) && <span className="mt-1 inline-flex rounded-full bg-sky-50 px-2 py-0.5 text-[10px] font-semibold text-sky-700">{t.market}</span>}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </Section>
 
       {/* 진행 방식 3단계 */}
       <div className="border-t border-[var(--border)] bg-white">
@@ -203,7 +181,34 @@ export default async function ReferPage() {
         </Section>
       </div>
 
-      {/* 시장 콘텐츠 참고(자체 제작 아님) — 별도 하단 섹션, 피드는 접기/펼치기 */}
+      {/* 문의 CTA */}
+      <section className="border-t border-[var(--border)] bg-gradient-to-br from-[#fdf2f8] to-white">
+        <div className="mx-auto max-w-[1180px] px-5 py-20 text-center sm:px-8">
+          <h2 className="text-[24px] font-black tracking-tight sm:text-[32px]">우리 브랜드의 다음 글로벌 콘텐츠, 함께 만듭니다</h2>
+          <p className="mx-auto mt-3 max-w-[560px] text-[14px] text-[var(--muted)]">진출 시장·제품에 맞는 콘텐츠와 TikTok Shop 운영 방향을 함께 설계해 드립니다.</p>
+          <div className="mt-7 flex flex-wrap items-center justify-center gap-3">
+            <Link href="/consult1" className="inline-flex items-center gap-2 rounded-2xl bg-[var(--accent)] px-8 py-4 text-[16px] font-black text-white shadow-lg transition hover:bg-[var(--accent-deep)]">
+              우리 브랜드 협업 문의 →
+            </Link>
+            <Link href="/" className="inline-flex items-center gap-2 rounded-2xl border border-[var(--border)] bg-white px-7 py-4 text-[15px] font-bold text-[var(--fg)] transition hover:border-[var(--accent)] hover:text-[var(--accent)]">
+              틱톡콘텐츠 보기
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      {/* 실제 UGC 작업물 — 레퍼런스는 맨 아래(Footer 앞) 섹션으로 배치 */}
+      <div className="border-t border-[var(--border)] bg-slate-50/70">
+        <Section id="ugc" kicker="Our Work" title="실제 UGC 작업물"
+          desc="협업 네트워크가 실제로 제작한 크리에이터 콘텐츠입니다. 각 카드는 실제 영상 원본으로 연결됩니다. 대표 사례를 먼저 보여드리고, 전체는 '사례 더 보기'에서 확인할 수 있습니다.">
+          <ReferUGC items={REFER_UGC} />
+          <p className="mt-6 text-[11px] leading-relaxed text-slate-400">
+            영상은 각 크리에이터의 원본 페이지에서 확인할 수 있습니다.
+          </p>
+        </Section>
+      </div>
+
+      {/* 시장 콘텐츠 참고(자체 제작 아님) — 맨 아래, 피드는 접기/펼치기 */}
       <div className="border-t border-[var(--border)] bg-slate-100/70">
         <Section kicker="Market Reference" title="시장 콘텐츠 참고"
           desc="아래는 시장 트렌드 리서치용으로 수집한 외부·시장 콘텐츠입니다. 디노스튜디오의 자체 제작 작업물이 아니며, 위의 ‘실제 UGC 작업물’과 구분됩니다.">
@@ -235,22 +240,6 @@ export default async function ReferPage() {
           )}
         </Section>
       </div>
-
-      {/* 최종 문의 CTA */}
-      <section className="border-t border-[var(--border)] bg-gradient-to-br from-[#fdf2f8] to-white">
-        <div className="mx-auto max-w-[1180px] px-5 py-20 text-center sm:px-8">
-          <h2 className="text-[24px] font-black tracking-tight sm:text-[32px]">우리 브랜드의 다음 글로벌 콘텐츠, 함께 만듭니다</h2>
-          <p className="mx-auto mt-3 max-w-[560px] text-[14px] text-[var(--muted)]">진출 시장·제품에 맞는 콘텐츠와 TikTok Shop 운영 방향을 함께 설계해 드립니다.</p>
-          <div className="mt-7 flex flex-wrap items-center justify-center gap-3">
-            <Link href="/consult1" className="inline-flex items-center gap-2 rounded-2xl bg-[var(--accent)] px-8 py-4 text-[16px] font-black text-white shadow-lg transition hover:bg-[var(--accent-deep)]">
-              우리 브랜드 협업 문의 →
-            </Link>
-            <Link href="/" className="inline-flex items-center gap-2 rounded-2xl border border-[var(--border)] bg-white px-7 py-4 text-[15px] font-bold text-[var(--fg)] transition hover:border-[var(--accent)] hover:text-[var(--accent)]">
-              틱톡콘텐츠 보기
-            </Link>
-          </div>
-        </div>
-      </section>
 
       <SiteFooter />
     </div>
