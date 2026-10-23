@@ -174,8 +174,7 @@ export default function ReferPage() {
 
       {/* 브랜드 콘텐츠 레퍼런스 10 — 고정 선별(외부 크리에이터 콘텐츠 참고 사례), Footer 직전 하단 */}
       <div className="border-t border-[var(--border)] bg-slate-50/70">
-        <Section id="ugc" kicker="Selected References" title="브랜드 콘텐츠 레퍼런스 10"
-          desc="Glovek에 수록된 공개 콘텐츠 중 제품 시연·루틴·발색·현장 체험이 잘 드러나는 10개를 선별했습니다.">
+        <Section id="ugc" kicker="Selected References" title="틱톡 세일즈 콘텐츠 예시">
           <ReferCurated items={REFER_CURATED} />
           <p className="mt-5 text-[11px] leading-relaxed text-slate-400">
             외부 크리에이터 콘텐츠 참고 사례이며, 디노스튜디오의 직접 제작 실적을 뜻하지 않습니다.
