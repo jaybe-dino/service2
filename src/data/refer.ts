@@ -76,3 +76,20 @@ export const REFER_UGC: ReferUgc[] = [
 ];
 // 히어로에 우선 노출할 대표 캡처(제품이 보이는 헤어 시연 + 카드게임 일상 사용으로 시각적 다양성 확보)
 export const REFER_UGC_HERO = ["drive-17GU", "ig-DbE2YD4Ox1N", "drive-1DgX"];
+
+// 공개 노출용 고정 선별 10건 — Glovek 수록 공개 콘텐츠 중 선별(외부 크리에이터 콘텐츠 참고 사례, 자체 제작 실적 아님).
+// 포스터는 로컬 정적 자산(public/refer/curated/ref-<videoId>.jpg, 원본 540×960 보존). 카드 표시 필드만 보관(서명 CDN URL·원문 캡션·내부 메모 제외).
+// 출처/검토일 기록은 docs/refer-curated10-sources.md(내부).
+export interface ReferCurated { id: string; brand: string; brandKo: string; handle: string; format: string; title: string; note: string; url: string; thumb: string }
+export const REFER_CURATED: ReferCurated[] = [
+  { id: "7535138164298599702", brand: "TirTir", brandKo: "티르티르", handle: "nadina_ioana", format: "메이크업 ASMR", title: "컬러 대비가 돋보이는 쿠션 ASMR", note: "패키지와 사용 장면을 소리·클로즈업으로 연결한 메이크업 콘텐츠.", url: "https://www.tiktok.com/@nadina_ioana/video/7535138164298599702", thumb: "/refer/curated/ref-7535138164298599702.jpg" },
+  { id: "7538888790954315038", brand: "Fwee", brandKo: "퓌", handle: "nats_tutorials", format: "립 발색·사용법", title: "립 제품을 가까이 보여주는 발색 리뷰", note: "제품 클로즈업과 바르는 방식을 함께 보여주는 립 메이크업 리뷰.", url: "https://www.tiktok.com/@nats_tutorials/video/7538888790954315038", thumb: "/refer/curated/ref-7538888790954315038.jpg" },
+  { id: "7576679218600365334", brand: "SKIN1004", brandKo: "스킨1004", handle: "jasminnlily_", format: "스킨케어 루틴", title: "포어마이징 4단계 사용 루틴", note: "클렌징·마스크·앰플·크림을 하나의 사용 순서로 구성.", url: "https://www.tiktok.com/@jasminnlily_/video/7576679218600365334", thumb: "/refer/curated/ref-7576679218600365334.jpg" },
+  { id: "7528307119016168712", brand: "Anua", brandKo: "아누아", handle: "_skincareby.a.0", format: "클렌징 시연", title: "일상 세안 장면으로 보여주는 이중 세안", note: "직접 세안하는 장면으로 제품을 사용하는 루틴을 전달.", url: "https://www.tiktok.com/@_skincareby.a.0/video/7528307119016168712", thumb: "/refer/curated/ref-7528307119016168712.jpg" },
+  { id: "7569964954363645195", brand: "Rom&nd", brandKo: "롬앤", handle: "louiserozzz", format: "립 메이크업", title: "플럼 코크로 완성하는 체리 콜라 립", note: "하나의 립 컬러를 구체적인 메이크업 룩으로 연결한 튜토리얼.", url: "https://www.tiktok.com/@louiserozzz/video/7569964954363645195", thumb: "/refer/curated/ref-7569964954363645195.jpg" },
+  { id: "7573080707619130655", brand: "Medicube", brandKo: "메디큐브", handle: "kaycstash", format: "제품 리뷰", title: "마스크팩 실사용에서 구매 혜택까지", note: "실제 착용 장면과 구매 혜택 메시지를 결합한 커머스형 리뷰.", url: "https://www.tiktok.com/@kaycstash/video/7573080707619130655", thumb: "/refer/curated/ref-7573080707619130655.jpg" },
+  { id: "7646439170751204626", brand: "Celimax", brandKo: "셀리맥스", handle: "noran.hm", format: "제품 사용법", title: "레티날 소개와 직접 바르는 사용법", note: "질문형 설명과 제품을 직접 바르는 장면으로 사용법을 전달.", url: "https://www.tiktok.com/@noran.hm/video/7646439170751204626", thumb: "/refer/curated/ref-7646439170751204626.jpg" },
+  { id: "7577087315995020574", brand: "Biodance", brandKo: "바이오던스", handle: "ahnestkitchen", format: "생활 속 루틴", title: "엄마의 겨울 보습 루틴", note: "세대와 계절에 맞춘 이야기 속에서 패드·세럼·마스크를 소개.", url: "https://www.tiktok.com/@ahnestkitchen/video/7577087315995020574", thumb: "/refer/curated/ref-7577087315995020574.jpg" },
+  { id: "7661683037863791903", brand: "LANEIGE", brandKo: "라네즈", handle: "darcymcqueenyyy", format: "매장 체험", title: "서울 라네즈 매장에서 만난 립 마스크", note: "크리에이터의 시선으로 매장 방문과 제품 경험을 전하는 브이로그.", url: "https://www.tiktok.com/@darcymcqueenyyy/video/7661683037863791903", thumb: "/refer/curated/ref-7661683037863791903.jpg" },
+  { id: "7649075165657140494", brand: "Torriden", brandKo: "토리든", handle: "vykpnguyen", format: "행사·체험", title: "댈러스 크리에이터 행사 현장", note: "브랜드 행사장의 체험 장면과 방문 경험을 담은 현장형 콘텐츠.", url: "https://www.tiktok.com/@vykpnguyen/video/7649075165657140494", thumb: "/refer/curated/ref-7649075165657140494.jpg" },
+];

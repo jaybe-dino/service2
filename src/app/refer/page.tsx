@@ -3,40 +3,16 @@ import Link from "next/link";
 import SiteHeader from "@/components/ktrend/SiteHeader";
 import SiteFooter from "@/components/ktrend/SiteFooter";
 import {
-  REFER_LOGOS, SIZE_ORDER, REFER_TIKTOK, REFER_CASES, REFER_UGC,
+  REFER_LOGOS, SIZE_ORDER, REFER_TIKTOK, REFER_CURATED,
   type LogoSize,
 } from "@/data/refer";
-import { sql, isConfigured as dbConfigured } from "@/lib/db";
-import ReferFeed, { type FeedItem } from "@/components/ktrend/ReferFeed";
-import ReferUGC from "@/components/ktrend/ReferUGC";
+import ReferCurated from "@/components/ktrend/ReferCurated";
 
 export const metadata: Metadata = {
   title: "브랜드 협업 레퍼런스 — 디노스튜디오",
-  description: "브랜드의 진출 시장·제품에 맞춘 크리에이터 콘텐츠와 TikTok Shop 입점·운영을 연결합니다. 실제 협업 브랜드와 UGC 작업물을 확인해 보세요.",
+  description: "브랜드의 진출 시장·제품에 맞춘 크리에이터 콘텐츠와 TikTok Shop 입점·운영을 연결합니다. 함께한 브랜드와 참고할 글로벌 콘텐츠 사례를 확인해 보세요.",
   alternates: { canonical: "/refer" },
 };
-
-// 시장 참고 피드를 요청마다 랜덤 표시(최신 영상 풀에서 무작위) — 캐시로 고정되지 않게.
-export const dynamic = "force-dynamic";
-
-// glovek이 수집한 시장 콘텐츠(videos) — 최신 풀을 서버에서 셔플 후 ~24개 노출. 자체 제작 실적이 아닌 '시장 참고'.
-async function loadMarketFeed(): Promise<FeedItem[]> {
-  if (!dbConfigured()) return [];
-  try {
-    const { rows } = await sql<{ handle: string; brand_name: string | null; views: number; url: string | null; cover_url: string; is_shop: boolean }>`
-      SELECT handle, brand_name, views, url, cover_url, is_shop
-        FROM videos
-       WHERE cover_url IS NOT NULL AND handle IS NOT NULL
-       ORDER BY is_shop DESC NULLS LAST, posted_at DESC NULLS LAST
-       LIMIT 300`;
-    const pool: FeedItem[] = rows.map((r) => ({
-      handle: r.handle, brand: r.brand_name, views: Number(r.views) || 0,
-      url: r.url || `https://www.tiktok.com/@${r.handle}`, cover: r.cover_url, isShop: !!r.is_shop,
-    }));
-    for (let i = pool.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [pool[i], pool[j]] = [pool[j], pool[i]]; }
-    return pool.slice(0, 24);
-  } catch { return []; }
-}
 
 // 배경이 박힌(투명 아님) 로고는 연회색 타일로 감싸 회색 박스 이질감 완화
 const SOFT_BG = new Set(["닥터노바메디"]);
@@ -85,14 +61,13 @@ const STEPS: { n: string; title: string; desc: string }[] = [
   { n: "03", title: "활용·운영 방향 협의", desc: "제작한 콘텐츠의 활용과 TikTok Shop 입점·운영 방향을 협의합니다." },
 ];
 
-export default async function ReferPage() {
+export default function ReferPage() {
   const rank = (s: LogoSize) => { const i = SIZE_ORDER.indexOf(s); return i < 0 ? 99 : i; };
   const sortedLogos = [...REFER_LOGOS].sort((a, b) => rank(a.size) - rank(b.size));
   // 대표(간결) 브랜드 = 규모가 확인된 대형·중형. 긴 로고 벽 대신 대표 브랜드만 상단 노출.
   const repLogos = sortedLogos.filter((l) => l.size === "대형" || l.size === "중형");
 
   const marketOf = (m: string) => (m && m !== "미확인" ? m : null);
-  const feed = await loadMarketFeed();
 
   return (
     <div className="flex min-h-screen flex-col bg-[var(--bg)] text-[var(--fg)]">
@@ -109,14 +84,14 @@ export default async function ReferPage() {
           </h1>
           <p className="mt-4 max-w-[640px] text-[15px] leading-relaxed text-[var(--muted)] sm:text-[16.5px]">
             진출하려는 시장과 제품 특성에 맞춘 크리에이터 콘텐츠를 만들고, TikTok Shop 입점·운영까지 연결합니다.
-            함께한 브랜드와 실제 작업물을 아래에서 확인해 보세요.
+            함께한 브랜드와 콘텐츠 기획에 참고할 글로벌 사례를 아래에서 확인해 보세요.
           </p>
           <div className="mt-7 flex flex-wrap gap-2.5">
             <Link href="/consult1" className="rounded-2xl bg-[var(--accent)] px-6 py-3.5 text-[15px] font-black text-white shadow-lg transition hover:bg-[var(--accent-deep)]">
               우리 브랜드 협업 문의 →
             </Link>
             <a href="#ugc" className="rounded-2xl border border-[var(--border)] bg-white px-6 py-3.5 text-[15px] font-bold text-[var(--fg)] transition hover:border-[var(--accent)] hover:text-[var(--accent)]">
-              실제 작업물 보기
+              콘텐츠 레퍼런스 보기
             </a>
           </div>
           <div className="mt-8 flex flex-wrap gap-x-9 gap-y-4 text-[13px] text-[var(--muted)]">
@@ -197,47 +172,19 @@ export default async function ReferPage() {
         </div>
       </section>
 
-      {/* 실제 UGC 작업물 — 레퍼런스는 맨 아래(Footer 앞) 섹션으로 배치 */}
+      {/* 브랜드 콘텐츠 레퍼런스 10 — 고정 선별(외부 크리에이터 콘텐츠 참고 사례), Footer 직전 하단 */}
       <div className="border-t border-[var(--border)] bg-slate-50/70">
-        <Section id="ugc" kicker="Our Work" title="실제 UGC 작업물"
-          desc="협업 네트워크가 실제로 제작한 크리에이터 콘텐츠입니다. 각 카드는 실제 영상 원본으로 연결됩니다. 대표 사례를 먼저 보여드리고, 전체는 '사례 더 보기'에서 확인할 수 있습니다.">
-          <ReferUGC items={REFER_UGC} />
-          <p className="mt-6 text-[11px] leading-relaxed text-slate-400">
-            영상은 각 크리에이터의 원본 페이지에서 확인할 수 있습니다.
+        <Section id="ugc" kicker="Selected References" title="브랜드 콘텐츠 레퍼런스 10"
+          desc="Glovek에 수록된 공개 콘텐츠 중 제품 시연·루틴·발색·현장 체험이 잘 드러나는 10개를 선별했습니다.">
+          <ReferCurated items={REFER_CURATED} />
+          <p className="mt-5 text-[11px] leading-relaxed text-slate-400">
+            외부 크리에이터 콘텐츠 참고 사례이며, 디노스튜디오의 직접 제작 실적을 뜻하지 않습니다.
           </p>
-        </Section>
-      </div>
-
-      {/* 시장 콘텐츠 참고(자체 제작 아님) — 맨 아래, 피드는 접기/펼치기 */}
-      <div className="border-t border-[var(--border)] bg-slate-100/70">
-        <Section kicker="Market Reference" title="시장 콘텐츠 참고"
-          desc="아래는 시장 트렌드 리서치용으로 수집한 외부·시장 콘텐츠입니다. 디노스튜디오의 자체 제작 작업물이 아니며, 위의 ‘실제 UGC 작업물’과 구분됩니다.">
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
-            {REFER_CASES.map((c, i) => (
-              <a key={i} href={c.url} target="_blank" rel="noopener noreferrer"
-                className="group relative block overflow-hidden rounded-xl border border-[var(--border)] bg-black">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={c.img} alt={c.caption || `시장 참고 콘텐츠 ${i + 1}`} loading="lazy"
-                  className="aspect-[9/16] w-full object-cover transition duration-300 group-hover:scale-[1.03]" />
-                <div className="pointer-events-none absolute inset-x-0 bottom-0 flex items-end justify-end bg-gradient-to-t from-black/70 to-transparent p-2.5">
-                  <span className="rounded-full border border-amber-300/30 bg-amber-300/10 px-1.5 py-0.5 text-[9px] font-bold text-amber-200/90">{c.credit}</span>
-                </div>
-              </a>
-            ))}
+          <div className="mt-6">
+            <a href="/explorer" className="inline-flex items-center gap-2 rounded-full border border-[var(--border)] bg-white px-5 py-2.5 text-[13px] font-bold text-[var(--fg)] transition hover:border-[var(--accent)] hover:text-[var(--accent)]">
+              Glovek에서 더 많은 콘텐츠 보기 →
+            </a>
           </div>
-          <p className="mt-3 text-[11px] text-slate-500">※ 콘텐츠에 표기된 제작 크레딧을 유지한 중립 소개입니다(자체 제작 실적 아님).</p>
-
-          {feed.length > 0 && (
-            <details className="mt-6 rounded-2xl border border-[var(--border)] bg-white/70 p-4">
-              <summary className="cursor-pointer select-none text-[13.5px] font-bold text-[var(--fg)]">
-                최신 시장 틱톡 콘텐츠 더 보기 (무작위 {feed.length}개)
-              </summary>
-              <div className="mt-4">
-                <ReferFeed items={feed} />
-                <p className="mt-3 text-[11px] text-slate-500">※ glovek이 수집한 공개 틱톡 영상입니다(SHOP 뱃지 = 틱톡샵 연동). 디노스튜디오 자체 제작물이 아닙니다.</p>
-              </div>
-            </details>
-          )}
         </Section>
       </div>
 
