@@ -23,3 +23,22 @@
 
 - 데이터: `src/data/refer.ts` `REFER_CURATED`(카드 표시 필드만). 포스터: `public/refer/curated/`.
 - 기존 UGC 16건·GENIE 3건 데이터/자산은 소스에 보존(공개 페이지 비노출): `REFER_UGC`, `REFER_CASES`.
+
+## 추가 선별 10건 (풀 확장 → 총 20건, 검토일 2026-10-23)
+
+- 동일 기준으로 Glovek 수록 공개 데이터 + TikTok player 원본 설명·Video Cover를 대조해 선정(포스터 직접 비교). 전체 영상·오디오 재생 검수는 아님. 수치 성과·의료 효과 주장 없음, manifest 관찰형 카피 유지. signed CDN URL은 코드·공개 문서에 포함하지 않음.
+
+| # | 브랜드 | 크리에이터 | 원본 URL(canonical) | 로컬 포스터 |
+| --- | --- | --- | --- | --- |
+| 11 | 3CE / 쓰리씨이 | @naa._.aru | https://www.tiktok.com/@naa._.aru/video/7648965161792949522 | ref-7648965161792949522.jpg |
+| 12 | Clio / 클리오 | @ninapark | https://www.tiktok.com/@ninapark/video/7591769489012837645 | ref-7591769489012837645.jpg |
+| 13 | Mediheal / 메디힐 | @jessicafentisa | https://www.tiktok.com/@jessicafentisa/video/7521335940057419015 | ref-7521335940057419015.jpg |
+| 14 | VT Cosmetics / 브이티 | @koreangrandma | https://www.tiktok.com/@koreangrandma/video/7626580551280938261 | ref-7626580551280938261.jpg |
+| 15 | Aromatica / 아로마티카 | @ailimee__ | https://www.tiktok.com/@ailimee__/video/7671377861575576854 | ref-7671377861575576854.jpg |
+| 16 | Haruharu Wonder / 하루하루원더 | @by.fannys | https://www.tiktok.com/@by.fannys/video/7662048897132432673 | ref-7662048897132432673.jpg |
+| 17 | Fwee / 퓌 | @westclau_ | https://www.tiktok.com/@westclau_/video/7597063575559015687 | ref-7597063575559015687.jpg |
+| 18 | SKIN1004 / 스킨1004 | @tatiencorea | https://www.tiktok.com/@tatiencorea/video/7637495706105777426 | ref-7637495706105777426.jpg |
+| 19 | Rom&nd / 롬앤 | @missdarcei | https://www.tiktok.com/@missdarcei/video/7554463875261926674 | ref-7554463875261926674.jpg |
+| 20 | Beauty of Joseon / 조선미녀 | @kaynatt.m | https://www.tiktok.com/@kaynatt.m/video/7665035439610383638 | ref-7665035439610383638.jpg |
+
+- 노출 방식: 풀 20건에서 **요청마다 서버 Fisher-Yates 셔플 후 10건 샘플**(중복 ID 없음, 같은 화면 브랜드 중복 회피 — 풀 내 고유 브랜드 17개). `/refer` `force-dynamic`+`revalidate 0`으로 production/CDN 캐시 고정 방지. cookie/history/DB 전체 랜덤·신규 API 미사용.

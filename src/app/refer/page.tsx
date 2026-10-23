@@ -14,6 +14,24 @@ export const metadata: Metadata = {
   alternates: { canonical: "/refer" },
 };
 
+// 콘텐츠 레퍼런스를 새로고침마다 다른 10개 조합으로 노출 — 요청마다 서버 렌더(정적/CDN 캐시로 고정 방지).
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
+// 풀에서 매 요청마다 10개 샘플: Fisher-Yates 셔플 후 브랜드 중복 없이 우선 선택(모자라면 나머지로 채움), 중복 ID 없음.
+// 서버 컴포넌트에서 1회 실행 → HTML로 직렬화되므로 수화 불일치/초기 깜빡임 없음.
+function sampleCurated<T extends { id: string; brand: string }>(pool: T[], n: number): T[] {
+  const a = [...pool];
+  for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; }
+  const seen = new Set<string>();
+  const uniq: T[] = [], dup: T[] = [];
+  for (const it of a) {
+    const k = it.brand.trim().toLowerCase();
+    if (seen.has(k)) dup.push(it); else { seen.add(k); uniq.push(it); }
+  }
+  return [...uniq, ...dup].slice(0, n);
+}
+
 // 배경이 박힌(투명 아님) 로고는 연회색 타일로 감싸 회색 박스 이질감 완화
 const SOFT_BG = new Set(["닥터노바메디"]);
 // 흰색 단색 원본 로고 — 밝은 타일에서 보이도록 단색(검정)으로 렌더
@@ -68,6 +86,8 @@ export default function ReferPage() {
   const repLogos = sortedLogos.filter((l) => l.size === "대형" || l.size === "중형");
 
   const marketOf = (m: string) => (m && m !== "미확인" ? m : null);
+  // 새로고침마다 다른 10개 조합(중복 ID 없음, 가능하면 브랜드 중복 없이).
+  const curated = sampleCurated(REFER_CURATED, 10);
 
   return (
     <div className="flex min-h-screen flex-col bg-[var(--bg)] text-[var(--fg)]">
@@ -93,11 +113,6 @@ export default function ReferPage() {
             <a href="#ugc" className="rounded-2xl border border-[var(--border)] bg-white px-6 py-3.5 text-[15px] font-bold text-[var(--fg)] transition hover:border-[var(--accent)] hover:text-[var(--accent)]">
               콘텐츠 레퍼런스 보기
             </a>
-          </div>
-          <div className="mt-8 flex flex-wrap gap-x-9 gap-y-4 text-[13px] text-[var(--muted)]">
-            <div><b className="text-[22px] font-black text-[var(--fg)]">{REFER_LOGOS.length}+</b> 협업 브랜드</div>
-            <div><b className="text-[22px] font-black text-[var(--fg)]">{REFER_TIKTOK.length}</b> TikTok Shop 진행 브랜드</div>
-            <div><b className="text-[22px] font-black text-[var(--fg)]">미국·태국·베트남</b> 진출 지원</div>
           </div>
         </div>
       </header>
@@ -175,7 +190,7 @@ export default function ReferPage() {
       {/* 브랜드 콘텐츠 레퍼런스 10 — 고정 선별(외부 크리에이터 콘텐츠 참고 사례), Footer 직전 하단 */}
       <div className="border-t border-[var(--border)] bg-slate-50/70">
         <Section id="ugc" kicker="Selected References" title="틱톡 세일즈 콘텐츠 예시">
-          <ReferCurated items={REFER_CURATED} />
+          <ReferCurated items={curated} />
           <p className="mt-5 text-[11px] leading-relaxed text-slate-400">
             외부 크리에이터 콘텐츠 참고 사례이며, 디노스튜디오의 직접 제작 실적을 뜻하지 않습니다.
           </p>
