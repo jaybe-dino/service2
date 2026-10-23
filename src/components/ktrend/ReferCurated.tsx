@@ -19,10 +19,10 @@ export default function ReferCurated({ items }: { items: Item[] }) {
             <div className="text-[12px] font-extrabold leading-tight text-[var(--fg)]">
               {v.brandKo} <span className="font-semibold text-[var(--muted)]">{v.brand}</span>
             </div>
-            <div className="line-clamp-2 text-[13px] font-bold leading-snug">{v.title}</div>
-            <p className="line-clamp-2 text-[11.5px] leading-snug text-[var(--muted)]">{v.note}</p>
-            <div className="mt-auto flex items-center justify-between gap-2 pt-1.5">
-              <span className="truncate text-[11px] font-semibold text-slate-400">@{v.handle}</span>
+            <div className="text-[13px] font-bold leading-snug">{v.title}</div>
+            <p className="text-[11.5px] leading-snug text-[var(--muted)]">{v.note}</p>
+            <div className="mt-auto flex flex-col items-start gap-1 pt-1.5">
+              <span className="break-all text-[11px] font-semibold text-slate-400">@{v.handle}</span>
               <span className="shrink-0 text-[11px] font-bold text-[var(--accent)]">원본 영상 보기 ↗</span>
             </div>
           </div>
