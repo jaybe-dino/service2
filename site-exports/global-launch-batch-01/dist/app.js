@@ -46,12 +46,14 @@
 
   function el(tag, cls) { var e = document.createElement(tag); if (cls) e.className = cls; return e; }
 
-  // 1) 로고 그리드 렌더
+  // 1) 로고 그리드 렌더 (12개 먼저, 나머지는 '전체 보기'로 펼침)
+  var LOGO_PREVIEW = 12;
   function renderLogos() {
     var grid = document.getElementById("logoGrid");
     if (!grid) return;
-    BRANDS.forEach(function (b) {
+    BRANDS.forEach(function (b, idx) {
       var tile = el("div", "logo-tile");
+      if (idx >= LOGO_PREVIEW) tile.setAttribute("data-extra", "");
       if (b.soft) tile.style.background = "#f1f5f9";
       var img = el("img");
       img.src = LOGO + b.f;
@@ -194,6 +196,18 @@
     });
   }
 
-  function init() { renderLogos(); initMenu(); initCalc(); initForm(); }
+  // 1b) 전체 협업 브랜드 보기 토글
+  function initLogoMore() {
+    var btn = document.getElementById("logoMore"), grid = document.getElementById("logoGrid");
+    if (!btn || !grid) return;
+    if (BRANDS.length <= LOGO_PREVIEW) { btn.hidden = true; return; }
+    btn.addEventListener("click", function () {
+      var open = grid.classList.toggle("show-all");
+      btn.setAttribute("aria-expanded", open ? "true" : "false");
+      btn.textContent = open ? "협업 브랜드 접기" : "전체 협업 브랜드 보기";
+    });
+  }
+
+  function init() { renderLogos(); initLogoMore(); initMenu(); initCalc(); initForm(); }
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", init); else init();
 })();
