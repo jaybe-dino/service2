@@ -91,6 +91,13 @@
   function selectedRegions() {
     return Array.prototype.slice.call(document.querySelectorAll('input[name="region"]:checked')).map(function (c) { return c.value; });
   }
+  // 권역/동남아 하위 국가 요소 접근자
+  function calcRegionEls() { return document.querySelectorAll('input[name="region"]'); }
+  function formRegionEls() { return document.querySelectorAll('input[name="fregion"]'); }
+  function seaEls() { return document.querySelectorAll('input[name="sea"]'); }
+  function selectedSea() { return Array.prototype.slice.call(seaEls()).filter(function (c) { return c.checked && !c.disabled; }).map(function (c) { return c.value; }); }
+  function seaActive() { return Array.prototype.slice.call(calcRegionEls()).some(function (c) { return c.value === "동남아" && c.checked; }); }
+
   function recalc() {
     var regions = selectedRegions(), n = regions.length;
     var reg = UNIT_REG * n, supply = UNIT_SUPPLY * n, incl = UNIT_INCL * n;
@@ -100,23 +107,32 @@
     if (g) { g.textContent = n ? won(reg) : "권역 선택 후 안내"; g.classList.toggle("reg", n > 0); }
     if (s) s.textContent = n ? won(supply) : "권역 선택 후 안내";
     if (i) i.textContent = n ? won(incl) : "권역 선택 후 안내";
-    // 폼 권역 선택(#f-region) 동기화
-    var fRegion = document.getElementById("f-region");
-    if (fRegion) Array.prototype.forEach.call(fRegion.options, function (o) { o.selected = regions.indexOf(o.value) !== -1; });
     return { regions: regions, n: n, reg: reg, supply: supply, incl: incl };
   }
 
+  // 계산기 ↔ 신청서 권역을 값으로만 미러링(이벤트 미발생 → 중복 계산 방지)
+  function mirror(src, dst) {
+    var vals = Array.prototype.slice.call(src).filter(function (c) { return c.checked; }).map(function (c) { return c.value; });
+    Array.prototype.forEach.call(dst, function (c) { c.checked = vals.indexOf(c.value) !== -1; });
+  }
+  function toggleSea(on) {
+    var wrap = document.getElementById("seaWrap");
+    if (wrap) wrap.hidden = !on;
+    Array.prototype.forEach.call(seaEls(), function (c) { c.disabled = !on; if (!on) c.checked = false; });
+    if (!on) { var e = document.getElementById("e-sea"); if (e) e.hidden = true; }
+  }
+  function syncRegions(fromForm) {
+    if (fromForm) mirror(formRegionEls(), calcRegionEls());
+    else mirror(calcRegionEls(), formRegionEls());
+    toggleSea(seaActive());
+    recalc();
+  }
+
   function initCalc() {
-    document.querySelectorAll('input[name="region"]').forEach(function (inp) {
-      inp.addEventListener("change", recalc);
-    });
-    // 폼 권역 → calc 역동기화
-    var fRegion = document.getElementById("f-region");
-    if (fRegion) fRegion.addEventListener("change", function () {
-      var vals = Array.prototype.slice.call(fRegion.selectedOptions).map(function (o) { return o.value; });
-      document.querySelectorAll('input[name="region"]').forEach(function (c) { c.checked = vals.indexOf(c.value) !== -1; });
-      recalc();
-    });
+    Array.prototype.forEach.call(calcRegionEls(), function (inp) { inp.addEventListener("change", function () { syncRegions(false); }); });
+    Array.prototype.forEach.call(formRegionEls(), function (inp) { inp.addEventListener("change", function () { syncRegions(true); }); });
+    Array.prototype.forEach.call(seaEls(), function (inp) { inp.addEventListener("change", function () { var e = document.getElementById("e-sea"); if (e && selectedSea().length) e.hidden = true; }); });
+    toggleSea(seaActive());
     recalc();
   }
 
@@ -127,8 +143,9 @@
         email = form.email.value.trim(), product = form.product.value.trim(),
         msg = form.message.value.trim();
     var chosen = selectedRegions();
+    var sea = selectedSea();
     var n = chosen.length, reg = UNIT_REG * n, supply = UNIT_SUPPLY * n, incl = UNIT_INCL * n;
-    var regions = n ? chosen.join(", ") + " (" + n + "권역)" : "미선택";
+    var regions = n ? chosen.map(function (r) { return (r === "동남아" && sea.length) ? ("동남아(" + sea.join("·") + ")") : r; }).join(", ") + " (" + n + "권역)" : "미선택";
     var cost = n ? ("정가 " + won(reg) + " → 50% 할인 공급가 " + won(supply) + " / VAT 포함 " + won(incl)) : "권역 미선택";
     var subject = "[글로벌 진출 배치 1기] 배치 1기 참여 신청 - " + brand;
     var body = [
@@ -167,6 +184,11 @@
       bad(!emailRe.test(email), "e-email", form.email);
       var prodBad = product !== "" && !/^https?:\/\/\S+$/i.test(product);
       bad(prodBad, "e-product", form.product);
+      // 동남아 선택 시 하위 국가 1개 이상 필수
+      var seaBad = seaActive() && selectedSea().length === 0;
+      var eSea = document.getElementById("e-sea");
+      if (eSea) eSea.hidden = !seaBad;
+      if (seaBad) { ok = false; if (!firstBad) firstBad = document.querySelector('input[name="sea"]'); }
       if (!ok) { if (firstBad) firstBad.focus(); return; }
       window.location.href = buildMailto(form);
     });

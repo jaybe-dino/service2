@@ -6,8 +6,8 @@
   <title>글로벌 진출 배치 1기 · GLOBAL LAUNCH BATCH 01 — 디노스튜디오</title>
   <meta name="description" content="디노스튜디오가 운영하는 글로벌 진출 배치 1기. 선정 10개사와 2개월간 진출 국가 선택부터 온보딩·첫 출고·크리에이터 시딩까지 함께 실행합니다. (운영 예정)" />
   <meta name="robots" content="noindex" />
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%2310192c'/%3E%3Ctext x='16' y='22' font-size='15' font-family='sans-serif' font-weight='700' fill='%23fff' text-anchor='middle'%3EG%3C/text%3E%3C/svg%3E" />
-  <link rel="stylesheet" href="styles.css?v=20261025g" />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230a0a0a'/%3E%3Ctext x='16' y='22' font-size='15' font-family='sans-serif' font-weight='700' fill='%2325f4ee' text-anchor='middle'%3EG%3C/text%3E%3C/svg%3E" />
+  <link rel="stylesheet" href="styles.css?v=20261025h" />
 </head>
 <body id="top">
 <a class="skip" href="#main">본문으로 건너뛰기</a>
@@ -58,11 +58,11 @@
       <!-- LAUNCH PASS (코드 기반 시각물) -->
       <div class="pass" aria-label="BATCH 01 론칭 패스 · 출고 1위 시딩 리워드 미리보기">
         <svg class="pass-orbits" viewBox="0 0 320 320" aria-hidden="true" focusable="false">
-          <circle cx="232" cy="96" r="150" fill="none" stroke="rgba(215,239,131,.22)" stroke-width="1" />
+          <circle cx="232" cy="96" r="150" fill="none" stroke="rgba(37,244,238,.22)" stroke-width="1" />
           <circle cx="232" cy="96" r="108" fill="none" stroke="rgba(255,255,255,.12)" stroke-width="1" />
-          <circle cx="232" cy="96" r="66" fill="none" stroke="rgba(215,239,131,.4)" stroke-width="1.5" />
-          <circle cx="298" cy="96" r="4" fill="#d7ef83" />
-          <circle cx="166" cy="96" r="3" fill="#ffffff" opacity=".6" />
+          <circle cx="232" cy="96" r="66" fill="none" stroke="rgba(254,44,85,.5)" stroke-width="1.5" />
+          <circle cx="298" cy="96" r="4" fill="#25f4ee" />
+          <circle cx="166" cy="96" r="3" fill="#fe2c55" />
           <circle cx="232" cy="30" r="3" fill="#fff" opacity=".7" />
         </svg>
         <div class="pass-head"><span>LAUNCH PASS</span><span class="pass-head-b">BATCH 01</span></div>
@@ -351,15 +351,25 @@
           <input id="f-product" aria-describedby="e-product" name="product" type="url" inputmode="url" placeholder="https://" />
           <p class="err" id="e-product" hidden>올바른 URL을 입력하거나 비워 두세요.</p>
         </div>
-        <div class="field field-full">
-          <label for="f-region">희망 권역</label>
-          <select id="f-region" name="region" multiple size="3" aria-describedby="region-help">
-            <option value="미국">미국</option>
-            <option value="일본">일본</option>
-            <option value="동남아">동남아 (5개국)</option>
-          </select>
-          <p class="hint" id="region-help">복수 선택 가능 (Ctrl/Cmd + 클릭). 위 ‘비용 계산’ 선택이 자동 반영됩니다.</p>
-        </div>
+        <fieldset class="field field-full region-field">
+          <legend>희망 권역 <span class="hint-inline">(복수 선택 · 위 ‘비용 계산’과 연동)</span></legend>
+          <div class="check-row" id="formRegions">
+            <label class="opt"><input type="checkbox" name="fregion" value="미국" /> <img src="assets/flags/us.svg" alt="" width="24" height="16" /> <span>미국</span></label>
+            <label class="opt"><input type="checkbox" name="fregion" value="일본" /> <img src="assets/flags/jp.svg" alt="" width="24" height="16" /> <span>일본</span></label>
+            <label class="opt"><input type="checkbox" name="fregion" value="동남아" /> <img src="assets/flags/th.svg" alt="" width="24" height="16" /> <span>동남아 (5개국)</span></label>
+          </div>
+          <div class="sea-wrap" id="seaWrap" hidden>
+            <p class="sea-help" id="sea-help">동남아 진출 국가를 1개 이상 선택하세요. <strong>국가 수와 관계없이 동남아는 1권역(150만원)</strong>입니다.</p>
+            <div class="check-row" role="group" aria-labelledby="sea-help">
+              <label class="opt opt-sm"><input type="checkbox" name="sea" value="태국" disabled /> <img src="assets/flags/th.svg" alt="" width="22" height="15" /> <span>태국</span></label>
+              <label class="opt opt-sm"><input type="checkbox" name="sea" value="베트남" disabled /> <img src="assets/flags/vn.svg" alt="" width="22" height="15" /> <span>베트남</span></label>
+              <label class="opt opt-sm"><input type="checkbox" name="sea" value="필리핀" disabled /> <img src="assets/flags/ph.svg" alt="" width="22" height="15" /> <span>필리핀</span></label>
+              <label class="opt opt-sm"><input type="checkbox" name="sea" value="말레이시아" disabled /> <img src="assets/flags/my.svg" alt="" width="22" height="15" /> <span>말레이시아</span></label>
+              <label class="opt opt-sm"><input type="checkbox" name="sea" value="싱가포르" disabled /> <img src="assets/flags/sg.svg" alt="" width="22" height="15" /> <span>싱가포르</span></label>
+            </div>
+            <p class="err" id="e-sea" hidden>동남아 진출 국가를 1개 이상 선택해 주세요.</p>
+          </div>
+        </fieldset>
         <div class="field field-full">
           <label for="f-msg">메시지</label>
           <textarea id="f-msg" name="message" rows="4" placeholder="제품·일정·문의 사항을 적어 주세요."></textarea>
@@ -382,6 +392,6 @@
   </div>
 </footer>
 
-<script src="app.js?v=20261025g"></script>
+<script src="app.js?v=20261025h"></script>
 </body>
 </html>
