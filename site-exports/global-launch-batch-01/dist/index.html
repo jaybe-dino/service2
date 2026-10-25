@@ -7,7 +7,7 @@
   <meta name="description" content="디노스튜디오가 운영하는 글로벌 진출 배치 1기. 선정 10개사와 2개월간 진출 국가 선택부터 온보딩·첫 출고·크리에이터 시딩까지 함께 실행합니다. (운영 예정)" />
   <meta name="robots" content="noindex" />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%232449e9'/%3E%3Ctext x='16' y='22' font-size='15' font-family='sans-serif' font-weight='700' fill='%23fff' text-anchor='middle'%3EG%3C/text%3E%3C/svg%3E" />
-  <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="styles.css?v=20261025d" />
 </head>
 <body id="top">
 <a class="skip" href="#main">본문으로 건너뛰기</a>
@@ -41,8 +41,8 @@
     <div class="wrap hero-grid">
       <div class="hero-copy">
         <p class="eyebrow"><span class="eyebrow-dot"></span>글로벌 진출 배치 1기 · 디노스튜디오 운영 <span class="eyebrow-muted">(운영 예정)</span></p>
-        <h1 class="hero-title">우리 브랜드의 다음 시장,<br />이제 <span class="hl">실행할 시간.</span></h1>
-        <p class="hero-sub">진출 국가 선택부터 온보딩·첫 출고, 현지 크리에이터 시딩까지 — 선정 10개 브랜드의 2개월 해외 론칭을 디노스튜디오가 함께 실행합니다.</p>
+        <h1 class="hero-title">우리 브랜드,<br /><span class="hl">다음 시장으로.</span></h1>
+        <p class="hero-sub">국가 선택부터 TikTok Shop 온보딩·첫 출고까지. 선정 10개 브랜드의 2개월 해외 론칭을 함께 실행합니다. 출고 상위 3개사에는 현지 크리에이터 시딩을 지원합니다.</p>
         <div class="hero-ctas">
           <a class="btn btn-primary" href="#apply" data-track="batch">배치 참여 신청 <span aria-hidden="true">→</span></a>
           <a class="btn btn-line" href="#apply" data-track="onboarding">온보딩만 문의</a>
@@ -108,7 +108,7 @@
       <p class="sec-lead">제약·뷰티·식품·유통 분야의 브랜드와 콘텐츠·진출 프로젝트를 함께 해 왔습니다. 그중 <strong>TikTok Shop</strong> 입점·운영을 함께한 브랜드는 라벨로 표시했으며, 모든 협업 브랜드가 TikTok Shop 고객인 것은 아닙니다.</p>
       <div class="logo-grid" id="logoGrid" aria-label="협업 브랜드 로고"></div>
       <div class="logo-actions">
-        <button type="button" class="btn btn-line btn-sm" id="logoMore" aria-expanded="false">전체 협업 브랜드 보기</button>
+        <button type="button" class="btn btn-line btn-sm" id="logoMore" aria-controls="logoGrid" aria-expanded="false">전체 협업 브랜드 보기</button>
         <p class="legend"><span class="legend-chip">TikTok Shop</span> 입점·운영을 함께한 브랜드</p>
       </div>
       <noscript><p class="sec-lead">브랜드 로고 목록은 자바스크립트가 켜져 있을 때 표시됩니다.</p></noscript>
@@ -129,7 +129,7 @@
           <p class="feature-tag">조건부 혜택</p>
           <h3 class="feature-h">보증금 <span class="nowrap">$1,500</span><br />면제 트랙</h3>
           <p class="feature-cond">적용 대상 · 플랫폼 승인 조건 충족 시</p>
-          <p class="feature-body">진출 국가와 셀러 유형에 따라 면제 자격을 확인하고 신청을 지원합니다. 적용 범위와 조건은 계약 전에 안내하며, 온보딩 서비스비와 보증금은 별도 항목입니다. 모든 기업·모든 국가 무조건 면제나 현금 지원·영구 면제가 아닙니다.</p>
+          <p class="feature-body">진출 국가와 셀러 유형에 따라 면제 자격을 확인하고 신청을 지원합니다. 적용 범위와 조건은 계약 전에 안내합니다. 온보딩 서비스비는 별도입니다.</p>
         </article>
         <ol class="benefit-list">
           <li><span class="bn">01</span><div><h3>글로벌 진출 가이드북</h3><p>진출 준비 전반을 한 권으로 정리한 가이드북을 제공합니다.</p></div></li>
@@ -348,22 +348,22 @@
       <form class="contact-form" id="contactForm" novalidate>
         <div class="field">
           <label for="f-brand">브랜드명 <span class="req" aria-hidden="true">*</span></label>
-          <input id="f-brand" name="brand" type="text" autocomplete="organization" required />
+          <input id="f-brand" aria-describedby="e-brand" name="brand" type="text" autocomplete="organization" required />
           <p class="err" id="e-brand" hidden>브랜드명을 입력해 주세요.</p>
         </div>
         <div class="field">
           <label for="f-name">담당자 <span class="req" aria-hidden="true">*</span></label>
-          <input id="f-name" name="manager" type="text" autocomplete="name" required />
+          <input id="f-name" aria-describedby="e-name" name="manager" type="text" autocomplete="name" required />
           <p class="err" id="e-name" hidden>담당자 이름을 입력해 주세요.</p>
         </div>
         <div class="field">
           <label for="f-email">이메일 <span class="req" aria-hidden="true">*</span></label>
-          <input id="f-email" name="email" type="email" autocomplete="email" inputmode="email" required />
+          <input id="f-email" aria-describedby="e-email" name="email" type="email" autocomplete="email" inputmode="email" required />
           <p class="err" id="e-email" hidden>올바른 이메일 주소를 입력해 주세요.</p>
         </div>
         <div class="field">
           <label for="f-product">제품 URL</label>
-          <input id="f-product" name="product" type="url" inputmode="url" placeholder="https://" />
+          <input id="f-product" aria-describedby="e-product" name="product" type="url" inputmode="url" placeholder="https://" />
           <p class="err" id="e-product" hidden>올바른 URL을 입력하거나 비워 두세요.</p>
         </div>
         <div class="field">
@@ -404,6 +404,6 @@
   </div>
 </footer>
 
-<script src="app.js"></script>
+<script src="app.js?v=20261025d"></script>
 </body>
 </html>

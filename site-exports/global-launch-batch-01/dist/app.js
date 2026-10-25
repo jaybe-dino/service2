@@ -51,7 +51,9 @@
   function renderLogos() {
     var grid = document.getElementById("logoGrid");
     if (!grid) return;
-    BRANDS.forEach(function (b, idx) {
+    var previewNames = ["유한양행", "클리오", "톤28", "LG생활건강", "CJ제일제당", "블리블리", "파우", "리꼼", "앱소", "닥터브라이언", "JMW / 로아띠", "웰더마"];
+    var orderedBrands = previewNames.map(function (name) { return BRANDS.find(function (b) { return b.n === name; }); }).filter(Boolean).concat(BRANDS.filter(function (b) { return previewNames.indexOf(b.n) < 0; }));
+    orderedBrands.forEach(function (b, idx) {
       var tile = el("div", "logo-tile");
       if (idx >= LOGO_PREVIEW) tile.setAttribute("data-extra", "");
       if (b.soft) tile.style.background = "#f1f5f9";
@@ -79,9 +81,9 @@
       btn.setAttribute("aria-label", open ? "메뉴 닫기" : "메뉴 열기");
     };
     btn.addEventListener("click", function () { set(btn.getAttribute("aria-expanded") !== "true"); });
-    nav.addEventListener("click", function (e) { if (e.target.tagName === "A") set(false); });
+    nav.addEventListener("click", function (e) { if (e.target.closest("a")) set(false); });
     document.addEventListener("keydown", function (e) { if (e.key === "Escape") set(false); });
-    window.addEventListener("resize", function () { if (window.innerWidth > 640) set(false); });
+    window.addEventListener("resize", function () { if (window.innerWidth > 1024) set(false); });
   }
 
   // 3) 상태(참여방식·권역) + 가격 계산 — calc ↔ form 동기화
@@ -180,7 +182,7 @@
       var brand = form.brand.value.trim(), name = form.manager.value.trim(),
           email = form.email.value.trim(), product = form.product.value.trim();
       var ok = true, firstBad = null;
-      function bad(cond, errId, field) { show(errId, cond); if (cond) { ok = false; if (!firstBad) firstBad = field; } }
+      function bad(cond, errId, field) { show(errId, cond); field.setAttribute("aria-invalid", cond ? "true" : "false"); if (cond) { ok = false; if (!firstBad) firstBad = field; } }
       bad(!brand, "e-brand", form.brand);
       bad(!name, "e-name", form.manager);
       bad(!emailRe.test(email), "e-email", form.email);
@@ -192,7 +194,7 @@
     // 입력 시 해당 에러 숨김
     ["brand", "manager", "email", "product"].forEach(function (nm) {
       var map = { brand: "e-brand", manager: "e-name", email: "e-email", product: "e-product" };
-      if (form[nm]) form[nm].addEventListener("input", function () { show(map[nm], false); });
+      if (form[nm]) form[nm].addEventListener("input", function () { show(map[nm], false); form[nm].removeAttribute("aria-invalid"); });
     });
   }
 
