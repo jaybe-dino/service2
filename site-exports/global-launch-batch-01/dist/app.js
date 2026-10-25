@@ -57,7 +57,7 @@
     orderedBrands.forEach(function (b, idx) {
       var tile = el("div", "logo-tile");
       if (idx >= LOGO_PREVIEW) tile.setAttribute("data-extra", "");
-      if (b.soft) tile.style.background = "#f1f5f9";
+      if (b.soft) tile.style.background = "#f5f5f6";
       var img = el("img");
       img.src = LOGO + b.f;
       img.alt = b.n + (b.tiktok ? " (TikTok Shop 입점·운영)" : "") + " 로고";
@@ -119,7 +119,7 @@
     var wrap = document.getElementById("seaWrap");
     if (wrap) wrap.hidden = !on;
     Array.prototype.forEach.call(seaEls(), function (c) { c.disabled = !on; if (!on) c.checked = false; });
-    if (!on) { var e = document.getElementById("e-sea"); if (e) e.hidden = true; }
+    if (!on) { var e = document.getElementById("e-sea"); if (e) e.hidden = true; var group = document.getElementById("seaCountries"); if (group) group.removeAttribute("aria-invalid"); }
   }
   function syncRegions(fromForm) {
     if (fromForm) mirror(formRegionEls(), calcRegionEls());
@@ -131,7 +131,7 @@
   function initCalc() {
     Array.prototype.forEach.call(calcRegionEls(), function (inp) { inp.addEventListener("change", function () { syncRegions(false); }); });
     Array.prototype.forEach.call(formRegionEls(), function (inp) { inp.addEventListener("change", function () { syncRegions(true); }); });
-    Array.prototype.forEach.call(seaEls(), function (inp) { inp.addEventListener("change", function () { var e = document.getElementById("e-sea"); if (e && selectedSea().length) e.hidden = true; }); });
+    Array.prototype.forEach.call(seaEls(), function (inp) { inp.addEventListener("change", function () { var e = document.getElementById("e-sea"); if (e && selectedSea().length) { e.hidden = true; var group = document.getElementById("seaCountries"); if (group) group.removeAttribute("aria-invalid"); } }); });
     toggleSea(seaActive());
     recalc();
   }
@@ -188,6 +188,8 @@
       var seaBad = seaActive() && selectedSea().length === 0;
       var eSea = document.getElementById("e-sea");
       if (eSea) eSea.hidden = !seaBad;
+      var seaGroup = document.getElementById("seaCountries");
+      if (seaGroup) seaGroup.setAttribute("aria-invalid", seaBad ? "true" : "false");
       if (seaBad) { ok = false; if (!firstBad) firstBad = document.querySelector('input[name="sea"]'); }
       if (!ok) { if (firstBad) firstBad.focus(); return; }
       window.location.href = buildMailto(form);

@@ -1,10 +1,10 @@
 :root{
   /* TikTok 톤: black / white / cyan / pink (흑백 대비 중심, cyan·pink는 강조 제한) */
   --midnight:#0a0a0a; --midnight-2:#1c1c1f; --paper:#f4f4f5; --surface:#ffffff; --lime:#25f4ee;
-  --cyan:#25f4ee; --pink:#fe2c55; --pink-deep:#e01f45;
+  --cyan:#25f4ee; --pink:#fe2c55; --pink-deep:#d51e43; --pink-text:#c91c42;
   /* 본문/보조/약한 글씨 (중립 그레이) */
-  --ink:#111318; --ink-soft:#55575d; --ink-mute:#8b8d93;
-  --on-dark:#f2f2f3; --on-dark-soft:#b9bbc0; --on-dark-mute:#7a7d84;
+  --ink:#111318; --ink-soft:#55575d; --ink-mute:#686a70;
+  --on-dark:#f2f2f3; --on-dark-soft:#b9bbc0; --on-dark-mute:#989aa1;
   /* 경계선 */
   --border:#e4e4e7; --border-2:#ededee; --border-dark:rgba(255,255,255,.14); --border-dark-2:rgba(255,255,255,.08);
   --wrap:1200px;
@@ -39,7 +39,7 @@ h1,h2,h3{word-break:keep-all;line-height:1.18;margin:0}
 .nav{display:flex;align-items:center;gap:26px}
 .nav>a{color:var(--ink);font-size:14px;font-weight:600}
 .nav>a:hover{color:var(--midnight);text-decoration:underline}
-.nav-cta{background:var(--pink);color:#fff!important;padding:11px 18px;border-radius:var(--r);font-weight:800;font-size:13px}
+.nav-cta{background:var(--pink-deep);color:#fff!important;padding:11px 18px;border-radius:var(--r);font-weight:800;font-size:13px}
 .nav-cta:hover{background:var(--pink-deep);text-decoration:none}
 .menu-toggle{display:none;flex-direction:column;gap:4px;width:44px;height:44px;align-items:center;justify-content:center;background:transparent;border:1px solid var(--border);border-radius:var(--r);cursor:pointer}
 .menu-toggle span{width:20px;height:2px;background:var(--midnight);transition:.2s}
@@ -51,7 +51,7 @@ h1,h2,h3{word-break:keep-all;line-height:1.18;margin:0}
 .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:48px;padding:13px 26px;border-radius:var(--r);font-size:15px;font-weight:800;cursor:pointer;border:1.5px solid transparent;text-align:center;letter-spacing:-.01em}
 .btn:hover{text-decoration:none}
 .btn-sm{min-height:42px;padding:9px 18px;font-size:13.5px}
-.btn-primary{background:var(--pink);color:#fff}
+.btn-primary{background:var(--pink-deep);color:#fff}
 .btn-primary:hover{background:var(--pink-deep)}
 .btn-line{background:transparent;color:var(--midnight);border-color:var(--midnight)}
 .btn-line:hover{background:var(--midnight);color:#fff}
@@ -64,7 +64,7 @@ h1,h2,h3{word-break:keep-all;line-height:1.18;margin:0}
 .section-mid{background:var(--midnight);color:var(--on-dark)}
 .sec-head{display:flex;align-items:baseline;gap:22px;flex-wrap:wrap;border-top:2px solid var(--midnight);padding-top:18px;margin-bottom:26px}
 .section-mid .sec-head{border-top-color:var(--cyan)}
-.kicker{font-size:12px;font-weight:800;letter-spacing:.22em;text-transform:uppercase;color:var(--pink);margin:0;display:flex;align-items:center;gap:10px;flex:0 0 auto}
+.kicker{font-size:12px;font-weight:800;letter-spacing:.22em;text-transform:uppercase;color:var(--pink-text);margin:0;display:flex;align-items:center;gap:10px;flex:0 0 auto}
 .kicker .num{font-size:12px;color:var(--ink-mute);letter-spacing:.1em}
 .kicker-light{color:var(--cyan)}
 .kicker-light .num{color:var(--on-dark-mute)}
@@ -107,7 +107,7 @@ h1,h2,h3{word-break:keep-all;line-height:1.18;margin:0}
 .ticket{position:relative;background:#fff;color:var(--midnight);border-radius:var(--r);padding:16px 20px;margin-top:4px}
 .ticket::before,.ticket::after{content:"";position:absolute;top:50%;width:16px;height:16px;border-radius:50%;background:var(--midnight);transform:translateY(-50%)}
 .ticket::before{left:-9px}.ticket::after{right:-9px}
-.ticket-label{font-size:11px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:var(--pink);margin:0}
+.ticket-label{font-size:11px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:var(--pink-text);margin:0}
 .ticket-main{font-size:40px;font-weight:900;letter-spacing:-.03em;margin:4px 0 0;line-height:1}
 .ticket-main span{font-size:17px;font-weight:800;margin-left:3px}
 .ticket-sub{font-size:14px;font-weight:800;margin:4px 0 0}
@@ -141,7 +141,7 @@ h1,h2,h3{word-break:keep-all;line-height:1.18;margin:0}
 .benefit-list{list-style:none;margin:0;padding:0}
 .benefit-list li{display:grid;grid-template-columns:auto 1fr;gap:18px;align-items:start;padding:20px 0;border-top:1px solid var(--border)}
 .benefit-list li:first-child{border-top:none;padding-top:0}
-.benefit-list .bn{font-size:13px;font-weight:800;color:var(--pink);letter-spacing:.08em;padding-top:3px;font-variant-numeric:tabular-nums}
+.benefit-list .bn{font-size:13px;font-weight:800;color:var(--pink-text);letter-spacing:.08em;padding-top:3px;font-variant-numeric:tabular-nums}
 .benefit-list h3{font-size:17.5px;font-weight:800;margin:0 0 4px}
 .benefit-list p{font-size:14px;color:var(--ink-soft);margin:0}
 
@@ -199,7 +199,7 @@ h1,h2,h3{word-break:keep-all;line-height:1.18;margin:0}
 .calc-top{border-bottom:1px solid var(--border);padding-bottom:18px;margin-bottom:20px}
 .calc-title{font-size:20px;font-weight:900;margin:0 0 6px}
 .calc-unit{font-size:14.5px;color:var(--ink-soft);margin:0}
-.calc-unit b{color:var(--pink)}
+.calc-unit b{color:var(--pink-text)}
 .calc-unit .reg-price{color:var(--ink-mute);text-decoration:line-through;font-weight:600}
 .calc-unit .save{color:var(--midnight);font-weight:800;background:var(--cyan);border-radius:var(--r-sm);padding:1px 7px;margin:0 2px}
 .apply-period{font-size:13px;font-weight:700;color:var(--midnight);background:var(--paper);border:1px solid var(--border);border-left:3px solid var(--pink);border-radius:var(--r);padding:12px 16px;margin:0 0 22px}
@@ -211,7 +211,7 @@ h1,h2,h3{word-break:keep-all;line-height:1.18;margin:0}
 .opt img{border:1px solid var(--border);border-radius:2px}
 .opt:has(input:checked){border-color:var(--midnight);background:rgba(37,244,238,.14);color:var(--midnight)}
 .opt input{width:18px;height:18px;accent-color:var(--pink)}
-.opt-sm{min-height:40px;padding:7px 12px;font-size:13px}
+.opt-sm{min-height:44px;padding:7px 12px;font-size:13px}
 .calc-out{background:var(--paper);border:1px solid var(--border);border-radius:var(--r);padding:20px}
 .calc-line{display:flex;justify-content:space-between;align-items:baseline;gap:12px;font-size:14.5px;color:var(--ink-soft);padding:7px 0}
 .calc-line b{color:var(--midnight);font-size:16px;font-weight:800;text-align:right}
@@ -253,8 +253,10 @@ h1,h2,h3{word-break:keep-all;line-height:1.18;margin:0}
 .field textarea{min-height:108px;resize:vertical}
 .field input:focus,.field select:focus,.field textarea:focus{border-color:var(--midnight);outline:none;box-shadow:0 0 0 3px rgba(254,44,85,.14)}
 .field input[aria-invalid="true"]{border-color:var(--pink)}
-.field .err{color:var(--pink);font-size:12.5px;margin:0}
+.field .err{color:var(--pink-text);font-size:12.5px;margin:0}
 .field .hint{color:var(--ink-mute);font-size:12px;margin:0}
+.region-field input[type="checkbox"]{width:18px;height:18px;min-height:18px;max-width:none;padding:0;flex:0 0 18px;accent-color:var(--pink-deep);border-radius:3px}
+.region-field input[type="checkbox"]:focus-visible{outline:2.5px solid var(--pink-deep);outline-offset:3px;box-shadow:none}
 /* 신청서 희망 권역(체크박스 + 동남아 조건부) */
 .region-field{border:1px solid var(--border);border-radius:var(--r);padding:16px;margin:0;background:#fff}
 .region-field>legend{font-size:13.5px;font-weight:700;color:var(--midnight);padding:0 6px}
