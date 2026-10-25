@@ -1,8 +1,6 @@
 "use strict";
 /* 글로벌 진출 배치 1기 — 정적(buildless) 사이트. 서버/DB 없음. */
 (function () {
-  // JS 활성 표시(없으면 .reveal 요소가 숨지 않고 그대로 보임)
-  document.documentElement.classList.add("js");
   // 협업 브랜드 데이터 — glovek.space/refer(src/data/refer.ts) 분류 기준.
   // tiktok: TikTok Shop 입점·운영을 함께한 브랜드(모든 협업 브랜드가 TikTok 고객은 아님).
   var LOGO = "assets/logos/";
@@ -104,11 +102,11 @@
     var regions = selectedRegions(), n = regions.length;
     var reg = UNIT_REG * n, supply = UNIT_SUPPLY * n, incl = UNIT_INCL * n;
     var rEl = document.getElementById("calcRegions");
-    if (rEl) rEl.textContent = n ? (regions.join(", ") + " (" + n + "권역)") : "권역을 선택하세요";
+    if (rEl) rEl.textContent = n ? (regions.join(", ") + " (" + n + "권역)") : "미선택";
     var g = document.getElementById("calcReg"), s = document.getElementById("calcSupply"), i = document.getElementById("calcIncl");
-    if (g) { g.textContent = n ? won(reg) : "권역 선택 후 안내"; g.classList.toggle("reg", n > 0); }
-    if (s) s.textContent = n ? won(supply) : "권역 선택 후 안내";
-    if (i) i.textContent = n ? won(incl) : "권역 선택 후 안내";
+    if (g) { g.textContent = n ? won(reg) : "—"; g.classList.toggle("reg", n > 0); }
+    if (s) s.textContent = n ? won(supply) : "—";
+    if (i) i.textContent = n ? won(incl) : "권역 선택";
     return { regions: regions, n: n, reg: reg, supply: supply, incl: incl };
   }
 
@@ -229,6 +227,7 @@
         if (ent.isIntersecting) { ent.target.classList.add("is-visible"); io.unobserve(ent.target); }
       });
     }, { rootMargin: "0px 0px -8% 0px", threshold: 0.08 });
+    document.documentElement.classList.add("js");
     Array.prototype.forEach.call(items, function (n) { io.observe(n); });
   }
 
@@ -239,6 +238,7 @@
     if (!window.matchMedia("(pointer: fine)").matches) return;
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
     function onMove(e) {
+      if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) { reset(); return; }
       var r = pass.getBoundingClientRect();
       var px = (e.clientX - r.left) / r.width - 0.5;
       var py = (e.clientY - r.top) / r.height - 0.5;
