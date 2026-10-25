@@ -41,7 +41,8 @@
     { n: "리터뉴", f: "returnu.png", tiktok: true }
   ];
 
-  var UNIT_SUPPLY = 2000000, UNIT_INCL = 2200000;
+  // 권역당 정가 300만원 → 10월 신청 한정 50% 할인(공급가 150만원 / VAT 포함 165만원)
+  var UNIT_REG = 3000000, UNIT_SUPPLY = 1500000, UNIT_INCL = 1650000;
   var won = function (n) { return n.toLocaleString("ko-KR") + "원"; };
 
   function el(tag, cls) { var e = document.createElement(tag); if (cls) e.className = cls; return e; }
@@ -90,53 +91,31 @@
   function selectedRegions() {
     return Array.prototype.slice.call(document.querySelectorAll('input[name="region"]:checked')).map(function (c) { return c.value; });
   }
-  function currentTrack() {
-    var r = document.querySelector('input[name="track"]:checked');
-    return r ? r.value : "batch";
-  }
-  var TRACK_LABEL = { batch: "배치 1기 참여", onboarding: "온보딩만 진행" };
-
   function recalc() {
     var regions = selectedRegions(), n = regions.length;
-    var supply = UNIT_SUPPLY * n, incl = UNIT_INCL * n;
+    var reg = UNIT_REG * n, supply = UNIT_SUPPLY * n, incl = UNIT_INCL * n;
     var rEl = document.getElementById("calcRegions");
     if (rEl) rEl.textContent = n ? (regions.join(", ") + " (" + n + "권역)") : "권역을 선택하세요";
-    var s = document.getElementById("calcSupply"), i = document.getElementById("calcIncl");
+    var g = document.getElementById("calcReg"), s = document.getElementById("calcSupply"), i = document.getElementById("calcIncl");
+    if (g) g.textContent = n ? won(reg) : "권역 선택 후 안내";
     if (s) s.textContent = n ? won(supply) : "권역 선택 후 안내";
     if (i) i.textContent = n ? won(incl) : "권역 선택 후 안내";
-    // form select(#f-track, #f-region) 반영
-    var fTrack = document.getElementById("f-track");
-    if (fTrack) fTrack.value = TRACK_LABEL[currentTrack()];
+    // 폼 권역 선택(#f-region) 동기화
     var fRegion = document.getElementById("f-region");
     if (fRegion) Array.prototype.forEach.call(fRegion.options, function (o) { o.selected = regions.indexOf(o.value) !== -1; });
-    return { regions: regions, n: n, supply: supply, incl: incl };
+    return { regions: regions, n: n, reg: reg, supply: supply, incl: incl };
   }
 
   function initCalc() {
-    document.querySelectorAll('input[name="region"], input[name="track"]').forEach(function (inp) {
+    document.querySelectorAll('input[name="region"]').forEach(function (inp) {
       inp.addEventListener("change", recalc);
     });
-    // form → calc 역동기화
-    var fTrack = document.getElementById("f-track");
-    if (fTrack) fTrack.addEventListener("change", function () {
-      var key = fTrack.value === TRACK_LABEL.onboarding ? "onboarding" : "batch";
-      var radio = document.querySelector('input[name="track"][value="' + key + '"]');
-      if (radio) { radio.checked = true; }
-      recalc();
-    });
+    // 폼 권역 → calc 역동기화
     var fRegion = document.getElementById("f-region");
     if (fRegion) fRegion.addEventListener("change", function () {
       var vals = Array.prototype.slice.call(fRegion.selectedOptions).map(function (o) { return o.value; });
       document.querySelectorAll('input[name="region"]').forEach(function (c) { c.checked = vals.indexOf(c.value) !== -1; });
       recalc();
-    });
-    // hero CTA 프리셋
-    document.querySelectorAll("[data-track]").forEach(function (a) {
-      a.addEventListener("click", function () {
-        var key = a.getAttribute("data-track");
-        var radio = document.querySelector('input[name="track"][value="' + key + '"]');
-        if (radio) { radio.checked = true; recalc(); }
-      });
     });
     recalc();
   }
@@ -148,11 +127,10 @@
         email = form.email.value.trim(), product = form.product.value.trim(),
         msg = form.message.value.trim();
     var chosen = selectedRegions();
-    var st = { regions: chosen, n: chosen.length, supply: UNIT_SUPPLY * chosen.length, incl: UNIT_INCL * chosen.length };
-    var track = document.getElementById("f-track").value;
-    var regions = st.n ? st.regions.join(", ") + " (" + st.n + "권역)" : "미선택";
-    var cost = st.n ? ("공급가 " + won(st.supply) + " / VAT 포함 " + won(st.incl)) : "권역 미선택";
-    var subject = "[글로벌 진출 배치 1기] " + track + " 신청 - " + brand;
+    var n = chosen.length, reg = UNIT_REG * n, supply = UNIT_SUPPLY * n, incl = UNIT_INCL * n;
+    var regions = n ? chosen.join(", ") + " (" + n + "권역)" : "미선택";
+    var cost = n ? ("정가 " + won(reg) + " → 50% 할인 공급가 " + won(supply) + " / VAT 포함 " + won(incl)) : "권역 미선택";
+    var subject = "[글로벌 진출 배치 1기] 배치 1기 참여 신청 - " + brand;
     var body = [
       "글로벌 진출 배치 1기 / GLOBAL LAUNCH BATCH 01 신청",
       "",
@@ -160,9 +138,9 @@
       "■ 담당자: " + name,
       "■ 이메일: " + email,
       "■ 제품 URL: " + (product || "-"),
-      "■ 참여 방식: " + track,
+      "■ 참여 방식: 배치 1기 참여",
       "■ 희망 권역: " + regions,
-      "■ 예상 비용: " + cost,
+      "■ 예상 비용(10월 신청 한정 50% 할인): " + cost,
       "",
       "■ 메시지:",
       (msg || "-"),
