@@ -85,3 +85,9 @@ python3 -m http.server 8080
 - 구조 영감(코드/에셋 복사·설치·구매 없음, 디자인만 참고): https://magicui.design/docs/components/globe , https://magicui.design/docs/components/bento-grid , https://www.shadcnblocks.com/block/hero249 (globe hero+logo band). React/외부 의존성 추가 없이 vanilla HTML/CSS/JS로 자체 구현.
 - 디자인 시스템: black/white/cyan #25F4EE/pink #FE2C55 유지, 카드 16px·충분한 여백, 큰 숫자+짧은 라벨. app.js DOM 계약(#calc*, input[name=region]/fregion/sea, #seaWrap/#seaCountries/#e-sea, #contactForm, 필드 name, #logoGrid/#logoMore, menuToggle/nav) 보존 — app.js 미변경.
 - 검증(Chromium, 1회): node --check 통과, 1440/390/320 overflow 0, 로고 34(12→전체)·TikTok Shop 라벨 19·국기 로드 0깨짐, 메뉴/CTA/FAQ/로고펼침, 계산기 1/2/3권역 VAT 165/330/495·미선택 상태, 신청서 권역↔계산기 동기화, 동남아 조건부 하위국가 노출·필수 검증, 빈 폼 에러·focus, 콘솔 에러 0, 가이드 PDF 200. 메일 실발송 없음·test hook 없음.
+
+## 최종 통합 검수 (2026-10-26, 캐시 v=20261026n)
+- 동일한 2560px 기본 상태(상세 접힘·로고 12개)에서 노출 텍스트 3,298자 → 980자(공백 제외), 70.3% 축약. 전체 내용 삭제율이 아닌 기본 노출 기준. 섹션 10 → 6.
+- GPT 독립 검수: 1440/390/320px 가로 넘침 0, 로고 34개·19개 분류·7개국 국기 정상. CTA 신청서 이동, 모바일 메뉴, 상세·FAQ·로고 펼침, 필수 필드 오류 및 동남아 조건부 검증, 계산기↔폼 양방향 동기화와 1/2/3권역 VAT 합계 165/330/495만원 확인. 메일 URL 7개 픽스처 통과, 실발송 없음.
+- 검수 수정: 체크박스 18px 고정, 버튼/본문 대비 보완, 작은 화면 실적 줄바꿈 개선, 시딩 네트워크 SVG 보강. 시딩 200/100 추가 합산 해석과 보증금 면제에 모순되는 비용 문구 제거.
+- PDF SHA-256 동일, app.js 변경 없음.
