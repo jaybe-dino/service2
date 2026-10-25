@@ -97,7 +97,7 @@
     var rEl = document.getElementById("calcRegions");
     if (rEl) rEl.textContent = n ? (regions.join(", ") + " (" + n + "권역)") : "권역을 선택하세요";
     var g = document.getElementById("calcReg"), s = document.getElementById("calcSupply"), i = document.getElementById("calcIncl");
-    if (g) g.textContent = n ? won(reg) : "권역 선택 후 안내";
+    if (g) { g.textContent = n ? won(reg) : "권역 선택 후 안내"; g.classList.toggle("reg", n > 0); }
     if (s) s.textContent = n ? won(supply) : "권역 선택 후 안내";
     if (i) i.textContent = n ? won(incl) : "권역 선택 후 안내";
     // 폼 권역 선택(#f-region) 동기화
@@ -140,7 +140,8 @@
       "■ 제품 URL: " + (product || "-"),
       "■ 참여 방식: 배치 1기 참여",
       "■ 희망 권역: " + regions,
-      "■ 예상 비용(10월 신청 한정 50% 할인): " + cost,
+      "■ 예상 온보딩 비용(10월 신청 한정 50% 할인): " + cost,
+      "■ 신청 기한: 2026년 10월 31일 23:59 (한국시간)",
       "",
       "■ 메시지:",
       (msg || "-"),
