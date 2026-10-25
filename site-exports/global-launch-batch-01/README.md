@@ -48,3 +48,12 @@ python3 -m http.server 8080
 - 서버/DB 없음: 가짜 제출 완료·localStorage 접수 없음. 문의는 메일 앱 실제 전송으로만 접수.
 - 외부 추적 픽셀·마케팅 스크립트·결제·개인정보 DB 없음.
 - 국기는 식별용 간결 SVG(색상·배치 충실). 공공기관/협회 마크나 플랫폼 공식 인증 표식은 사용하지 않음.
+
+
+## Integration verification 2026-10-25
+
+- Verified four-page launch preparation guide added to dist/assets/global-launch-guide.pdf. SHA-256: a1e90015ff4456d591ae8f87f320d25b6dae14025eda2fea2ec94b5a11a56ef5. Browser download reopened and matched.
+- Hero now leads with the shipment reward; mobile home navigation corrected and guide placeholder removed.
+- Real Chrome checks: 34 logos loaded, 19 Shop labels, 1440/390/320 widths without horizontal overflow, menu and FAQ, single/multiple region calculation and empty/invalid form errors passed.
+- Actual mail URL builder passed four fixture cases (including undecided region); no email was sent.
+- Separate Sites deployment uses a private owner-only audience initially.

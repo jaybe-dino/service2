@@ -98,8 +98,8 @@
     var rEl = document.getElementById("calcRegions");
     if (rEl) rEl.textContent = n ? (regions.join(", ") + " (" + n + "권역)") : "권역을 선택하세요";
     var s = document.getElementById("calcSupply"), i = document.getElementById("calcIncl");
-    if (s) s.textContent = won(supply);
-    if (i) i.textContent = won(incl);
+    if (s) s.textContent = n ? won(supply) : "권역 선택 후 안내";
+    if (i) i.textContent = n ? won(incl) : "권역 선택 후 안내";
     // form select(#f-track, #f-region) 반영
     var fTrack = document.getElementById("f-track");
     if (fTrack) fTrack.value = TRACK_LABEL[currentTrack()];
@@ -143,7 +143,8 @@
     var brand = form.brand.value.trim(), name = form.manager.value.trim(),
         email = form.email.value.trim(), product = form.product.value.trim(),
         msg = form.message.value.trim();
-    var st = recalc();
+    var chosen = selectedRegions();
+    var st = { regions: chosen, n: chosen.length, supply: UNIT_SUPPLY * chosen.length, incl: UNIT_INCL * chosen.length };
     var track = document.getElementById("f-track").value;
     var regions = st.n ? st.regions.join(", ") + " (" + st.n + "권역)" : "미선택";
     var cost = st.n ? ("공급가 " + won(st.supply) + " / VAT 포함 " + won(st.incl)) : "권역 미선택";
@@ -172,8 +173,6 @@
     if (!form) return;
     var emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     function show(id, on) { var e = document.getElementById(id); if (e) e.hidden = !on; }
-    // 테스트용 노출 — 메일 URL 생성(반환값) 검증 전용. 실제 발송은 하지 않음.
-    window.__glbBuildMailto = function () { return buildMailto(form); };
     form.addEventListener("submit", function (ev) {
       ev.preventDefault();
       var brand = form.brand.value.trim(), name = form.manager.value.trim(),
