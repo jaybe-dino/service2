@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 60 40" role="img" aria-label="말레이시아 국기">
+  <rect width="60" height="40" fill="#fff"/>
+  <rect y="0.000" width="60" height="2.857" fill="#cc0001"/>
+  <rect y="5.714" width="60" height="2.857" fill="#cc0001"/>
+  <rect y="11.429" width="60" height="2.857" fill="#cc0001"/>
+  <rect y="17.143" width="60" height="2.857" fill="#cc0001"/>
+  <rect y="22.857" width="60" height="2.857" fill="#cc0001"/>
+  <rect y="28.571" width="60" height="2.857" fill="#cc0001"/>
+  <rect y="34.286" width="60" height="2.857" fill="#cc0001"/>
+  <rect width="30" height="20" fill="#010066"/>
+  <circle cx="15" cy="10" r="5" fill="#ffcc00"/>
+  <circle cx="17.6" cy="10" r="4.2" fill="#010066"/>
+  <polygon points="22.50,7.00 23.21,9.03 25.35,9.07 23.64,10.37 24.26,12.43 22.50,11.20 20.74,12.43 21.36,10.37 19.65,9.07 21.79,9.03" fill="#ffcc00"/>
+</svg>

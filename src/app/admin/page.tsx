@@ -674,6 +674,7 @@ export default function AdminPage() {
       <div className="mb-4 flex items-center justify-between">
         <h1 className="flex items-center gap-2 text-[20px] font-black tracking-tight"><ShieldCheck size={18} className="text-[var(--accent)]" /> 관리자 콘솔</h1>
         <div className="flex items-center gap-2">
+          <a href="/admin/launch-batch" className="kt-btn kt-btn-outline px-3 py-1.5 text-[11px]"><Inbox size={13} /> 배치 1기 신청</a>
           <a href="/admin/outreach" className="kt-btn kt-btn-outline px-3 py-1.5 text-[11px]"><Users size={13} /> 아웃리치 보드</a>
           <button onClick={logout} className="kt-btn kt-btn-outline px-3 py-1.5 text-[11px]"><LogOut size={13} /> 로그아웃</button>
         </div>
