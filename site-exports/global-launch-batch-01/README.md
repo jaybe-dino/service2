@@ -30,7 +30,7 @@ python3 -m http.server 8080
 - 단일 트랙 **배치 1기 참여**(유료 온보딩). ‘온보딩만 진행’ 옵션은 제거됨.
 - 비용: 권역당 정가 300만원 → **10월 신청 한정 50% 할인** 150만원(부가세 별도, VAT 포함 165만원). 2권역 300/330, 3권역 450/495.
 - 신청 기간: **2026년 10월 31일 23:59(KST)**까지(10월 한정). 선정 결과 **11월 2일 개별 안내**(예정). 실행 11.2–12.31.
-- 선정 10개사 / 미국·일본·동남아(5국 묶음) 3권역 / 보증금 $1,500 조건부 면제 / 출고 1위 200명·2위 100명·3위 50명 유지.
+- 선정 10개사 / 미국·일본·동남아(5국 묶음) 3권역 / 보증금 $1,500 면제 / 제품 출고 완료 참여 브랜드 전원 초기 20~100명 시딩 바우처 / 성장 가능성 선정 시 200명 또는 100명 시딩 제공.
 
 ## 기능
 - 모바일 햄버거 메뉴(aria-expanded, Esc/리사이즈 닫힘, 1024px 이하)
@@ -62,8 +62,18 @@ python3 -m http.server 8080
 
 ## Integration verification 2026-10-25
 
-- Verified four-page launch preparation guide added to dist/assets/global-launch-guide.pdf. SHA-256: 347e2be28398a85f36deb50e51f102e3e1c11ca666e115a3ff8748568ae95cff. Browser download reopened and matched.
+- Verified four-page launch preparation guide added to dist/assets/global-launch-guide.pdf. SHA-256: 0106a87e89c8fbf1c79dc6bc08cb5b5c67cc844b57536daaecd7f1fc349d5c1b. Browser download reopened and matched.
 - Hero leads with global launch value and October benefit; mobile home navigation and verified guide are preserved.
 - Real Chrome checks: 34 logos loaded, 19 Shop labels, 1440/390/320 widths without horizontal overflow, menu and FAQ, single/multiple region calculation and empty/invalid form errors passed.
 - Actual mail URL builder passed seven region/country/price fixture cases; no email was sent.
 - Separate Sites deployment uses a private owner-only audience initially.
+
+## 캠페인과 특전 업데이트
+
+- 글로벌 7개국 중 희망 시장을 선택해 온보딩부터 제품 출고·인플루언서 테스팅까지 마무리하는 2개월 트랙입니다.
+- 전 참여 브랜드 초기 20~100명 시딩은 제품 출고 완료 브랜드에 한하여 제공하며, 성장 가능성 선정 브랜드의 시딩 지원 규모는 200명 또는 100명입니다. 임의 합산·국가별 반복 제공 약속은 하지 않습니다.
+- 기존 출고 순위/3위/50명/350명/600만원 및 순위별 접수·통지 일정은 제거했습니다. 10월 온보딩 50% 할인과 기존 가격은 유지합니다.
+- 특전 영역을 히어로 바로 뒤로 이동하고, 히어로 시딩 수치·보증금 면제 금액을 확대했습니다.
+- 디노스튜디오 소개 수치 40여 개 브랜드·11만 명 네트워크는 사용자가 제공한 운영사 실적입니다. 비교 근거 없는 최단기간 주장은 사용하지 않습니다.
+- 이후 운영대행·마케팅·어필리에이트 운영은 별도 협의합니다.
+- 연결 가이드 PDF도 같은 내용으로 갱신했으며 4쪽 렌더링과 페이지별 시각 검수를 마쳤습니다.
