@@ -91,3 +91,16 @@ python3 -m http.server 8080
 - GPT 독립 검수: 1440/390/320px 가로 넘침 0, 로고 34개·19개 분류·7개국 국기 정상. CTA 신청서 이동, 모바일 메뉴, 상세·FAQ·로고 펼침, 필수 필드 오류 및 동남아 조건부 검증, 계산기↔폼 양방향 동기화와 1/2/3권역 VAT 합계 165/330/495만원 확인. 메일 URL 7개 픽스처 통과, 실발송 없음.
 - 검수 수정: 체크박스 18px 고정, 버튼/본문 대비 보완, 작은 화면 실적 줄바꿈 개선, 시딩 네트워크 SVG 보강. 시딩 200/100 추가 합산 해석과 보증금 면제에 모순되는 비용 문구 제거.
 - PDF SHA-256 동일, app.js 변경 없음.
+
+## 론칭 패스 복원 + 인터랙티브 리디자인 (2026-10-26, 캐시 v=20261026p)
+- **복원 기준**: 글로브·6섹션·70% 축약 버전을 폐기하고, `1b7f275`의 `index.html`+`styles.css`(론칭 패스/시딩/지원/권역/상세 로드맵/가격 흐름)를 디자인 출발점으로 복원했습니다. `git show`로 base만 추출해 다듬었고 전체 git reset은 하지 않았습니다. `app.js`는 최신 `508b1a4`의 권역/SEA/계산/폼 로직을 그대로 유지했습니다.
+- **텍스트 축약**: 기본 노출 텍스트(innerText, 공백 제외, 상세 접힘·로고 12개·로드맵 1개 패널 노출) **3,298자 → 2,224자, 약 32.6% 축약**. 사용자 목표 30~40% 구간. 제품·구조 문장은 유지하고 반복·장황한 FAQ만 정리했습니다. 섹션 구조는 특전/지원/스튜디오/레퍼런스/권역/로드맵/참여·비용/FAQ로 복원.
+- **디자인**: 헤드라인 글리치(text-shadow) 제거, cyan #25F4EE/pink #FE2C55는 선택·숫자·포인트에만 사용. 론칭 패스는 자체 SVG 궤도+국기+시딩 수치+보증금 면제 배지로 구성한 프리미엄 멤버십 패스. maxwidth 1200, 얇은 테두리, 카드 16–24px 라운드.
+- **인터랙션(바닐라 JS/CSS, 코드 미복사·외부 의존성 없음)**:
+  - **로드맵 ARIA 탭**: `role=tablist/tab/tabpanel` 5단계(적합성 검토→온보딩→제품 출고→인플루언서 테스팅→결과 정리), 자체 라인 SVG 비주얼·주차·한 줄 설명. 클릭 + 방향키(←/→/↑/↓)/Home/End로 선택·포커스 이동, roving tabindex, `aria-selected`와 패널 `hidden` 토글. 모바일은 탭 랩 + 1열 패널.
+  - **론칭 패스 틸트**: `(pointer:fine)` + reduced-motion 아닐 때만 `pointermove`로 ±5° rotateX/Y, `pointerleave` 리셋. 터치/모션 축소에서는 정지.
+  - **스크롤 리빌**: `IntersectionObserver`로 `.reveal` 1회 노출(작은 translate/fade 후 unobserve). JS-off면 `.reveal`이 숨지 않고 그대로 보이고, reduced-motion이면 즉시 노출. 영구 숨김·타이핑 효과 없음.
+  - **활성 내비**: `IntersectionObserver`(rootMargin `-45% 0 -50%`)로 현재 섹션의 `#nav` 링크에 `.active`(cyan) 표시.
+- **참고(구조 영감만, 코드/에셋 미복사·미설치)**: aceternity Tabs, aceternity Sticky Scroll Reveal.
+- **검증(Chromium, `/opt/pw-browsers`)**: `node --check app.js` 통과. 1440/390/320px 가로 넘침 0, 로고 34(12→전체 펼침)·TikTok Shop 라벨 19·국기 깨짐 0. 계산기 미국 165만(VAT 포함 1,650,000원)·+동남아 2권역 330만(3,300,000원), 폼↔계산기 양방향 동기화, 동남아 조건부 하위국가 노출·필수 검증(미선택 시 e-sea 노출→선택 시 숨김), 빈 폼 브랜드/담당자/이메일 오류, 390px 모바일 메뉴 열림. 로드맵 탭: 초기 선택·클릭 전환·키보드(→ Home End)로 `aria-selected`/패널 전환·포커스 이동. `.reveal` 노출, 활성 내비 토글, 패스 틸트 transform 적용, 가이드 PDF 200, 콘솔 에러 0.
+- `app.js`는 DOM 계약을 유지한 채 인터랙션 함수 4개(`initReveal`/`initPassTilt`/`initRoadmapTabs`/`initActiveNav`)와 `js` 클래스 표시만 추가했습니다. 배포본에 테스트 훅(window 전역)·실제 메일 발송·가짜 접수 없음. PDF SHA-256 동일(0106a87e…d5c1b), 로고/국기 원본 미변경.

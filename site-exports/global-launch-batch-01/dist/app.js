@@ -1,6 +1,8 @@
 "use strict";
 /* 글로벌 진출 배치 1기 — 정적(buildless) 사이트. 서버/DB 없음. */
 (function () {
+  // JS 활성 표시(없으면 .reveal 요소가 숨지 않고 그대로 보임)
+  document.documentElement.classList.add("js");
   // 협업 브랜드 데이터 — glovek.space/refer(src/data/refer.ts) 분류 기준.
   // tiktok: TikTok Shop 입점·운영을 함께한 브랜드(모든 협업 브랜드가 TikTok 고객은 아님).
   var LOGO = "assets/logos/";
@@ -213,6 +215,101 @@
     });
   }
 
-  function init() { renderLogos(); initLogoMore(); initMenu(); initCalc(); initForm(); }
+  // 5) 스크롤 진입 시 한 번만 드러나기 (reduced-motion / IO 미지원 시 즉시 노출)
+  function initReveal() {
+    var items = document.querySelectorAll(".reveal");
+    if (!items.length) return;
+    var reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (reduce || typeof IntersectionObserver === "undefined") {
+      Array.prototype.forEach.call(items, function (n) { n.classList.add("is-visible"); });
+      return;
+    }
+    var io = new IntersectionObserver(function (entries) {
+      entries.forEach(function (ent) {
+        if (ent.isIntersecting) { ent.target.classList.add("is-visible"); io.unobserve(ent.target); }
+      });
+    }, { rootMargin: "0px 0px -8% 0px", threshold: 0.08 });
+    Array.prototype.forEach.call(items, function (n) { io.observe(n); });
+  }
+
+  // 6) 론칭 패스 포인터 틸트 (fine pointer + reduced-motion 아닐 때만)
+  function initPassTilt() {
+    var pass = document.getElementById("pass"), inner = document.getElementById("passInner");
+    if (!pass || !inner || !window.matchMedia) return;
+    if (!window.matchMedia("(pointer: fine)").matches) return;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    function onMove(e) {
+      var r = pass.getBoundingClientRect();
+      var px = (e.clientX - r.left) / r.width - 0.5;
+      var py = (e.clientY - r.top) / r.height - 0.5;
+      inner.style.transform = "rotateY(" + (px * 5).toFixed(2) + "deg) rotateX(" + (-py * 5).toFixed(2) + "deg)";
+    }
+    function reset() { inner.style.transform = ""; }
+    pass.addEventListener("pointermove", onMove);
+    pass.addEventListener("pointerleave", reset);
+  }
+
+  // 7) 로드맵 ARIA 탭 (클릭 + 방향키/Home/End)
+  function initRoadmapTabs() {
+    var list = document.querySelector(".rm-nav[role=tablist]");
+    if (!list) return;
+    var tabs = Array.prototype.slice.call(list.querySelectorAll('[role="tab"]'));
+    if (!tabs.length) return;
+    function select(tab, focus) {
+      tabs.forEach(function (t) {
+        var on = t === tab;
+        t.setAttribute("aria-selected", on ? "true" : "false");
+        t.tabIndex = on ? 0 : -1;
+        var panel = document.getElementById(t.getAttribute("aria-controls"));
+        if (panel) panel.hidden = !on;
+      });
+      if (focus) tab.focus();
+    }
+    tabs.forEach(function (tab, i) {
+      tab.addEventListener("click", function () { select(tab, false); });
+      tab.addEventListener("keydown", function (e) {
+        var idx = null;
+        switch (e.key) {
+          case "ArrowRight": case "ArrowDown": idx = (i + 1) % tabs.length; break;
+          case "ArrowLeft": case "ArrowUp": idx = (i - 1 + tabs.length) % tabs.length; break;
+          case "Home": idx = 0; break;
+          case "End": idx = tabs.length - 1; break;
+          default: return;
+        }
+        e.preventDefault();
+        select(tabs[idx], true);
+      });
+    });
+  }
+
+  // 8) 스크롤 위치에 따른 활성 내비 표시
+  function initActiveNav() {
+    var nav = document.getElementById("nav");
+    if (!nav || typeof IntersectionObserver === "undefined") return;
+    var links = Array.prototype.slice.call(nav.querySelectorAll('a[href^="#"]'));
+    var map = {};
+    links.forEach(function (a) {
+      var id = a.getAttribute("href").slice(1);
+      var sec = document.getElementById(id);
+      if (sec) map[id] = a;
+    });
+    var ids = Object.keys(map);
+    if (!ids.length) return;
+    var io = new IntersectionObserver(function (entries) {
+      entries.forEach(function (ent) {
+        if (ent.isIntersecting) {
+          links.forEach(function (a) { a.classList.remove("active"); });
+          var a = map[ent.target.id];
+          if (a) a.classList.add("active");
+        }
+      });
+    }, { rootMargin: "-45% 0px -50% 0px", threshold: 0 });
+    ids.forEach(function (id) { io.observe(document.getElementById(id)); });
+  }
+
+  function init() {
+    renderLogos(); initLogoMore(); initMenu(); initCalc(); initForm();
+    initReveal(); initPassTilt(); initRoadmapTabs(); initActiveNav();
+  }
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", init); else init();
 })();
