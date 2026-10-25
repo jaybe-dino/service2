@@ -77,3 +77,11 @@ python3 -m http.server 8080
 - 디노스튜디오 소개 수치 40여 개 브랜드·11만 명 네트워크는 사용자가 제공한 운영사 실적입니다. 비교 근거 없는 최단기간 주장은 사용하지 않습니다.
 - 이후 운영대행·마케팅·어필리에이트 운영은 별도 협의합니다.
 - 연결 가이드 PDF도 같은 내용으로 갱신했으며 4쪽 렌더링과 페이지별 시각 검수를 마쳤습니다.
+
+## 비주얼 전면 재구성 (2026-10-25, 캐시 v=20261025m)
+- 10개 텍스트 섹션 → 6개 시각 중심 섹션(히어로/특전/진출방식/운영사/신청·비용/FAQ)으로 통합, 기본 노출 텍스트를 대폭 축약.
+- 핵심 비주얼: 자체 구현 SVG/CSS 글로브(와이어프레임 원·경위선) + cyan 궤도 + pink 라우트 + 7개국 flag chip. 외부 라이브러리/이미지/맵 에셋 없음. 미세 모션 2개(route dash, orbit-dot float), reduced-motion에서 정지.
+- 참여 특전은 비대칭 bento(20–100 시딩 / $1,500 면제 / 200·100)로, 제품 출고 조건은 카드에 노출. 지원 범위 상세는 단일 접힘 details.
+- 구조 영감(코드/에셋 복사·설치·구매 없음, 디자인만 참고): https://magicui.design/docs/components/globe , https://magicui.design/docs/components/bento-grid , https://www.shadcnblocks.com/block/hero249 (globe hero+logo band). React/외부 의존성 추가 없이 vanilla HTML/CSS/JS로 자체 구현.
+- 디자인 시스템: black/white/cyan #25F4EE/pink #FE2C55 유지, 카드 16px·충분한 여백, 큰 숫자+짧은 라벨. app.js DOM 계약(#calc*, input[name=region]/fregion/sea, #seaWrap/#seaCountries/#e-sea, #contactForm, 필드 name, #logoGrid/#logoMore, menuToggle/nav) 보존 — app.js 미변경.
+- 검증(Chromium, 1회): node --check 통과, 1440/390/320 overflow 0, 로고 34(12→전체)·TikTok Shop 라벨 19·국기 로드 0깨짐, 메뉴/CTA/FAQ/로고펼침, 계산기 1/2/3권역 VAT 165/330/495·미선택 상태, 신청서 권역↔계산기 동기화, 동남아 조건부 하위국가 노출·필수 검증, 빈 폼 에러·focus, 콘솔 에러 0, 가이드 PDF 200. 메일 실발송 없음·test hook 없음.
