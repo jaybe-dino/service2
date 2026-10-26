@@ -60,13 +60,12 @@
       if (b.soft) tile.style.background = "#f5f5f6";
       var img = el("img");
       img.src = LOGO + b.f;
-      img.alt = b.n + (b.tiktok ? " (TikTok Shop 입점·운영)" : "") + " 로고";
+      img.alt = b.n + " 로고";
       img.loading = "lazy";
       img.width = 160; img.height = 90;
       if (b.invert) img.style.filter = "brightness(0)";
       if (b.market) img.title = b.n + " · " + b.market;
       tile.appendChild(img);
-      if (b.tiktok) { var t = el("span", "tt"); t.textContent = "TikTok Shop"; tile.appendChild(t); }
       var nm = el("span", "nm"); nm.textContent = b.n; tile.appendChild(nm);
       grid.appendChild(tile);
     });

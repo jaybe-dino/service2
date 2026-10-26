@@ -82,6 +82,9 @@ h1,h2,h3{word-break:keep-all;line-height:1.18;margin:0}
 .eyebrow{display:flex;align-items:center;gap:9px;font-size:13px;font-weight:700;color:var(--on-dark-soft);letter-spacing:.01em;margin:0 0 22px}
 .eyebrow-dot{width:7px;height:7px;border-radius:50%;background:var(--cyan)}
 .eyebrow-muted{color:var(--on-dark-mute)}
+.hero-hook{font-size:clamp(16px,2.1vw,21px);font-weight:800;letter-spacing:-.01em;color:var(--cyan);margin:0 0 12px}
+.hero-badge{display:inline-flex;align-items:center;gap:7px;margin:18px 0 0;font-size:13px;font-weight:800;color:#fff;background:rgba(254,44,85,.16);border:1px solid rgba(254,44,85,.5);border-radius:999px;padding:7px 14px}
+.hero-badge::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--pink);flex:0 0 7px}
 .hero-title{font-size:clamp(40px,6.4vw,76px);font-weight:900;letter-spacing:-.045em;line-height:1.04;color:#fff}
 .hero-title .hl{color:var(--cyan)}
 .hero-sub{font-size:clamp(15.5px,1.9vw,18.5px);color:var(--on-dark-soft);max-width:540px;margin:24px 0 0;line-height:1.68}
@@ -231,13 +234,9 @@ h1,h2,h3{word-break:keep-all;line-height:1.18;margin:0}
 
 /* FAQ */
 .faq{display:grid;gap:0;border-top:1px solid var(--border)}
-.faq details{border-bottom:1px solid var(--border)}
-.faq summary{list-style:none;cursor:pointer;padding:20px 2px;font-size:16px;font-weight:700;color:var(--midnight);display:flex;justify-content:space-between;align-items:center;gap:14px;min-height:44px}
-.faq summary::-webkit-details-marker{display:none}
-.faq summary::after{content:"+";font-size:22px;color:var(--pink);font-weight:700}
-.faq details[open] summary::after{content:"\2212"}
-.faq details>div{padding:0 2px 22px}
-.faq details p{margin:0;font-size:14.5px;color:var(--ink-soft);max-width:760px}
+.qa{border-bottom:1px solid var(--border);padding:20px 2px}
+.qa h3{margin:0 0 8px;font-size:16px;font-weight:800;color:var(--midnight)}
+.qa p{margin:0;font-size:14.5px;line-height:1.6;color:var(--ink-soft);max-width:760px}
 
 /* Contact */
 .contact-grid{display:grid;grid-template-columns:.85fr 1.15fr;gap:clamp(28px,5vw,64px);align-items:start}
@@ -302,10 +301,10 @@ h1,h2,h3{word-break:keep-all;line-height:1.18;margin:0}
 .seed-hero-extra strong{color:var(--cyan)}
 .seed-hero-cond{font-size:13px;font-weight:800;color:var(--cyan);margin:12px 0 0}
 .seed-grow{margin-top:22px}
-.seed-grow-head{font-size:14px;font-weight:800;color:var(--ink);margin:0 0 12px}
+.seed-grow-head{font-size:clamp(22px,3vw,30px);font-weight:900;letter-spacing:-.02em;color:var(--ink);margin:0 0 18px}
 .seed-grow-cards{display:grid;grid-template-columns:1fr 1fr;gap:16px}
-.seed-card{background:var(--surface);border:1px solid var(--border);border-left:4px solid var(--pink);border-radius:var(--r);padding:22px 26px;display:flex;align-items:baseline;justify-content:space-between;gap:10px}
-.seed-card-k{font-size:14px;font-weight:800;color:var(--ink-soft)}
+.seed-card{background:var(--surface);border:1px solid var(--border);border-left:4px solid var(--pink);border-radius:var(--r);padding:20px 24px;display:flex;flex-direction:column;align-items:flex-start;gap:6px}
+.seed-card-k{font-size:13px;font-weight:800;letter-spacing:.01em;color:var(--ink-soft)}
 .seed-card-n{font-size:clamp(34px,5vw,48px);font-weight:900;letter-spacing:-.03em;color:var(--midnight)}
 .seed-card-n small{font-size:.4em;font-weight:800;margin-left:3px;color:var(--ink-soft)}
 
@@ -339,11 +338,8 @@ html.js .reveal.is-visible{opacity:1;transform:none;transition:opacity .6s ease,
 .apply-invite h3{font-size:22px;font-weight:900;letter-spacing:-.02em;margin:0 0 10px;color:var(--midnight)}
 .apply-invite>p{font-size:14px;color:var(--ink-soft);margin:0 0 16px}
 .apply-invite .contact-direct a{color:var(--midnight)}
-.scope-details{margin-top:22px;border-top:1px solid var(--border);padding-top:4px}
-.scope-details summary{cursor:pointer;list-style:none;padding:12px 0;font-size:13.5px;font-weight:800;color:var(--midnight);display:flex;align-items:center;gap:8px}
-.scope-details summary::-webkit-details-marker{display:none}
-.scope-details summary::after{content:"+";color:var(--pink);font-size:18px;font-weight:800;margin-left:auto}
-.scope-details[open] summary::after{content:"\2212"}
+.scope-info{margin-top:28px;border-top:1px solid var(--border);padding-top:20px}
+.scope-info h3{margin:0 0 12px;font-size:15px;font-weight:900;letter-spacing:-.01em;color:var(--midnight)}
 .faq-foot{margin:26px 0 0;font-size:15px;font-weight:800}
 .faq-foot a{color:var(--midnight)}
 
