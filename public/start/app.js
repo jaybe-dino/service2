@@ -1,5 +1,5 @@
 "use strict";
-/* 글로벌 진출 배치 1기 — 정적(buildless) 사이트. 서버/DB 없음. */
+/* 글로벌 진출 배치 1기 — 정적(buildless) 랜딩. 신청 폼은 서버(/api/launch-batch/apply)로 온라인 접수. */
 (function () {
   // 협업 브랜드 데이터 — glovek.space/refer(src/data/refer.ts) 분류 기준.
   // tiktok: TikTok Shop 입점·운영을 함께한 브랜드(모든 협업 브랜드가 TikTok 고객은 아님).

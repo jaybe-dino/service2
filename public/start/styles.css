@@ -298,6 +298,8 @@ h1,h2,h3{word-break:keep-all;line-height:1.18;margin:0}
 .seed-hero-count{font-size:clamp(60px,11vw,104px);font-weight:900;letter-spacing:-.05em;line-height:.95;margin:8px 0 0;color:#fff}
 .seed-hero-count span{font-size:.3em;font-weight:800;margin-left:6px}
 .seed-hero-sub{font-size:clamp(16px,2.2vw,20px);font-weight:800;margin:6px 0 0;color:#fff}
+.seed-hero-extra{font-size:14px;font-weight:800;color:rgba(255,255,255,.92);margin:14px 0 0;padding-top:12px;border-top:1px dashed rgba(255,255,255,.22)}
+.seed-hero-extra strong{color:var(--cyan)}
 .seed-hero-cond{font-size:13px;font-weight:800;color:var(--cyan);margin:12px 0 0}
 .seed-grow{margin-top:22px}
 .seed-grow-head{font-size:14px;font-weight:800;color:var(--ink);margin:0 0 12px}
