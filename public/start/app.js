@@ -11,7 +11,6 @@
     { n: "블리블리", f: "velyvely-official.png" },
     { n: "코오롱스포츠", f: "kolon-sport.png" },
     { n: "LG생활건강", f: "lg-hnh.png" },
-    { n: "CJ제일제당", f: "cj-cheiljedang.png" },
     { n: "애경", f: "aekyung.png" },
     { n: "농협", f: "nonghyup.png" },
     { n: "동화약품", f: "dongwha.png" },
@@ -52,7 +51,7 @@
   function renderLogos() {
     var grid = document.getElementById("logoGrid");
     if (!grid) return;
-    var previewNames = ["유한양행", "클리오", "톤28", "LG생활건강", "CJ제일제당", "블리블리", "파우", "리꼼", "앱소", "닥터브라이언", "JMW / 로아띠", "웰더마"];
+    var previewNames = ["유한양행", "클리오", "톤28", "LG생활건강", "프럼네이처", "블리블리", "파우", "리꼼", "앱소", "닥터브라이언", "JMW / 로아띠", "웰더마"];
     var orderedBrands = previewNames.map(function (name) { return BRANDS.find(function (b) { return b.n === name; }); }).filter(Boolean).concat(BRANDS.filter(function (b) { return previewNames.indexOf(b.n) < 0; }));
     orderedBrands.forEach(function (b, idx) {
       var tile = el("div", "logo-tile");
