@@ -307,6 +307,8 @@ h1,h2,h3{word-break:keep-all;line-height:1.18;margin:0}
 .seed-card-k{font-size:13px;font-weight:800;letter-spacing:.01em;color:var(--ink-soft)}
 .seed-card-n{font-size:clamp(34px,5vw,48px);font-weight:900;letter-spacing:-.03em;color:var(--midnight)}
 .seed-card-n small{font-size:.4em;font-weight:800;margin-left:3px;color:var(--ink-soft)}
+.seed-card-scale{display:flex;flex-direction:column;align-items:flex-start;gap:4px}
+.seed-card-value{font-size:15px;font-weight:800;line-height:1.35;color:var(--pink-text)}
 
 /* 좁은 화면에서 grid/flex 트랙이 내용 최소폭 때문에 넘치지 않도록 */
 /* 2026-10-26 refine: 등장 애니메이션 · 로드맵 탭 · 패스 tilt · 신청 레이아웃 */
