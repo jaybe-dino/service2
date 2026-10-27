@@ -95,16 +95,23 @@ export function validateApplication(raw: Record<string, unknown>):
   const brand = s(raw.brand, 120);
   const manager = s(raw.manager, 80);
   const email = s(raw.email, 160).toLowerCase();
-  const phoneRaw = s(raw.phone, 40);
   const productRaw = s(raw.product, 400);
   const message = s(raw.message, 2000);
 
   if (!brand) return { ok: false, error: "브랜드명을 입력해 주세요." };
   if (!manager) return { ok: false, error: "담당자 이름을 입력해 주세요." };
   if (!EMAIL_RE.test(email)) return { ok: false, error: "이메일 형식을 확인해 주세요." };
-  if (!phoneRaw) return { ok: false, error: "담당자 전화번호를 입력해 주세요." };
-  const phone = normalizePhone(phoneRaw);
-  if (!phone) return { ok: false, error: "전화번호 형식을 확인해 주세요. 숫자 8~15자리로 입력하고, 국제번호는 +로 시작하세요." };
+
+  // 전화번호 — 반드시 문자열 타입이어야 하고(배열·숫자 거부), 원문(trim)이 40자 이하여야 함.
+  // slice로 잘라서 수용하지 않음(뒤에 붙은 문자/숫자를 잘라 통과시키는 경로 차단).
+  const PHONE_ERR = "전화번호 형식을 확인해 주세요. 숫자 8~15자리로 입력하고, 국제번호는 +로 시작하세요.";
+  if (typeof raw.phone !== "string") return { ok: false, error: "담당자 전화번호를 입력해 주세요." };
+  const phoneTrimmed = raw.phone.trim();
+  if (!phoneTrimmed) return { ok: false, error: "담당자 전화번호를 입력해 주세요." };
+  if (phoneTrimmed.length > 40) return { ok: false, error: PHONE_ERR };
+  const phone = normalizePhone(phoneTrimmed);
+  if (!phone) return { ok: false, error: PHONE_ERR };
+
   if (productRaw && !URL_RE.test(productRaw)) return { ok: false, error: "제품 URL은 http(s):// 형식이어야 합니다." };
 
   // 권역 — enum만 허용, 중복 제거, 1개 이상

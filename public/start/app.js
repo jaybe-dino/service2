@@ -158,6 +158,7 @@
     function phoneValid(v) {
       var s = (v || "").trim();
       if (!s) return false;
+      if (s.length > 40) return false; // 원문 길이 제한(서버와 일치)
       if (!/^\+?[0-9\s().\-]+$/.test(s)) return false; // 문자 등 비허용 문자 거부
       var digits = s.replace(/[^0-9]/g, "");
       return digits.length >= 8 && digits.length <= 15;
