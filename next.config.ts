@@ -7,6 +7,8 @@ const base = process.env.NEXT_PUBLIC_BASE_PATH || "";
 // start.glovek.space 호스트에서만 적용되는 랜딩 리라이트 조건.
 // (glovek.space 루트/다른 호스트는 영향 없음 — host 매칭이 아닐 때 통과)
 const START_HOST = [{ type: "host" as const, value: "start.glovek.space" }];
+// batch.glovek.space 호스트에서만 적용되는 복제 랜딩 리라이트 조건(start과 독립).
+const BATCH_HOST = [{ type: "host" as const, value: "batch.glovek.space" }];
 
 const nextConfig: NextConfig = {
   images: { unoptimized: true },
@@ -23,6 +25,11 @@ const nextConfig: NextConfig = {
         { source: "/styles.css", has: START_HOST, destination: "/start/styles.css" },
         { source: "/app.js", has: START_HOST, destination: "/start/app.js" },
         { source: "/assets/:path*", has: START_HOST, destination: "/start/assets/:path*" },
+        // batch.glovek.space → public/batch/ (API/admin/_next는 그대로 앱이 처리)
+        { source: "/", has: BATCH_HOST, destination: "/batch/index.html" },
+        { source: "/styles.css", has: BATCH_HOST, destination: "/batch/styles.css" },
+        { source: "/app.js", has: BATCH_HOST, destination: "/batch/app.js" },
+        { source: "/assets/:path*", has: BATCH_HOST, destination: "/batch/assets/:path*" },
       ],
       afterFiles: [],
       fallback: [],

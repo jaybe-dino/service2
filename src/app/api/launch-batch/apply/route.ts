@@ -17,7 +17,7 @@ export const dynamic = "force-dynamic";
 // 외부 전달 없음. 전용 테이블에만 적재. no-store.
 
 // 동일 출처(또는 승인 호스트)만 허용 — CSRF/크로스사이트 POST 차단.
-const ALLOW_HOSTS = new Set(["start.glovek.space", "glovek.space", "www.glovek.space"]);
+const ALLOW_HOSTS = new Set(["start.glovek.space", "batch.glovek.space", "glovek.space", "www.glovek.space"]);
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
