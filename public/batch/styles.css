@@ -254,8 +254,8 @@ h1,h2,h3{word-break:keep-all;line-height:1.18;margin:0}
 .field input[aria-invalid="true"]{border-color:var(--pink)}
 .field .err{color:var(--pink-text);font-size:12.5px;margin:0}
 .field .hint{color:var(--ink-mute);font-size:12px;margin:0}
-.region-field input[type="checkbox"]{width:18px;height:18px;min-height:18px;max-width:none;padding:0;flex:0 0 18px;accent-color:var(--pink-deep);border-radius:3px}
-.region-field input[type="checkbox"]:focus-visible{outline:2.5px solid var(--pink-deep);outline-offset:3px;box-shadow:none}
+.region-field input:is([type="checkbox"],[type="radio"]){width:18px;height:18px;min-height:18px;max-width:none;padding:0;flex:0 0 18px;accent-color:var(--pink-deep)}
+.region-field input:is([type="checkbox"],[type="radio"]):focus-visible{outline:2.5px solid var(--pink-deep);outline-offset:3px;box-shadow:none}
 /* 신청서 희망 권역(체크박스 + 동남아 조건부) */
 .region-field{border:1px solid var(--border);border-radius:var(--r);padding:16px;margin:0;background:#fff}
 .region-field>legend{font-size:13.5px;font-weight:700;color:var(--midnight);padding:0 6px}
