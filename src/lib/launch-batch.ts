@@ -11,7 +11,7 @@ import { sessionSecret } from "./session-secret";
 export const UNIT_SUPPLY = 1_500_000; // 할인 공급가(ex-VAT)
 export const UNIT_INCL = 1_650_000; // VAT 포함
 
-// 3권역(미국 / 일본 / 동남아 5개국 묶음)
+// 3권역(미국 / 일본 / 동남아 — 5개 후보국 중 1개국 선택·제공)
 export const REGIONS = ["미국", "일본", "동남아"] as const;
 export type Region = (typeof REGIONS)[number];
 export const SEA_COUNTRIES = ["태국", "베트남", "필리핀", "말레이시아", "싱가포르"] as const;
@@ -119,11 +119,18 @@ export function validateApplication(raw: Record<string, unknown>):
   const regions = REGIONS.filter((r) => regionsIn.includes(r));
   if (regions.length === 0) return { ok: false, error: "희망 권역을 1개 이상 선택해 주세요." };
 
-  // 동남아 선택 시 하위 국가 1개 이상
-  const seaIn = Array.isArray(raw.seaCountries) ? raw.seaCountries : [];
-  const seaCountries = regions.includes("동남아") ? SEA_COUNTRIES.filter((c) => seaIn.includes(c)) : [];
-  if (regions.includes("동남아") && seaCountries.length === 0) {
-    return { ok: false, error: "동남아 진출 국가를 1개 이상 선택해 주세요." };
+  // 동남아는 5개 후보국 중 정확히 1개국만 선택·제공(나머지 국가는 개별 오픈).
+  // 신규 신청만 엄격 검증: 0개·2개 이상·비배열·무효 enum·잘못된 타입 거절(자르거나 무시하지 않음).
+  let seaCountries: SeaCountry[] = [];
+  if (regions.includes("동남아")) {
+    if (!Array.isArray(raw.seaCountries) || raw.seaCountries.length !== 1) {
+      return { ok: false, error: "동남아 진출 국가를 1개 선택해 주세요." };
+    }
+    const only = raw.seaCountries[0];
+    if (typeof only !== "string" || !(SEA_COUNTRIES as readonly string[]).includes(only)) {
+      return { ok: false, error: "동남아 진출 국가를 1개 선택해 주세요." };
+    }
+    seaCountries = [only as SeaCountry];
   }
 
   const regionCount = regions.length;

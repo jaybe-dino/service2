@@ -191,7 +191,7 @@
       var prodBad = product !== "" && !/^https?:\/\/\S+$/i.test(product);
       bad(prodBad, "e-product", form.product);
       // 동남아 선택 시 하위 국가 1개 이상 필수
-      var seaBad = seaActive() && selectedSea().length === 0;
+      var seaBad = seaActive() && selectedSea().length !== 1;
       show("e-sea", seaBad);
       var seaGroup = document.getElementById("seaCountries");
       if (seaGroup) seaGroup.setAttribute("aria-invalid", seaBad ? "true" : "false");
