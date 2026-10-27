@@ -153,6 +153,15 @@
     var form = document.getElementById("contactForm");
     if (!form) return;
     var emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    // 전화번호: 선행 + 국제번호 허용, 구분자(공백/하이픈/점/괄호) 허용, 문자 거부, 숫자 8~15자리.
+    // 서버와 동일 규칙 — 특정 국내 이동통신만 제한하지 않음.
+    function phoneValid(v) {
+      var s = (v || "").trim();
+      if (!s) return false;
+      if (!/^\+?[0-9\s().\-]+$/.test(s)) return false; // 문자 등 비허용 문자 거부
+      var digits = s.replace(/[^0-9]/g, "");
+      return digits.length >= 8 && digits.length <= 15;
+    }
     var statusEl = document.getElementById("formStatus");
     var submitBtn = form.querySelector('button[type="submit"]');
     var consentEl = document.getElementById("f-consent");
@@ -170,13 +179,14 @@
       ev.preventDefault();
       if (sending) return; // 중복 클릭 방지
       var brand = form.brand.value.trim(), name = form.manager.value.trim(),
-          email = form.email.value.trim(), product = form.product.value.trim(),
-          message = form.message.value.trim();
+          email = form.email.value.trim(), phone = form.phone.value.trim(),
+          product = form.product.value.trim(), message = form.message.value.trim();
       var ok = true, firstBad = null;
       function bad(cond, errId, field) { show(errId, cond); if (field) field.setAttribute("aria-invalid", cond ? "true" : "false"); if (cond) { ok = false; if (!firstBad) firstBad = field; } }
       bad(!brand, "e-brand", form.brand);
       bad(!name, "e-name", form.manager);
       bad(!emailRe.test(email), "e-email", form.email);
+      bad(!phoneValid(phone), "e-phone", form.phone);
       var prodBad = product !== "" && !/^https?:\/\/\S+$/i.test(product);
       bad(prodBad, "e-product", form.product);
       // 동남아 선택 시 하위 국가 1개 이상 필수
@@ -192,7 +202,7 @@
 
       var payload = {
         requestId: reqId,
-        brand: brand, manager: name, email: email, product: product, message: message,
+        brand: brand, manager: name, email: email, phone: phone, product: product, message: message,
         regions: selectedRegions(),
         seaCountries: selectedSea(),
         consent: true,
@@ -228,8 +238,8 @@
     });
 
     // 입력 시 해당 에러 숨김
-    ["brand", "manager", "email", "product"].forEach(function (nm) {
-      var map = { brand: "e-brand", manager: "e-name", email: "e-email", product: "e-product" };
+    ["brand", "manager", "email", "phone", "product"].forEach(function (nm) {
+      var map = { brand: "e-brand", manager: "e-name", email: "e-email", phone: "e-phone", product: "e-product" };
       if (form[nm]) form[nm].addEventListener("input", function () { show(map[nm], false); form[nm].removeAttribute("aria-invalid"); });
     });
     if (consentEl) consentEl.addEventListener("change", function () { show("e-consent", false); consentEl.removeAttribute("aria-invalid"); });

@@ -23,6 +23,7 @@ interface Row {
   brand: string;
   manager: string;
   email: string;
+  phone: string | null;
   product_url: string | null;
   regions: unknown;
   sea_countries: unknown;
@@ -57,19 +58,22 @@ export async function GET(req: Request) {
     return NextResponse.json({ item: rows[0] }, { headers: NS });
   }
 
-  // 목록 — 검색(브랜드/이메일), 상태 필터, 테스트 포함 여부
+  // 목록 — 검색(브랜드/이메일/전화번호), 상태 필터, 테스트 포함 여부
   const q = (url.searchParams.get("q") || "").trim().slice(0, 120);
   const like = "%" + q + "%";
+  const qDigits = q.replace(/\D/g, ""); // 전화번호는 정규화(숫자) 저장이라 숫자만으로도 매칭
+  const likeDigits = "%" + qDigits + "%";
   const statusFilter = url.searchParams.get("status") || "";
   const status = STATUSES.includes(statusFilter as Status) ? statusFilter : "";
   const includeTest = url.searchParams.get("test") === "1";
 
   await ensureLaunchBatchTable();
   const { rows } = await sql<Row>`
-    SELECT id, brand, manager, email, regions, region_count, cost_incl,
+    SELECT id, brand, manager, email, phone, regions, region_count, cost_incl,
            is_test, status, created_at, updated_at
     FROM launch_batch_applications
-    WHERE (${q} = '' OR brand ILIKE ${like} OR email ILIKE ${like})
+    WHERE (${q} = '' OR brand ILIKE ${like} OR email ILIKE ${like}
+           OR (${qDigits} <> '' AND phone ILIKE ${likeDigits}))
       AND (${status} = '' OR status = ${status})
       AND (${includeTest} OR is_test = false)
     ORDER BY created_at DESC

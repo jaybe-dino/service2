@@ -30,7 +30,7 @@ export const STATUS_LABEL: Record<Status, string> = {
 };
 
 // 개인정보 수집·이용 동의 버전(동의 문구가 바뀌면 +1). 저장 시 동의 시각과 함께 기록.
-export const CONSENT_VERSION = "2026-10-26";
+export const CONSENT_VERSION = "2026-10-27";
 
 /* ── 서버 비용 산정(클라이언트 금액 신뢰하지 않음) ── */
 export function computeCost(regionCount: number): { supply: number; incl: number } {
@@ -52,6 +52,7 @@ export interface CleanApplication {
   brand: string;
   manager: string;
   email: string;
+  phone: string; // 정규화된 전화번호(선행 + 보존, 구분자 제거)
   productUrl: string | null;
   regions: Region[];
   seaCountries: SeaCountry[];
@@ -64,6 +65,23 @@ export interface CleanApplication {
 
 const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 const URL_RE = /^https?:\/\/\S+$/i;
+// 전화번호 허용 문자: 선행 +(국제번호), 숫자, 구분자(공백/하이픈/점/괄호). 문자는 거부.
+const PHONE_ALLOWED_RE = /^\+?[0-9\s().-]+$/;
+
+/**
+ * 전화번호 정규화 — 선행 +는 보존하고 구분자를 제거. 숫자 8~15자리만 유효.
+ * 한국(하이픈/공백)·국제전화 모두 허용. 특정 국내 이동통신만 제한하지 않음.
+ * 유효하지 않으면 null.
+ */
+export function normalizePhone(raw: string): string | null {
+  const t = raw.trim();
+  if (!t) return null;
+  if (!PHONE_ALLOWED_RE.test(t)) return null; // 문자 등 비허용 문자 거부
+  const hasPlus = t.startsWith("+");
+  const digits = t.replace(/[^0-9]/g, "");
+  if (digits.length < 8 || digits.length > 15) return null;
+  return (hasPlus ? "+" : "") + digits;
+}
 
 /**
  * 서버측 검증 — enums/타입/길이/이메일/URL. 통과 시 서버 산정 비용까지 포함해 반환.
@@ -77,12 +95,16 @@ export function validateApplication(raw: Record<string, unknown>):
   const brand = s(raw.brand, 120);
   const manager = s(raw.manager, 80);
   const email = s(raw.email, 160).toLowerCase();
+  const phoneRaw = s(raw.phone, 40);
   const productRaw = s(raw.product, 400);
   const message = s(raw.message, 2000);
 
   if (!brand) return { ok: false, error: "브랜드명을 입력해 주세요." };
   if (!manager) return { ok: false, error: "담당자 이름을 입력해 주세요." };
   if (!EMAIL_RE.test(email)) return { ok: false, error: "이메일 형식을 확인해 주세요." };
+  if (!phoneRaw) return { ok: false, error: "담당자 전화번호를 입력해 주세요." };
+  const phone = normalizePhone(phoneRaw);
+  if (!phone) return { ok: false, error: "전화번호 형식을 확인해 주세요. 숫자 8~15자리로 입력하고, 국제번호는 +로 시작하세요." };
   if (productRaw && !URL_RE.test(productRaw)) return { ok: false, error: "제품 URL은 http(s):// 형식이어야 합니다." };
 
   // 권역 — enum만 허용, 중복 제거, 1개 이상
@@ -109,6 +131,7 @@ export function validateApplication(raw: Record<string, unknown>):
       brand,
       manager,
       email,
+      phone,
       productUrl: productRaw || null,
       regions: regions as Region[],
       seaCountries: seaCountries as SeaCountry[],
@@ -133,6 +156,7 @@ export function ensureLaunchBatchTable(): Promise<void> {
         brand text NOT NULL,
         manager text NOT NULL,
         email text NOT NULL,
+        phone text,
         product_url text,
         regions jsonb NOT NULL,
         sea_countries jsonb NOT NULL DEFAULT '[]'::jsonb,
@@ -151,6 +175,8 @@ export function ensureLaunchBatchTable(): Promise<void> {
         created_at timestamptz NOT NULL DEFAULT now(),
         updated_at timestamptz NOT NULL DEFAULT now()
       )`;
+      // 기존 테이블/기존 row 보존 — phone 컬럼은 nullable로 추가(기존 신청은 phone 없음으로 유지).
+      await sql`ALTER TABLE launch_batch_applications ADD COLUMN IF NOT EXISTS phone text`;
       await sql`CREATE INDEX IF NOT EXISTS launch_batch_created_idx ON launch_batch_applications (created_at DESC)`;
     })().catch((e) => {
       tableReady = null; // 실패 시 다음 요청에서 재시도

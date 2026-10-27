@@ -35,7 +35,7 @@ function sameOriginOk(req: Request): boolean {
 
 function payloadHash(d: CleanApplication): string {
   const norm = JSON.stringify({
-    b: d.brand, m: d.manager, e: d.email, p: d.productUrl,
+    b: d.brand, m: d.manager, e: d.email, ph: d.phone, p: d.productUrl,
     r: [...d.regions].sort(), s: [...d.seaCountries].sort(), msg: d.message,
   });
   return crypto.createHash("sha256").update(norm).digest("hex").slice(0, 32);
@@ -103,11 +103,11 @@ export async function POST(req: Request) {
     // 9) 멱등 삽입 — 동일 requestId 재시도는 중복 접수하지 않음
     const ins = await sql<{ id: number }>`
       INSERT INTO launch_batch_applications
-        (request_id, payload_hash, brand, manager, email, product_url, regions, sea_countries,
+        (request_id, payload_hash, brand, manager, email, phone, product_url, regions, sea_countries,
          message, region_count, cost_supply, cost_incl, consent, consent_version, consent_at,
          is_test, ip_hash, user_agent)
       VALUES
-        (${reqId}, ${hash}, ${d.brand}, ${d.manager}, ${d.email}, ${d.productUrl},
+        (${reqId}, ${hash}, ${d.brand}, ${d.manager}, ${d.email}, ${d.phone}, ${d.productUrl},
          ${JSON.stringify(d.regions)}, ${JSON.stringify(d.seaCountries)},
          ${d.message}, ${d.regionCount}, ${d.costSupply}, ${d.costIncl},
          true, ${CONSENT_VERSION}, now(), ${d.isTest}, ${ipHash}, ${ua})

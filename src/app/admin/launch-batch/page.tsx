@@ -22,7 +22,7 @@ const STATUS_CLS: Record<Status, string> = {
 };
 
 interface ListItem {
-  id: number; brand: string; manager: string; email: string;
+  id: number; brand: string; manager: string; email: string; phone: string | null;
   regions: string[]; region_count: number; cost_incl: number;
   is_test: boolean; status: string; created_at: string; updated_at: string;
 }
@@ -168,7 +168,7 @@ export default function LaunchBatchAdmin() {
         <form onSubmit={(e) => { e.preventDefault(); load(); }} className="flex items-center gap-1.5">
           <div className="flex items-center gap-1 rounded-md border border-[var(--border)] px-2 py-1.5">
             <Search size={13} className="text-[var(--muted)]" />
-            <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="브랜드·이메일 검색" className="w-48 text-[12px] outline-none" />
+            <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="브랜드·이메일·전화 검색" className="w-48 text-[12px] outline-none" />
           </div>
           <button className="kt-btn kt-btn-primary px-3 py-1.5 text-[11px]">검색</button>
         </form>
@@ -196,7 +196,7 @@ export default function LaunchBatchAdmin() {
                 {items.map((it) => (
                   <tr key={it.id} onClick={() => openDetail(it.id)} className={`cursor-pointer border-t border-[var(--border)] hover:bg-[var(--bg-soft,#f7f7f8)] ${selId === it.id ? "bg-[var(--bg-soft,#f2f2f3)]" : ""}`}>
                     <td className="px-3 py-2 whitespace-nowrap text-[var(--muted)]">{kst(it.created_at)}</td>
-                    <td className="px-3 py-2 font-semibold">{it.brand}{it.is_test && <span className="ml-1 rounded bg-zinc-200 px-1 text-[9px] text-zinc-600">TEST</span>}</td>
+                    <td className="px-3 py-2 font-semibold">{it.brand}{it.is_test && <span className="ml-1 rounded bg-zinc-200 px-1 text-[9px] text-zinc-600">TEST</span>}<div className="text-[10px] font-normal text-[var(--muted)] whitespace-nowrap">{it.phone || "전화 미수집"}</div></td>
                     <td className="px-3 py-2 whitespace-nowrap">{it.regions.join("·")} <span className="text-[var(--muted)]">({it.region_count})</span></td>
                     <td className="px-3 py-2 whitespace-nowrap">{won(it.cost_incl)}</td>
                     <td className="px-3 py-2"><span className={`rounded px-1.5 py-0.5 text-[10px] font-bold ${STATUS_CLS[(STATUSES as readonly string[]).includes(it.status) ? (it.status as Status) : "new"]}`}>{STATUS_LABEL[(STATUSES as readonly string[]).includes(it.status) ? (it.status as Status) : "new"]}</span></td>
@@ -222,7 +222,8 @@ export default function LaunchBatchAdmin() {
                 <span className="text-[10px] text-[var(--muted)]">접수 {kst(detail.created_at)} (KST)</span>
               </div>
               <Field k="담당자" v={detail.manager} />
-              <Field k="이메일" v={<a className="text-[var(--accent)] underline" href={`mailto:${detail.email}`}>{detail.email}</a>} />
+              <Field k="이메일" v={<a className="break-all text-[var(--accent)] underline" href={`mailto:${detail.email}`}>{detail.email}</a>} />
+              <Field k="전화번호" v={detail.phone ? <a className="text-[var(--accent)] underline" href={`tel:${detail.phone}`}>{detail.phone}</a> : <span className="text-[var(--muted)]">미수집</span>} />
               <Field k="제품 URL" v={detail.product_url ? <a className="break-all text-[var(--accent)] underline" href={detail.product_url} target="_blank" rel="noreferrer noopener">{detail.product_url}</a> : "—"} />
               <Field k="희망 권역" v={`${detail.regions.join(", ")} (${detail.region_count}권역)`} />
               {detail.regions.includes("동남아") && <Field k="동남아 국가" v={detail.sea_countries.join(", ") || "—"} />}
