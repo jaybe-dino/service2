@@ -148,6 +148,20 @@ h1,h2,h3{word-break:keep-all;line-height:1.18;margin:0}
 .benefit-list h3{font-size:17.5px;font-weight:800;margin:0 0 4px}
 .benefit-list p{font-size:14px;color:var(--ink-soft);margin:0}
 
+/* Compact TikTok Ads promotion, separate from programme benefits */
+.ads-perk{margin-top:30px;padding:24px;background:var(--surface);border:1px solid var(--border);border-left:4px solid var(--cyan);border-radius:var(--r-lg);scroll-margin-top:86px}
+.ads-perk-head{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}
+.ads-perk-tag{margin:0 0 5px;font-size:11px;font-weight:800;color:var(--ink-soft);letter-spacing:.04em}
+.ads-perk-head h3{font-size:20px;font-weight:800;letter-spacing:-.02em}
+.ads-perk-head>a{font-size:12px;font-weight:700;text-decoration:underline;text-underline-offset:3px}
+.ads-perk-options{list-style:none;margin:20px 0 14px;padding:0;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.ads-perk-options li{min-width:0;border-radius:var(--r);background:rgba(37,244,238,.11);padding:15px 18px}
+.ads-perk-options li>span{display:block;font-size:12px;color:var(--ink-soft);font-weight:600}
+.ads-perk-options strong{display:block;margin-top:5px;font-size:30px;line-height:1.3;font-weight:900;letter-spacing:-.03em;font-variant-numeric:tabular-nums}
+.ads-perk-options small{font-size:13px;font-weight:700;letter-spacing:0}
+.ads-perk-note{margin:0;font-size:11.5px;line-height:1.65;color:var(--ink-mute)}
+@media(max-width:760px){.ads-perk{padding:20px}.ads-perk-options{grid-template-columns:1fr;gap:8px}.ads-perk-options li{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 14px}.ads-perk-options li>span{max-width:48%}.ads-perk-options strong{margin:0;font-size:26px;white-space:nowrap}}
+
 /* Regions */
 .region-modules{display:grid;grid-template-columns:1fr 1fr 1.5fr;gap:16px}
 .region-mod{position:relative;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:26px}
