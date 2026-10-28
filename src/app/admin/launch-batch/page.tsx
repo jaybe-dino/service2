@@ -2,7 +2,7 @@
 
 // 글로벌 진출 배치 1기 — 전용 관리자(신청 목록/상세/상태·메모). 관리자 전용, 서버측 인증.
 // 데이터: /api/admin/launch-batch (GET 목록·상세 / PATCH 상태·메모). 외부 전달 없음.
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import PageShell from "@/components/ktrend/PageShell";
 import { ShieldCheck, Loader2, ArrowLeft, RefreshCw, Search, LogOut, Save, Inbox } from "lucide-react";
@@ -21,8 +21,20 @@ const STATUS_CLS: Record<Status, string> = {
   hold: "bg-rose-100 text-rose-700",
 };
 
+// 유입 사이트(source_site). null/legacy 및 비정상값은 '출처 미확인'으로 표시.
+const SITE_KEYS = ["start", "batch", "unknown"] as const;
+type SiteKey = (typeof SITE_KEYS)[number];
+const SITE_LABEL: Record<SiteKey, string> = { start: "배치 1기", batch: "진출 테스팅", unknown: "출처 미확인" };
+const SITE_DOMAIN: Record<SiteKey, string> = { start: "start.glovek.space", batch: "batch.glovek.space", unknown: "" };
+const SITE_CLS: Record<SiteKey, string> = { start: "bg-indigo-100 text-indigo-700", batch: "bg-teal-100 text-teal-700", unknown: "bg-zinc-100 text-zinc-500" };
+const SITE_TABS: { key: string; label: string }[] = [
+  { key: "", label: "전체" }, { key: "start", label: "배치 1기" }, { key: "batch", label: "진출 테스팅" }, { key: "unknown", label: "출처 미확인" },
+];
+const siteOf = (v: string | null | undefined): SiteKey => (v === "start" || v === "batch" ? v : "unknown");
+const normSite = (v: string | null): string => ((SITE_KEYS as readonly string[]).includes(v || "") ? (v as string) : "");
+
 interface ListItem {
-  id: number; brand: string; manager: string; email: string; phone: string | null;
+  id: number; brand: string; manager: string; email: string; phone: string | null; source_site: string | null;
   regions: string[]; region_count: number; cost_incl: number;
   is_test: boolean; status: string; created_at: string; updated_at: string;
 }
@@ -49,6 +61,7 @@ export default function LaunchBatchAdmin() {
   const [q, setQ] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("");
   const [includeTest, setIncludeTest] = useState(false);
+  const [site, setSite] = useState<string>(""); // "" = 전체
   const [loading, setLoading] = useState(false);
   const [loadErr, setLoadErr] = useState<string | null>(null);
 
@@ -60,37 +73,66 @@ export default function LaunchBatchAdmin() {
   const [saving, setSaving] = useState(false);
   const [saveMsg, setSaveMsg] = useState<string | null>(null);
 
+  const loadSeq = useRef(0);   // 목록 응답 역순 완료 방지
+  const detailSeq = useRef(0); // 상세 응답 역순 완료 방지
+
   useEffect(() => {
     fetch("/api/admin/session", { cache: "no-store" }).then((r) => r.json()).then((j) => setAuthed(!!j.authed)).catch(() => setAuthed(false));
   }, []);
 
+  // URL ?site= 와 동기화 — deep link/새로고침/뒤로가기 유지
+  useEffect(() => {
+    const read = () => { try { setSite(normSite(new URLSearchParams(window.location.search).get("site"))); } catch { setSite(""); } };
+    read();
+    window.addEventListener("popstate", read);
+    return () => window.removeEventListener("popstate", read);
+  }, []);
+
+  // 사이트 변경 시 이전 사이트 상세가 남지 않도록 선택 해제 + 진행 중 상세 무효화
+  useEffect(() => { detailSeq.current++; setSelId(null); setDetail(null); setDetailLoading(false); }, [site]);
+
   const load = useCallback(() => {
+    const seq = ++loadSeq.current;
     setLoading(true); setLoadErr(null);
     const sp = new URLSearchParams();
     if (q.trim()) sp.set("q", q.trim());
     if (statusFilter) sp.set("status", statusFilter);
     if (includeTest) sp.set("test", "1");
+    if (site) sp.set("site", site);
     fetch("/api/admin/launch-batch?" + sp.toString(), { cache: "no-store" })
       .then(async (r) => { if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || "조회 실패"); return r.json(); })
-      .then((j) => { setItems((j.items || []).map((it: ListItem) => ({ ...it, regions: asArr(it.regions) }))); setCounts(j.counts || {}); })
-      .catch((e) => setLoadErr(String(e.message || e)))
-      .finally(() => setLoading(false));
-  }, [q, statusFilter, includeTest]);
+      .then((j) => { if (seq !== loadSeq.current) return; setItems((j.items || []).map((it: ListItem) => ({ ...it, regions: asArr(it.regions) }))); setCounts(j.counts || {}); })
+      .catch((e) => { if (seq !== loadSeq.current) return; setLoadErr(String(e.message || e)); })
+      .finally(() => { if (seq === loadSeq.current) setLoading(false); });
+  }, [q, statusFilter, includeTest, site]);
   useEffect(() => { if (authed) load(); }, [authed, load]);
 
   const openDetail = useCallback((id: number) => {
+    const seq = ++detailSeq.current;
     setSelId(id); setDetail(null); setDetailLoading(true); setSaveMsg(null);
     fetch("/api/admin/launch-batch?id=" + id, { cache: "no-store" })
       .then((r) => r.json())
       .then((j) => {
+        if (seq !== detailSeq.current) return;
         if (!j.item) throw new Error("not found");
         const it = j.item;
         const d: Detail = { ...it, regions: asArr(it.regions), sea_countries: asArr(it.sea_countries) };
         setDetail(d); setNoteDraft(d.admin_note || ""); setStatusDraft((STATUSES as readonly string[]).includes(d.status) ? (d.status as Status) : "new");
       })
-      .catch(() => setDetail(null))
-      .finally(() => setDetailLoading(false));
+      .catch(() => { if (seq === detailSeq.current) setDetail(null); })
+      .finally(() => { if (seq === detailSeq.current) setDetailLoading(false); });
   }, []);
+
+  function changeSite(next: string) {
+    if (next === site) return;
+    setSite(next);
+    try {
+      const sp = new URLSearchParams(window.location.search);
+      if (next) sp.set("site", next); else sp.delete("site");
+      const qs = sp.toString();
+      window.history.pushState({}, "", window.location.pathname + (qs ? "?" + qs : ""));
+    } catch { /* history 미지원 무시 */ }
+  }
 
   async function login(e: React.FormEvent) {
     e.preventDefault(); setLoginErr(null);
@@ -129,7 +171,7 @@ export default function LaunchBatchAdmin() {
         <div className="mx-auto max-w-sm py-16">
           <div className="kt-card p-6">
             <h1 className="flex items-center gap-2 text-[18px] font-black"><ShieldCheck size={18} className="text-[var(--accent)]" /> 관리자 로그인</h1>
-            <p className="mt-1 text-[11px] text-[var(--muted)]">글로벌 진출 배치 1기 신청 관리(관리자 전용)</p>
+            <p className="mt-1 text-[11px] text-[var(--muted)]">글로벌 진출 신청 관리(관리자 전용)</p>
             <form onSubmit={login} className="mt-4 space-y-2.5">
               <input value={u} onChange={(e) => setU(e.target.value)} placeholder="아이디" autoComplete="username" className="w-full rounded-md border border-[var(--border)] px-3 py-2 text-[12px] outline-none focus:border-[var(--accent)]" />
               <input type="password" value={p} onChange={(e) => setP(e.target.value)} placeholder="비밀번호" autoComplete="current-password" className="w-full rounded-md border border-[var(--border)] px-3 py-2 text-[12px] outline-none focus:border-[var(--accent)]" />
@@ -142,18 +184,26 @@ export default function LaunchBatchAdmin() {
     );
   }
 
+  const total = Object.values(counts).reduce((a, b) => a + b, 0);
   return (
     <PageShell>
       <div className="mb-3 flex items-start justify-between gap-3">
         <div>
           <Link href="/admin" className="mb-1 inline-flex items-center gap-1 text-[11px] text-[var(--muted)] hover:text-[var(--accent)]"><ArrowLeft size={12} /> 관리자 콘솔</Link>
-          <h1 className="flex items-center gap-2 text-[20px] font-black tracking-tight"><Inbox size={18} className="text-[var(--accent)]" /> 글로벌 진출 배치 1기 신청</h1>
-          <p className="text-[11px] text-[var(--muted)]">start.glovek.space 온라인 접수 · 실집계 {Object.values(counts).reduce((a, b) => a + b, 0)}건(테스트 제외)</p>
+          <h1 className="flex items-center gap-2 text-[20px] font-black tracking-tight"><Inbox size={18} className="text-[var(--accent)]" /> 글로벌 진출 신청</h1>
+          <p className="text-[11px] text-[var(--muted)]">start·batch.glovek.space 온라인 접수 · {site ? SITE_TABS.find((t) => t.key === site)?.label + " " : ""}실집계 {total}건(테스트 제외)</p>
         </div>
-        <button onClick={logout} className="inline-flex items-center gap-1 rounded-md border border-[var(--border)] px-2.5 py-1.5 text-[11px] text-[var(--muted)] hover:text-rose-600"><LogOut size={12} /> 로그아웃</button>
+        <button onClick={logout} className="inline-flex shrink-0 items-center gap-1 rounded-md border border-[var(--border)] px-2.5 py-1.5 text-[11px] text-[var(--muted)] hover:text-rose-600"><LogOut size={12} /> 로그아웃</button>
       </div>
 
-      {/* 상태별 집계 */}
+      {/* 유입 사이트 탭 */}
+      <div className="mb-2 flex flex-wrap gap-1.5">
+        {SITE_TABS.map((t) => (
+          <button key={t.key} onClick={() => changeSite(t.key)} className={`rounded-md px-3 py-1.5 text-[11px] font-bold ${site === t.key ? "bg-[var(--accent)] text-white" : "border border-[var(--border)] text-[var(--muted)]"}`}>{t.label}</button>
+        ))}
+      </div>
+
+      {/* 상태별 집계(선택 사이트 기준) */}
       <div className="mb-3 flex flex-wrap gap-1.5">
         <button onClick={() => setStatusFilter("")} className={`rounded-md px-2.5 py-1 text-[11px] font-semibold ${statusFilter === "" ? "bg-[var(--accent)] text-white" : "border border-[var(--border)] text-[var(--muted)]"}`}>전체</button>
         {STATUSES.map((s) => (
@@ -168,7 +218,7 @@ export default function LaunchBatchAdmin() {
         <form onSubmit={(e) => { e.preventDefault(); load(); }} className="flex items-center gap-1.5">
           <div className="flex items-center gap-1 rounded-md border border-[var(--border)] px-2 py-1.5">
             <Search size={13} className="text-[var(--muted)]" />
-            <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="브랜드·이메일·전화 검색" className="w-48 text-[12px] outline-none" />
+            <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="브랜드·이메일·전화 검색" className="w-44 max-w-[48vw] text-[12px] outline-none" />
           </div>
           <button className="kt-btn kt-btn-primary px-3 py-1.5 text-[11px]">검색</button>
         </form>
@@ -180,7 +230,7 @@ export default function LaunchBatchAdmin() {
 
       <div className="grid gap-4 lg:grid-cols-[1.3fr_1fr]">
         {/* 목록 */}
-        <div className="kt-card overflow-hidden">
+        <div className="kt-card overflow-x-auto">
           {loading ? (
             <div className="py-16 text-center text-[var(--muted)]"><Loader2 className="mx-auto animate-spin" /></div>
           ) : loadErr ? (
@@ -188,20 +238,30 @@ export default function LaunchBatchAdmin() {
           ) : items.length === 0 ? (
             <div className="py-16 text-center text-[12px] text-[var(--muted)]">신청 내역이 없습니다.</div>
           ) : (
-            <table className="w-full text-[12px]">
+            <table className="w-full min-w-[460px] text-[12px]">
               <thead className="bg-[var(--bg-soft,#f7f7f8)] text-left text-[10px] uppercase text-[var(--muted)]">
-                <tr><th className="px-3 py-2">접수</th><th className="px-3 py-2">브랜드</th><th className="px-3 py-2">권역</th><th className="px-3 py-2">비용(VAT)</th><th className="px-3 py-2">상태</th></tr>
+                <tr><th className="px-3 py-2">접수</th><th className="px-3 py-2">브랜드 · 유입</th><th className="px-3 py-2">권역</th><th className="px-3 py-2">비용(VAT)</th><th className="px-3 py-2">상태</th></tr>
               </thead>
               <tbody>
-                {items.map((it) => (
-                  <tr key={it.id} onClick={() => openDetail(it.id)} className={`cursor-pointer border-t border-[var(--border)] hover:bg-[var(--bg-soft,#f7f7f8)] ${selId === it.id ? "bg-[var(--bg-soft,#f2f2f3)]" : ""}`}>
-                    <td className="px-3 py-2 whitespace-nowrap text-[var(--muted)]">{kst(it.created_at)}</td>
-                    <td className="px-3 py-2 font-semibold">{it.brand}{it.is_test && <span className="ml-1 rounded bg-zinc-200 px-1 text-[9px] text-zinc-600">TEST</span>}<div className="text-[10px] font-normal text-[var(--muted)] whitespace-nowrap">{it.phone || "전화 미수집"}</div></td>
-                    <td className="px-3 py-2 whitespace-nowrap">{it.regions.join("·")} <span className="text-[var(--muted)]">({it.region_count})</span></td>
-                    <td className="px-3 py-2 whitespace-nowrap">{won(it.cost_incl)}</td>
-                    <td className="px-3 py-2"><span className={`rounded px-1.5 py-0.5 text-[10px] font-bold ${STATUS_CLS[(STATUSES as readonly string[]).includes(it.status) ? (it.status as Status) : "new"]}`}>{STATUS_LABEL[(STATUSES as readonly string[]).includes(it.status) ? (it.status as Status) : "new"]}</span></td>
-                  </tr>
-                ))}
+                {items.map((it) => {
+                  const s = siteOf(it.source_site);
+                  return (
+                    <tr key={it.id} onClick={() => openDetail(it.id)} className={`cursor-pointer border-t border-[var(--border)] hover:bg-[var(--bg-soft,#f7f7f8)] ${selId === it.id ? "bg-[var(--bg-soft,#f2f2f3)]" : ""}`}>
+                      <td className="px-3 py-2 whitespace-nowrap align-top text-[var(--muted)]">{kst(it.created_at)}</td>
+                      <td className="px-3 py-2 align-top font-semibold">
+                        {it.brand}{it.is_test && <span className="ml-1 rounded bg-zinc-200 px-1 text-[9px] text-zinc-600">TEST</span>}
+                        <div className="mt-0.5 flex flex-wrap items-center gap-1 text-[9px] font-normal">
+                          <span className={`rounded px-1 py-0.5 font-bold ${SITE_CLS[s]}`}>{SITE_LABEL[s]}</span>
+                          {s !== "unknown" && <span className="text-[var(--muted)]">{SITE_DOMAIN[s]}</span>}
+                        </div>
+                        <div className="text-[10px] font-normal text-[var(--muted)] whitespace-nowrap">{it.phone || "전화 미수집"}</div>
+                      </td>
+                      <td className="px-3 py-2 whitespace-nowrap align-top">{it.regions.join("·")} <span className="text-[var(--muted)]">({it.region_count})</span></td>
+                      <td className="px-3 py-2 whitespace-nowrap align-top">{won(it.cost_incl)}</td>
+                      <td className="px-3 py-2 align-top"><span className={`rounded px-1.5 py-0.5 text-[10px] font-bold ${STATUS_CLS[(STATUSES as readonly string[]).includes(it.status) ? (it.status as Status) : "new"]}`}>{STATUS_LABEL[(STATUSES as readonly string[]).includes(it.status) ? (it.status as Status) : "new"]}</span></td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           )}
@@ -221,6 +281,7 @@ export default function LaunchBatchAdmin() {
                 <h2 className="text-[15px] font-black">{detail.brand}{detail.is_test && <span className="ml-1.5 rounded bg-zinc-200 px-1.5 py-0.5 text-[9px] text-zinc-600">TEST</span>}</h2>
                 <span className="text-[10px] text-[var(--muted)]">접수 {kst(detail.created_at)} (KST)</span>
               </div>
+              <Field k="신청 사이트" v={(() => { const s = siteOf(detail.source_site); return <span className="inline-flex items-center gap-1.5"><span className={`rounded px-1.5 py-0.5 text-[10px] font-bold ${SITE_CLS[s]}`}>{SITE_LABEL[s]}</span>{s !== "unknown" && <span className="text-[var(--muted)]">{SITE_DOMAIN[s]}</span>}</span>; })()} />
               <Field k="담당자" v={detail.manager} />
               <Field k="이메일" v={<a className="break-all text-[var(--accent)] underline" href={`mailto:${detail.email}`}>{detail.email}</a>} />
               <Field k="전화번호" v={detail.phone ? <a className="text-[var(--accent)] underline" href={`tel:${detail.phone}`}>{detail.phone}</a> : <span className="text-[var(--muted)]">미수집</span>} />

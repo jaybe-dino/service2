@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { sql, isConfigured } from "@/lib/db";
 import { isAdminAuthed } from "@/lib/admin-auth";
-import { ensureLaunchBatchTable, STATUSES, type Status } from "@/lib/launch-batch";
+import { ensureLaunchBatchTable, STATUSES, SOURCE_SITES, type Status, type SourceSite } from "@/lib/launch-batch";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -24,6 +24,7 @@ interface Row {
   manager: string;
   email: string;
   phone: string | null;
+  source_site: string | null;
   product_url: string | null;
   regions: unknown;
   sea_countries: unknown;
@@ -66,27 +67,37 @@ export async function GET(req: Request) {
   const statusFilter = url.searchParams.get("status") || "";
   const status = STATUSES.includes(statusFilter as Status) ? statusFilter : "";
   const includeTest = url.searchParams.get("test") === "1";
+  // 유입 사이트 필터 — enum 검증(그 외는 전체). 'unknown'은 저장된 'unknown' + legacy NULL(출처 미확인) 포함.
+  const siteFilter = url.searchParams.get("site") || "";
+  const site = SOURCE_SITES.includes(siteFilter as SourceSite) ? siteFilter : "";
 
   await ensureLaunchBatchTable();
   const { rows } = await sql<Row>`
-    SELECT id, brand, manager, email, phone, regions, region_count, cost_incl,
+    SELECT id, brand, manager, email, phone, source_site, regions, region_count, cost_incl,
            is_test, status, created_at, updated_at
     FROM launch_batch_applications
     WHERE (${q} = '' OR brand ILIKE ${like} OR email ILIKE ${like}
            OR (${qDigits} <> '' AND phone ILIKE ${likeDigits}))
       AND (${status} = '' OR status = ${status})
       AND (${includeTest} OR is_test = false)
+      AND (${site} = ''
+           OR (${site} = 'unknown' AND (source_site = 'unknown' OR source_site IS NULL))
+           OR (${site} <> 'unknown' AND source_site = ${site}))
     ORDER BY created_at DESC
     LIMIT 300`;
 
-  // 상태별 집계(실집계는 테스트 제외)
+  // 상태별 집계 — 선택한 사이트만, 테스트 제외(실집계).
   const agg = await sql<{ status: string; c: number }>`
     SELECT status, COUNT(*)::int AS c FROM launch_batch_applications
-    WHERE is_test = false GROUP BY status`;
+    WHERE is_test = false
+      AND (${site} = ''
+           OR (${site} = 'unknown' AND (source_site = 'unknown' OR source_site IS NULL))
+           OR (${site} <> 'unknown' AND source_site = ${site}))
+    GROUP BY status`;
   const counts: Record<string, number> = {};
   for (const r of agg.rows) counts[r.status] = r.c;
 
-  return NextResponse.json({ items: rows, counts }, { headers: NS });
+  return NextResponse.json({ items: rows, counts, site }, { headers: NS });
 }
 
 export async function PATCH(req: Request) {

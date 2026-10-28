@@ -6,6 +6,7 @@ import {
   ensureLaunchBatchTable,
   hashIp,
   receiptNo,
+  siteFromHost,
   CONSENT_VERSION,
   type CleanApplication,
 } from "@/lib/launch-batch";
@@ -88,6 +89,8 @@ export async function POST(req: Request) {
   const hash = payloadHash(d);
   const ipHash = hashIp(clientIp(req));
   const ua = String(req.headers.get("user-agent") || "").slice(0, 300);
+  // 유입 사이트는 canonical 요청 Host로만 판정(body/Referer/x-forwarded-host 미신뢰).
+  const site = siteFromHost(req.headers.get("host"));
 
   try {
     await ensureLaunchBatchTable();
@@ -101,13 +104,14 @@ export async function POST(req: Request) {
     }
 
     // 9) 멱등 삽입 — 동일 requestId 재시도는 중복 접수하지 않음
+    // source_site는 payload_hash(legacy 포맷)에 넣지 않음 — 기존 접수 재시도가 409가 되지 않도록.
     const ins = await sql<{ id: number }>`
       INSERT INTO launch_batch_applications
-        (request_id, payload_hash, brand, manager, email, phone, product_url, regions, sea_countries,
+        (request_id, payload_hash, brand, manager, email, phone, source_site, product_url, regions, sea_countries,
          message, region_count, cost_supply, cost_incl, consent, consent_version, consent_at,
          is_test, ip_hash, user_agent)
       VALUES
-        (${reqId}, ${hash}, ${d.brand}, ${d.manager}, ${d.email}, ${d.phone}, ${d.productUrl},
+        (${reqId}, ${hash}, ${d.brand}, ${d.manager}, ${d.email}, ${d.phone}, ${site}, ${d.productUrl},
          ${JSON.stringify(d.regions)}, ${JSON.stringify(d.seaCountries)},
          ${d.message}, ${d.regionCount}, ${d.costSupply}, ${d.costIncl},
          true, ${CONSENT_VERSION}, now(), ${d.isTest}, ${ipHash}, ${ua})
@@ -117,14 +121,20 @@ export async function POST(req: Request) {
     let id = ins.rows[0]?.id;
     if (id == null) {
       // 충돌 — 기존 접수 조회. 같은 UUID에 다른 내용이면 일관성 오류(409).
-      const ex = await sql<{ id: number; payload_hash: string | null }>`
-        SELECT id, payload_hash FROM launch_batch_applications WHERE request_id = ${reqId} LIMIT 1`;
+      const ex = await sql<{ id: number; payload_hash: string | null; source_site: string | null }>`
+        SELECT id, payload_hash, source_site FROM launch_batch_applications WHERE request_id = ${reqId} LIMIT 1`;
       const row = ex.rows[0];
       if (!row) throw new Error("insert-conflict-but-missing");
       if (row.payload_hash && row.payload_hash !== hash) {
         return NextResponse.json({ ok: false, error: "이미 다른 내용으로 접수된 요청입니다. 새로고침 후 다시 작성해 주세요." }, { status: 409, headers: { "cache-control": "no-store" } });
       }
-      id = row.id; // 동일 재시도 — 멱등 성공
+      // 교차 사이트 UUID 충돌 — 기존·신규 모두 known(start/batch)이고 서로 다르면 409.
+      // 기존 null(legacy)/unknown은 재분류·덮어쓰지 않고 동일 재시도를 허용(기존 source_site 보존).
+      const exSite = row.source_site;
+      if ((exSite === "start" || exSite === "batch") && (site === "start" || site === "batch") && exSite !== site) {
+        return NextResponse.json({ ok: false, error: "이미 다른 사이트에서 접수된 요청입니다. 새로고침 후 다시 작성해 주세요." }, { status: 409, headers: { "cache-control": "no-store" } });
+      }
+      id = row.id; // 동일 재시도 — 멱등 성공(기존 source_site 유지)
     }
 
     return NextResponse.json(

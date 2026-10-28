@@ -32,6 +32,23 @@ export const STATUS_LABEL: Record<Status, string> = {
 // 개인정보 수집·이용 동의 버전(동의 문구가 바뀌면 +1). 저장 시 동의 시각과 함께 기록.
 export const CONSENT_VERSION = "2026-10-27";
 
+/* ── 유입 사이트(source_site) — 공개 랜딩 2곳 구분 ── */
+// start = start.glovek.space(배치 1기), batch = batch.glovek.space(진출 테스팅), unknown = 그 외/미확인.
+export const SOURCE_SITES = ["start", "batch", "unknown"] as const;
+export type SourceSite = (typeof SOURCE_SITES)[number];
+export const SITE_LABEL: Record<SourceSite, string> = { start: "배치 1기", batch: "진출 테스팅", unknown: "출처 미확인" };
+export const SITE_DOMAIN: Record<SourceSite, string> = { start: "start.glovek.space", batch: "batch.glovek.space", unknown: "—" };
+// canonical 호스트 정확 일치만 신뢰(대소문자 무시·포트 제거). body/Referer/x-forwarded-host는 신뢰하지 않음.
+const CANONICAL_SITE_HOSTS: Record<string, SourceSite> = {
+  "start.glovek.space": "start",
+  "batch.glovek.space": "batch",
+};
+export function siteFromHost(host: string | null | undefined): SourceSite {
+  if (!host) return "unknown";
+  const h = host.split(":")[0].trim().toLowerCase();
+  return CANONICAL_SITE_HOSTS[h] ?? "unknown";
+}
+
 /* ── 서버 비용 산정(클라이언트 금액 신뢰하지 않음) ── */
 export function computeCost(regionCount: number): { supply: number; incl: number } {
   const n = Math.max(0, regionCount | 0);
@@ -171,6 +188,7 @@ export function ensureLaunchBatchTable(): Promise<void> {
         manager text NOT NULL,
         email text NOT NULL,
         phone text,
+        source_site text,
         product_url text,
         regions jsonb NOT NULL,
         sea_countries jsonb NOT NULL DEFAULT '[]'::jsonb,
@@ -191,6 +209,8 @@ export function ensureLaunchBatchTable(): Promise<void> {
       )`;
       // 기존 테이블/기존 row 보존 — phone 컬럼은 nullable로 추가(기존 신청은 phone 없음으로 유지).
       await sql`ALTER TABLE launch_batch_applications ADD COLUMN IF NOT EXISTS phone text`;
+      // 유입 사이트(nullable) — 기존 테이블/기존 row 보존. 과거 null은 '출처 미확인'으로 표시(임의 backfill 없음).
+      await sql`ALTER TABLE launch_batch_applications ADD COLUMN IF NOT EXISTS source_site text`;
       await sql`CREATE INDEX IF NOT EXISTS launch_batch_created_idx ON launch_batch_applications (created_at DESC)`;
     })().catch((e) => {
       tableReady = null; // 실패 시 다음 요청에서 재시도
