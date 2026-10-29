@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { Calendar } from "lucide-react";
 import SiteHeader from "@/components/ktrend/SiteHeader";
 import SiteFooter from "@/components/ktrend/SiteFooter";
 import {
@@ -79,6 +80,71 @@ const STEPS: { n: string; title: string; desc: string }[] = [
   { n: "03", title: "활용·운영 방향 협의", desc: "제작한 콘텐츠의 활용과 TikTok Shop 입점·운영 방향을 협의합니다." },
 ];
 
+// 국회 워크숍 참석 8개국(기사 명시 순서). 국명은 말줄임 금지 — 좁으면 줄바꿈으로 전체 표기.
+const NEWS_COUNTRIES: { code: string; ko: string }[] = [
+  { code: "ma", ko: "모로코" }, { code: "ae", ko: "UAE" }, { code: "it", ko: "이탈리아" }, { code: "br", ko: "브라질" },
+  { code: "de", ko: "독일" }, { code: "my", ko: "말레이시아" }, { code: "uz", ko: "우즈베키스탄" }, { code: "ph", ko: "필리핀" },
+];
+
+// 최근 행사 & 협업 소식 — 실제 현장 사진 2건. SSR 기본 표시(reveal 애니메이션 없음, #news 직접 진입·새로고침에도 바로 보임).
+// 기사 원문/매체 링크 UI 없음(사진 출처만 링크 없는 최소 캡션). 사진 원본 비율 유지.
+function NewsSection() {
+  // 참여사 로고 띠: 흰색 공식 로고라 별도 어두운 띠. TikTok 원본은 내부 여백이 커 보이는 도형 높이를
+  // 한진과 맞추려 CSS 높이를 크게 보정(모바일 40px/PC 48px). 원본 비율·색 유지.
+  const band = "flex items-center justify-center border-b border-white/10";
+  const bandStyle = { background: "#0a0a14" };
+  const caption = "border-b border-[var(--border)] bg-slate-50 px-5 py-2 text-[11px] leading-snug text-slate-400";
+  const dateRow = "flex items-center gap-1.5 text-[12px] font-bold text-[var(--accent)]";
+  const title = "mt-2.5 break-keep text-[17px] font-black leading-snug tracking-tight sm:text-[19px]";
+  const desc = "mt-2.5 text-[13.5px] leading-relaxed text-[var(--muted)]";
+  return (
+    <Section id="news" kicker="News" title="최근 행사 & 협업 소식"
+      desc="디노스튜디오가 함께한 최근 행사와 협업 현장 소식입니다.">
+      <div className="grid grid-cols-1 items-start gap-5 lg:grid-cols-2">
+        {/* 1) 한진 × TikTok × 디노스튜디오 ONE-CLICK CONNECT 세미나 */}
+        <article className="overflow-hidden rounded-2xl border border-[var(--border)] bg-white shadow-sm">
+          <div className={`${band} gap-6 px-5 py-4`} style={bandStyle}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/refer/news/logos/hanjin-dark-bg.png" alt="한진(HANJIN)" width={321} height={68} className="h-5 w-auto md:h-6" loading="lazy" />
+            <span aria-hidden="true" className="select-none text-[13px] font-light text-white/30">×</span>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/refer/news/logos/tiktok-white.webp" alt="TikTok" width={2000} height={834} className="h-10 w-auto md:h-12" loading="lazy" />
+          </div>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/refer/news/hanjin-oneclick-20261022.jpg" alt="ONE-CLICK CONNECT 세미나 현장" width={500} height={281} className="h-auto w-full" loading="lazy" />
+          <div className={caption}>사진: 컨슈머타임스</div>
+          <div className="p-6">
+            <div className={dateRow}><Calendar size={13} className="shrink-0" /><span>2026.10.22 · 서울 강남 드리움 포레스트홀</span></div>
+            <h3 className={title}>한진 × TikTok × 디노스튜디오 ‘ONE-CLICK CONNECT’ 세미나</h3>
+            <p className={desc}>미국·일본 진출을 준비하는 국내 브랜드를 위한 공동 세미나를 진행했습니다. 한진은 물류·직배송과 FBA 운영을, 틱톡은 틱톡샵·광고 전략을 소개했고, 디노스튜디오는 성과형 어필리에이트, 제품 시딩, 데이터 기반 크리에이터 발굴과 구매 전환 전략을 발표했습니다.</p>
+          </div>
+        </article>
+
+        {/* 2) 8개국 주한 대사 참여 해외 수출 워크숍 D2C 전략 발표 */}
+        <article className="overflow-hidden rounded-2xl border border-[var(--border)] bg-white shadow-sm">
+          <div className="grid grid-cols-4 gap-x-2 gap-y-2.5 border-b border-white/10 px-4 py-3.5" style={bandStyle}>
+            {NEWS_COUNTRIES.map((c) => (
+              <div key={c.code} className="flex min-w-0 flex-col items-center justify-center gap-1 text-center sm:flex-row sm:gap-1.5">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={`/refer/news/flags/${c.code}.svg`} alt={`${c.ko} 국기`} width={24} height={18} className="h-[18px] w-6 shrink-0 rounded-[2px] ring-1 ring-white/15" loading="lazy" />
+                <span className="break-words text-[11px] font-medium leading-tight text-white/65">{c.ko}</span>
+              </div>
+            ))}
+          </div>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/refer/news/assembly-workshop-20261019.jpg" alt="해외 수출 워크숍 현장" width={600} height={400} className="h-auto w-full" loading="lazy" />
+          <div className={caption}>워크숍 진행 장면 · 사진 제공: 글로벌외교관포럼(인더스트리뉴스)</div>
+          <div className="p-6">
+            <div className={dateRow}><Calendar size={13} className="shrink-0" /><span>2026.10.19 · 서울 여의도 국회의원회관 제1회의실</span></div>
+            <h3 className={title}>8개국 주한 대사 참여 ‘해외 수출 워크숍’ D2C 전략 발표</h3>
+            <p className={desc}>한국강소기업협회와 글로벌외교관포럼(GDF)이 공동 개최한 해외 수출 워크숍에 참여했습니다. 모로코·UAE·이탈리아·브라질·독일·말레이시아·우즈베키스탄·필리핀 8개국 주한 대사와 국내 중소기업이 함께한 자리에서, 허정발 디노스튜디오 대표가 틱톡샵 기반 해외 직접판매(D2C) 전략을 발표했습니다.</p>
+          </div>
+        </article>
+      </div>
+    </Section>
+  );
+}
+
 export default function ReferPage() {
   const rank = (s: LogoSize) => { const i = SIZE_ORDER.indexOf(s); return i < 0 ? 99 : i; };
   const sortedLogos = [...REFER_LOGOS].sort((a, b) => rank(a.size) - rank(b.size));
@@ -116,6 +182,11 @@ export default function ReferPage() {
           </div>
         </div>
       </header>
+
+      {/* 최근 행사 & 협업 소식 — 히어로 바로 다음 */}
+      <div className="border-b border-[var(--border)] bg-white">
+        <NewsSection />
+      </div>
 
       {/* 대표 협업 브랜드(간결) */}
       <Section id="brands" kicker="Clients" title="대표 협업 브랜드"
