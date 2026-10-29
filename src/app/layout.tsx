@@ -29,6 +29,8 @@ export const metadata: Metadata = {
   creator: "DINOSTUDIO",
   publisher: "DINOSTUDIO",
   alternates: { canonical: "/" },
+  // 보안진단 제어권 인증 태그 — 서버가 반환하는 최초 HTML <head>에 SSR 렌더(인증값 만료 2026-10-30 20:37 KST).
+  other: { "check12-verification": "9JCAtr3eWvxe7NvKdldeWbF-nT9Dfff8FH83t8IfLAU" },
   openGraph: {
     type: "website",
     locale: "ko_KR",
