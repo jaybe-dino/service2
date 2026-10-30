@@ -26,6 +26,7 @@ interface Row {
   phone: string | null;
   source_site: string | null;
   product_url: string | null;
+  referrer: string | null;
   regions: unknown;
   sea_countries: unknown;
   message: string | null;

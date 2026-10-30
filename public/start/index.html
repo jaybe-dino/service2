@@ -373,6 +373,10 @@
             <input id="f-product" aria-describedby="e-product" name="product" type="url" inputmode="url" placeholder="https://" />
             <p class="err" id="e-product" hidden>올바른 URL을 입력하거나 비워 두세요.</p>
           </div>
+          <div class="field">
+            <label for="f-referrer">추천인 <span class="hint-inline">(선택)</span></label>
+            <input id="f-referrer" name="referrer" type="text" autocomplete="off" maxlength="80" placeholder="추천인 이름 또는 코드" />
+          </div>
           <fieldset class="field field-full region-field">
             <legend>희망 권역 <span class="hint-inline">(복수 선택 · 비용 계산과 연동)</span></legend>
             <div class="check-row" id="formRegions">
@@ -399,7 +403,7 @@
           <div class="field field-full consent-field">
             <label class="consent" for="f-consent">
               <input id="f-consent" name="consent" type="checkbox" aria-describedby="e-consent" required />
-              <span>신청 접수·검토 연락을 위해 <strong>개인정보(브랜드·담당자·이메일·전화번호·제품 URL·선택 권역·메시지) 수집·이용에 동의</strong>합니다. 자세한 내용은 <a href="https://glovek.space/privacy" target="_blank" rel="noreferrer noopener">개인정보처리방침</a>을 참고하세요. <span class="req" aria-hidden="true">*</span></span>
+              <span>신청 접수·검토 연락을 위해 <strong>개인정보(브랜드·담당자·이메일·전화번호·제품 URL·선택 권역·추천인·메시지) 수집·이용에 동의</strong>합니다. 자세한 내용은 <a href="https://glovek.space/privacy" target="_blank" rel="noreferrer noopener">개인정보처리방침</a>을 참고하세요. <span class="req" aria-hidden="true">*</span></span>
             </label>
             <p class="err" id="e-consent" hidden>개인정보 수집·이용 동의가 필요합니다.</p>
           </div>
@@ -435,6 +439,6 @@
   </div>
 </footer>
 
-<script src="app.js?v=20261028a"></script>
+<script src="app.js?v=20261030a"></script>
 </body>
 </html>

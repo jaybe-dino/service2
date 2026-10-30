@@ -181,7 +181,8 @@
       if (sending) return; // 중복 클릭 방지
       var brand = form.brand.value.trim(), name = form.manager.value.trim(),
           email = form.email.value.trim(), phone = form.phone.value.trim(),
-          product = form.product.value.trim(), message = form.message.value.trim();
+          product = form.product.value.trim(), message = form.message.value.trim(),
+          referrer = form.referrer ? form.referrer.value.trim() : "";
       var ok = true, firstBad = null;
       function bad(cond, errId, field) { show(errId, cond); if (field) field.setAttribute("aria-invalid", cond ? "true" : "false"); if (cond) { ok = false; if (!firstBad) firstBad = field; } }
       bad(!brand, "e-brand", form.brand);
@@ -203,7 +204,7 @@
 
       var payload = {
         requestId: reqId,
-        brand: brand, manager: name, email: email, phone: phone, product: product, message: message,
+        brand: brand, manager: name, email: email, phone: phone, product: product, message: message, referrer: referrer,
         regions: selectedRegions(),
         seaCountries: selectedSea(),
         consent: true,

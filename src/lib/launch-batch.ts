@@ -71,6 +71,7 @@ export interface CleanApplication {
   email: string;
   phone: string; // 정규화된 전화번호(선행 + 보존, 구분자 제거)
   productUrl: string | null;
+  referrer: string | null;
   regions: Region[];
   seaCountries: SeaCountry[];
   message: string | null;
@@ -114,6 +115,7 @@ export function validateApplication(raw: Record<string, unknown>):
   const email = s(raw.email, 160).toLowerCase();
   const productRaw = s(raw.product, 400);
   const message = s(raw.message, 2000);
+  const referrer = s(raw.referrer, 80) || null; // 추천인(선택) — 자유 텍스트, 길이 제한만. XSS는 렌더 단계에서 이스케이프.
 
   if (!brand) return { ok: false, error: "브랜드명을 입력해 주세요." };
   if (!manager) return { ok: false, error: "담당자 이름을 입력해 주세요." };
@@ -164,6 +166,7 @@ export function validateApplication(raw: Record<string, unknown>):
       email,
       phone,
       productUrl: productRaw || null,
+      referrer,
       regions: regions as Region[],
       seaCountries: seaCountries as SeaCountry[],
       message: message || null,
@@ -190,6 +193,7 @@ export function ensureLaunchBatchTable(): Promise<void> {
         phone text,
         source_site text,
         product_url text,
+        referrer text,
         regions jsonb NOT NULL,
         sea_countries jsonb NOT NULL DEFAULT '[]'::jsonb,
         message text,
@@ -211,6 +215,7 @@ export function ensureLaunchBatchTable(): Promise<void> {
       await sql`ALTER TABLE launch_batch_applications ADD COLUMN IF NOT EXISTS phone text`;
       // 유입 사이트(nullable) — 기존 테이블/기존 row 보존. 과거 null은 '출처 미확인'으로 표시(임의 backfill 없음).
       await sql`ALTER TABLE launch_batch_applications ADD COLUMN IF NOT EXISTS source_site text`;
+      await sql`ALTER TABLE launch_batch_applications ADD COLUMN IF NOT EXISTS referrer text`;
       await sql`CREATE INDEX IF NOT EXISTS launch_batch_created_idx ON launch_batch_applications (created_at DESC)`;
     })().catch((e) => {
       tableReady = null; // 실패 시 다음 요청에서 재시도

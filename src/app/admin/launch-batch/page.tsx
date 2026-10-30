@@ -39,7 +39,7 @@ interface ListItem {
   is_test: boolean; status: string; created_at: string; updated_at: string;
 }
 interface Detail extends ListItem {
-  product_url: string | null; sea_countries: string[]; message: string | null;
+  product_url: string | null; referrer: string | null; sea_countries: string[]; message: string | null;
   cost_supply: number; consent: boolean; consent_version: string | null; consent_at: string | null;
   admin_note: string | null;
 }
@@ -286,6 +286,7 @@ export default function LaunchBatchAdmin() {
               <Field k="이메일" v={<a className="break-all text-[var(--accent)] underline" href={`mailto:${detail.email}`}>{detail.email}</a>} />
               <Field k="전화번호" v={detail.phone ? <a className="text-[var(--accent)] underline" href={`tel:${detail.phone}`}>{detail.phone}</a> : <span className="text-[var(--muted)]">미수집</span>} />
               <Field k="제품 URL" v={detail.product_url ? <a className="break-all text-[var(--accent)] underline" href={detail.product_url} target="_blank" rel="noreferrer noopener">{detail.product_url}</a> : "—"} />
+              <Field k="추천인" v={detail.referrer || <span className="text-[var(--muted)]">—</span>} />
               <Field k="희망 권역" v={`${detail.regions.join(", ")} (${detail.region_count}권역)`} />
               {detail.regions.includes("동남아") && <Field k="동남아 국가" v={detail.sea_countries.join(", ") || "—"} />}
               <Field k="비용(서버 산정)" v={`공급가 ${won(detail.cost_supply)} · VAT 포함 ${won(detail.cost_incl)}`} />
