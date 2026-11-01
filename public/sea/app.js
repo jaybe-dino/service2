@@ -184,7 +184,7 @@
           setStatus("네트워크 오류로 접수하지 못했습니다. 잠시 후 다시 시도해 주세요.", "error");
         }).then(function () {
           sending = false;
-          if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = submitBtn.dataset.label || "무료 신청 접수"; }
+          if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = submitBtn.dataset.label || "프로모션 문의 접수"; }
         });
     });
 
