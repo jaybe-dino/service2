@@ -353,8 +353,79 @@
     ids.forEach(function (id) { io.observe(document.getElementById(id)); });
   }
 
+  // 온보딩·문의 폼(마감 batch) → 서버 durable 저장 + CRM 전달. 배치 참여 신청 아님.
+  function initInquiry() {
+    var form = document.getElementById("inquiryForm");
+    if (!form) return;
+    var emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    var statusEl = document.getElementById("inquiryStatus");
+    var submitBtn = form.querySelector('button[type="submit"]');
+    var consentEl = document.getElementById("i-consent");
+    var reqId = genId();
+    var sending = false;
+    function iphoneValid(v) {
+      var s = (v || "").trim();
+      if (!s) return false;
+      if (s.length > 40) return false;
+      if (!/^\+?[0-9\s().\-]+$/.test(s)) return false;
+      var digits = s.replace(/[^0-9]/g, "");
+      return digits.length >= 8 && digits.length <= 15;
+    }
+    function show(id, on) { var e = document.getElementById(id); if (e) e.hidden = !on; }
+    function setStatus(msg, kind) {
+      if (!statusEl) return;
+      statusEl.hidden = !msg;
+      statusEl.textContent = msg || "";
+      statusEl.className = "form-status" + (kind ? " form-status-" + kind : "");
+    }
+    form.addEventListener("submit", function (ev) {
+      ev.preventDefault();
+      if (sending) return;
+      var name = form.name.value.trim(), email = form.email.value.trim(),
+          phone = form.phone.value.trim(), message = form.message.value.trim(),
+          brand = form.brand ? form.brand.value.trim() : "";
+      var ok = true, firstBad = null;
+      function bad(cond, errId, field) { show(errId, cond); if (field) field.setAttribute("aria-invalid", cond ? "true" : "false"); if (cond) { ok = false; if (!firstBad) firstBad = field; } }
+      bad(!name, "ie-name", form.name);
+      bad(!emailRe.test(email), "ie-email", form.email);
+      bad(!iphoneValid(phone), "ie-phone", form.phone);
+      bad(!message, "ie-msg", form.message);
+      var consentBad = !(consentEl && consentEl.checked);
+      bad(consentBad, "ie-consent", consentEl);
+      if (!ok) { if (firstBad) firstBad.focus(); setStatus("입력 내용을 확인해 주세요.", "error"); return; }
+
+      var payload = {
+        requestId: reqId, name: name, email: email, phone: phone, brand: brand, message: message,
+        consent: true, company_website: form.company_website ? form.company_website.value : ""
+      };
+      sending = true;
+      if (submitBtn) { if (!submitBtn.dataset.label) submitBtn.dataset.label = submitBtn.textContent; submitBtn.disabled = true; submitBtn.textContent = "보내는 중…"; }
+      setStatus("접수 중입니다…", "pending");
+      fetch("/api/launch-batch/inquiry", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) })
+        .then(function (r) { return r.json().catch(function () { return {}; }).then(function (d) { return { status: r.status, d: d }; }); })
+        .then(function (res) {
+          if (res.status >= 200 && res.status < 300 && res.d && res.d.ok) {
+            setStatus("문의가 접수되었습니다. 접수번호 " + (res.d.receipt || "-") + " · 담당자가 개별 안내드리겠습니다.", "ok");
+            form.reset(); reqId = genId();
+          } else {
+            setStatus((res.d && res.d.error) || "접수에 실패했습니다. 잠시 후 다시 시도해 주세요.", "error");
+          }
+        })
+        .catch(function () { setStatus("네트워크 오류로 접수하지 못했습니다. 잠시 후 다시 시도해 주세요.", "error"); })
+        .then(function () {
+          sending = false;
+          if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = submitBtn.dataset.label || "온보딩·문의 보내기"; }
+        });
+    });
+    ["name", "email", "phone", "message", "brand"].forEach(function (nm) {
+      var map = { name: "ie-name", email: "ie-email", phone: "ie-phone", message: "ie-msg" };
+      if (form[nm] && map[nm]) form[nm].addEventListener("input", function () { show(map[nm], false); form[nm].removeAttribute("aria-invalid"); });
+    });
+    if (consentEl) consentEl.addEventListener("change", function () { show("ie-consent", false); consentEl.removeAttribute("aria-invalid"); });
+  }
+
   function init() {
-    renderLogos(); initLogoMore(); initMenu(); initCalc(); initForm();
+    renderLogos(); initLogoMore(); initMenu(); initCalc(); initForm(); initInquiry();
     initReveal(); initPassTilt(); initRoadmapTabs(); initActiveNav();
   }
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", init); else init();

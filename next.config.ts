@@ -9,6 +9,8 @@ const base = process.env.NEXT_PUBLIC_BASE_PATH || "";
 const START_HOST = [{ type: "host" as const, value: "start.glovek.space" }];
 // batch.glovek.space 호스트에서만 적용되는 복제 랜딩 리라이트 조건(start과 독립).
 const BATCH_HOST = [{ type: "host" as const, value: "batch.glovek.space" }];
+// batch2.glovek.space 호스트(배치 2기) — batch와 독립 정적 랜딩.
+const BATCH2_HOST = [{ type: "host" as const, value: "batch2.glovek.space" }];
 
 const nextConfig: NextConfig = {
   images: { unoptimized: true },
@@ -30,6 +32,11 @@ const nextConfig: NextConfig = {
         { source: "/styles.css", has: BATCH_HOST, destination: "/batch/styles.css" },
         { source: "/app.js", has: BATCH_HOST, destination: "/batch/app.js" },
         { source: "/assets/:path*", has: BATCH_HOST, destination: "/batch/assets/:path*" },
+        // batch2.glovek.space → public/batch2/ (배치 2기)
+        { source: "/", has: BATCH2_HOST, destination: "/batch2/index.html" },
+        { source: "/styles.css", has: BATCH2_HOST, destination: "/batch2/styles.css" },
+        { source: "/app.js", has: BATCH2_HOST, destination: "/batch2/app.js" },
+        { source: "/assets/:path*", has: BATCH2_HOST, destination: "/batch2/assets/:path*" },
       ],
       afterFiles: [],
       fallback: [],

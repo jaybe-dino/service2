@@ -7,6 +7,8 @@ import {
   hashIp,
   receiptNo,
   siteFromHost,
+  isClosedSite,
+  isKnownSite,
   CONSENT_VERSION,
   type CleanApplication,
 } from "@/lib/launch-batch";
@@ -18,7 +20,7 @@ export const dynamic = "force-dynamic";
 // 외부 전달 없음. 전용 테이블에만 적재. no-store.
 
 // 동일 출처(또는 승인 호스트)만 허용 — CSRF/크로스사이트 POST 차단.
-const ALLOW_HOSTS = new Set(["start.glovek.space", "batch.glovek.space", "glovek.space", "www.glovek.space"]);
+const ALLOW_HOSTS = new Set(["start.glovek.space", "batch.glovek.space", "batch2.glovek.space", "glovek.space", "www.glovek.space"]);
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -103,6 +105,24 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: "요청이 많습니다. 잠시 후 다시 시도해 주세요." }, { status: 429, headers: { "cache-control": "no-store" } });
     }
 
+    // 8b) 모집 마감 사이트(batch=1기)는 서버에서 신규 접수 차단 — 오래 열린 폼/직접 POST로도
+    //     새 1기 신청이 생성되지 않게. 기존 UUID의 멱등 재시도와 과거 데이터는 그대로 보존.
+    if (isClosedSite(site)) {
+      const ex = await sql<{ id: number; payload_hash: string | null; source_site: string | null }>`
+        SELECT id, payload_hash, source_site FROM launch_batch_applications WHERE request_id = ${reqId} LIMIT 1`;
+      const row = ex.rows[0];
+      if (!row) {
+        return NextResponse.json({ ok: false, error: "배치 1기 모집이 마감되었습니다. 배치 2기 또는 문의로 안내드립니다.", closed: true }, { status: 410, headers: { "cache-control": "no-store" } });
+      }
+      if (row.payload_hash && row.payload_hash !== hash) {
+        return NextResponse.json({ ok: false, error: "이미 다른 내용으로 접수된 요청입니다. 새로고침 후 다시 작성해 주세요." }, { status: 409, headers: { "cache-control": "no-store" } });
+      }
+      if (isKnownSite(row.source_site) && isKnownSite(site) && row.source_site !== site) {
+        return NextResponse.json({ ok: false, error: "이미 다른 사이트에서 접수된 요청입니다. 새로고침 후 다시 작성해 주세요." }, { status: 409, headers: { "cache-control": "no-store" } });
+      }
+      return NextResponse.json({ ok: true, receipt: receiptNo(row.id), test: d.isTest || undefined }, { headers: { "cache-control": "no-store" } });
+    }
+
     // 9) 멱등 삽입 — 동일 requestId 재시도는 중복 접수하지 않음
     // source_site는 payload_hash(legacy 포맷)에 넣지 않음 — 기존 접수 재시도가 409가 되지 않도록.
     const ins = await sql<{ id: number }>`
@@ -128,10 +148,10 @@ export async function POST(req: Request) {
       if (row.payload_hash && row.payload_hash !== hash) {
         return NextResponse.json({ ok: false, error: "이미 다른 내용으로 접수된 요청입니다. 새로고침 후 다시 작성해 주세요." }, { status: 409, headers: { "cache-control": "no-store" } });
       }
-      // 교차 사이트 UUID 충돌 — 기존·신규 모두 known(start/batch)이고 서로 다르면 409.
+      // 교차 사이트 UUID 충돌 — 기존·신규 모두 known(start/batch/batch2)이고 서로 다르면 409.
       // 기존 null(legacy)/unknown은 재분류·덮어쓰지 않고 동일 재시도를 허용(기존 source_site 보존).
       const exSite = row.source_site;
-      if ((exSite === "start" || exSite === "batch") && (site === "start" || site === "batch") && exSite !== site) {
+      if (isKnownSite(exSite) && isKnownSite(site) && exSite !== site) {
         return NextResponse.json({ ok: false, error: "이미 다른 사이트에서 접수된 요청입니다. 새로고침 후 다시 작성해 주세요." }, { status: 409, headers: { "cache-control": "no-store" } });
       }
       id = row.id; // 동일 재시도 — 멱등 성공(기존 source_site 유지)

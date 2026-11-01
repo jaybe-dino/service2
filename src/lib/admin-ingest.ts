@@ -12,6 +12,43 @@ function ingestSecret(): string {
   return process.env.ADMIN_INGEST_SECRET || process.env.INGEST_SECRET || "";
 }
 
+// 결과 반환형 lead 전송 — 문의 durable 저장 후 crm_status(sent/failed/skipped_unset) 기록용.
+// 기존 sendIngest와 동일한 서명(X-Ingest-Secret)·멱등키·재시도(1회)·canonical env URL을 재사용한다.
+// 개인정보는 JSON body로만 전송하며 일반 로그에 남기지 않는다(상태/코드만 로깅).
+export type LeadIngestResult = { status: "sent" | "failed" | "skipped_unset"; httpStatus?: number; brandId?: string };
+export async function sendLeadIngestResult(idemKey: string, body: Record<string, unknown>): Promise<LeadIngestResult> {
+  const url = process.env.ADMIN_INGEST_URL;
+  if (!url) return { status: "skipped_unset" }; // 미설정 → 거짓 성공 금지. 로컬 저장만 유지(재시도 가능).
+  let lastStatus: number | undefined;
+  try {
+    for (let attempt = 0; attempt < 2; attempt++) {
+      const res = await fetch(`${url.replace(/\/$/, "")}/api/ingest/lead`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Ingest-Secret": ingestSecret(),
+          "X-Idempotency-Key": idemKey,
+        },
+        body: JSON.stringify({ site: "glovek", occurred_at: new Date().toISOString(), ...body }),
+        signal: AbortSignal.timeout(4000),
+      });
+      lastStatus = res.status;
+      if (res.ok) {
+        let brandId: string | undefined;
+        try { const j = await res.json(); if (j && typeof j.brand_id !== "undefined") brandId = String(j.brand_id); } catch { /* ignore */ }
+        return { status: "sent", httpStatus: res.status, brandId };
+      }
+      if (res.status === 400 || res.status === 401 || res.status === 404) {
+        console.error("[ingest:lead] 거부", idemKey, res.status); // PII 미포함
+        return { status: "failed", httpStatus: res.status };
+      }
+    }
+  } catch (e) {
+    console.error("[ingest:lead] 예외", idemKey, (e as Error).message); // PII 미포함
+  }
+  return { status: "failed", httpStatus: lastStatus };
+}
+
 export async function sendIngest(event: IngestEvent, idemKey: string, body: Record<string, unknown>): Promise<void> {
   const url = process.env.ADMIN_INGEST_URL;
   if (!url) return;

@@ -460,3 +460,17 @@ section[id]{scroll-margin-top:80px}
 .form-status-ok{background:rgba(37,244,238,.14);color:#0a7d78;border:1px solid rgba(37,244,238,.5)}
 .form-status-error{background:rgba(254,44,85,.08);color:#c01038;border:1px solid rgba(254,44,85,.35)}
 @media (prefers-reduced-motion:reduce){.pass-inner{transition:none}}
+
+/* ── 배치 1기 모집 마감(batch) 전용 UI ── */
+.closed-bar{background:#fe2c55;color:#fff}
+.closed-bar-inner{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:8px 16px;padding:11px 16px;font-size:14px;text-align:center}
+.closed-bar-msg{font-weight:900;letter-spacing:-.01em}
+.closed-bar-link{color:#fff;font-weight:800;text-decoration:underline;white-space:nowrap}
+.hero-closed{display:inline-flex;align-items:center;gap:10px;margin:18px 0 0;font-size:clamp(17px,2.4vw,22px);font-weight:900;letter-spacing:-.02em;color:#fff;background:rgba(254,44,85,.16);border:1.5px solid rgba(254,44,85,.6);border-radius:12px;padding:12px 18px}
+.hero-closed .hc-tag{flex:0 0 auto;font-size:11px;font-weight:900;letter-spacing:.06em;color:#0a0a0a;background:var(--pink);border-radius:999px;padding:4px 10px}
+.apply-closed-card{display:flex;flex-direction:column;align-items:flex-start;gap:10px;background:var(--surface,#fff);border:1px solid var(--border);border-left:4px solid var(--pink);border-radius:var(--r-lg,16px);padding:24px}
+.apply-closed-card .closed-badge{font-size:11px;font-weight:900;letter-spacing:.04em;color:#fff;background:var(--pink);border-radius:999px;padding:5px 11px}
+.apply-closed-title{font-size:clamp(18px,2.4vw,22px);font-weight:900;letter-spacing:-.02em;color:var(--midnight);margin:2px 0 0}
+.apply-closed-sub{font-size:14px;line-height:1.6;color:var(--ink-soft,#555);margin:0}
+.apply-closed-ctas{display:flex;flex-wrap:wrap;gap:10px;margin-top:6px}
+@media(max-width:640px){.hero-closed{font-size:16px;padding:11px 14px;gap:8px}.apply-closed-card{padding:20px}}

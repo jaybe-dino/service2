@@ -32,21 +32,30 @@ export const STATUS_LABEL: Record<Status, string> = {
 // 개인정보 수집·이용 동의 버전(동의 문구가 바뀌면 +1). 저장 시 동의 시각과 함께 기록.
 export const CONSENT_VERSION = "2026-10-27";
 
-/* ── 유입 사이트(source_site) — 공개 랜딩 2곳 구분 ── */
-// start = start.glovek.space(배치 1기), batch = batch.glovek.space(진출 테스팅), unknown = 그 외/미확인.
-export const SOURCE_SITES = ["start", "batch", "unknown"] as const;
+/* ── 유입 사이트(source_site) — 공개 랜딩 구분 ── */
+// start=start.glovek.space(배치 1기), batch=batch.glovek.space(진출 테스팅 1기),
+// batch2=batch2.glovek.space(진출 테스팅 2기), unknown=그 외/미확인.
+export const SOURCE_SITES = ["start", "batch", "batch2", "unknown"] as const;
 export type SourceSite = (typeof SOURCE_SITES)[number];
-export const SITE_LABEL: Record<SourceSite, string> = { start: "배치 1기", batch: "진출 테스팅", unknown: "출처 미확인" };
-export const SITE_DOMAIN: Record<SourceSite, string> = { start: "start.glovek.space", batch: "batch.glovek.space", unknown: "—" };
+export const SITE_LABEL: Record<SourceSite, string> = { start: "배치 1기", batch: "진출 테스팅", batch2: "배치 2기", unknown: "출처 미확인" };
+export const SITE_DOMAIN: Record<SourceSite, string> = { start: "start.glovek.space", batch: "batch.glovek.space", batch2: "batch2.glovek.space", unknown: "—" };
 // canonical 호스트 정확 일치만 신뢰(대소문자 무시·포트 제거). body/Referer/x-forwarded-host는 신뢰하지 않음.
 const CANONICAL_SITE_HOSTS: Record<string, SourceSite> = {
   "start.glovek.space": "start",
   "batch.glovek.space": "batch",
+  "batch2.glovek.space": "batch2",
 };
 export function siteFromHost(host: string | null | undefined): SourceSite {
   if (!host) return "unknown";
   const h = host.split(":")[0].trim().toLowerCase();
   return CANONICAL_SITE_HOSTS[h] ?? "unknown";
+}
+// 모집 마감 사이트 — 해당 호스트의 신규 접수를 서버에서 차단(기존 UUID 재시도·과거 데이터는 보존).
+export const CLOSED_SITES: readonly SourceSite[] = ["batch"]; // batch=진출 테스팅 배치 1기 모집 마감
+export function isClosedSite(site: SourceSite): boolean { return CLOSED_SITES.includes(site); }
+// 확정 출처(교차 사이트 UUID 충돌 판정용) — unknown/null 제외.
+export function isKnownSite(s: string | null | undefined): s is "start" | "batch" | "batch2" {
+  return s === "start" || s === "batch" || s === "batch2";
 }
 
 /* ── 서버 비용 산정(클라이언트 금액 신뢰하지 않음) ── */
@@ -228,4 +237,81 @@ export function ensureLaunchBatchTable(): Promise<void> {
 // 접수번호 포맷(공개 안전 — 신청자 식별 정보 없음)
 export function receiptNo(id: number): string {
   return "LB-" + String(id).padStart(4, "0");
+}
+
+/* ── 온보딩·문의(마감된 batch 등) — 배치 참여 신청이 아닌 일반 문의 ── */
+// 전용 테이블에 durable 저장 후 운영 CRM(lead)으로 전달. 고정 과금/권역/SEA 없음.
+export interface CleanInquiry {
+  name: string;
+  email: string;
+  phone: string; // 정규화(선행 + 보존, 구분자 제거)
+  brand: string | null;
+  message: string;
+  isTest: boolean;
+}
+export function inquiryReceiptNo(id: number): string {
+  return "INQ-" + String(id).padStart(4, "0");
+}
+export function validateInquiry(raw: Record<string, unknown>):
+  | { ok: true; data: CleanInquiry }
+  | { ok: false; error: string } {
+  const s = (v: unknown, max: number) => String(v ?? "").trim().slice(0, max);
+  const name = s(raw.name, 80);
+  const email = s(raw.email, 160).toLowerCase();
+  const brand = s(raw.brand, 120) || null;
+  const message = s(raw.message, 2000);
+
+  if (!name) return { ok: false, error: "담당자 이름을 입력해 주세요." };
+  if (!EMAIL_RE.test(email)) return { ok: false, error: "이메일 형식을 확인해 주세요." };
+  // 전화번호 — 신청서와 동일한 strict 검증(타입/길이/형식)
+  if (typeof raw.phone !== "string") return { ok: false, error: "전화번호를 입력해 주세요." };
+  const phoneTrimmed = raw.phone.trim();
+  if (!phoneTrimmed) return { ok: false, error: "전화번호를 입력해 주세요." };
+  if (phoneTrimmed.length > 40) return { ok: false, error: "전화번호 형식을 확인해 주세요. 숫자 8~15자리로 입력하고, 국제번호는 +로 시작하세요." };
+  const phone = normalizePhone(phoneTrimmed);
+  if (!phone) return { ok: false, error: "전화번호 형식을 확인해 주세요. 숫자 8~15자리로 입력하고, 국제번호는 +로 시작하세요." };
+  if (!message) return { ok: false, error: "문의 내용을 입력해 주세요." };
+
+  // 테스트 식별(서버) — example.com 이메일 또는 TEST 접두 브랜드/이름.
+  const isTest = email.endsWith("@example.com") || /^test\b/i.test(brand || "") || /^test\b/i.test(name);
+  return { ok: true, data: { name, email, phone, brand, message, isTest } };
+}
+
+// 문의 전용 테이블(durable) — 신청 테이블과 분리. CRM 전달 상태를 기록해 재시도 가능.
+let inquiryTableReady: Promise<void> | null = null;
+export function ensureInquiryTable(): Promise<void> {
+  if (!inquiryTableReady) {
+    inquiryTableReady = (async () => {
+      await sql`CREATE TABLE IF NOT EXISTS launch_batch_inquiries (
+        id serial PRIMARY KEY,
+        request_id uuid UNIQUE,
+        payload_hash text,
+        name text NOT NULL,
+        email text NOT NULL,
+        phone text,
+        brand text,
+        message text,
+        source_site text,
+        consent boolean NOT NULL DEFAULT false,
+        consent_version text,
+        consent_at timestamptz,
+        is_test boolean NOT NULL DEFAULT false,
+        crm_status text NOT NULL DEFAULT 'pending',
+        crm_attempts integer NOT NULL DEFAULT 0,
+        crm_last_at timestamptz,
+        crm_brand_id text,
+        ip_hash text,
+        user_agent text,
+        created_at timestamptz NOT NULL DEFAULT now(),
+        updated_at timestamptz NOT NULL DEFAULT now()
+      )`;
+      await sql`CREATE INDEX IF NOT EXISTS launch_batch_inq_created_idx ON launch_batch_inquiries (created_at DESC)`;
+      // 재시도 대상 조회용(pending/failed)
+      await sql`CREATE INDEX IF NOT EXISTS launch_batch_inq_crm_idx ON launch_batch_inquiries (crm_status)`;
+    })().catch((e) => {
+      inquiryTableReady = null;
+      throw e;
+    });
+  }
+  return inquiryTableReady;
 }
