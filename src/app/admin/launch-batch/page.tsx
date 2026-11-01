@@ -441,7 +441,7 @@ export default function LaunchBatchAdmin() {
                 <p className="mb-1 text-[10px] font-bold uppercase text-[var(--muted)]">메시지 (희망 권역·동남아 국가 포함)</p>
                 <p className="whitespace-pre-wrap rounded-md border border-[var(--border)] bg-[var(--bg-soft,#f7f7f8)] p-2">{inqDetail.message || "—"}</p>
               </div>
-              <p className="text-[10px] text-[var(--muted)]">읽기 전용 — 문의는 상태/메모 수정을 제공하지 않습니다. 담당자·자동화(Codex)가 확인합니다.</p>
+              <p className="text-[10px] text-[var(--muted)]">읽기 전용 — 문의는 담당자 확인용입니다.</p>
             </div>
           )}
         </div>
