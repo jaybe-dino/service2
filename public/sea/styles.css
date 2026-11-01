@@ -470,7 +470,7 @@ section[id]{scroll-margin-top:80px}
 .sea-steps ol{list-style:none;margin:0;padding:0;display:grid;gap:8px}
 .sea-step{position:relative;border:1px solid var(--border);border-radius:var(--r);padding:15px 17px;background:var(--paper)}
 .sea-step .ss-no{position:absolute;top:12px;right:14px;font-size:11px;font-weight:800;letter-spacing:.14em;color:var(--ink-mute)}
-.sea-step h3{margin:9px 0 2px;font-size:16px}
+.sea-step h3{margin:9px 0 2px;font-size:16px;color:var(--ink)}
 .sea-step p{margin:0;font-size:13px;color:var(--ink-soft);line-height:1.5}
 .ss-flags{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
 .ss-flags img{border-radius:2px;box-shadow:0 0 0 1px rgba(0,0,0,.08)}
