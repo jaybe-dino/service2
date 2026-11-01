@@ -1,5 +1,5 @@
 "use strict";
-/* 동남아 1개국 온보딩 무료 프로모션 — 정적(buildless) 랜딩.
+/* 틱톡샵 온보딩 + 운영대행 · 동남아 1개국 무료 프로모션 — 정적(buildless) 랜딩.
    관심/상담 신청은 서버(/api/launch-batch/inquiry)로 durable 저장(로컬 접수 → 담당자 수동 확인). */
 (function () {
   // 협업 브랜드 — glovek.space/refer 분류 기준. tiktok: TikTok Shop 온보딩/진출 진행(모든 브랜드가 TikTok 고객은 아님).
@@ -156,7 +156,7 @@
       if (!ok) { if (firstBad) firstBad.focus(); setStatus("입력 내용을 확인해 주세요.", "error"); return; }
 
       // 선택 권역·동남아 1개국을 메시지에 구조적으로 보관(별도 과금 스키마 없음).
-      var message = "[sea.glovek.space 동남아 무료 프로모션] 진행 권역: " + regions.join("·") +
+      var message = "[sea.glovek.space 온보딩+운영대행 프로모션] 진행 권역: " + regions.join("·") +
         " / 무료 대상 동남아 1개국: " + sea + (userMsg ? " / 메시지: " + userMsg : "");
 
       var payload = {
