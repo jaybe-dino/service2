@@ -11,6 +11,8 @@ const START_HOST = [{ type: "host" as const, value: "start.glovek.space" }];
 const BATCH_HOST = [{ type: "host" as const, value: "batch.glovek.space" }];
 // batch2.glovek.space 호스트(배치 2기) — batch와 독립 정적 랜딩.
 const BATCH2_HOST = [{ type: "host" as const, value: "batch2.glovek.space" }];
+// sea.glovek.space 호스트(동남아 1개국 온보딩 무료 프로모션) — 독립 정적 랜딩.
+const SEA_HOST = [{ type: "host" as const, value: "sea.glovek.space" }];
 
 const nextConfig: NextConfig = {
   images: { unoptimized: true },
@@ -37,6 +39,11 @@ const nextConfig: NextConfig = {
         { source: "/styles.css", has: BATCH2_HOST, destination: "/batch2/styles.css" },
         { source: "/app.js", has: BATCH2_HOST, destination: "/batch2/app.js" },
         { source: "/assets/:path*", has: BATCH2_HOST, destination: "/batch2/assets/:path*" },
+        // sea.glovek.space → public/sea/ (동남아 1개국 온보딩 무료 프로모션)
+        { source: "/", has: SEA_HOST, destination: "/sea/index.html" },
+        { source: "/styles.css", has: SEA_HOST, destination: "/sea/styles.css" },
+        { source: "/app.js", has: SEA_HOST, destination: "/sea/app.js" },
+        { source: "/assets/:path*", has: SEA_HOST, destination: "/sea/assets/:path*" },
       ],
       afterFiles: [],
       fallback: [],

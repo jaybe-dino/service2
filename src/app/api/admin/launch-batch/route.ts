@@ -72,6 +72,36 @@ export async function GET(req: Request) {
   const siteFilter = url.searchParams.get("site") || "";
   const site = SOURCE_SITES.includes(siteFilter as SourceSite) ? siteFilter : "";
 
+  // 증분 조회(자동화/Codex용) — after_id 이후(id > after_id)만 오름차순으로. 누락 없이 변경분을 읽는다.
+  //   같은 필터(q/status/site/test)를 적용하며, 기본 목록(after_id 미지정) 동작은 그대로 유지한다.
+  //   응답: { ok, mode:"incremental", items(오름차순), count, has_more, next_cursor }.
+  //   다음 폴링은 next_cursor 를 after_id 로 넘기면 된다(테스트는 기본 제외).
+  const afterIdParam = url.searchParams.get("after_id");
+  if (afterIdParam !== null) {
+    const afterId = Number(afterIdParam);
+    if (!Number.isInteger(afterId) || afterId < 0) return NextResponse.json({ error: "after_id 오류" }, { status: 400, headers: NS });
+    await ensureLaunchBatchTable();
+    const LIM = 200;
+    const inc = await sql<Row>`
+      SELECT id, brand, manager, email, phone, source_site, regions, region_count, cost_incl,
+             is_test, status, created_at, updated_at
+      FROM launch_batch_applications
+      WHERE id > ${afterId}
+        AND (${q} = '' OR brand ILIKE ${like} OR email ILIKE ${like}
+             OR (${qDigits} <> '' AND phone ILIKE ${likeDigits}))
+        AND (${status} = '' OR status = ${status})
+        AND (${includeTest} OR is_test = false)
+        AND (${site} = ''
+             OR (${site} = 'unknown' AND (source_site = 'unknown' OR source_site IS NULL))
+             OR (${site} <> 'unknown' AND source_site = ${site}))
+      ORDER BY id ASC
+      LIMIT ${LIM + 1}`;
+    const hasMore = inc.rows.length > LIM;
+    const items = hasMore ? inc.rows.slice(0, LIM) : inc.rows;
+    const nextCursor = items.length ? items[items.length - 1].id : afterId;
+    return NextResponse.json({ ok: true, mode: "incremental", items, count: items.length, has_more: hasMore, next_cursor: nextCursor }, { headers: NS });
+  }
+
   await ensureLaunchBatchTable();
   const { rows } = await sql<Row>`
     SELECT id, brand, manager, email, phone, source_site, regions, region_count, cost_incl,

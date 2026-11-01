@@ -22,15 +22,15 @@ const STATUS_CLS: Record<Status, string> = {
 };
 
 // 유입 사이트(source_site). null/legacy 및 비정상값은 '출처 미확인'으로 표시.
-const SITE_KEYS = ["start", "batch", "batch2", "unknown"] as const;
+const SITE_KEYS = ["start", "batch", "batch2", "sea", "unknown"] as const;
 type SiteKey = (typeof SITE_KEYS)[number];
-const SITE_LABEL: Record<SiteKey, string> = { start: "배치 1기", batch: "진출 테스팅", batch2: "배치 2기", unknown: "출처 미확인" };
-const SITE_DOMAIN: Record<SiteKey, string> = { start: "start.glovek.space", batch: "batch.glovek.space", batch2: "batch2.glovek.space", unknown: "" };
-const SITE_CLS: Record<SiteKey, string> = { start: "bg-indigo-100 text-indigo-700", batch: "bg-teal-100 text-teal-700", batch2: "bg-fuchsia-100 text-fuchsia-700", unknown: "bg-zinc-100 text-zinc-500" };
+const SITE_LABEL: Record<SiteKey, string> = { start: "배치 1기", batch: "진출 테스팅", batch2: "배치 2기", sea: "동남아 무료", unknown: "출처 미확인" };
+const SITE_DOMAIN: Record<SiteKey, string> = { start: "start.glovek.space", batch: "batch.glovek.space", batch2: "batch2.glovek.space", sea: "sea.glovek.space", unknown: "" };
+const SITE_CLS: Record<SiteKey, string> = { start: "bg-indigo-100 text-indigo-700", batch: "bg-teal-100 text-teal-700", batch2: "bg-fuchsia-100 text-fuchsia-700", sea: "bg-cyan-100 text-cyan-700", unknown: "bg-zinc-100 text-zinc-500" };
 const SITE_TABS: { key: string; label: string }[] = [
-  { key: "", label: "전체" }, { key: "start", label: "배치 1기" }, { key: "batch", label: "진출 테스팅" }, { key: "batch2", label: "배치 2기" }, { key: "unknown", label: "출처 미확인" },
+  { key: "", label: "전체" }, { key: "start", label: "배치 1기" }, { key: "batch", label: "진출 테스팅" }, { key: "batch2", label: "배치 2기" }, { key: "sea", label: "동남아 무료" }, { key: "unknown", label: "출처 미확인" },
 ];
-const siteOf = (v: string | null | undefined): SiteKey => (v === "start" || v === "batch" || v === "batch2" ? v : "unknown");
+const siteOf = (v: string | null | undefined): SiteKey => (v === "start" || v === "batch" || v === "batch2" || v === "sea" ? v : "unknown");
 const normSite = (v: string | null): string => ((SITE_KEYS as readonly string[]).includes(v || "") ? (v as string) : "");
 
 interface ListItem {
@@ -43,6 +43,13 @@ interface Detail extends ListItem {
   cost_supply: number; consent: boolean; consent_version: string | null; consent_at: string | null;
   admin_note: string | null;
 }
+
+// 온보딩·문의(읽기 전용) — /api/admin/launch-batch/inquiries
+interface InqItem {
+  id: number; receipt?: string; source_site: string | null; brand: string | null; name: string;
+  email: string; phone: string | null; message: string | null; crm_status: string | null; is_test: boolean; created_at: string;
+}
+interface InqDetailT extends InqItem { updated_at?: string; consent_at?: string | null; }
 
 const won = (n: number) => "₩" + Number(n || 0).toLocaleString();
 const kst = (s: string | null) => {
@@ -73,8 +80,20 @@ export default function LaunchBatchAdmin() {
   const [saving, setSaving] = useState(false);
   const [saveMsg, setSaveMsg] = useState<string | null>(null);
 
+  // 보기 전환 — 신청(apps) / 온보딩·문의(inquiries, 읽기 전용)
+  const [view, setView] = useState<"apps" | "inquiries">("apps");
+  const [inq, setInq] = useState<InqItem[]>([]);
+  const [inqCounts, setInqCounts] = useState<Record<string, number>>({});
+  const [inqLoading, setInqLoading] = useState(false);
+  const [inqErr, setInqErr] = useState<string | null>(null);
+  const [inqSel, setInqSel] = useState<number | null>(null);
+  const [inqDetail, setInqDetail] = useState<InqDetailT | null>(null);
+  const [inqDetailLoading, setInqDetailLoading] = useState(false);
+
   const loadSeq = useRef(0);   // 목록 응답 역순 완료 방지
   const detailSeq = useRef(0); // 상세 응답 역순 완료 방지
+  const inqLoadSeq = useRef(0);
+  const inqDetailSeq = useRef(0);
 
   useEffect(() => {
     fetch("/api/admin/session", { cache: "no-store" }).then((r) => r.json()).then((j) => setAuthed(!!j.authed)).catch(() => setAuthed(false));
@@ -121,6 +140,34 @@ export default function LaunchBatchAdmin() {
       })
       .catch(() => { if (seq === detailSeq.current) setDetail(null); })
       .finally(() => { if (seq === detailSeq.current) setDetailLoading(false); });
+  }, []);
+
+  // 온보딩·문의(읽기 전용) 목록 — 같은 인증(isAdminAuthed). 검색/사이트/테스트 필터 공유.
+  const loadInquiries = useCallback(() => {
+    const seq = ++inqLoadSeq.current;
+    setInqLoading(true); setInqErr(null);
+    const sp = new URLSearchParams();
+    if (q.trim()) sp.set("q", q.trim());
+    if (includeTest) sp.set("test", "1");
+    if (site) sp.set("site", site);
+    fetch("/api/admin/launch-batch/inquiries?" + sp.toString(), { cache: "no-store" })
+      .then(async (r) => { if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || "조회 실패"); return r.json(); })
+      .then((j) => { if (seq !== inqLoadSeq.current) return; setInq(j.items || []); setInqCounts(j.counts || {}); })
+      .catch((e) => { if (seq !== inqLoadSeq.current) return; setInqErr(String(e.message || e)); })
+      .finally(() => { if (seq === inqLoadSeq.current) setInqLoading(false); });
+  }, [q, includeTest, site]);
+  useEffect(() => { if (authed && view === "inquiries") loadInquiries(); }, [authed, view, loadInquiries]);
+  // 사이트 변경 시 문의 상세 선택 해제
+  useEffect(() => { inqDetailSeq.current++; setInqSel(null); setInqDetail(null); setInqDetailLoading(false); }, [site]);
+
+  const openInqDetail = useCallback((id: number) => {
+    const seq = ++inqDetailSeq.current;
+    setInqSel(id); setInqDetail(null); setInqDetailLoading(true);
+    fetch("/api/admin/launch-batch/inquiries?id=" + id, { cache: "no-store" })
+      .then((r) => r.json())
+      .then((j) => { if (seq !== inqDetailSeq.current) return; if (!j.item) throw new Error("not found"); setInqDetail(j.item as InqDetailT); })
+      .catch(() => { if (seq === inqDetailSeq.current) setInqDetail(null); })
+      .finally(() => { if (seq === inqDetailSeq.current) setInqDetailLoading(false); });
   }, []);
 
   function changeSite(next: string) {
@@ -185,15 +232,23 @@ export default function LaunchBatchAdmin() {
   }
 
   const total = Object.values(counts).reduce((a, b) => a + b, 0);
+  const inqTotal = Object.values(inqCounts).reduce((a, b) => a + b, 0);
+  const refresh = () => (view === "apps" ? load() : loadInquiries());
   return (
     <PageShell>
       <div className="mb-3 flex items-start justify-between gap-3">
         <div>
           <Link href="/admin" className="mb-1 inline-flex items-center gap-1 text-[11px] text-[var(--muted)] hover:text-[var(--accent)]"><ArrowLeft size={12} /> 관리자 콘솔</Link>
-          <h1 className="flex items-center gap-2 text-[20px] font-black tracking-tight"><Inbox size={18} className="text-[var(--accent)]" /> 글로벌 진출 신청</h1>
-          <p className="text-[11px] text-[var(--muted)]">start·batch.glovek.space 온라인 접수 · {site ? SITE_TABS.find((t) => t.key === site)?.label + " " : ""}실집계 {total}건(테스트 제외)</p>
+          <h1 className="flex items-center gap-2 text-[20px] font-black tracking-tight"><Inbox size={18} className="text-[var(--accent)]" /> 글로벌 진출 접수</h1>
+          <p className="text-[11px] text-[var(--muted)]">{view === "apps" ? `신청(start·batch·batch2) · 실집계 ${total}건(테스트 제외)` : `온보딩·문의(batch·sea 등) · 읽기 전용 ${inqTotal}건(테스트 제외)`}</p>
         </div>
         <button onClick={logout} className="inline-flex shrink-0 items-center gap-1 rounded-md border border-[var(--border)] px-2.5 py-1.5 text-[11px] text-[var(--muted)] hover:text-rose-600"><LogOut size={12} /> 로그아웃</button>
+      </div>
+
+      {/* 보기 전환 — 신청 / 온보딩·문의(읽기 전용) */}
+      <div className="mb-2 flex gap-1.5">
+        <button onClick={() => setView("apps")} className={`rounded-md px-3 py-1.5 text-[11px] font-bold ${view === "apps" ? "bg-[var(--accent)] text-white" : "border border-[var(--border)] text-[var(--muted)]"}`}>신청</button>
+        <button onClick={() => setView("inquiries")} className={`rounded-md px-3 py-1.5 text-[11px] font-bold ${view === "inquiries" ? "bg-[var(--accent)] text-white" : "border border-[var(--border)] text-[var(--muted)]"}`}>온보딩·문의</button>
       </div>
 
       {/* 유입 사이트 탭 */}
@@ -203,19 +258,21 @@ export default function LaunchBatchAdmin() {
         ))}
       </div>
 
-      {/* 상태별 집계(선택 사이트 기준) */}
-      <div className="mb-3 flex flex-wrap gap-1.5">
-        <button onClick={() => setStatusFilter("")} className={`rounded-md px-2.5 py-1 text-[11px] font-semibold ${statusFilter === "" ? "bg-[var(--accent)] text-white" : "border border-[var(--border)] text-[var(--muted)]"}`}>전체</button>
-        {STATUSES.map((s) => (
-          <button key={s} onClick={() => setStatusFilter(statusFilter === s ? "" : s)} className={`rounded-md px-2.5 py-1 text-[11px] font-semibold ${statusFilter === s ? "bg-[var(--accent)] text-white" : "border border-[var(--border)] text-[var(--muted)]"}`}>
-            {STATUS_LABEL[s]} <span className="opacity-70">{counts[s] || 0}</span>
-          </button>
-        ))}
-      </div>
+      {/* 상태별 집계(선택 사이트 기준) — 신청 보기에서만 */}
+      {view === "apps" && (
+        <div className="mb-3 flex flex-wrap gap-1.5">
+          <button onClick={() => setStatusFilter("")} className={`rounded-md px-2.5 py-1 text-[11px] font-semibold ${statusFilter === "" ? "bg-[var(--accent)] text-white" : "border border-[var(--border)] text-[var(--muted)]"}`}>전체</button>
+          {STATUSES.map((s) => (
+            <button key={s} onClick={() => setStatusFilter(statusFilter === s ? "" : s)} className={`rounded-md px-2.5 py-1 text-[11px] font-semibold ${statusFilter === s ? "bg-[var(--accent)] text-white" : "border border-[var(--border)] text-[var(--muted)]"}`}>
+              {STATUS_LABEL[s]} <span className="opacity-70">{counts[s] || 0}</span>
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* 검색/옵션 */}
       <div className="mb-3 flex flex-wrap items-center gap-2">
-        <form onSubmit={(e) => { e.preventDefault(); load(); }} className="flex items-center gap-1.5">
+        <form onSubmit={(e) => { e.preventDefault(); refresh(); }} className="flex items-center gap-1.5">
           <div className="flex items-center gap-1 rounded-md border border-[var(--border)] px-2 py-1.5">
             <Search size={13} className="text-[var(--muted)]" />
             <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="브랜드·이메일·전화 검색" className="w-44 max-w-[48vw] text-[12px] outline-none" />
@@ -225,9 +282,10 @@ export default function LaunchBatchAdmin() {
         <label className="flex items-center gap-1 text-[11px] text-[var(--muted)]">
           <input type="checkbox" checked={includeTest} onChange={(e) => setIncludeTest(e.target.checked)} /> 테스트 포함
         </label>
-        <button onClick={load} className="inline-flex items-center gap-1 rounded-md border border-[var(--border)] px-2.5 py-1.5 text-[11px] text-[var(--muted)]"><RefreshCw size={12} className={loading ? "animate-spin" : ""} /> 새로고침</button>
+        <button onClick={refresh} className="inline-flex items-center gap-1 rounded-md border border-[var(--border)] px-2.5 py-1.5 text-[11px] text-[var(--muted)]"><RefreshCw size={12} className={(loading || inqLoading) ? "animate-spin" : ""} /> 새로고침</button>
       </div>
 
+      {view === "apps" && (
       <div className="grid gap-4 lg:grid-cols-[1.3fr_1fr]">
         {/* 목록 */}
         <div className="kt-card overflow-x-auto">
@@ -316,6 +374,79 @@ export default function LaunchBatchAdmin() {
           )}
         </div>
       </div>
+      )}
+
+      {view === "inquiries" && (
+      <div className="grid gap-4 lg:grid-cols-[1.3fr_1fr]">
+        {/* 문의 목록(읽기 전용) */}
+        <div className="kt-card overflow-x-auto">
+          {inqLoading ? (
+            <div className="py-16 text-center text-[var(--muted)]"><Loader2 className="mx-auto animate-spin" /></div>
+          ) : inqErr ? (
+            <div className="py-12 text-center text-[12px] text-rose-600">{inqErr}</div>
+          ) : inq.length === 0 ? (
+            <div className="py-16 text-center text-[12px] text-[var(--muted)]">문의 내역이 없습니다.</div>
+          ) : (
+            <table className="w-full min-w-[420px] text-[12px]">
+              <thead className="bg-[var(--bg-soft,#f7f7f8)] text-left text-[10px] uppercase text-[var(--muted)]">
+                <tr><th className="px-3 py-2">접수</th><th className="px-3 py-2">브랜드 · 유입</th><th className="px-3 py-2">담당자</th></tr>
+              </thead>
+              <tbody>
+                {inq.map((it) => {
+                  const s = siteOf(it.source_site);
+                  return (
+                    <tr key={it.id} onClick={() => openInqDetail(it.id)} className={`cursor-pointer border-t border-[var(--border)] hover:bg-[var(--bg-soft,#f7f7f8)] ${inqSel === it.id ? "bg-[var(--bg-soft,#f2f2f3)]" : ""}`}>
+                      <td className="px-3 py-2 whitespace-nowrap align-top text-[var(--muted)]">
+                        <div className="font-semibold text-[color:inherit]">{it.receipt || ("#" + it.id)}</div>
+                        {kst(it.created_at)}
+                      </td>
+                      <td className="px-3 py-2 align-top font-semibold">
+                        {it.brand || <span className="text-[var(--muted)]">브랜드 미기재</span>}{it.is_test && <span className="ml-1 rounded bg-zinc-200 px-1 text-[9px] text-zinc-600">TEST</span>}
+                        <div className="mt-0.5 flex flex-wrap items-center gap-1 text-[9px] font-normal">
+                          <span className={`rounded px-1 py-0.5 font-bold ${SITE_CLS[s]}`}>{SITE_LABEL[s]}</span>
+                          {s !== "unknown" && <span className="text-[var(--muted)]">{SITE_DOMAIN[s]}</span>}
+                        </div>
+                        <div className="text-[10px] font-normal text-[var(--muted)] whitespace-nowrap">{it.phone || "전화 미수집"}</div>
+                      </td>
+                      <td className="px-3 py-2 align-top">{it.name}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          )}
+        </div>
+
+        {/* 문의 상세(읽기 전용) */}
+        <div className="kt-card p-4">
+          {inqSel === null ? (
+            <p className="py-12 text-center text-[12px] text-[var(--muted)]">목록에서 문의를 선택하세요. (읽기 전용)</p>
+          ) : inqDetailLoading ? (
+            <div className="py-12 text-center text-[var(--muted)]"><Loader2 className="mx-auto animate-spin" /></div>
+          ) : !inqDetail ? (
+            <p className="py-12 text-center text-[12px] text-rose-600">불러오기 실패</p>
+          ) : (
+            <div className="space-y-2.5 text-[12px]">
+              <div className="flex items-center justify-between">
+                <h2 className="text-[15px] font-black">{inqDetail.brand || "브랜드 미기재"}{inqDetail.is_test && <span className="ml-1.5 rounded bg-zinc-200 px-1.5 py-0.5 text-[9px] text-zinc-600">TEST</span>}</h2>
+                <span className="text-[10px] text-[var(--muted)]">{inqDetail.receipt}</span>
+              </div>
+              <Field k="접수 시각" v={`${kst(inqDetail.created_at)} (KST)`} />
+              <Field k="유입 사이트" v={(() => { const s = siteOf(inqDetail.source_site); return <span className="inline-flex items-center gap-1.5"><span className={`rounded px-1.5 py-0.5 text-[10px] font-bold ${SITE_CLS[s]}`}>{SITE_LABEL[s]}</span>{s !== "unknown" && <span className="text-[var(--muted)]">{SITE_DOMAIN[s]}</span>}</span>; })()} />
+              <Field k="담당자" v={inqDetail.name} />
+              <Field k="이메일" v={<a className="break-all text-[var(--accent)] underline" href={`mailto:${inqDetail.email}`}>{inqDetail.email}</a>} />
+              <Field k="전화번호" v={inqDetail.phone ? <a className="text-[var(--accent)] underline" href={`tel:${inqDetail.phone}`}>{inqDetail.phone}</a> : <span className="text-[var(--muted)]">미수집</span>} />
+              <Field k="처리 상태" v={inqDetail.crm_status === "manual_review" ? "수동 확인 대상" : (inqDetail.crm_status || "—")} />
+              <div>
+                <p className="mb-1 text-[10px] font-bold uppercase text-[var(--muted)]">메시지 (희망 권역·동남아 국가 포함)</p>
+                <p className="whitespace-pre-wrap rounded-md border border-[var(--border)] bg-[var(--bg-soft,#f7f7f8)] p-2">{inqDetail.message || "—"}</p>
+              </div>
+              <p className="text-[10px] text-[var(--muted)]">읽기 전용 — 문의는 상태/메모 수정을 제공하지 않습니다. 담당자·자동화(Codex)가 확인합니다.</p>
+            </div>
+          )}
+        </div>
+      </div>
+      )}
     </PageShell>
   );
 }

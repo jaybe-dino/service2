@@ -34,16 +34,18 @@ export const CONSENT_VERSION = "2026-10-27";
 
 /* ── 유입 사이트(source_site) — 공개 랜딩 구분 ── */
 // start=start.glovek.space(배치 1기), batch=batch.glovek.space(진출 테스팅 1기),
-// batch2=batch2.glovek.space(진출 테스팅 2기), unknown=그 외/미확인.
-export const SOURCE_SITES = ["start", "batch", "batch2", "unknown"] as const;
+// batch2=batch2.glovek.space(진출 테스팅 2기), sea=sea.glovek.space(동남아 1개국 온보딩 무료 프로모션),
+// unknown=그 외/미확인.
+export const SOURCE_SITES = ["start", "batch", "batch2", "sea", "unknown"] as const;
 export type SourceSite = (typeof SOURCE_SITES)[number];
-export const SITE_LABEL: Record<SourceSite, string> = { start: "배치 1기", batch: "진출 테스팅", batch2: "배치 2기", unknown: "출처 미확인" };
-export const SITE_DOMAIN: Record<SourceSite, string> = { start: "start.glovek.space", batch: "batch.glovek.space", batch2: "batch2.glovek.space", unknown: "—" };
+export const SITE_LABEL: Record<SourceSite, string> = { start: "배치 1기", batch: "진출 테스팅", batch2: "배치 2기", sea: "동남아 무료", unknown: "출처 미확인" };
+export const SITE_DOMAIN: Record<SourceSite, string> = { start: "start.glovek.space", batch: "batch.glovek.space", batch2: "batch2.glovek.space", sea: "sea.glovek.space", unknown: "—" };
 // canonical 호스트 정확 일치만 신뢰(대소문자 무시·포트 제거). body/Referer/x-forwarded-host는 신뢰하지 않음.
 const CANONICAL_SITE_HOSTS: Record<string, SourceSite> = {
   "start.glovek.space": "start",
   "batch.glovek.space": "batch",
   "batch2.glovek.space": "batch2",
+  "sea.glovek.space": "sea",
 };
 export function siteFromHost(host: string | null | undefined): SourceSite {
   if (!host) return "unknown";
@@ -54,8 +56,8 @@ export function siteFromHost(host: string | null | undefined): SourceSite {
 export const CLOSED_SITES: readonly SourceSite[] = ["batch"]; // batch=진출 테스팅 배치 1기 모집 마감
 export function isClosedSite(site: SourceSite): boolean { return CLOSED_SITES.includes(site); }
 // 확정 출처(교차 사이트 UUID 충돌 판정용) — unknown/null 제외.
-export function isKnownSite(s: string | null | undefined): s is "start" | "batch" | "batch2" {
-  return s === "start" || s === "batch" || s === "batch2";
+export function isKnownSite(s: string | null | undefined): s is "start" | "batch" | "batch2" | "sea" {
+  return s === "start" || s === "batch" || s === "batch2" || s === "sea";
 }
 
 /* ── 서버 비용 산정(클라이언트 금액 신뢰하지 않음) ── */

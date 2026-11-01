@@ -11,48 +11,23 @@ import {
   CONSENT_VERSION,
   type CleanInquiry,
 } from "@/lib/launch-batch";
-import { sendLeadIngestResult } from "@/lib/admin-ingest";
-
-type CrmState = "sent" | "failed" | "skipped_unset" | "pending";
-
-// CRM(lead) 전달을 응답 내에서 직접 수행하고 crm_status를 기록한다.
-// - 고정 멱등키(glovek-inquiry:<id>)로 재시도해도 수신측(tiktokadmin)이 중복 생성하지 않는다.
-// - 호출부는 이미 'sent'인 건은 다시 부르지 않는다(중복 전송 방지).
-// - 전달 실패/미설정이어도 로컬 저장은 유지되어 동일 UUID 재시도로 다시 전달을 시도할 수 있다.
-// - PII는 JSON body로만 전송하며 일반 로그에 남기지 않는다(상태/코드만).
-async function deliverToCrm(id: number, d: CleanInquiry, site: string): Promise<CrmState> {
-  try {
-    const memo = `[batch.glovek.space 온보딩·문의 / source=${site}] ${d.message}`.slice(0, 1000);
-    const r = await sendLeadIngestResult(`glovek-inquiry:${id}`, {
-      email: d.email,
-      phone: d.phone,
-      brand_name: d.brand ?? "",
-      contact_name: d.name,
-      category: "문의",
-      source: "glovek_inquiry",
-      source_ref: `inquiry:${id}`,
-      memo,
-    });
-    await sql`UPDATE launch_batch_inquiries
-      SET crm_status = ${r.status}, crm_attempts = crm_attempts + 1, crm_last_at = now(),
-          crm_brand_id = COALESCE(${r.brandId ?? null}, crm_brand_id), updated_at = now()
-      WHERE id = ${id}`;
-    return r.status;
-  } catch {
-    await sql`UPDATE launch_batch_inquiries SET crm_status='failed', crm_attempts=crm_attempts+1, crm_last_at=now(), updated_at=now() WHERE id=${id}`.catch(() => {});
-    return "failed";
-  }
-}
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-// 온보딩·문의 접수(마감된 batch 등) — 배치 참여 신청이 아닌 일반 문의.
-// 1) 로컬 전용 테이블에 durable 저장(개인정보는 JSON/DB만, 로그 미기록)
-// 2) 운영 CRM(lead) 전달 후 crm_status 기록(미설정/실패는 거짓 성공으로 반환하지 않음 — 재시도 가능)
-// 자동 메일/Slack/SMS는 이 경로에서 호출하지 않음(기존 consult route 미사용).
+// 온보딩·문의 접수(마감 batch·sea 무료 프로모션 등) — 배치 참여 신청이 아닌 일반 문의/관심 접수.
+// 로컬 전용 테이블에 durable 저장만 수행한다(개인정보는 JSON/DB만, 일반 로그 미기록).
+// 자동 CRM 전달/메일/Slack/SMS는 호출하지 않는다. 담당자(및 Codex)가 관리자에서 직접 확인한다.
+// 응답의 delivery:"manual_review" 는 "로컬 접수 완료 → 담당자 수동 확인 예정"을 뜻한다(CRM 저장을 단정하지 않음).
 
-const ALLOW_HOSTS = new Set(["start.glovek.space", "batch.glovek.space", "batch2.glovek.space", "glovek.space", "www.glovek.space"]);
+const ALLOW_HOSTS = new Set([
+  "start.glovek.space",
+  "batch.glovek.space",
+  "batch2.glovek.space",
+  "sea.glovek.space",
+  "glovek.space",
+  "www.glovek.space",
+]);
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const NS = { "cache-control": "no-store" };
 
@@ -94,7 +69,7 @@ export async function POST(req: Request) {
   }
   // 허니팟 — 값 있으면 봇. 저장하지 않고 조용히 성공 응답.
   if (String(body.company_website ?? "").trim() !== "") {
-    return NextResponse.json({ ok: true, receipt: inquiryReceiptNo(0), spam: true }, { headers: NS });
+    return NextResponse.json({ ok: true, receipt: inquiryReceiptNo(0), delivery: "manual_review", spam: true }, { headers: NS });
   }
   if (body.consent !== true) {
     return NextResponse.json({ ok: false, error: "개인정보 수집·이용 동의가 필요합니다." }, { status: 400, headers: NS });
@@ -123,24 +98,23 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: "요청이 많습니다. 잠시 후 다시 시도해 주세요." }, { status: 429, headers: NS });
     }
 
-    // durable 저장(멱등) — crm_status='pending'
+    // durable 저장(멱등) — crm_status='manual_review'(자동 CRM 전달 없음, 담당자 수동 확인 대상).
+    // 과거 레거시 행(예: INQ-0001)의 crm_status/필드는 그대로 보존한다.
     const ins = await sql<{ id: number }>`
       INSERT INTO launch_batch_inquiries
         (request_id, payload_hash, name, email, phone, brand, message, source_site,
          consent, consent_version, consent_at, is_test, crm_status, ip_hash, user_agent)
       VALUES
         (${reqId}, ${hash}, ${d.name}, ${d.email}, ${d.phone}, ${d.brand}, ${d.message}, ${site},
-         true, ${CONSENT_VERSION}, now(), ${d.isTest}, 'pending', ${ipHash}, ${ua})
+         true, ${CONSENT_VERSION}, now(), ${d.isTest}, 'manual_review', ${ipHash}, ${ua})
       ON CONFLICT (request_id) DO NOTHING
       RETURNING id`;
 
     let id = ins.rows[0]?.id;
-    const isNew = id != null;
-    let crmStatus: CrmState = "pending";
     if (id == null) {
-      // 동일 requestId 재시도 — 기존 행 확인(멱등). payload/site 불일치는 접수 거부.
-      const ex = await sql<{ id: number; payload_hash: string | null; source_site: string | null; crm_status: string | null }>`
-        SELECT id, payload_hash, source_site, crm_status FROM launch_batch_inquiries WHERE request_id = ${reqId} LIMIT 1`;
+      // 동일 requestId 재시도 — 기존 행 확인(멱등). payload/site 불일치는 접수 거부(409).
+      const ex = await sql<{ id: number; payload_hash: string | null; source_site: string | null }>`
+        SELECT id, payload_hash, source_site FROM launch_batch_inquiries WHERE request_id = ${reqId} LIMIT 1`;
       const row = ex.rows[0];
       if (!row) throw new Error("insert-conflict-but-missing");
       if (row.payload_hash && row.payload_hash !== hash) {
@@ -149,21 +123,12 @@ export async function POST(req: Request) {
       if (isKnownSite(row.source_site) && isKnownSite(site) && row.source_site !== site) {
         return NextResponse.json({ ok: false, error: "이미 다른 사이트에서 접수된 요청입니다. 새로고침 후 다시 작성해 주세요." }, { status: 409, headers: NS });
       }
-      id = row.id; // 동일 재시도 — 멱등(기존 source_site 유지)
-      crmStatus = (row.crm_status as CrmState) ?? "pending";
+      id = row.id; // 동일 재시도 — 멱등(기존 source_site/crm_status 보존)
     }
 
-    // CRM 전달: 신규 접수이거나, 동일 UUID·동일 payload/site 재시도 중 아직 'sent'가 아닌 경우에만 수행한다.
-    // 이미 'sent'면 재전송하지 않는다(중복 전송 방지). 고정 멱등키로 at-least-once 전달을 안전하게 재시도한다.
-    // 테스트 리드(TEST*+example.com)도 실제 CRM에 저장되며, 수신측(tiktokadmin) 가드가 자동 알림만 억제한다.
-    let crm: CrmState = crmStatus === "sent" ? "sent" : "pending";
-    if (isNew || crmStatus !== "sent") {
-      crm = await deliverToCrm(id, d, site);
-    }
-
-    // 응답: 로컬 접수는 성공(ok). CRM 전달 성공은 crm === 'sent'로만 단정한다(로컬 저장≠CRM완료).
-    // crm !== 'sent'이면 클라이언트가 동일 UUID를 유지하고 '다시 보내기'로 재전달을 시도할 수 있다.
-    return NextResponse.json({ ok: true, receipt: inquiryReceiptNo(id), crm }, { headers: NS });
+    // 응답: 로컬 durable 접수 성공. delivery:"manual_review" = 담당자(Codex 포함)가 관리자에서 확인 예정.
+    // CRM 저장을 단정하지 않는다(자동 전달 없음).
+    return NextResponse.json({ ok: true, receipt: inquiryReceiptNo(id), delivery: "manual_review" }, { headers: NS });
   } catch {
     return NextResponse.json(
       { ok: false, error: "문의 저장에 실패했습니다. 잠시 후 다시 시도해 주세요. 문제가 계속되면 메일/전화로 문의해 주세요." },
