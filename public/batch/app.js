@@ -381,6 +381,7 @@
     form.addEventListener("submit", function (ev) {
       ev.preventDefault();
       if (sending) return;
+      var needRetry = false;
       var name = form.name.value.trim(), email = form.email.value.trim(),
           phone = form.phone.value.trim(), message = form.message.value.trim(),
           brand = form.brand ? form.brand.value.trim() : "";
@@ -404,17 +405,26 @@
       fetch("/api/launch-batch/inquiry", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) })
         .then(function (r) { return r.json().catch(function () { return {}; }).then(function (d) { return { status: r.status, d: d }; }); })
         .then(function (res) {
-          if (res.status >= 200 && res.status < 300 && res.d && res.d.ok) {
-            setStatus("문의가 접수되었습니다. 접수번호 " + (res.d.receipt || "-") + " · 담당자가 개별 안내드리겠습니다.", "ok");
+          var okResp = res.status >= 200 && res.status < 300 && res.d && res.d.ok;
+          if (okResp && res.d.crm === "sent") {
+            // 로컬 저장 + CRM 전달 완료 — 새 문의를 위해 폼/UUID 초기화.
+            setStatus("문의가 접수되어 담당자에게 전달되었습니다. 접수번호 " + (res.d.receipt || "-") + " · 개별 안내드리겠습니다.", "ok");
             form.reset(); reqId = genId();
+            needRetry = false;
+          } else if (okResp) {
+            // 로컬 저장은 됐으나 CRM 전달 미완료 — 같은 UUID/입력을 유지하고 재시도 표면 제공.
+            setStatus("문의가 접수되었습니다(번호 " + (res.d.receipt || "-") + "). 담당자 전달을 재확인 중입니다. 전달이 지연되면 아래 ‘다시 보내기’를 눌러 주세요.", "pending");
+            needRetry = true;
           } else {
+            // 실패 — 동일 UUID 유지(reqId 미변경), 다시 보내기로 재시도 가능.
             setStatus((res.d && res.d.error) || "접수에 실패했습니다. 잠시 후 다시 시도해 주세요.", "error");
+            needRetry = true;
           }
         })
-        .catch(function () { setStatus("네트워크 오류로 접수하지 못했습니다. 잠시 후 다시 시도해 주세요.", "error"); })
+        .catch(function () { setStatus("네트워크 오류로 접수하지 못했습니다. 잠시 후 ‘다시 보내기’로 재시도해 주세요.", "error"); needRetry = true; })
         .then(function () {
           sending = false;
-          if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = submitBtn.dataset.label || "온보딩·문의 보내기"; }
+          if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = needRetry ? "다시 보내기" : (submitBtn.dataset.label || "온보딩·문의 보내기"); }
         });
     });
     ["name", "email", "phone", "message", "brand"].forEach(function (nm) {

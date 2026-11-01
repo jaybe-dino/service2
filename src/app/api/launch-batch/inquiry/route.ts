@@ -1,4 +1,4 @@
-import { NextResponse, after } from "next/server";
+import { NextResponse } from "next/server";
 import crypto from "crypto";
 import { sql, isConfigured } from "@/lib/db";
 import {
@@ -7,10 +7,42 @@ import {
   hashIp,
   inquiryReceiptNo,
   siteFromHost,
+  isKnownSite,
   CONSENT_VERSION,
   type CleanInquiry,
 } from "@/lib/launch-batch";
 import { sendLeadIngestResult } from "@/lib/admin-ingest";
+
+type CrmState = "sent" | "failed" | "skipped_unset" | "pending";
+
+// CRM(lead) 전달을 응답 내에서 직접 수행하고 crm_status를 기록한다.
+// - 고정 멱등키(glovek-inquiry:<id>)로 재시도해도 수신측(tiktokadmin)이 중복 생성하지 않는다.
+// - 호출부는 이미 'sent'인 건은 다시 부르지 않는다(중복 전송 방지).
+// - 전달 실패/미설정이어도 로컬 저장은 유지되어 동일 UUID 재시도로 다시 전달을 시도할 수 있다.
+// - PII는 JSON body로만 전송하며 일반 로그에 남기지 않는다(상태/코드만).
+async function deliverToCrm(id: number, d: CleanInquiry, site: string): Promise<CrmState> {
+  try {
+    const memo = `[batch.glovek.space 온보딩·문의 / source=${site}] ${d.message}`.slice(0, 1000);
+    const r = await sendLeadIngestResult(`glovek-inquiry:${id}`, {
+      email: d.email,
+      phone: d.phone,
+      brand_name: d.brand ?? "",
+      contact_name: d.name,
+      category: "문의",
+      source: "glovek_inquiry",
+      source_ref: `inquiry:${id}`,
+      memo,
+    });
+    await sql`UPDATE launch_batch_inquiries
+      SET crm_status = ${r.status}, crm_attempts = crm_attempts + 1, crm_last_at = now(),
+          crm_brand_id = COALESCE(${r.brandId ?? null}, crm_brand_id), updated_at = now()
+      WHERE id = ${id}`;
+    return r.status;
+  } catch {
+    await sql`UPDATE launch_batch_inquiries SET crm_status='failed', crm_attempts=crm_attempts+1, crm_last_at=now(), updated_at=now() WHERE id=${id}`.catch(() => {});
+    return "failed";
+  }
+}
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -103,49 +135,35 @@ export async function POST(req: Request) {
       RETURNING id`;
 
     let id = ins.rows[0]?.id;
-    let isNew = id != null;
+    const isNew = id != null;
+    let crmStatus: CrmState = "pending";
     if (id == null) {
-      const ex = await sql<{ id: number; payload_hash: string | null }>`
-        SELECT id, payload_hash FROM launch_batch_inquiries WHERE request_id = ${reqId} LIMIT 1`;
+      // 동일 requestId 재시도 — 기존 행 확인(멱등). payload/site 불일치는 접수 거부.
+      const ex = await sql<{ id: number; payload_hash: string | null; source_site: string | null; crm_status: string | null }>`
+        SELECT id, payload_hash, source_site, crm_status FROM launch_batch_inquiries WHERE request_id = ${reqId} LIMIT 1`;
       const row = ex.rows[0];
       if (!row) throw new Error("insert-conflict-but-missing");
       if (row.payload_hash && row.payload_hash !== hash) {
         return NextResponse.json({ ok: false, error: "이미 다른 내용으로 접수된 요청입니다. 새로고침 후 다시 작성해 주세요." }, { status: 409, headers: NS });
       }
-      id = row.id; // 동일 재시도 — 멱등
-      isNew = false;
+      if (isKnownSite(row.source_site) && isKnownSite(site) && row.source_site !== site) {
+        return NextResponse.json({ ok: false, error: "이미 다른 사이트에서 접수된 요청입니다. 새로고침 후 다시 작성해 주세요." }, { status: 409, headers: NS });
+      }
+      id = row.id; // 동일 재시도 — 멱등(기존 source_site 유지)
+      crmStatus = (row.crm_status as CrmState) ?? "pending";
     }
 
-    // CRM 전달은 신규 접수에 한해 응답 이후(after) 비차단으로 수행하고 crm_status를 기록한다.
-    // 테스트 리드(TEST*+example.com)도 실제 CRM에 저장되지만, 수신측(tiktokadmin) 가드가 자동 알림만 억제한다.
-    if (isNew && id != null) {
-      const inquiryId = id;
-      after(async () => {
-        try {
-          const memo = `[batch.glovek.space 온보딩·문의 / source=${site}] ${d.message}`.slice(0, 1000);
-          const r = await sendLeadIngestResult(`glovek-inquiry:${inquiryId}`, {
-            email: d.email,
-            phone: d.phone,
-            brand_name: d.brand ?? "",
-            contact_name: d.name,
-            category: "문의",
-            source: "glovek_inquiry",
-            source_ref: `inquiry:${inquiryId}`,
-            memo,
-          });
-          await sql`UPDATE launch_batch_inquiries
-            SET crm_status = ${r.status}, crm_attempts = crm_attempts + 1, crm_last_at = now(),
-                crm_brand_id = COALESCE(${r.brandId ?? null}, crm_brand_id), updated_at = now()
-            WHERE id = ${inquiryId}`;
-        } catch {
-          // 전달 실패여도 로컬 저장은 유지(crm_status는 'pending'/이전값) — 재시도 가능. PII 로그 미기록.
-          await sql`UPDATE launch_batch_inquiries SET crm_status='failed', crm_attempts=crm_attempts+1, crm_last_at=now(), updated_at=now() WHERE id=${inquiryId}`.catch(() => {});
-        }
-      });
+    // CRM 전달: 신규 접수이거나, 동일 UUID·동일 payload/site 재시도 중 아직 'sent'가 아닌 경우에만 수행한다.
+    // 이미 'sent'면 재전송하지 않는다(중복 전송 방지). 고정 멱등키로 at-least-once 전달을 안전하게 재시도한다.
+    // 테스트 리드(TEST*+example.com)도 실제 CRM에 저장되며, 수신측(tiktokadmin) 가드가 자동 알림만 억제한다.
+    let crm: CrmState = crmStatus === "sent" ? "sent" : "pending";
+    if (isNew || crmStatus !== "sent") {
+      crm = await deliverToCrm(id, d, site);
     }
 
-    // 응답은 로컬 접수 성공만 의미(CRM 성공을 단정하지 않음).
-    return NextResponse.json({ ok: true, receipt: inquiryReceiptNo(id) }, { headers: NS });
+    // 응답: 로컬 접수는 성공(ok). CRM 전달 성공은 crm === 'sent'로만 단정한다(로컬 저장≠CRM완료).
+    // crm !== 'sent'이면 클라이언트가 동일 UUID를 유지하고 '다시 보내기'로 재전달을 시도할 수 있다.
+    return NextResponse.json({ ok: true, receipt: inquiryReceiptNo(id), crm }, { headers: NS });
   } catch {
     return NextResponse.json(
       { ok: false, error: "문의 저장에 실패했습니다. 잠시 후 다시 시도해 주세요. 문제가 계속되면 메일/전화로 문의해 주세요." },
