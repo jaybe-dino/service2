@@ -116,7 +116,7 @@ function MarketingTeaser() {
 // 상단 상담 유도 배너 — 클릭 시 상담 페이지로 이동(유입 UTM 포함). 반짝이는 그라데이션.
 //   게이트에서는 fixed(오버레이 위), 본문에서는 sticky(흐름 상단)로 표시.
 function ConsultPromo({ fixed = false }: { fixed?: boolean }) {
-  const href = "/consult?utm_source=tiktokmarketing&utm_medium=top_banner&utm_campaign=onboarding_consulting";
+  const href = "/consult1?utm_source=tiktokmarketing&utm_medium=top_banner&utm_campaign=onboarding_consulting";
   const pos = fixed ? "fixed top-0 left-0 right-0" : "sticky top-0";
   return (
     <>

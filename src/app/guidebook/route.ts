@@ -99,7 +99,7 @@ const noindexHeaders = {
 // 전체 본문은 응답에 포함하지 않음 — 개발자도구로 팝업을 지워도 나머지 내용은 존재하지 않음.
 // 상단 상담 유도 배너 — 게이트/본문 공통. 클릭 시 상담 페이지로 이동(유입 UTM 포함).
 //   게이트(.gb-ov 존재)에서는 fixed(오버레이 위), 본문에서는 sticky(흐름 상단)로 삽입.
-const GB_PROMO_HREF = "/consult?utm_source=guidebook&utm_medium=top_banner&utm_campaign=onboarding_consulting";
+const GB_PROMO_HREF = "/consult1?utm_source=guidebook&utm_medium=top_banner&utm_campaign=onboarding_consulting";
 const GUIDE_PROMO = `
 <style>
 @keyframes gbShine{0%{background-position:-180% 0}100%{background-position:180% 0}}
