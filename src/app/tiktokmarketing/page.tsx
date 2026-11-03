@@ -113,18 +113,39 @@ function MarketingTeaser() {
   );
 }
 
+// 상단 상담 유도 배너 — 클릭 시 상담 페이지로 이동(유입 UTM 포함). 반짝이는 그라데이션.
+//   게이트에서는 fixed(오버레이 위), 본문에서는 sticky(흐름 상단)로 표시.
+function ConsultPromo({ fixed = false }: { fixed?: boolean }) {
+  const href = "/consult?utm_source=tiktokmarketing&utm_medium=top_banner&utm_campaign=onboarding_consulting";
+  const pos = fixed ? "fixed top-0 left-0 right-0" : "sticky top-0";
+  return (
+    <>
+      <style>{`@keyframes tmShine{0%{background-position:-180% 0}100%{background-position:180% 0}}@keyframes tmPulse{0%{box-shadow:0 0 0 0 rgba(254,44,85,.6)}70%{box-shadow:0 0 0 10px rgba(254,44,85,0)}100%{box-shadow:0 0 0 0 rgba(254,44,85,0)}}.tm-promo{background:linear-gradient(110deg,#0a0a0a 0%,#111214 34%,#25f4ee 50%,#111214 66%,#0a0a0a 100%);background-size:220% 100%;animation:tmShine 3.2s linear infinite}.tm-promo-dot{animation:tmPulse 1.6s ease-out infinite}@media (prefers-reduced-motion:reduce){.tm-promo{animation:none}.tm-promo-dot{animation:none}}`}</style>
+      <a href={href} aria-label="틱톡샵 온보딩·마케팅 컨설팅 무료 상담 신청" className={`tm-promo ${pos} z-[9999] flex items-center justify-center gap-2.5 px-4 py-3 text-white no-underline shadow-[0_6px_20px_rgba(0,0,0,.35)]`}>
+        <span className="tm-promo-dot inline-block h-2 w-2 shrink-0 rounded-full bg-[#fe2c55]" />
+        <span className="text-[14px] font-black tracking-tight sm:text-[15px]">틱톡샵 <b className="text-[#25f4ee]">온보딩·마케팅 컨설팅</b> · 무료 상담 신청</span>
+        <span className="font-black text-[#fe2c55]">→</span>
+      </a>
+    </>
+  );
+}
+
 export default async function TiktokMarketingPage({ searchParams }: { searchParams?: Promise<Record<string, string | string[] | undefined>> }) {
   const sp = (await searchParams) ?? {};
   const c = await cookies();
   if (!verifyAccessToken("tiktokmarketing", c.get(accessCookieName("tiktokmarketing"))?.value)) {
     return (
-      <LeadGatePreview kind="tiktokmarketing" semKo={seminarSession().ko} utm={utmFromSearch(sp)} err={sp.gerr === "1"}>
-        <MarketingTeaser />
-      </LeadGatePreview>
+      <Fragment>
+        <ConsultPromo fixed />
+        <LeadGatePreview kind="tiktokmarketing" semKo={seminarSession().ko} utm={utmFromSearch(sp)} err={sp.gerr === "1"}>
+          <MarketingTeaser />
+        </LeadGatePreview>
+      </Fragment>
     );
   }
   return (
     <div className="min-h-screen bg-[var(--bg)] text-[var(--fg)]">
+      <ConsultPromo />
       <GateComplete fireReg={sp.reg === "1"} kind="tiktokmarketing" />
       <div className="mx-auto flex max-w-[1400px]">
         {/* 사이드바 */}

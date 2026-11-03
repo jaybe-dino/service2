@@ -97,6 +97,25 @@ const noindexHeaders = {
 
 // 게이트: 책의 표지·서장(티저)만 실루엣(블러)으로 깔고 레이어 팝업으로 정보 입력.
 // 전체 본문은 응답에 포함하지 않음 — 개발자도구로 팝업을 지워도 나머지 내용은 존재하지 않음.
+// 상단 상담 유도 배너 — 게이트/본문 공통. 클릭 시 상담 페이지로 이동(유입 UTM 포함).
+//   게이트(.gb-ov 존재)에서는 fixed(오버레이 위), 본문에서는 sticky(흐름 상단)로 삽입.
+const GB_PROMO_HREF = "/consult?utm_source=guidebook&utm_medium=top_banner&utm_campaign=onboarding_consulting";
+const GUIDE_PROMO = `
+<style>
+@keyframes gbShine{0%{background-position:-180% 0}100%{background-position:180% 0}}
+@keyframes gbPulse{0%{box-shadow:0 0 0 0 rgba(254,44,85,.6)}70%{box-shadow:0 0 0 10px rgba(254,44,85,0)}100%{box-shadow:0 0 0 0 rgba(254,44,85,0)}}
+.gb-promo{display:flex;align-items:center;justify-content:center;gap:9px;z-index:9999;padding:13px 16px;text-decoration:none;color:#fff;font-weight:900;letter-spacing:-.3px;font-family:'Apple SD Gothic Neo','Malgun Gothic',system-ui,sans-serif;background:linear-gradient(110deg,#0a0a0a 0%,#111214 34%,#25f4ee 50%,#111214 66%,#0a0a0a 100%);background-size:220% 100%;animation:gbShine 3.2s linear infinite;box-shadow:0 6px 20px rgba(0,0,0,.35)}
+.gb-promo b{color:#25f4ee}
+.gb-promo .gb-promo-arrow{color:#fe2c55;font-weight:900}
+.gb-promo .gb-promo-dot{width:8px;height:8px;border-radius:50%;background:#fe2c55;flex:0 0 auto;animation:gbPulse 1.6s ease-out infinite}
+.gb-promo-txt{font-size:14px}
+@media (max-width:520px){.gb-promo{padding:11px 12px;gap:7px}.gb-promo-txt{font-size:12.5px}}
+@media (prefers-reduced-motion:reduce){.gb-promo{animation:none}.gb-promo .gb-promo-dot{animation:none}}
+</style>
+<script>
+(function(){function mk(){var a=document.createElement('a');a.className='gb-promo';a.href=${JSON.stringify(GB_PROMO_HREF)};a.setAttribute('aria-label','틱톡샵 온보딩·마케팅 컨설팅 무료 상담 신청');a.innerHTML='<span class="gb-promo-dot"></span><span class="gb-promo-txt">틱톡샵 <b>온보딩·마케팅 컨설팅</b> · 무료 상담 신청</span><span class="gb-promo-arrow">\\u2192</span>';var ov=document.querySelector('.gb-ov');if(ov){a.style.position='fixed';a.style.top='0';a.style.left='0';a.style.right='0';}else{a.style.position='sticky';a.style.top='0';}document.body.insertBefore(a,document.body.firstChild);}if(document.readyState==='loading'){document.addEventListener('DOMContentLoaded',mk);}else{mk();}})();
+</script>`;
+
 function gatePage(err = "", utm: Utm = EMPTY_UTM): NextResponse {
   const raw = readFileSync(join(process.cwd(), "src/app/guidebook/ebook.html"), "utf-8");
   const cuts = [...raw.matchAll(/<section/g)].map((m) => m.index!);
@@ -158,7 +177,7 @@ function gatePage(err = "", utm: Utm = EMPTY_UTM): NextResponse {
     <div class="gb-ft">본 콘텐츠는 무단 복제·배포가 금지됩니다.</div>
   </form></div>
   </body></html>`;
-  const teaser = raw.slice(0, cut).replace("</head>", PROTECT + pixelBlock() + "\n</head>") + OVERLAY;
+  const teaser = raw.slice(0, cut).replace("</head>", PROTECT + pixelBlock() + GUIDE_PROMO + "\n</head>") + OVERLAY;
   return new NextResponse(teaser, { headers: noindexHeaders });
 }
 
@@ -168,7 +187,7 @@ export async function GET(req: Request) {
   // 최초 저장 성공 직후 1회만 CompleteRegistration — 쿠키를 소비(즉시 만료)해 새로고침·재열람 중복 방지.
   const fireReg = c.get(REG_COOKIE)?.value === "1";
   const html = readFileSync(join(process.cwd(), "src/app/guidebook/ebook.html"), "utf-8")
-    .replace("</head>", PROTECT + pixelBlock(fireReg ? "fbq('track','CompleteRegistration');" : "") + "\n</head>");
+    .replace("</head>", PROTECT + pixelBlock(fireReg ? "fbq('track','CompleteRegistration');" : "") + GUIDE_PROMO + "\n</head>");
   const res = new NextResponse(html, { headers: noindexHeaders });
   if (fireReg) res.cookies.set(REG_COOKIE, "", { httpOnly: true, secure: true, sameSite: "lax", maxAge: 0, path: "/guidebook" });
   return res;
