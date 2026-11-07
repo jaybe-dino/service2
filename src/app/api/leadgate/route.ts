@@ -1,6 +1,6 @@
 import { NextResponse, after } from "next/server";
 import { sql, isConfigured, ensureSchema } from "@/lib/db";
-import { GATE_PAGES, makeAccessToken, accessCookieName, utmFromForm, utmMemo, seminarSession } from "@/lib/leadgate";
+import { GATE_PAGES, makeAccessToken, accessCookieName, utmFromForm, utmMemo } from "@/lib/leadgate";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -20,21 +20,19 @@ export async function POST(req: Request) {
   const phone = String(form?.get("phone") || "").trim().slice(0, 40);
   const honeypot = String(form?.get("website") || "");
   const brandUrl = String(form?.get("brand_url") || "").trim().slice(0, 200);
-  const seminarOptIn = !!form?.get("seminar");
+  const meetingOptIn = !!form?.get("meeting");
   const utm = utmFromForm(form);
 
   if (honeypot) return bounce("gerr=1"); // 봇 차단
   // 필수: 회사명·이메일·전화번호·브랜드 사이트·동의. (이메일/사이트 형식은 검증하지 않음 — 빈 값만 차단)
   if (!company || !email || phone.replace(/\D/g, "").length < 9 || !brandUrl || !form?.get("agree")) return bounce("gerr=1");
 
-  const sem = seminarSession();
-
   // ① glovek DB: inquiries (kind=페이지명). 저장 성공해야 전환 발화.
   let leadSaved = false;
   if (isConfigured()) {
     try {
       await ensureSchema();
-      const payload = { company, phone, brandUrl: brandUrl || null, seminar: { applied: seminarOptIn, at: sem.atKst }, utm, page: kind };
+      const payload = { company, phone, brandUrl: brandUrl || null, meeting: { applied: meetingOptIn }, utm, page: kind };
       await sql`INSERT INTO inquiries (kind, user_email, payload) VALUES (${kind}, ${email}, ${JSON.stringify(payload)}::jsonb)`;
       leadSaved = true;
     } catch { /* 저장 실패 시 전환도 발화 안 함 — 열람은 허용 */ }
@@ -50,7 +48,7 @@ export async function POST(req: Request) {
       phone: phone.replace(/\D/g, ""), category: kind,
       memo: `[${kind} 열람] 회사 ${company} · 연락처 ${phone}`
         + (brandUrl ? ` · 사이트 ${brandUrl}` : "")
-        + ` · 무료세미나 ${seminarOptIn ? `신청(${sem.atKst})` : "미신청"}`
+        + ` · 온보딩·마케팅 미팅 ${meetingOptIn ? "신청(개별 연락 희망)" : "미신청"}`
         + (utmMemo(utm) ? ` · UTM ${utmMemo(utm)}` : ""),
     });
     if (brandUrl) qs.set("url", brandUrl);

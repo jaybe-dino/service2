@@ -52,22 +52,7 @@ function verifyToken(tok: string | undefined): boolean {
 
 // 브랜드 웹사이트는 선택 항목이며 형식 제한 없음 — trim + 최대길이만 적용해 입력 그대로 저장(http 없는 bare domain 허용).
 
-// ── 무료 세미나 회차 — 매주 월요일 10:30(KST) 고정, 매주 월요일 09:00 KST(=월 00:00 UTC)에 다음 주로 이동 ──
-// 서버가 요청 시각 기준으로 공통 계산 → 표시·저장 동일 값 보장. (route는 force-dynamic + no-store 라 캐시로 이전 날짜가 남지 않음)
-function seminarSession(now: Date = new Date()): { ymd: string; ko: string; atKst: string } {
-  const t = now.getTime();
-  const DAY = 86400000;
-  let cand = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()); // 오늘 00:00 UTC
-  for (let i = 0; i < 14; i++) {
-    const g = new Date(cand);
-    if (g.getUTCDay() === 1 && cand > t) break; // 월 00:00 UTC(=월 09:00 KST) 경계 중 now보다 엄격히 이후인 첫 월요일
-    cand += DAY;
-  }
-  const g = new Date(cand); // 월 00:00 UTC = 월 09:00 KST → KST 캘린더 날짜 동일
-  const y = g.getUTCFullYear(), m = g.getUTCMonth() + 1, d = g.getUTCDate();
-  const ymd = `${y}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
-  return { ymd, ko: `${m}월 ${d}일(월) 오전 10시 30분`, atKst: `${ymd} 10:30 (Asia/Seoul)` };
-}
+// (온보딩·마케팅 미팅 체크박스로 전환 — 고정 세미나 회차 계산 로직 제거)
 
 const PROTECT = `
 <meta name="robots" content="noindex, nofollow">
@@ -120,7 +105,6 @@ function gatePage(err = "", utm: Utm = EMPTY_UTM): NextResponse {
   const raw = readFileSync(join(process.cwd(), "src/app/guidebook/ebook.html"), "utf-8");
   const cuts = [...raw.matchAll(/<section/g)].map((m) => m.index!);
   const cut = cuts[2] ?? Math.min(raw.length, 14000); // 표지 + 서장 + 1챕터 도입부까지
-  const sem = seminarSession();
   const OVERLAY = `
   </main></div>
   <style>
@@ -147,6 +131,7 @@ function gatePage(err = "", utm: Utm = EMPTY_UTM): NextResponse {
     .gb-agree input{width:auto;margin-top:2px;accent-color:#7c3aed}
     .gb-seminar{background:#fdf2f8;border:1px solid #f9a8d4;border-radius:11px;padding:11px 12px;font-size:11.5px}
     .gb-seminar .gb-semt{display:block;color:#db2777;font-weight:800;margin-bottom:2px}
+    .gb-seminar .gb-semnote{display:block;color:#9f1239;font-weight:600;font-size:10.5px;margin-top:4px;line-height:1.45}
     .gb-hp{position:absolute;left:-9999px}
   </style>
   <div class="gb-ov">
@@ -171,7 +156,7 @@ function gatePage(err = "", utm: Utm = EMPTY_UTM): NextResponse {
     <input class="gb-hp" type="text" name="website" tabindex="-1" autocomplete="off" />
     ${utmHidden(utm)}
     <label class="gb-agree"><input type="checkbox" name="agree" checked required /> <span><b>[필수]</b> 개인정보 수집·이용에 동의합니다.</span></label>
-    <label class="gb-agree gb-seminar"><input type="checkbox" name="seminar" checked /> <span><b class="gb-semt">[선택] 한국 법인으로 “틱톡샵” 온보딩&운영 세미나</b>${sem.ko} (zoom) 무료세미나 신청</span></label>
+    <label class="gb-agree gb-seminar"><input type="checkbox" name="meeting" checked /> <span><b class="gb-semt">[선택] 한국 법인으로 "틱톡샵" 온보딩 &amp; 마케팅 미팅 신청</b><small class="gb-semnote">* 체크해주시면 담당자가 개별적으로 연락드릴 예정입니다.</small></span></label>
     ${err ? `<div class="gb-err">${err}</div>` : ""}
     <button type="submit">가이드북 열람하기</button>
     <div class="gb-ft">본 콘텐츠는 무단 복제·배포가 금지됩니다.</div>
@@ -214,17 +199,16 @@ export async function POST(req: Request) {
   // 브랜드 웹사이트(필수) — 형식 제한 없이 trim + 최대길이만. 빈 값만 차단(파싱/양식 검증 없음).
   const brandUrl = String(form?.get("brand_url") || "").trim().slice(0, 200);
   if (!brandUrl) return gatePage("브랜드 웹사이트를 입력해 주세요.", utm);
-  // 세미나 선택 신청 — 체크된 경우에만 신청자. 표시·저장 동일하도록 서버에서 회차 계산.
-  const seminarOptIn = !!form?.get("seminar");
-  const sem = seminarSession();
+  // 온보딩·마케팅 미팅 선택 신청 — 체크 시 담당자 개별 연락 희망. 체크된 경우에만 신청자.
+  const meetingOptIn = !!form?.get("meeting");
 
   // 리드 저장 — 기존 inquiries 테이블(kind='guidebook'), 어드민에서 열람 가능. 실패해도 열람은 허용.
-  // seminar.applied=false 는 '열람했으나 미신청' — 신청자로 취급하지 않음. leadSaved 는 최초 저장 성공 전환용.
+  // meeting.applied=false 는 '열람했으나 미신청' — 신청자로 취급하지 않음. leadSaved 는 최초 저장 성공 전환용.
   let leadSaved = false;
   if (isConfigured()) {
     try {
       await ensureSchema();
-      const payload = { company, phone, brandUrl: brandUrl || null, seminar: { applied: seminarOptIn, at: sem.atKst }, utm };
+      const payload = { company, phone, brandUrl: brandUrl || null, meeting: { applied: meetingOptIn }, utm };
       await sql`INSERT INTO inquiries (kind, user_email, payload)
         VALUES ('guidebook', ${email}, ${JSON.stringify(payload)}::jsonb)`;
       leadSaved = true;
@@ -232,7 +216,7 @@ export async function POST(req: Request) {
   }
 
   // 통합 어드민(admin.glovek.space) 리드훅 — consult와 동일 방식. 응답 이후 비차단 전송.
-  // 어드민 leadhook: url→brand_url 컬럼, memo→메모(관리자 확인). 세미나는 신청 시에만 '신청'으로 표기.
+  // 어드민 leadhook: url→brand_url 컬럼, memo→메모(관리자 확인). 미팅은 신청 시에만 '신청'으로 표기.
   {
     const base = process.env.LEADHOOK_URL || "https://admin.glovek.space/api/leadhook";
     const key = process.env.LEADHOOK_KEY || "dinoffice1029";
@@ -243,7 +227,7 @@ export async function POST(req: Request) {
       memo: `[가이드북 열람] K-코스메틱·소비재 글로벌 50개국 진출 실무서 · 회사 ${company}`
         + ` · 연락처 ${phone}`
         + (brandUrl ? ` · 사이트 ${brandUrl}` : "")
-        + ` · 무료세미나 ${seminarOptIn ? `신청(${sem.atKst})` : "미신청"}`
+        + ` · 온보딩·마케팅 미팅 ${meetingOptIn ? "신청(개별 연락 희망)" : "미신청"}`
         + (utmMemo(utm) ? ` · UTM ${utmMemo(utm)}` : ""),
     });
     if (brandUrl) qs.set("url", brandUrl);

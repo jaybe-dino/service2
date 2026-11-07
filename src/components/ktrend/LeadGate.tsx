@@ -1,7 +1,7 @@
 import { GATE_PAGES, EMPTY_UTM, type Utm } from "@/lib/leadgate";
 
 // 공용 리드 게이트 화면 — 가이드북 게이트와 동일 스타일(모바일 스크롤 가능). 콘텐츠는 상위 서버 컴포넌트가 미렌더(withhold).
-export default function LeadGate({ kind, semKo, utm = EMPTY_UTM, err = false }: { kind: string; semKo: string; utm?: Utm; err?: boolean }) {
+export default function LeadGate({ kind, utm = EMPTY_UTM, err = false }: { kind: string; semKo?: string; utm?: Utm; err?: boolean }) {
   const page = GATE_PAGES[kind];
   const hidden = (["source", "medium", "campaign", "content"] as const).filter((k) => utm[k]);
   return (
@@ -35,7 +35,7 @@ export default function LeadGate({ kind, semKo, utm = EMPTY_UTM, err = false }: 
         <input className="lg-hp" type="text" name="website" tabIndex={-1} autoComplete="off" />
         {hidden.map((k) => <input key={k} type="hidden" name={`utm_${k}`} value={utm[k]} />)}
         <label className="lg-agree"><input type="checkbox" name="agree" defaultChecked required /> <span><b>[필수]</b> 개인정보 수집·이용에 동의합니다.</span></label>
-        <label className="lg-agree"><input type="checkbox" name="seminar" defaultChecked /> <span><b>[선택]</b> {semKo} 무료 세미나 신청</span></label>
+        <label className="lg-agree"><input type="checkbox" name="meeting" defaultChecked /> <span><b>[선택]</b> 한국 법인으로 &quot;틱톡샵&quot; 온보딩 &amp; 마케팅 미팅 신청 <small style={{ display: "block", color: "#64748b", marginTop: "3px" }}>* 체크해주시면 담당자가 개별적으로 연락드릴 예정입니다.</small></span></label>
         {err && <div className="lg-err">입력값을 확인해 주세요. (회사명·이메일·전화번호·동의 필수)</div>}
         <button type="submit">전체 자료 열람하기</button>
         <div className="lg-ft">본 자료는 비공개 자료이며 무단 복제·배포가 금지됩니다.</div>

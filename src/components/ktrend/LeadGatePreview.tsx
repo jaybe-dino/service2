@@ -4,8 +4,8 @@ import { useState, type ReactNode } from "react";
 import { GATE_PAGES, EMPTY_UTM, type Utm } from "@/lib/leadgate-shared";
 
 // 블러 실루엣 티저 + "정보 입력하고 전체 보기" 버튼 → 클릭 시 입력 모달. 제출은 /api/leadgate (네이티브 POST).
-export default function LeadGatePreview({ kind, semKo, utm = EMPTY_UTM, err = false, children }:
-  { kind: string; semKo: string; utm?: Utm; err?: boolean; children: ReactNode }) {
+export default function LeadGatePreview({ kind, utm = EMPTY_UTM, err = false, children }:
+  { kind: string; semKo?: string; utm?: Utm; err?: boolean; children: ReactNode }) {
   const [open, setOpen] = useState(err); // 제출 검증 실패(gerr)로 돌아오면 폼을 바로 연다
   const page = GATE_PAGES[kind];
   const hidden = (["source", "medium", "campaign", "content"] as const).filter((k) => utm[k]);
@@ -37,6 +37,7 @@ export default function LeadGatePreview({ kind, semKo, utm = EMPTY_UTM, err = fa
         .lg-agree input{width:auto;margin-top:2px;accent-color:#7c3aed}
         .lg-seminar{background:#fdf2f8;border:1px solid #f9a8d4;border-radius:11px;padding:11px 12px;font-size:11.5px}
         .lg-seminar .lg-semt{display:block;color:#db2777;font-weight:800;margin-bottom:2px}
+        .lg-seminar .lg-semnote{display:block;color:#9f1239;font-weight:600;font-size:10.5px;margin-top:4px;line-height:1.45}
         .lg-hp{position:absolute;left:-9999px}
       ` }} />
 
@@ -66,7 +67,7 @@ export default function LeadGatePreview({ kind, semKo, utm = EMPTY_UTM, err = fa
             <input className="lg-hp" type="text" name="website" tabIndex={-1} autoComplete="off" />
             {hidden.map((k) => <input key={k} type="hidden" name={`utm_${k}`} value={utm[k]} />)}
             <label className="lg-agree"><input type="checkbox" name="agree" defaultChecked required /> <span><b>[필수]</b> 개인정보 수집·이용에 동의합니다.</span></label>
-            <label className="lg-agree lg-seminar"><input type="checkbox" name="seminar" defaultChecked /> <span><b className="lg-semt">[선택] 한국 법인으로 “틱톡샵” 온보딩&운영 세미나</b>{semKo} (zoom) 무료세미나 신청</span></label>
+            <label className="lg-agree lg-seminar"><input type="checkbox" name="meeting" defaultChecked /> <span><b className="lg-semt">[선택] 한국 법인으로 &quot;틱톡샵&quot; 온보딩 &amp; 마케팅 미팅 신청</b><small className="lg-semnote">* 체크해주시면 담당자가 개별적으로 연락드릴 예정입니다.</small></span></label>
             {err && <div className="lg-err">입력값을 확인해 주세요. (회사명·이메일·전화번호·동의 필수)</div>}
             <button type="submit" className="lg-submit">전체 자료 열람하기</button>
           </form>
