@@ -46,9 +46,11 @@ export async function POST(req: Request) {
     const qs = new URLSearchParams({
       key, source: src, company, name: company, email,
       phone: phone.replace(/\D/g, ""), category: kind,
-      memo: `[${kind} 열람] 회사 ${company} · 연락처 ${phone}`
+      // 개별미팅 신청 시 메모 첫 줄에 눈에 띄는 마커 — Slack 알림에서 별도 강조 라인으로 표시됨.
+      memo: (meetingOptIn ? "✅ 개별미팅 신청 OK — 담당자 개별 연락 요망\n" : "")
+        + `[${kind} 열람] 회사 ${company} · 연락처 ${phone}`
         + (brandUrl ? ` · 사이트 ${brandUrl}` : "")
-        + ` · 온보딩·마케팅 미팅 ${meetingOptIn ? "신청(개별 연락 희망)" : "미신청"}`
+        + (meetingOptIn ? "" : " · 미팅 미신청")
         + (utmMemo(utm) ? ` · UTM ${utmMemo(utm)}` : ""),
     });
     if (brandUrl) qs.set("url", brandUrl);
