@@ -16,11 +16,18 @@ export const metadata: Metadata = {
   title: "TikTok Shop & 글로벌 진출 실무 세미나 | 2026.11.20",
   description:
     "일본에서 시작해 미국·동남아로. 2026.11.20(금) 14:00–18:00 · 포스코타워 역삼 이벤트홀(서울 강남구 테헤란로 134). 입점·운영과 국가별 판매 전략, 현지 마케팅과 글로벌 크리에이터, 해외 물류·풀필먼트와 인증·정산을 다룹니다. 공동 주관: 아워박스·비브로·디노스튜디오.",
+  alternates: { canonical: "/seminar1120" },
   openGraph: {
+    url: "https://glovek.space/seminar1120",
     title: "TikTok Shop & 글로벌 진출 실무 세미나",
     description:
       "일본에서 시작해 미국·동남아로 — 2026.11.20(금) 14:00–18:00 · 포스코타워 역삼 이벤트홀. 입점·운영 → 콘텐츠·마케팅 → 물류·인증·정산.",
     type: "website",
+  },
+  twitter: {
+    card: "summary",
+    title: "TikTok Shop & 글로벌 진출 실무 세미나 | 2026.11.20",
+    description: "11월 20일(금) 14:00–18:00 · 포스코타워 역삼 이벤트홀 · 아워박스·비브로·디노스튜디오",
   },
 };
 
@@ -193,7 +200,7 @@ export default function Seminar1120Page() {
         {/* ── 주요 내용 (구성안) ── */}
         <section id="program" className="mt-20 scroll-mt-8">
           <div className="text-[12px] font-extrabold uppercase tracking-[3px] text-sky-600">Program</div>
-          <h2 className="mt-2 text-[28px] font-black tracking-tight sm:text-[36px]">주요 내용</h2>
+          <h2 className="mt-2 text-[28px] font-black tracking-tight sm:text-[36px]">주요 내용(구성안)</h2>
           <p className="mt-2 text-[14px] text-[#64748b]">연사·세부 시간표는 추후 안내 예정입니다.</p>
           <div className="mt-7 grid gap-3 sm:grid-cols-3">
             {PILLARS.map((p) => (
