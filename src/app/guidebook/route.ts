@@ -240,6 +240,27 @@ export async function POST(req: Request) {
     });
   }
 
+  // Slack 직접 통지(SLACK_WEBHOOK_URL) — consult와 동일 웹훅. (폐기된 leadhook과 무관하게 확실히 알림)
+  //   개별미팅 신청은 상단에 ✅ 강조 라인으로 표시.
+  {
+    const slackHook = process.env.SLACK_WEBHOOK_URL;
+    if (slackHook) {
+      const text = [
+        ":book: *새 가이드북 리드*",
+        meetingOptIn ? "✅ *개별미팅 신청 OK — 담당자 개별 연락 요망*" : null,
+        `• 회사/브랜드: *${company}*`,
+        `• 이메일: ${email}`,
+        `• 연락처: ${phone}`,
+        brandUrl ? `• 브랜드 URL: ${brandUrl}` : null,
+        `• 유입: guidebook${utmMemo(utm) ? ` · ${utmMemo(utm)}` : ""}`,
+      ].filter(Boolean).join("\n");
+      after(async () => {
+        try { await fetch(slackHook, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text }) }); }
+        catch { /* 통지 실패 무시 */ }
+      });
+    }
+  }
+
   const res = new NextResponse(null, { status: 303, headers: { location: "/guidebook" } });
   res.cookies.set(COOKIE, makeToken(email), { httpOnly: true, secure: true, sameSite: "lax", maxAge: 60 * 60 * 24 * 30, path: "/guidebook" });
   // 저장 성공한 최초 제출에만 1회 전환 플래그. 다음 GET이 소비 후 즉시 만료 → 새로고침·재열람 중복 전환 방지.

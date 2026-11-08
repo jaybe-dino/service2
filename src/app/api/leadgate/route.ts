@@ -61,6 +61,27 @@ export async function POST(req: Request) {
     });
   }
 
+  // ③ Slack 직접 통지(SLACK_WEBHOOK_URL) — consult와 동일 웹훅. (폐기된 leadhook과 무관하게 확실히 알림)
+  //    개별미팅 신청은 상단에 ✅ 강조 라인으로 표시.
+  {
+    const slackHook = process.env.SLACK_WEBHOOK_URL;
+    if (slackHook) {
+      const text = [
+        `:bust_in_silhouette: *새 리드 — ${kind}*`,
+        meetingOptIn ? "✅ *개별미팅 신청 OK — 담당자 개별 연락 요망*" : null,
+        `• 회사/브랜드: *${company}*`,
+        `• 이메일: ${email}`,
+        `• 연락처: ${phone}`,
+        brandUrl ? `• 브랜드 URL: ${brandUrl}` : null,
+        `• 유입: ${kind}${utmMemo(utm) ? ` · ${utmMemo(utm)}` : ""}`,
+      ].filter(Boolean).join("\n");
+      after(async () => {
+        try { await fetch(slackHook, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text }) }); }
+        catch { /* 통지 실패 무시 */ }
+      });
+    }
+  }
+
   // 접근 쿠키(30일) + 저장 성공 시 reg=1(전환 1회). 쿠키 path는 해당 페이지로 한정.
   const res = bounce(leadSaved ? "reg=1" : "ok=1");
   res.cookies.set(accessCookieName(kind), makeAccessToken(kind, email), {
