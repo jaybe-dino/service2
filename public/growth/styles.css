@@ -157,19 +157,23 @@ h1,h2,h3{word-break:keep-all;line-height:1.18;margin:0}
 .benefit-list h3{font-size:17.5px;font-weight:800;margin:0 0 4px}
 .benefit-list p{font-size:14px;color:var(--ink-soft);margin:0}
 
-/* Compact TikTok Ads promotion, separate from programme benefits */
-.ads-perk{margin-top:30px;padding:24px;background:var(--surface);border:1px solid var(--border);border-left:4px solid var(--cyan);border-radius:var(--r-lg);scroll-margin-top:86px}
-.ads-perk-head{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}
-.ads-perk-tag{margin:0 0 5px;font-size:11px;font-weight:800;color:var(--ink-soft);letter-spacing:.04em}
-.ads-perk-head h3{font-size:20px;font-weight:800;letter-spacing:-.02em}
-.ads-perk-head>a{font-size:12px;font-weight:700;text-decoration:underline;text-underline-offset:3px}
-.ads-perk-options{list-style:none;margin:20px 0 14px;padding:0;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
-.ads-perk-options li{min-width:0;border-radius:var(--r);background:rgba(37,244,238,.11);padding:15px 18px}
-.ads-perk-options li>span{display:block;font-size:12px;color:var(--ink-soft);font-weight:600}
-.ads-perk-options strong{display:block;margin-top:5px;font-size:30px;line-height:1.3;font-weight:900;letter-spacing:-.03em;font-variant-numeric:tabular-nums}
-.ads-perk-options small{font-size:13px;font-weight:700;letter-spacing:0}
-.ads-perk-note{margin:0;font-size:11.5px;line-height:1.65;color:var(--ink-mute)}
-@media(max-width:760px){.ads-perk{padding:20px}.ads-perk-options{grid-template-columns:1fr;gap:8px}.ads-perk-options li{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 14px}.ads-perk-options li>span{max-width:48%}.ads-perk-options strong{margin:0;font-size:26px;white-space:nowrap}}
+/* Three voucher types, one reading order */
+.voucher-list{list-style:none;padding:0;margin:0;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));border-top:2px solid var(--midnight);border-bottom:1px solid var(--border)}
+.voucher-item{min-width:0;padding:28px 24px;scroll-margin-top:96px}
+.voucher-item+.voucher-item{border-left:1px solid var(--border)}
+.voucher-number{display:block;font-size:44px;font-weight:900;line-height:1;color:var(--pink-text);margin-bottom:20px;font-variant-numeric:tabular-nums}
+.voucher-item h3{font-size:20px;font-weight:800;letter-spacing:-.02em;margin:0 0 20px}
+.voucher-value{font-size:16px;font-weight:700;color:var(--midnight);margin:0 0 12px;line-height:1.3}
+.voucher-value strong{font-size:clamp(32px,3.5vw,48px);font-weight:900;letter-spacing:-.03em;font-variant-numeric:tabular-nums}
+.voucher-summary{margin:0;color:var(--ink-soft);font-size:14px;line-height:1.7}
+.voucher-details{margin-top:24px;padding-top:16px;border-top:1px solid var(--border);font-size:13px;line-height:1.7;color:var(--ink-soft)}
+.voucher-details summary{cursor:pointer;min-height:44px;display:list-item;align-content:center;font-weight:700;color:var(--midnight)}
+.voucher-details summary:focus-visible{outline:2px solid var(--pink-text);outline-offset:4px}
+.voucher-details p{margin:12px 0 0}
+.voucher-details ul{padding-left:18px;margin:12px 0 0}
+.voucher-details li+li{margin-top:8px}
+.voucher-note{font-size:12.5px;color:var(--ink-soft);line-height:1.7;margin:20px 0 0;max-width:80ch}
+@media(max-width:760px){.voucher-list{grid-template-columns:1fr}.voucher-item{padding:24px 8px;display:grid;grid-template-columns:40px minmax(0,1fr);column-gap:16px}.voucher-item+.voucher-item{border-left:0;border-top:1px solid var(--border)}.voucher-number{grid-column:1;grid-row:1/4;font-size:36px;margin:0}.voucher-item h3,.voucher-value,.voucher-summary,.voucher-details{grid-column:2}.voucher-item h3{margin-bottom:12px}.voucher-details{margin-top:16px}.voucher-value strong{font-size:36px}}
 
 /* Regions */
 .region-modules{display:grid;grid-template-columns:1fr 1fr 1.5fr;gap:16px}
