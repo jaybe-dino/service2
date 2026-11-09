@@ -313,7 +313,7 @@ export default function Seminar1120Page() {
       {/* ══ 신청 방법 — 웜그레이 ══ */}
       <section className="bg-[#e9e4da]">
         <div className={`${styles.container} py-10 sm:py-12`}>
-          <div className="grid gap-10 lg:grid-cols-[1fr_auto] lg:items-center">
+          <div>
             <div className="min-w-0">
               <p className="text-[12px] font-semibold text-[#b6382c]">Apply</p>
               <h2 className="mt-2 text-[24px] font-semibold tracking-tight sm:text-[30px]">신청 방법</h2>
@@ -323,10 +323,7 @@ export default function Seminar1120Page() {
                 <li className="grid grid-cols-[26px_1fr] gap-3"><span className="font-semibold tabular-nums text-[#b6382c]">3</span><span>여러 명이 참석하실 경우, 참가자별로 각각 신청해 주세요.</span></li>
               </ol>
             </div>
-            <div className="lg:text-right">
-              <Apply />
-              <p className="mt-3 text-[12.5px] text-[#655b50]">외부 온라인 신청서(새 창)로 접수됩니다.</p>
-            </div>
+            <p className="mt-4 text-[12.5px] text-[#655b50]">외부 온라인 신청서(새 창)로 접수됩니다.</p>
           </div>
         </div>
       </section>
@@ -356,7 +353,6 @@ export default function Seminar1120Page() {
               <p className="flex items-center gap-2 text-[13px] font-semibold text-[#b6382c]"><Mail size={18} strokeWidth={1.5} /> 문의</p>
               <a href={`mailto:${CONTACT}`} className="mt-2 block break-all text-[17px] font-semibold text-[#1f1b16] underline-offset-2 hover:underline">{CONTACT}</a>
               <p className="mt-3 text-[14px] leading-relaxed text-[#5e554a]">등록 · 프로그램 · 현장 안내</p>
-              <div className="mt-5"><Apply /></div>
             </div>
           </div>
         </div>
