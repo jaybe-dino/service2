@@ -76,10 +76,8 @@ const PILLARS: { icon: IconType; step: string; title: string; desc: string }[] =
 // 이미지 출처(리사이즈·WebP 변환만 적용):
 // listing: https://cdn.imweb.me/thumbnail/20250803/573cccddcf538.jpg
 // fulfillment: https://cdn.imweb.me/thumbnail/20230709/2a56a52cb4cfd.jpg
-// creator: 기존 /refer 공개 콘텐츠 예시(ugc-drive-2.jpg). 연사·행사 사진으로 표현하지 않는다.
 const IMG = {
   listing: { src: "/seminar1120/listing.webp", alt: "태블릿으로 상품 운영 자료를 검토하는 모습", label: "입점·상품 리스팅", credit: "비브로 공식 이미지", href: "https://bbro.co.kr/brand-agency", w: 960, h: 639 },
-  creator: { src: "/seminar1120/creator.webp", alt: "헤어 스타일링 제품을 직접 보여주는 숏폼 콘텐츠 예시", label: "제품 시연·숏폼 콘텐츠", credit: "콘텐츠 예시 보기", href: "/refer#ugc", w: 576, h: 1024 },
   fulfillment: { src: "/seminar1120/fulfillment.webp", alt: "상품과 배송 박스가 보관된 아워박스 물류센터 내부", label: "보관·출고·풀필먼트", credit: "아워박스 공식 이미지", href: "https://ourbox.co.kr/Center", w: 1370, h: 500 },
 };
 
@@ -133,8 +131,8 @@ function RouteLine() {
   );
 }
 
-// 실무 흐름의 가로 사진 컷(번호 + 주제 + 출처). listing/fulfillment에 사용.
-function FlowShot({ img, num, step, aspect }: { img: typeof IMG.listing; num: string; step: string; aspect: string }) {
+// 실무 흐름의 가로 사진 컷(주제 + 출처). listing/fulfillment에 사용.
+function FlowShot({ img, step, aspect }: { img: typeof IMG.listing; step: string; aspect: string }) {
   return (
     <figure className="min-w-0">
       <div className={`${styles.edImg} ${aspect}`}>
@@ -144,7 +142,6 @@ function FlowShot({ img, num, step, aspect }: { img: typeof IMG.listing; num: st
       </div>
       <figcaption className="mt-3 flex items-baseline justify-between gap-3">
         <span className="flex items-baseline gap-3 min-w-0">
-          <span className="text-[22px] font-semibold tabular-nums leading-none text-[#b6382c]">{num}</span>
           <span className="truncate text-[14px] font-medium text-[#1f1b16]">{step}</span>
         </span>
         <a href={img.href} target="_blank" rel="noopener noreferrer" className={styles.imageCredit}>
@@ -278,31 +275,9 @@ export default function Seminar1120Page() {
             입점·운영에서 콘텐츠·마케팅, 물류·인증·정산까지 — 실제 진출 순서대로 연결해 다룹니다.
           </p>
 
-          <div className="mt-10 grid grid-cols-1 gap-8 lg:grid-cols-[0.82fr_1.18fr] lg:items-stretch lg:gap-x-12 lg:gap-y-7">
-            <div className="min-w-0 lg:col-start-2 lg:row-start-1">
-              <FlowShot img={IMG.listing} num="01" step="입점·운영" aspect="aspect-[960/639]" />
-            </div>
-            {/* 콘텐츠 — 세로 숏폼 컷(시선 포인트) */}
-            <figure className="min-w-0 self-center lg:col-start-1 lg:row-start-1 lg:row-span-2">
-              <div className={styles.phone}>
-                <span className={styles.phoneBar} aria-hidden="true" />
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={IMG.creator.src} alt={IMG.creator.alt} width={IMG.creator.w} height={IMG.creator.h} loading="lazy" />
-              </div>
-              <figcaption className="mx-auto mt-4 flex max-w-[300px] items-baseline justify-between gap-3">
-                <span className="flex items-baseline gap-3 min-w-0">
-                  <span className="text-[22px] font-semibold tabular-nums leading-none text-[#b6382c]">02</span>
-                  <span className="truncate text-[14px] font-medium text-[#1f1b16]">콘텐츠·마케팅</span>
-                </span>
-                <a href={IMG.creator.href} target="_blank" rel="noopener noreferrer" className={styles.imageCredit}>
-                  {IMG.creator.credit} <ArrowUpRight size={12} strokeWidth={1.5} aria-hidden />
-                </a>
-              </figcaption>
-            </figure>
-
-            <div className="min-w-0 lg:col-start-2 lg:row-start-2">
-              <FlowShot img={IMG.fulfillment} num="03" step="물류·정산" aspect="aspect-[137/50]" />
-            </div>
+          <div className="mt-10 grid grid-cols-1 items-center gap-8 lg:grid-cols-[1.12fr_0.88fr] lg:gap-12">
+            <FlowShot img={IMG.listing} step="입점·운영" aspect="aspect-[960/639]" />
+            <FlowShot img={IMG.fulfillment} step="물류·정산" aspect="aspect-[137/50]" />
           </div>
           <p className="mt-8 text-[12px] leading-relaxed text-[#655b50]">* 업무 흐름을 보여주는 참고 이미지이며, 행사 당일 사진이 아닙니다.</p>
         </div>
