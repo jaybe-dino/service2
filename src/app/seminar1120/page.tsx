@@ -132,10 +132,10 @@ function RouteLine() {
 }
 
 // 실무 흐름의 가로 사진 컷(주제 + 출처). listing/fulfillment에 사용.
-function FlowShot({ img, step, aspect }: { img: typeof IMG.listing; step: string; aspect: string }) {
+function FlowShot({ img, step }: { img: typeof IMG.listing; step: string }) {
   return (
     <figure className="min-w-0">
-      <div className={`${styles.edImg} ${aspect}`}>
+      <div className={styles.edImg}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={img.src} alt={img.alt} width={img.w} height={img.h} loading="lazy" />
         <span className={styles.photoLabel}>{img.label}</span>
@@ -157,16 +157,16 @@ export default function Seminar1120Page() {
     <main className={`${styles.page} break-keep bg-white text-[#1f1b16] antialiased`}>
 
       {/* ══ HERO — 짙은 잉크 표지 ══ */}
-      <header className="relative overflow-hidden bg-[#171b23] text-white">
+      <header className="relative isolate overflow-hidden bg-[#171b23] text-white">
         <div className={styles.heroMap} aria-hidden="true" />
-        <div className={`${styles.container} relative`}>
+        <div className={`${styles.container} relative z-10`}>
           {/* 상단 마스트헤드 */}
           <div className="flex items-center justify-between gap-4 border-b border-white/10 py-4 text-[12px] font-medium text-[#aab0bd]">
             <span>실무 세미나 · Global Commerce</span>
             <span className="tabular-nums">2026 · Seoul</span>
           </div>
 
-          <div className="grid grid-cols-1 items-center gap-10 py-12 sm:py-16 lg:grid-cols-[1.04fr_0.96fr] lg:gap-14">
+          <div className="grid grid-cols-1 items-center gap-8 py-10 sm:py-12 lg:grid-cols-[1.04fr_0.96fr] lg:gap-12">
             {/* 좌: 제목·소개·날짜·행사정보·행동 */}
             <div className="min-w-0">
               <p className="text-[13px] font-semibold text-[#f0a79d]">일본에서 시작해 미국·동남아로</p>
@@ -207,8 +207,8 @@ export default function Seminar1120Page() {
                 <img src="/seminar1120/venue.jpg" alt="포스코타워 역삼 이벤트홀 내부" width={671} height={771} loading="eager" />
                 <div className={styles.dateChip}>
                   <div className="text-[12px] font-medium text-[#b6382c]">11월</div>
-                  <div className="text-[28px] font-semibold leading-none tabular-nums">20</div>
-                  <div className="text-[12px] tabular-nums text-[#655b50]">2026 · 금요일</div>
+                  <div className="text-[24px] font-semibold leading-none tabular-nums sm:text-[28px]">20</div>
+                  <div className="hidden text-[12px] tabular-nums text-[#655b50] sm:block">2026 · 금요일</div>
                 </div>
               </div>
               <figcaption className="mt-3 flex flex-wrap items-center justify-between gap-2 text-[12.5px] text-[#aab0bd]">
@@ -225,7 +225,7 @@ export default function Seminar1120Page() {
 
       {/* ══ 공동 주관 로고 스트립 — 화이트 ══ */}
       <section className="border-b border-[#1f1b16]/10 bg-white">
-        <div className={`${styles.container} flex flex-col items-center gap-5 py-9 sm:flex-row sm:justify-between sm:gap-8`}>
+        <div className={`${styles.container} flex flex-col items-center gap-4 py-6 sm:flex-row sm:justify-between sm:gap-8`}>
           <p className="text-[12px] font-semibold text-[#655b50]">공동 주관</p>
           <HostLogos className="w-full max-w-[420px]" />
         </div>
@@ -233,7 +233,7 @@ export default function Seminar1120Page() {
 
       {/* ══ 진출 경로 — 웜그레이 밴드 ══ */}
       <section className="bg-[#e9e4da]">
-        <div className={`${styles.container} py-14 sm:py-16`}>
+        <div className={`${styles.container} py-10 sm:py-12`}>
           <div className="grid items-center gap-8 lg:grid-cols-[minmax(0,360px)_1fr] lg:gap-12">
             <div className="min-w-0">
               <p className="text-[12px] font-semibold text-[#b6382c]">Route</p>
@@ -251,7 +251,7 @@ export default function Seminar1120Page() {
 
       {/* ══ 핵심 정보 info row — 화이트 ══ */}
       <section className="bg-white">
-        <div className={`${styles.container} py-14 sm:py-16`}>
+        <div className={`${styles.container} py-10 sm:py-12`}>
           <dl className="grid grid-cols-1 gap-x-10 gap-y-8 sm:grid-cols-2 lg:grid-cols-4">
             {FACTS.map((f) => (
               <div key={f.label} className="min-w-0 border-t border-[#1f1b16]/12 pt-5">
@@ -268,24 +268,24 @@ export default function Seminar1120Page() {
 
       {/* ══ 실무 흐름 — 페이퍼(에디토리얼 사진) ══ */}
       <section className="bg-[#f7f5f0]">
-        <div className={`${styles.container} py-16 sm:py-20`}>
+        <div className={`${styles.container} py-12 sm:py-14`}>
           <p className="text-[12px] font-semibold text-[#b6382c]">Flow</p>
           <h2 className="mt-2 text-[26px] font-semibold tracking-tight sm:text-[32px]">진출 실무, 한 흐름으로</h2>
           <p className="mt-3 max-w-[560px] text-[16px] leading-relaxed text-[#5e554a]">
             입점·운영에서 콘텐츠·마케팅, 물류·인증·정산까지 — 실제 진출 순서대로 연결해 다룹니다.
           </p>
 
-          <div className="mt-10 grid grid-cols-1 items-center gap-8 lg:grid-cols-[1.12fr_0.88fr] lg:gap-12">
-            <FlowShot img={IMG.listing} step="입점·운영" aspect="aspect-[960/639]" />
-            <FlowShot img={IMG.fulfillment} step="물류·정산" aspect="aspect-[137/50]" />
+          <div className="mt-6 grid grid-cols-1 items-start gap-6 md:grid-cols-2 md:gap-8">
+            <FlowShot img={IMG.listing} step="입점·운영" />
+            <FlowShot img={IMG.fulfillment} step="물류·정산" />
           </div>
-          <p className="mt-8 text-[12px] leading-relaxed text-[#655b50]">* 업무 흐름을 보여주는 참고 이미지이며, 행사 당일 사진이 아닙니다.</p>
+          <p className="mt-4 text-[12px] leading-relaxed text-[#655b50]">* 업무 흐름을 보여주는 참고 이미지이며, 행사 당일 사진이 아닙니다.</p>
         </div>
       </section>
 
       {/* ══ 주요 내용(구성안) — 짙은 잉크(장면 전환) ══ */}
       <section id="program" className="scroll-mt-6 bg-[#171b23] text-white">
-        <div className={`${styles.container} py-16 sm:py-20`}>
+        <div className={`${styles.container} py-12 sm:py-14`}>
           <div className="flex flex-wrap items-end justify-between gap-3">
             <div className="min-w-0">
               <p className="text-[12px] font-semibold text-[#f0a79d]">Program</p>
@@ -293,9 +293,9 @@ export default function Seminar1120Page() {
             </div>
             <p className="text-[13px] text-[#aab0bd]">연사 · 세부 시간표는 추후 안내 예정</p>
           </div>
-          <ol className="mt-10 divide-y divide-white/10">
+          <ol className="mt-8 divide-y divide-white/10">
             {PILLARS.map((p, i) => (
-              <li key={p.title} className="grid grid-cols-[auto_1fr] gap-x-5 gap-y-1 py-7 sm:grid-cols-[96px_1fr]">
+              <li key={p.title} className="grid grid-cols-[auto_1fr] gap-x-5 gap-y-1 py-6 sm:grid-cols-[96px_1fr]">
                 <span className="text-[30px] font-semibold leading-none tracking-tight tabular-nums text-[#f0a79d] sm:text-[40px]">{String(i + 1).padStart(2, "0")}</span>
                 <div className="min-w-0">
                   <span className="flex items-center gap-2 text-[12.5px] font-medium text-[#aab0bd]">
@@ -312,7 +312,7 @@ export default function Seminar1120Page() {
 
       {/* ══ 신청 방법 — 웜그레이 ══ */}
       <section className="bg-[#e9e4da]">
-        <div className={`${styles.container} py-14 sm:py-16`}>
+        <div className={`${styles.container} py-10 sm:py-12`}>
           <div className="grid gap-10 lg:grid-cols-[1fr_auto] lg:items-center">
             <div className="min-w-0">
               <p className="text-[12px] font-semibold text-[#b6382c]">Apply</p>
@@ -333,7 +333,7 @@ export default function Seminar1120Page() {
 
       {/* ══ 오시는 길 — 화이트(장소 정보 중심) ══ */}
       <section className="bg-white">
-        <div className={`${styles.container} py-14 sm:py-16`}>
+        <div className={`${styles.container} py-10 sm:py-12`}>
           <p className="text-[12px] font-semibold text-[#b6382c]">Location</p>
           <h2 className="mt-2 text-[24px] font-semibold tracking-tight sm:text-[30px]">오시는 길</h2>
           <div className="mt-7 grid gap-x-12 gap-y-8 lg:grid-cols-[1fr_minmax(0,320px)]">
@@ -366,7 +366,7 @@ export default function Seminar1120Page() {
       <section className="relative isolate overflow-hidden bg-[#12151c] text-white">
         <div className={styles.closingLogistics} aria-hidden="true" />
         <div className={styles.closingMap} aria-hidden="true" />
-        <div className={`${styles.container} relative py-16 sm:py-20`}>
+        <div className={`${styles.container} relative z-10 py-12 sm:py-14`}>
           <div className="max-w-[640px]">
             <TikTokVisualLogo closing />
             <h2 className="text-[26px] font-semibold leading-tight tracking-tight sm:text-[34px]">지금 참가 신청하세요</h2>
@@ -381,10 +381,10 @@ export default function Seminar1120Page() {
 
       {/* ══ 푸터 — 화이트 ══ */}
       <footer className="border-t border-[#1f1b16]/10 bg-white">
-        <div className={`${styles.container} py-12`}>
+        <div className={`${styles.container} py-8`}>
           <p className="text-center text-[12px] font-semibold text-[#655b50]">공동 주관</p>
           <HostLogos className="mx-auto mt-6 max-w-[420px]" />
-          <p className="mt-9 text-center text-[13px] text-[#5e554a]">
+          <p className="mt-6 text-center text-[13px] text-[#5e554a]">
             문의 <a href={`mailto:${CONTACT}`} className="font-medium text-[#1f1b16] underline-offset-2 hover:underline">{CONTACT}</a>
           </p>
           <p className="mt-2 flex items-center justify-center gap-1.5 text-center text-[11.5px] text-[#655b50]">

@@ -18,9 +18,9 @@
           mask: url('/seminar1120/world-map.svg') right center / 150% auto no-repeat;
 }
 
-/* ── 공식 행사장 사진(venue.jpg 671x771): 실제 사진 영역(y108..565, 높이 457)만 크롭. 비율 유지. ── */
-.venueCrop { position: relative; aspect-ratio: 671 / 457; overflow: hidden; border-radius: 16px; background: #10131a; }
-.venueCrop img { display: block; width: 100%; height: auto; margin-top: -16.095%; }
+/* 공식 사진의 실제 영역(y108..565)을 중심 기준 16:9로 크롭. 원본 비율 유지. */
+.venueCrop { position: relative; isolation: isolate; aspect-ratio: 16 / 9; overflow: hidden; border-radius: 16px; background: #10131a; }
+.venueCrop img { display: block; width: 100%; height: auto; margin-top: -22.024%; }
 
 /* 히어로 사진 위 날짜 인쇄형 블록(흰 카드, 잉크 글자) */
 .dateChip {
@@ -30,10 +30,10 @@
 }
 
 /* ── 에디토리얼 사진(가로 컷) ── */
-.edImg { position: relative; overflow: hidden; border-radius: 16px; background: #e7e1d7; }
+.edImg { position: relative; isolation: isolate; aspect-ratio: 16 / 9; overflow: hidden; border-radius: 16px; background: #e7e1d7; }
 .edImg img { display: block; width: 100%; height: 100%; object-fit: cover; }
 .photoLabel {
-  position: absolute; bottom: 12px; left: 12px; max-width: calc(100% - 24px);
+  position: absolute; z-index: 1; pointer-events: none; bottom: 12px; left: 12px; max-width: calc(100% - 24px);
   padding: 8px 12px; border-radius: 8px; background: rgba(253, 252, 249, .94); color: #1f1b16;
   font-size: 12px; line-height: 1.4; font-weight: 500;
 }
@@ -47,27 +47,23 @@
 .closingLogo { width: 148px; margin-bottom: 20px; }
 
 /* ── 최종 신청: 짙은 물류 사진 밴드 ── */
-.closingVisual {
-  position: relative; isolation: isolate; overflow: hidden;
-  padding: clamp(28px, 4vw, 52px); border-radius: 18px; background: #12151c; color: #fff;
-}
 .closingLogistics {
-  position: absolute; z-index: -1; inset: 0; pointer-events: none;
+  position: absolute; z-index: 0; inset: 0; pointer-events: none;
   background: url('/seminar1120/fulfillment.webp') right center / cover no-repeat;
   opacity: .22;
   -webkit-mask-image: linear-gradient(to right, transparent 20%, #000 100%);
           mask-image: linear-gradient(to right, transparent 20%, #000 100%);
 }
 .closingMap {
-  position: absolute; z-index: -1; inset: 0; left: 24%; pointer-events: none;
+  position: absolute; z-index: 0; inset: 0; left: 24%; pointer-events: none;
   background: #cdd6e6; opacity: .05;
   -webkit-mask: url('/seminar1120/world-map.svg') right center / 120% auto no-repeat;
           mask: url('/seminar1120/world-map.svg') right center / 120% auto no-repeat;
 }
-.closingVisual a:focus-visible { outline-color: #fff; }
 
 @media (max-width: 639px) {
   .heroMap { opacity: .05; }
+  .dateChip { left: 12px; bottom: 12px; padding: 8px 12px; }
   .closingLogo { width: 136px; }
   .closingLogistics { opacity: .16; }
   .closingMap { left: 0; opacity: .045; }
