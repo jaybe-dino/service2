@@ -1,5 +1,5 @@
 "use strict";
-/* 글로벌 성장 프로그램 1기 — 정적(buildless) 랜딩. 참여 신청은 서버(/api/launch-batch/inquiry)로
+/* 글로벌 성장 프로그램 2기 — 정적(buildless) 랜딩. 참여 신청은 서버(/api/launch-batch/inquiry)로
    durable 저장(로컬 접수 → 담당자 수동 확인). 운영대행 수수료 모델이라 권역별 과금 계산기는 없다. */
 (function () {
   // 협업 브랜드 데이터 — glovek.space/refer(src/data/refer.ts) 분류 기준.
@@ -176,7 +176,7 @@
       if (!ok) { if (firstBad) firstBad.focus(); setStatus("입력 내용을 확인해 주세요.", "error"); return; }
 
       // 희망 시장·동남아 1개국·제품 URL·사용자 메시지를 구조적으로 보관.
-      var parts = ["[growth.glovek.space 글로벌 성장 프로그램 1기]"];
+      var parts = ["[growth.glovek.space 글로벌 성장 프로그램 2기]"];
       parts.push("희망 시장: " + (regions.length ? regions.join("·") : "-"));
       if (seaActive() && sea) parts.push("동남아 1개국: " + sea);
       if (product) parts.push("제품 URL: " + product);

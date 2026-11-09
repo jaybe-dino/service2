@@ -35,10 +35,10 @@ export const CONSENT_VERSION = "2026-10-27";
 /* ── 유입 사이트(source_site) — 공개 랜딩 구분 ── */
 // start=start.glovek.space(배치 1기), batch=batch.glovek.space(진출 테스팅 1기),
 // batch2=batch2.glovek.space(진출 테스팅 2기), sea=sea.glovek.space(동남아 1개국 온보딩 무료 프로모션),
-// growth=growth.glovek.space(글로벌 성장 프로그램 1기 · 운영대행 수수료 기반 + 바우처 지원), unknown=그 외/미확인.
+// growth=growth.glovek.space(글로벌 성장 프로그램 2기 · 운영대행 수수료 기반 + 바우처 지원), unknown=그 외/미확인.
 export const SOURCE_SITES = ["start", "batch", "batch2", "sea", "growth", "unknown"] as const;
 export type SourceSite = (typeof SOURCE_SITES)[number];
-export const SITE_LABEL: Record<SourceSite, string> = { start: "배치 1기", batch: "진출 테스팅", batch2: "배치 2기", sea: "동남아 무료", growth: "글로벌 성장 1기", unknown: "출처 미확인" };
+export const SITE_LABEL: Record<SourceSite, string> = { start: "배치 1기", batch: "진출 테스팅", batch2: "배치 2기", sea: "동남아 무료", growth: "글로벌 성장 2기", unknown: "출처 미확인" };
 export const SITE_DOMAIN: Record<SourceSite, string> = { start: "start.glovek.space", batch: "batch.glovek.space", batch2: "batch2.glovek.space", sea: "sea.glovek.space", growth: "growth.glovek.space", unknown: "—" };
 // canonical 호스트 정확 일치만 신뢰(대소문자 무시·포트 제거). body/Referer/x-forwarded-host는 신뢰하지 않음.
 const CANONICAL_SITE_HOSTS: Record<string, SourceSite> = {
