@@ -89,6 +89,15 @@ function Apply({ big = false }: { big?: boolean }) {
   );
 }
 
+function TikTokVisualLogo({ closing = false }: { closing?: boolean }) {
+  return (
+    <div className={`${styles.tiktokLogo} ${closing ? styles.closingLogo : ""}`}>
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src="/seminar1120/tiktok-logo.webp" alt="TikTok" width={2000} height={834} loading={closing ? "lazy" : "eager"} />
+    </div>
+  );
+}
+
 // 진출 경로 — 일본에서 시작해 미국·동남아로. 얇은 분기 경로선(독자 SVG) + 실제 HTML 라벨(모든 화면 가독).
 function RouteLine() {
   return (
@@ -117,8 +126,9 @@ function RouteLine() {
 
 export default function Seminar1120Page() {
   return (
-    <main className="min-h-screen break-keep bg-[#f7f4ee] text-[#1f1b16] antialiased">
-      <div className="mx-auto max-w-[1120px] px-6 sm:px-8">
+    <main className={`${styles.page} min-h-screen break-keep bg-[#f7f4ee] text-[#1f1b16] antialiased`}>
+      <div className={styles.worldBackdrop} aria-hidden="true" />
+      <div className="relative mx-auto max-w-[1120px] px-6 sm:px-8">
 
         {/* ── HERO ── */}
         <header className="grid items-center gap-10 py-14 sm:py-20 lg:grid-cols-[0.92fr_1.08fr] lg:gap-14">
@@ -149,6 +159,14 @@ export default function Seminar1120Page() {
 
           {/* 큰 행사장 사진 (공식 홈페이지, 실제 사진 영역만 크롭) */}
           <figure className="lg:order-last">
+            <div className={styles.platformVisual}>
+              <div className={styles.platformMap} aria-hidden="true" />
+              <div className={styles.platformContent}>
+                <TikTokVisualLogo />
+                <p className={styles.platformCountries}>일본 <span aria-hidden="true">·</span> 미국 <span aria-hidden="true">·</span> 동남아</p>
+                <p className={styles.platformCaption}>콘텐츠에서 글로벌 판매로</p>
+              </div>
+            </div>
             <div className={styles.venueCrop}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src="/seminar1120/venue.jpg" alt="포스코타워 역삼 이벤트홀 내부" width={671} height={771} />
@@ -287,13 +305,17 @@ export default function Seminar1120Page() {
 
         {/* ── 최종 신청 ── */}
         <section className="border-t border-[#1f1b16]/10 py-16">
-          <div className="max-w-[640px]">
-            <h2 className="text-[26px] font-semibold leading-tight tracking-tight sm:text-[34px]">지금 참가 신청하세요</h2>
-            <p className="mt-4 text-[16px] leading-relaxed text-[#5e554a]">
-              2026.11.20(금) 14:00 – 18:00 · {VENUE}. 신청 후 참석 확정 안내를 사전에 보내드립니다.
-            </p>
-            <div className="mt-7"><Apply big /></div>
-            <p className="mt-4 text-[13px] text-[#74695d]">문의 {CONTACT}</p>
+          <div className={styles.closingVisual}>
+            <div className={styles.closingMap} aria-hidden="true" />
+            <div className="relative max-w-[640px]">
+              <TikTokVisualLogo closing />
+              <h2 className="text-[26px] font-semibold leading-tight tracking-tight sm:text-[34px]">지금 참가 신청하세요</h2>
+              <p className="mt-4 text-[16px] leading-relaxed text-[#e5ded3]">
+                2026.11.20(금) 14:00 – 18:00 · {VENUE}. 신청 후 참석 확정 안내를 사전에 보내드립니다.
+              </p>
+              <div className="mt-7"><Apply big /></div>
+              <p className="mt-4 text-[13px] text-[#d6ccbe]">문의 {CONTACT}</p>
+            </div>
           </div>
         </section>
       </div>

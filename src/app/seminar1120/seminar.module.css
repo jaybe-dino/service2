@@ -3,6 +3,49 @@
  * Design method: "Unslop" by Damir Sokolovsky (@heydamir) — https://heydamir.design/unslop (CC-BY-4.0).
  */
 
+.page { position: relative; isolation: isolate; overflow: clip; }
+.worldBackdrop {
+  position: absolute; z-index: -1; pointer-events: none;
+  top: 0; right: -160px; width: min(1200px, 120vw); height: 680px;
+  background: url('/seminar1120/world-map.svg') center top / contain no-repeat;
+  opacity: .08;
+  mask-image: linear-gradient(to right, transparent 0%, #000 40%, #000 100%);
+}
+.platformVisual {
+  position: relative; isolation: isolate; overflow: hidden;
+  margin-bottom: 16px; padding: 24px 32px;
+  border-radius: 14px; background: #171714; color: #fff;
+}
+.platformMap, .closingMap {
+  position: absolute; z-index: -1; inset: 0; pointer-events: none;
+  background: url('/seminar1120/world-map.svg') right center / 94% auto no-repeat;
+  opacity: .28;
+}
+.platformContent { position: relative; }
+.tiktokLogo { width: 208px; max-width: 70%; aspect-ratio: 1544 / 376; overflow: hidden; }
+.tiktokLogo img { display: block; width: 129.534%; max-width: none; height: auto; margin-left: -14.767%; margin-top: -12.889%; }
+.platformCountries { margin: 8px 0 0; font-size: 14px; line-height: 1.5; color: #eee7dc; }
+.platformCountries span { padding: 0 8px; color: #a99c8b; }
+.platformCaption { margin: 4px 0 0; font-size: 13px; line-height: 1.5; color: #d6ccbe; }
+.closingVisual {
+  position: relative; isolation: isolate; overflow: hidden;
+  padding: 40px; border-radius: 16px; background: #171714; color: #fff;
+}
+.closingMap { left: 28%; background-size: 120% auto; opacity: .18; }
+.closingLogo { width: 160px; margin-bottom: 24px; }
+.closingVisual a:focus-visible { outline-color: #fff; }
+@media (max-width: 639px) {
+  .worldBackdrop { top: 88px; right: -160px; width: 760px; height: 440px; opacity: .08; }
+  .platformVisual { padding: 20px 24px; }
+  .platformMap { background-position: 110% center; background-size: 140% auto; opacity: .25; }
+  .tiktokLogo { width: 176px; max-width: 80%; }
+  .closingLogo { width: 144px; }
+  .platformCountries { font-size: 13px; }
+  .platformCountries span { padding: 0 4px; }
+  .closingVisual { padding: 32px 24px; }
+  .closingMap { left: 0; background-size: 180% auto; opacity: .13; }
+}
+
 /* 공식 행사장 사진(venue.jpg 671x771)에서 실제 사진 영역만 표시한다.
  * 원본 위/아래에 홈페이지 흰 여백·캡션이 있어, 사진 영역(세로 108px..565px, 높이 457px)만 크롭.
  * margin-top 백분율은 컨테이너 '너비' 기준 → -(108/671)= -16.095%. 비율 유지(원본 변형 없음). */
