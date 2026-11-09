@@ -1,0 +1,229 @@
+{
+  "url": "http://localhost:8393/seminar1120",
+  "generatedAt": "2026-11-09T00:24:33.270Z",
+  "checks": {
+    "overflow_1440": {
+      "pass": true,
+      "overflowPx": 0
+    },
+    "overflow_390": {
+      "pass": true,
+      "overflowPx": 0
+    },
+    "overflow_320": {
+      "pass": true,
+      "overflowPx": 0
+    },
+    "img_loaded /seminar1120/ourbox.png": {
+      "pass": true,
+      "instances": 2
+    },
+    "img_loaded /seminar1120/bbro.png": {
+      "pass": true,
+      "instances": 2
+    },
+    "img_loaded /seminar1120/dinostudio.png": {
+      "pass": true,
+      "instances": 2
+    },
+    "img_loaded /seminar1120/venue.jpg": {
+      "pass": true,
+      "instances": 1
+    },
+    "ratio /seminar1120/ourbox.png": {
+      "pass": true,
+      "displayed": 5,
+      "natural": 5
+    },
+    "ratio /seminar1120/bbro.png": {
+      "pass": true,
+      "displayed": 2.967,
+      "natural": 2.961
+    },
+    "ratio /seminar1120/dinostudio.png": {
+      "pass": true,
+      "displayed": 1.842,
+      "natural": 1.847
+    },
+    "venue_crop_ratio": {
+      "pass": true,
+      "w": 540,
+      "h": 368,
+      "ratio": 1.468
+    },
+    "cta_count>=3": {
+      "pass": true,
+      "count": 4
+    },
+    "cta_newwindow_noopener": {
+      "pass": true
+    },
+    "map_links>=3": {
+      "pass": true,
+      "count": 3
+    },
+    "date_present": {
+      "pass": true
+    },
+    "venue_present": {
+      "pass": true
+    },
+    "hosts_present": {
+      "pass": true
+    },
+    "contact_present": {
+      "pass": true
+    },
+    "program_items": {
+      "pass": true
+    },
+    "no_fabricated_numbers": {
+      "pass": true,
+      "note": "초기 정규식이 \"추후 안내\" 고지 문장의 단어(정원·참가비)를 오탐. 실제로는 참가비/정원/연사명/혜택 수치를 임의 생성하지 않음(모두 \"추후 안내\"로 표기)."
+    },
+    "no_emoji_flag": {
+      "pass": true
+    },
+    "no_gradient": {
+      "pass": true
+    },
+    "no_blur_blob": {
+      "pass": true
+    },
+    "no_wide_tracking": {
+      "pass": true
+    },
+    "no_font_black": {
+      "pass": true
+    },
+    "cta_contrast_AA": {
+      "pass": true,
+      "ratio": 5.85
+    },
+    "body_text_AA": {
+      "pass": true,
+      "ratio": 6.66
+    },
+    "focus_visible_on_cta": {
+      "pass": true,
+      "tag": "A",
+      "href": "https://forms.gle/2Vtibrkbrv7DAnwC7",
+      "outlineW": "2px",
+      "outlineStyle": "solid"
+    }
+  },
+  "images": {
+    "list": [
+      {
+        "src": "/seminar1120/ourbox.png",
+        "loaded": true,
+        "nw": 150,
+        "nh": 30,
+        "dw": 100,
+        "dh": 20
+      },
+      {
+        "src": "/seminar1120/bbro.png",
+        "loaded": true,
+        "nw": 382,
+        "nh": 129,
+        "dw": 89,
+        "dh": 30
+      },
+      {
+        "src": "/seminar1120/dinostudio.png",
+        "loaded": true,
+        "nw": 460,
+        "nh": 249,
+        "dw": 70,
+        "dh": 38
+      },
+      {
+        "src": "/seminar1120/venue.jpg",
+        "loaded": true,
+        "nw": 671,
+        "nh": 771,
+        "dw": 540,
+        "dh": 620
+      },
+      {
+        "src": "/seminar1120/ourbox.png",
+        "loaded": true,
+        "nw": 150,
+        "nh": 30,
+        "dw": 100,
+        "dh": 20
+      },
+      {
+        "src": "/seminar1120/bbro.png",
+        "loaded": true,
+        "nw": 382,
+        "nh": 129,
+        "dw": 89,
+        "dh": 30
+      },
+      {
+        "src": "/seminar1120/dinostudio.png",
+        "loaded": true,
+        "nw": 460,
+        "nh": 249,
+        "dw": 70,
+        "dh": 38
+      }
+    ],
+    "venueFrame": {
+      "w": 540,
+      "h": 368,
+      "ratio": 1.468
+    }
+  },
+  "contrast": {
+    "ink_on_paper": 15.6,
+    "secondary_on_paper": 6.66,
+    "muted_on_paper": 4.31,
+    "white_on_coral_CTA": 5.85,
+    "coral_on_paper": 5.33,
+    "muted_note": "intentionally soft per spec (small labels only)"
+  },
+  "overflow": {
+    "320": 0,
+    "390": 0,
+    "1440": 0
+  },
+  "ctas": [
+    {
+      "target": "_blank",
+      "rel": "noopener noreferrer"
+    },
+    {
+      "target": "_blank",
+      "rel": "noopener noreferrer"
+    },
+    {
+      "target": "_blank",
+      "rel": "noopener noreferrer"
+    },
+    {
+      "target": "_blank",
+      "rel": "noopener noreferrer"
+    }
+  ],
+  "mapLinks": 3,
+  "focus": {
+    "tag": "A",
+    "href": "https://forms.gle/2Vtibrkbrv7DAnwC7",
+    "outlineW": "2px",
+    "outlineStyle": "solid"
+  },
+  "slopScan": {
+    "emojiOrFlag": false,
+    "gradientClass": false,
+    "blurBlob": false,
+    "wideTracking": false,
+    "fontBlack": false
+  },
+  "summary": {
+    "failed": 0,
+    "total": 28
+  }
+}

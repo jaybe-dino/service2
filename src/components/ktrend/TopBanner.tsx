@@ -1,13 +1,17 @@
 "use client";
 
 import { useState } from "react";
+import { usePathname } from "next/navigation";
 import { Megaphone, X, Zap } from "lucide-react";
 import InquiryModal, { type InquiryKind } from "./InquiryModal";
 
 // 전역 상단 얇은 배너 (테스트 — 추후 제거 가능). 틱톡샵 온보딩 패스트트랙 + 마케팅 상담.
+// 세미나 브로슈어 페이지(/seminar1120)에서는 톤 유지를 위해 노출하지 않는다(다른 페이지는 그대로).
 export default function TopBanner() {
+  const pathname = usePathname();
   const [open, setOpen] = useState<InquiryKind | null>(null);
   const [hidden, setHidden] = useState(false);
+  if (pathname === "/seminar1120") return null;
   if (hidden) return null;
 
   return (

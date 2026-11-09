@@ -1,0 +1,27 @@
+/*
+ * /seminar1120 — scoped styles.
+ * Design method: "Unslop" by Damir Sokolovsky (@heydamir) — https://heydamir.design/unslop (CC-BY-4.0).
+ */
+
+/* 공식 행사장 사진(venue.jpg 671x771)에서 실제 사진 영역만 표시한다.
+ * 원본 위/아래에 홈페이지 흰 여백·캡션이 있어, 사진 영역(세로 108px..565px, 높이 457px)만 크롭.
+ * margin-top 백분율은 컨테이너 '너비' 기준 → -(108/671)= -16.095%. 비율 유지(원본 변형 없음). */
+.venueCrop {
+  aspect-ratio: 671 / 457;
+  overflow: hidden;
+  border-radius: 14px;
+  background: #ece7dc;
+}
+.venueCrop img {
+  display: block;
+  width: 100%;
+  height: auto;
+  margin-top: -16.095%;
+}
+
+/* 포커스 가시성 — 키보드 사용자. */
+.focusRing:focus-visible {
+  outline: 2px solid #1f1b16;
+  outline-offset: 2px;
+  border-radius: 10px;
+}
