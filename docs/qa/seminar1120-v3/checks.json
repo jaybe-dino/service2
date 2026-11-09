@@ -1,0 +1,210 @@
+{
+  "url": "http://localhost:8399/seminar1120",
+  "generatedAt": "2026-11-09T03:05:09.382Z",
+  "checks": {
+    "no_bbox_clip_320": {
+      "pass": true,
+      "count": 0,
+      "sample": []
+    },
+    "no_hscroll_320": {
+      "pass": true,
+      "px": 0
+    },
+    "no_bbox_clip_390": {
+      "pass": true,
+      "count": 0,
+      "sample": []
+    },
+    "no_hscroll_390": {
+      "pass": true,
+      "px": 0
+    },
+    "no_bbox_clip_768": {
+      "pass": true,
+      "count": 0,
+      "sample": []
+    },
+    "no_hscroll_768": {
+      "pass": true,
+      "px": 0
+    },
+    "no_bbox_clip_1440": {
+      "pass": true,
+      "count": 0,
+      "sample": []
+    },
+    "no_hscroll_1440": {
+      "pass": true,
+      "px": 0
+    },
+    "sections_full_width": {
+      "pass": true,
+      "widths": [
+        1440
+      ]
+    },
+    "bg_transitions>=4": {
+      "pass": true,
+      "distinct": [
+        "rgb(23, 27, 35)",
+        "rgb(255, 255, 255)",
+        "rgb(233, 228, 218)",
+        "rgb(247, 245, 240)",
+        "rgb(18, 21, 28)"
+      ]
+    },
+    "visible_images_loaded": {
+      "pass": true,
+      "visible": 11,
+      "broken": []
+    },
+    "facts_intact": {
+      "pass": true
+    },
+    "program_items": {
+      "pass": true
+    },
+    "title_gu_seongan": {
+      "pass": true
+    },
+    "route_japan": {
+      "pass": true
+    },
+    "venue_note": {
+      "pass": true
+    },
+    "no_fabricated": {
+      "pass": true
+    },
+    "no_bhseminar_leak": {
+      "pass": true
+    },
+    "cta>=3_newwin_noopener_44": {
+      "pass": true,
+      "count": 4,
+      "heights": [
+        46.5,
+        46.5,
+        46.5,
+        53.5
+      ]
+    },
+    "program_anchor": {
+      "pass": true,
+      "count": 1
+    },
+    "map_links>=3": {
+      "pass": true,
+      "count": 3
+    },
+    "contrast_white_on_ink": {
+      "pass": true,
+      "r": 17.25
+    },
+    "contrast_muted_on_ink": {
+      "pass": true,
+      "r": 10.83
+    },
+    "contrast_dim_on_ink": {
+      "pass": true,
+      "r": 7.93
+    },
+    "contrast_coral_on_warm": {
+      "pass": true,
+      "r": 4.62
+    },
+    "contrast_muted_on_warm": {
+      "pass": true,
+      "r": 5.24
+    },
+    "contrast_muted_on_paper": {
+      "pass": true,
+      "r": 6.09
+    },
+    "contrast_muted_on_white": {
+      "pass": true,
+      "r": 6.63
+    },
+    "no_page_errors": {
+      "pass": true,
+      "errs": []
+    }
+  },
+  "contrast": {
+    "white_on_ink": 17.25,
+    "muted_on_ink": 10.83,
+    "dim_on_ink": 7.93,
+    "coral_on_ink": 8.8,
+    "coral_on_warm": 4.62,
+    "muted_on_warm": 5.24,
+    "sec_on_warm": 5.77,
+    "ink_on_warm": 13.51,
+    "coral_on_paper": 5.37,
+    "muted_on_paper": 6.09,
+    "coral_on_white": 5.85,
+    "muted_on_white": 6.63
+  },
+  "clipped": {
+    "320": [],
+    "390": [],
+    "768": [],
+    "1440": []
+  },
+  "bgs": [
+    {
+      "bg": "rgb(23, 27, 35)",
+      "full": true,
+      "w": 1440
+    },
+    {
+      "bg": "rgb(255, 255, 255)",
+      "full": true,
+      "w": 1440
+    },
+    {
+      "bg": "rgb(233, 228, 218)",
+      "full": true,
+      "w": 1440
+    },
+    {
+      "bg": "rgb(255, 255, 255)",
+      "full": true,
+      "w": 1440
+    },
+    {
+      "bg": "rgb(247, 245, 240)",
+      "full": true,
+      "w": 1440
+    },
+    {
+      "bg": "rgb(23, 27, 35)",
+      "full": true,
+      "w": 1440
+    },
+    {
+      "bg": "rgb(233, 228, 218)",
+      "full": true,
+      "w": 1440
+    },
+    {
+      "bg": "rgb(255, 255, 255)",
+      "full": true,
+      "w": 1440
+    },
+    {
+      "bg": "rgb(18, 21, 28)",
+      "full": true,
+      "w": 1440
+    },
+    {
+      "bg": "rgb(255, 255, 255)",
+      "full": true,
+      "w": 1440
+    }
+  ],
+  "summary": {
+    "failed": 0,
+    "total": 29
+  }
+}

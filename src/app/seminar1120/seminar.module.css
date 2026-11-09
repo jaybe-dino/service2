@@ -1,62 +1,46 @@
 /*
- * /seminar1120 — scoped styles (밝은 브로슈어 · 에디토리얼 포스터).
+ * /seminar1120 — scoped styles (풀폭 섹션 · 잉크 표지 + 밝은 본문, 섹션별 배경 전환).
  * Design method: "Unslop" by Damir Sokolovsky (@heydamir) — https://heydamir.design/unslop (CC-BY-4.0).
  */
 
-.page { position: relative; isolation: isolate; overflow: clip; }
+/* 가로 스크롤만 차단(세로 clip 아님). 풀폭 섹션 배경이 viewport 전체로 이어지되, 장식이 가로 넘침을 만들지 않도록. */
+.page { position: relative; isolation: isolate; overflow-x: clip; }
 
-/* 전역 세계지도 백드롭(아주 옅게) */
-.worldBackdrop {
-  position: absolute; z-index: -1; pointer-events: none;
-  top: 0; right: -200px; width: min(1180px, 116vw); height: 720px;
-  background: url('/seminar1120/world-map.svg') center top / contain no-repeat;
-  opacity: .07;
-  -webkit-mask-image: linear-gradient(to right, transparent 0%, #000 42%, #000 100%);
-          mask-image: linear-gradient(to right, transparent 0%, #000 42%, #000 100%);
+/* 공통 컨테이너 — 섹션 배경은 풀폭, 내용은 가운데 정렬. */
+.container { width: 100%; max-width: 1180px; margin-inline: auto; padding-inline: 24px; }
+@media (min-width: 640px) { .container { padding-inline: 32px; } }
+
+/* ── 히어로(짙은 잉크 표지) 위 옅은 세계지도 ── */
+.heroMap {
+  position: absolute; z-index: 0; inset: 0; pointer-events: none;
+  background: #cdd6e6; opacity: .06;
+  -webkit-mask: url('/seminar1120/world-map.svg') right center / 150% auto no-repeat;
+          mask: url('/seminar1120/world-map.svg') right center / 150% auto no-repeat;
 }
 
-/* ── 히어로 커머스 무대(따뜻한 면 + 선명한 사진) ── */
-.stage {
-  position: relative; isolation: isolate; overflow: hidden; min-width: 0;
-  border-radius: 20px; background: #efe9dd;
-  padding: clamp(18px, 2.4vw, 26px);
+/* ── 공식 행사장 사진(venue.jpg 671x771): 실제 사진 영역(y108..565, 높이 457)만 크롭. 비율 유지. ── */
+.venueCrop { position: relative; aspect-ratio: 671 / 457; overflow: hidden; border-radius: 16px; background: #10131a; }
+.venueCrop img { display: block; width: 100%; height: auto; margin-top: -16.095%; }
+
+/* 히어로 사진 위 날짜 인쇄형 블록(흰 카드, 잉크 글자) */
+.dateChip {
+  position: absolute; left: 14px; bottom: 14px; z-index: 2;
+  padding: 10px 14px; border-radius: 12px; background: #fdfcf9; color: #1f1b16;
+  box-shadow: 0 16px 30px -18px rgba(0, 0, 0, .7);
 }
-.stageMap {
-  position: absolute; z-index: -1; inset: -12% -6%;
-  background: url('/seminar1120/world-map.svg') center / cover no-repeat;
-  opacity: .12;
-}
-.stageMap::after {
-  content: ''; position: absolute; inset: 0;
-  background: radial-gradient(120% 90% at 50% 0%, rgba(239,233,221,0) 40%, rgba(239,233,221,.55) 100%);
-}
-.stageHead {
-  position: relative; display: flex; align-items: center; justify-content: space-between;
-  flex-wrap: wrap; gap: 8px 12px; padding: 12px 16px; border-radius: 12px;
-  background: #171714; color: #eee7dc; font-size: 12px; line-height: 1.5; font-weight: 500;
-}
-.stageHead .tiktokLogo { width: 144px; max-width: 100%; flex-shrink: 0; }
-/* 정면 휴대폰 프레임 — 실제 숏폼 콘텐츠(creator.webp, 9:16)를 잘림 없이 담는다. */
+
+/* ── 실무 흐름: 세로 숏폼 컷(휴대폰 프레임) ── */
 .phone {
-  position: relative; width: 232px; max-width: 64%; min-width: 0; aspect-ratio: 9 / 16;
-  border-radius: 30px; background: #16130f; padding: 8px;
-  box-shadow: 0 26px 52px -28px rgba(31, 27, 22, .55);
+  position: relative; width: 100%; max-width: 300px; min-width: 0; aspect-ratio: 9 / 16;
+  margin-inline: auto; border-radius: 30px; background: #16130f; padding: 8px;
+  box-shadow: 0 30px 60px -32px rgba(31, 27, 22, .55);
 }
 .phone img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: center 30%; border-radius: 22px; }
 .phoneBar { position: absolute; top: 14px; left: 50%; transform: translateX(-50%); width: 52px; height: 5px; border-radius: 3px; background: rgba(255, 255, 255, .28); z-index: 2; }
-/* 배송·풀필먼트 스트립 */
-.stageStrip { position: relative; overflow: hidden; border-radius: 12px; aspect-ratio: 16 / 8; background: #ded7cb; }
-.stageStrip img { display: block; width: 100%; height: 100%; object-fit: cover; }
 
-/* TikTok 로고 — 2000x834 원본에서 워드마크 영역만 크롭(여백 제거). */
-.tiktokLogo { width: 168px; max-width: 56%; aspect-ratio: 1544 / 376; overflow: hidden; }
-.tiktokLogo img { display: block; width: 129.534%; max-width: none; height: auto; margin-left: -14.767%; margin-top: -12.889%; }
-.closingLogo { width: 150px; margin-bottom: 20px; }
-
-/* ── 에디토리얼 사진(실무 흐름) ── */
+/* ── 에디토리얼 사진(가로 컷) ── */
 .edImg { position: relative; overflow: hidden; border-radius: 16px; background: #e7e1d7; }
 .edImg img { display: block; width: 100%; height: 100%; object-fit: cover; }
-.edCreator img { object-position: center 30%; }
 .photoLabel {
   position: absolute; bottom: 12px; left: 12px; max-width: calc(100% - 24px);
   padding: 6px 11px; border-radius: 8px; background: rgba(253, 252, 249, .94); color: #1f1b16;
@@ -66,14 +50,15 @@
 .imageCredit:hover { text-decoration: underline; text-underline-offset: 3px; }
 .imageCredit:focus-visible { outline: 2px solid #1f1b16; outline-offset: 4px; border-radius: 4px; }
 
-/* ── 공식 행사장 사진(venue.jpg 671x771): 실제 사진 영역(y108..565, 높이 457)만 크롭. 비율 유지. ── */
-.venueCrop { aspect-ratio: 671 / 457; overflow: hidden; border-radius: 16px; background: #ece7dc; }
-.venueCrop img { display: block; width: 100%; height: auto; margin-top: -16.095%; }
+/* TikTok 로고 — 2000x834 원본에서 워드마크 영역만 크롭(여백 제거). */
+.tiktokLogo { width: 150px; max-width: 56%; aspect-ratio: 1544 / 376; overflow: hidden; }
+.tiktokLogo img { display: block; width: 129.534%; max-width: none; height: auto; margin-left: -14.767%; margin-top: -12.889%; }
+.closingLogo { width: 148px; margin-bottom: 18px; }
 
-/* ── 최종 신청: 짙은 물류 사진 밴드(밝은 본문과 대비) ── */
+/* ── 최종 신청: 짙은 물류 사진 밴드 ── */
 .closingVisual {
   position: relative; isolation: isolate; overflow: hidden;
-  padding: clamp(28px, 4vw, 48px); border-radius: 18px; background: #171714; color: #fff;
+  padding: clamp(28px, 4vw, 52px); border-radius: 18px; background: #12151c; color: #fff;
 }
 .closingLogistics {
   position: absolute; z-index: -1; inset: 0; pointer-events: none;
@@ -84,16 +69,15 @@
 }
 .closingMap {
   position: absolute; z-index: -1; inset: 0; left: 24%; pointer-events: none;
-  background: url('/seminar1120/world-map.svg') right center / 120% auto no-repeat;
-  opacity: .16;
+  background: #cdd6e6; opacity: .05;
+  -webkit-mask: url('/seminar1120/world-map.svg') right center / 120% auto no-repeat;
+          mask: url('/seminar1120/world-map.svg') right center / 120% auto no-repeat;
 }
 .closingVisual a:focus-visible { outline-color: #fff; }
 
 @media (max-width: 639px) {
-  .worldBackdrop { top: 72px; right: -160px; width: 720px; height: 420px; opacity: .07; }
-  .phone { width: 200px; max-width: 72%; }
-  .tiktokLogo { width: 148px; max-width: 64%; }
+  .heroMap { opacity: .05; }
   .closingLogo { width: 136px; }
   .closingLogistics { opacity: .16; }
-  .closingMap { left: 0; background-size: 170% auto; opacity: .12; }
+  .closingMap { left: 0; opacity: .045; }
 }
