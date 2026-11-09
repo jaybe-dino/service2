@@ -34,6 +34,36 @@
 .closingMap { left: 28%; background-size: 120% auto; opacity: .18; }
 .closingLogo { width: 160px; margin-bottom: 24px; }
 .closingVisual a:focus-visible { outline-color: #fff; }
+.closingLogistics {
+  position: absolute; z-index: -1; inset: 0; pointer-events: none;
+  background: url('/seminar1120/fulfillment.webp') right center / cover no-repeat;
+  opacity: .2;
+  mask-image: linear-gradient(to right, transparent 25%, #000 100%);
+}
+.journeySection { position: relative; isolation: isolate; }
+.journeySection::before {
+  content: ''; position: absolute; z-index: -1; inset: 0 -32px; pointer-events: none;
+  background: url('/seminar1120/fulfillment.webp') right center / cover no-repeat;
+  opacity: .055;
+  mask-image: linear-gradient(to right, transparent, #000);
+}
+.practiceCard {
+  display: flex; flex: 1; min-width: 0; flex-direction: column; overflow: hidden;
+  border: 1px solid rgb(31 27 22 / .12); border-radius: 16px; background: #fdfcf9;
+}
+.practicePhoto { position: relative; height: 208px; overflow: hidden; background: #e7e1d7; }
+.practicePhoto img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.creatorPhoto { background: #d4c0aa; }
+.creatorPhoto img { object-position: center 39%; }
+.photoLabel {
+  position: absolute; bottom: 12px; left: 12px; max-width: calc(100% - 24px);
+  padding: 6px 10px; border-radius: 6px; background: #fdfcf9; color: #1f1b16;
+  font-size: 12px; line-height: 1.5; font-weight: 500;
+}
+.practiceCopy { display: flex; flex: 1; flex-direction: column; padding: 20px; }
+.imageCredit { display: inline-flex; align-items: center; gap: 4px; align-self: flex-start; margin-top: auto; padding-top: 16px; color: #74695d; font-size: 12px; }
+.imageCredit:hover { text-decoration: underline; text-underline-offset: 3px; }
+.imageCredit:focus-visible { outline: 2px solid #1f1b16; outline-offset: 4px; }
 @media (max-width: 639px) {
   .worldBackdrop { top: 88px; right: -160px; width: 760px; height: 440px; opacity: .08; }
   .platformVisual { padding: 20px 24px; }
@@ -44,6 +74,8 @@
   .platformCountries span { padding: 0 4px; }
   .closingVisual { padding: 32px 24px; }
   .closingMap { left: 0; background-size: 180% auto; opacity: .13; }
+  .practicePhoto { height: 220px; }
+  .closingLogistics { opacity: .14; }
 }
 
 /* 공식 행사장 사진(venue.jpg 671x771)에서 실제 사진 영역만 표시한다.

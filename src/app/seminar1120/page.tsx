@@ -73,6 +73,16 @@ const PILLARS: { icon: IconType; step: string; title: string; desc: string }[] =
   { icon: Truck, step: "물류·정산", title: "해외 물류·풀필먼트와 인증·정산", desc: "해외 물류·풀필먼트, 인증과 정산까지 진출 실무의 뒷단을 짚습니다." },
 ];
 
+// 이미지 출처(리사이즈·WebP 변환만 적용):
+// listing: https://cdn.imweb.me/thumbnail/20250803/573cccddcf538.jpg
+// fulfillment: https://cdn.imweb.me/thumbnail/20230709/2a56a52cb4cfd.jpg
+// creator: 기존 /refer 공개 콘텐츠 예시(ugc-drive-2.jpg). 연사·행사 사진으로 표현하지 않는다.
+const PRACTICE_IMAGES = [
+  { src: "/seminar1120/listing.webp", alt: "태블릿으로 상품 운영 자료를 검토하는 모습", label: "입점·상품 리스팅", credit: "비브로 공식 이미지", href: "https://bbro.co.kr/brand-agency" },
+  { src: "/seminar1120/creator.webp", alt: "헤어 스타일링 제품을 직접 보여주는 숏폼 콘텐츠 예시", label: "제품 시연·숏폼 콘텐츠", credit: "콘텐츠 예시 보기", href: "/refer#ugc" },
+  { src: "/seminar1120/fulfillment.webp", alt: "상품과 배송 박스가 보관된 아워박스 물류센터 내부", label: "보관·출고·풀필먼트", credit: "아워박스 공식 이미지", href: "https://ourbox.co.kr/Center" },
+];
+
 function Apply({ big = false }: { big?: boolean }) {
   return (
     <a
@@ -212,7 +222,7 @@ export default function Seminar1120Page() {
         </section>
 
         {/* ── 실무 흐름 (입점 → 콘텐츠 → 물류) ── */}
-        <section className="border-t border-[#1f1b16]/10 py-14">
+        <section className={`${styles.journeySection} border-t border-[#1f1b16]/10 py-14`}>
           <h2 className="text-[24px] font-semibold tracking-tight sm:text-[28px]">진출 실무, 한 흐름으로</h2>
           <p className="mt-2 max-w-[560px] text-[16px] leading-relaxed text-[#5e554a]">
             입점·운영에서 콘텐츠·마케팅, 물류·인증·정산까지 — 실제 진출 순서대로 연결해 다룹니다.
@@ -220,12 +230,21 @@ export default function Seminar1120Page() {
           <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-stretch">
             {PILLARS.map((p, i) => (
               <Fragment key={p.step}>
-                <div className="flex flex-1 flex-col rounded-2xl border border-[#1f1b16]/12 bg-[#fdfcf9] p-5">
-                  <span className="grid h-10 w-10 place-items-center rounded-lg border border-[#b6382c]/25 text-[#b6382c]">
-                    <p.icon size={18} strokeWidth={1.5} />
-                  </span>
-                  <span className="mt-4 text-[12px] font-medium text-[#74695d]">STEP {i + 1} · {p.step}</span>
-                  <span className="mt-1 text-[16px] font-semibold leading-snug">{p.title}</span>
+                <div className={styles.practiceCard}>
+                  <div className={`${styles.practicePhoto} ${i === 1 ? styles.creatorPhoto : ""}`}>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={PRACTICE_IMAGES[i].src} alt={PRACTICE_IMAGES[i].alt} width={i === 1 ? 576 : i === 2 ? 1370 : 960} height={i === 1 ? 1024 : i === 2 ? 500 : 639} loading="lazy" />
+                    <span className={styles.photoLabel}>{PRACTICE_IMAGES[i].label}</span>
+                  </div>
+                  <div className={styles.practiceCopy}>
+                    <span className="flex items-center gap-2 text-[12px] font-medium text-[#74695d]">
+                      <p.icon size={16} strokeWidth={1.5} className="text-[#b6382c]" /> STEP {i + 1} · {p.step}
+                    </span>
+                    <h3 className="mt-3 text-[17px] font-semibold leading-snug">{p.title}</h3>
+                    <a href={PRACTICE_IMAGES[i].href} target="_blank" rel="noopener noreferrer" className={styles.imageCredit}>
+                      {PRACTICE_IMAGES[i].credit} <ArrowUpRight size={12} strokeWidth={1.5} aria-hidden />
+                    </a>
+                  </div>
                 </div>
                 {i < PILLARS.length - 1 && (
                   <div className="flex items-center justify-center text-[16px] text-[#b6382c]" aria-hidden>
@@ -236,6 +255,7 @@ export default function Seminar1120Page() {
               </Fragment>
             ))}
           </div>
+          <p className="mt-4 text-[12px] leading-relaxed text-[#74695d]">업무 흐름을 보여주는 참고 이미지입니다.</p>
         </section>
 
         {/* ── 주요 내용 (구성안) ── */}
@@ -306,6 +326,7 @@ export default function Seminar1120Page() {
         {/* ── 최종 신청 ── */}
         <section className="border-t border-[#1f1b16]/10 py-16">
           <div className={styles.closingVisual}>
+            <div className={styles.closingLogistics} aria-hidden="true" />
             <div className={styles.closingMap} aria-hidden="true" />
             <div className="relative max-w-[640px]">
               <TikTokVisualLogo closing />
