@@ -25,6 +25,7 @@ const ALLOW_HOSTS = new Set([
   "batch.glovek.space",
   "batch2.glovek.space",
   "sea.glovek.space",
+  "growth.glovek.space",
   "glovek.space",
   "www.glovek.space",
 ]);

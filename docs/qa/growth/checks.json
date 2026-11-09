@@ -1,0 +1,80 @@
+{
+  "url": "http://localhost:8399/growth/index.html",
+  "generatedAt": "2026-11-09T02:43:28.479Z",
+  "checks": {
+    "overflow_1440": {
+      "pass": true,
+      "px": 0
+    },
+    "overflow_390": {
+      "pass": true,
+      "px": 0
+    },
+    "overflow_320": {
+      "pass": true,
+      "px": 0
+    },
+    "visible_images_loaded": {
+      "pass": true,
+      "visible": 31,
+      "broken": []
+    },
+    "title_growth": {
+      "pass": true
+    },
+    "fee_300_10": {
+      "pass": true
+    },
+    "ad_voucher_30_80_1600": {
+      "pass": true
+    },
+    "affiliate_50_100": {
+      "pass": true
+    },
+    "logi_voucher_discount": {
+      "pass": true
+    },
+    "deadline_1113": {
+      "pass": true
+    },
+    "select_10": {
+      "pass": true
+    },
+    "no_old_batch2_deposit": {
+      "pass": true
+    },
+    "no_region_price_calc": {
+      "pass": true
+    },
+    "inquiry_form_present": {
+      "pass": true
+    },
+    "submit_min44": {
+      "pass": true,
+      "h": 48
+    },
+    "appjs_targets_inquiry": {
+      "pass": true
+    },
+    "no_page_errors": {
+      "pass": true,
+      "errs": []
+    }
+  },
+  "overflow": {
+    "320": 0,
+    "390": 0,
+    "1440": 0
+  },
+  "form": {
+    "action": "inquiryForm",
+    "hasConsent": true,
+    "hasBrand": true,
+    "hasRegion": true,
+    "submitH": 48
+  },
+  "summary": {
+    "failed": 0,
+    "total": 17
+  }
+}

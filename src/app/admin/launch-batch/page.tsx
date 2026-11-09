@@ -22,15 +22,15 @@ const STATUS_CLS: Record<Status, string> = {
 };
 
 // 유입 사이트(source_site). null/legacy 및 비정상값은 '출처 미확인'으로 표시.
-const SITE_KEYS = ["start", "batch", "batch2", "sea", "unknown"] as const;
+const SITE_KEYS = ["start", "batch", "batch2", "sea", "growth", "unknown"] as const;
 type SiteKey = (typeof SITE_KEYS)[number];
-const SITE_LABEL: Record<SiteKey, string> = { start: "배치 1기", batch: "진출 테스팅", batch2: "배치 2기", sea: "동남아 무료", unknown: "출처 미확인" };
-const SITE_DOMAIN: Record<SiteKey, string> = { start: "start.glovek.space", batch: "batch.glovek.space", batch2: "batch2.glovek.space", sea: "sea.glovek.space", unknown: "" };
-const SITE_CLS: Record<SiteKey, string> = { start: "bg-indigo-100 text-indigo-700", batch: "bg-teal-100 text-teal-700", batch2: "bg-fuchsia-100 text-fuchsia-700", sea: "bg-cyan-100 text-cyan-700", unknown: "bg-zinc-100 text-zinc-500" };
+const SITE_LABEL: Record<SiteKey, string> = { start: "배치 1기", batch: "진출 테스팅", batch2: "배치 2기", sea: "동남아 무료", growth: "글로벌 성장 1기", unknown: "출처 미확인" };
+const SITE_DOMAIN: Record<SiteKey, string> = { start: "start.glovek.space", batch: "batch.glovek.space", batch2: "batch2.glovek.space", sea: "sea.glovek.space", growth: "growth.glovek.space", unknown: "" };
+const SITE_CLS: Record<SiteKey, string> = { start: "bg-indigo-100 text-indigo-700", batch: "bg-teal-100 text-teal-700", batch2: "bg-fuchsia-100 text-fuchsia-700", sea: "bg-cyan-100 text-cyan-700", growth: "bg-amber-100 text-amber-700", unknown: "bg-zinc-100 text-zinc-500" };
 const SITE_TABS: { key: string; label: string }[] = [
-  { key: "", label: "전체" }, { key: "start", label: "배치 1기" }, { key: "batch", label: "진출 테스팅" }, { key: "batch2", label: "배치 2기" }, { key: "sea", label: "동남아 무료" }, { key: "unknown", label: "출처 미확인" },
+  { key: "", label: "전체" }, { key: "start", label: "배치 1기" }, { key: "batch", label: "진출 테스팅" }, { key: "batch2", label: "배치 2기" }, { key: "sea", label: "동남아 무료" }, { key: "growth", label: "글로벌 성장 1기" }, { key: "unknown", label: "출처 미확인" },
 ];
-const siteOf = (v: string | null | undefined): SiteKey => (v === "start" || v === "batch" || v === "batch2" || v === "sea" ? v : "unknown");
+const siteOf = (v: string | null | undefined): SiteKey => (v === "start" || v === "batch" || v === "batch2" || v === "sea" || v === "growth" ? v : "unknown");
 const normSite = (v: string | null): string => ((SITE_KEYS as readonly string[]).includes(v || "") ? (v as string) : "");
 
 interface ListItem {

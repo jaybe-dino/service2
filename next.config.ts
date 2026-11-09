@@ -13,6 +13,8 @@ const BATCH_HOST = [{ type: "host" as const, value: "batch.glovek.space" }];
 const BATCH2_HOST = [{ type: "host" as const, value: "batch2.glovek.space" }];
 // sea.glovek.space 호스트(동남아 1개국 온보딩 무료 프로모션) — 독립 정적 랜딩.
 const SEA_HOST = [{ type: "host" as const, value: "sea.glovek.space" }];
+// growth.glovek.space 호스트(글로벌 성장 프로그램 1기 · 운영대행 수수료 + 바우처 지원) — 독립 정적 랜딩.
+const GROWTH_HOST = [{ type: "host" as const, value: "growth.glovek.space" }];
 
 const nextConfig: NextConfig = {
   images: { unoptimized: true },
@@ -44,6 +46,11 @@ const nextConfig: NextConfig = {
         { source: "/styles.css", has: SEA_HOST, destination: "/sea/styles.css" },
         { source: "/app.js", has: SEA_HOST, destination: "/sea/app.js" },
         { source: "/assets/:path*", has: SEA_HOST, destination: "/sea/assets/:path*" },
+        // growth.glovek.space → public/growth/ (글로벌 성장 프로그램 1기)
+        { source: "/", has: GROWTH_HOST, destination: "/growth/index.html" },
+        { source: "/styles.css", has: GROWTH_HOST, destination: "/growth/styles.css" },
+        { source: "/app.js", has: GROWTH_HOST, destination: "/growth/app.js" },
+        { source: "/assets/:path*", has: GROWTH_HOST, destination: "/growth/assets/:path*" },
       ],
       afterFiles: [],
       fallback: [],
