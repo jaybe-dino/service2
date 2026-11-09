@@ -209,9 +209,9 @@ export default function Seminar1120Page() {
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src="/seminar1120/venue.jpg" alt="포스코타워 역삼 이벤트홀 내부" width={671} height={771} loading="eager" />
                 <div className={styles.dateChip}>
-                  <div className="text-[10px] font-semibold tracking-wide text-[#b6382c]">NOV</div>
-                  <div className="text-[26px] font-semibold leading-none tabular-nums">20</div>
-                  <div className="text-[10px] tabular-nums text-[#655b50]">2026 · FRI</div>
+                  <div className="text-[12px] font-medium text-[#b6382c]">11월</div>
+                  <div className="text-[28px] font-semibold leading-none tabular-nums">20</div>
+                  <div className="text-[12px] tabular-nums text-[#655b50]">2026 · 금요일</div>
                 </div>
               </div>
               <figcaption className="mt-3 flex flex-wrap items-center justify-between gap-2 text-[12.5px] text-[#aab0bd]">
@@ -229,7 +229,7 @@ export default function Seminar1120Page() {
       {/* ══ 공동 주관 로고 스트립 — 화이트 ══ */}
       <section className="border-b border-[#1f1b16]/10 bg-white">
         <div className={`${styles.container} flex flex-col items-center gap-5 py-9 sm:flex-row sm:justify-between sm:gap-8`}>
-          <p className="text-[12px] font-semibold uppercase tracking-[0.12em] text-[#655b50]">공동 주관</p>
+          <p className="text-[12px] font-semibold text-[#655b50]">공동 주관</p>
           <HostLogos className="w-full max-w-[420px]" />
         </div>
       </section>
@@ -239,7 +239,7 @@ export default function Seminar1120Page() {
         <div className={`${styles.container} py-14 sm:py-16`}>
           <div className="grid items-center gap-8 lg:grid-cols-[minmax(0,360px)_1fr] lg:gap-12">
             <div className="min-w-0">
-              <p className="text-[12px] font-semibold uppercase tracking-[0.12em] text-[#b6382c]">Route</p>
+              <p className="text-[12px] font-semibold text-[#b6382c]">Route</p>
               <h2 className="mt-2 text-[24px] font-semibold tracking-tight sm:text-[30px]">진출 경로</h2>
               <p className="mt-3 text-[15px] leading-relaxed text-[#5e554a]">
                 일본 시장에서 시작해, 미국과 동남아로 판매 채널을 넓혀가는 흐름을 함께 설계합니다.
@@ -272,15 +272,18 @@ export default function Seminar1120Page() {
       {/* ══ 실무 흐름 — 페이퍼(에디토리얼 사진) ══ */}
       <section className="bg-[#f7f5f0]">
         <div className={`${styles.container} py-16 sm:py-20`}>
-          <p className="text-[12px] font-semibold uppercase tracking-[0.12em] text-[#b6382c]">Flow</p>
+          <p className="text-[12px] font-semibold text-[#b6382c]">Flow</p>
           <h2 className="mt-2 text-[26px] font-semibold tracking-tight sm:text-[32px]">진출 실무, 한 흐름으로</h2>
           <p className="mt-3 max-w-[560px] text-[16px] leading-relaxed text-[#5e554a]">
             입점·운영에서 콘텐츠·마케팅, 물류·인증·정산까지 — 실제 진출 순서대로 연결해 다룹니다.
           </p>
 
-          <div className="mt-10 grid grid-cols-1 gap-8 lg:grid-cols-[0.82fr_1.18fr] lg:items-stretch lg:gap-12">
+          <div className="mt-10 grid grid-cols-1 gap-8 lg:grid-cols-[0.82fr_1.18fr] lg:items-stretch lg:gap-x-12 lg:gap-y-7">
+            <div className="min-w-0 lg:col-start-2 lg:row-start-1">
+              <FlowShot img={IMG.listing} num="01" step="입점·운영" aspect="aspect-[960/639]" />
+            </div>
             {/* 콘텐츠 — 세로 숏폼 컷(시선 포인트) */}
-            <figure className="min-w-0 self-center">
+            <figure className="min-w-0 self-center lg:col-start-1 lg:row-start-1 lg:row-span-2">
               <div className={styles.phone}>
                 <span className={styles.phoneBar} aria-hidden="true" />
                 {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -297,9 +300,7 @@ export default function Seminar1120Page() {
               </figcaption>
             </figure>
 
-            {/* 리스팅 + 물류 — 가로 컷 2단 */}
-            <div className="flex min-w-0 flex-col justify-center gap-7">
-              <FlowShot img={IMG.listing} num="01" step="입점·운영" aspect="aspect-[960/639]" />
+            <div className="min-w-0 lg:col-start-2 lg:row-start-2">
               <FlowShot img={IMG.fulfillment} num="03" step="물류·정산" aspect="aspect-[137/50]" />
             </div>
           </div>
@@ -312,7 +313,7 @@ export default function Seminar1120Page() {
         <div className={`${styles.container} py-16 sm:py-20`}>
           <div className="flex flex-wrap items-end justify-between gap-3">
             <div className="min-w-0">
-              <p className="text-[12px] font-semibold uppercase tracking-[0.12em] text-[#f0a79d]">Program</p>
+              <p className="text-[12px] font-semibold text-[#f0a79d]">Program</p>
               <h2 className="mt-2 text-[26px] font-semibold tracking-tight sm:text-[32px]">주요 내용(구성안)</h2>
             </div>
             <p className="text-[13px] text-[#aab0bd]">연사 · 세부 시간표는 추후 안내 예정</p>
@@ -339,7 +340,7 @@ export default function Seminar1120Page() {
         <div className={`${styles.container} py-14 sm:py-16`}>
           <div className="grid gap-10 lg:grid-cols-[1fr_auto] lg:items-center">
             <div className="min-w-0">
-              <p className="text-[12px] font-semibold uppercase tracking-[0.12em] text-[#b6382c]">Apply</p>
+              <p className="text-[12px] font-semibold text-[#b6382c]">Apply</p>
               <h2 className="mt-2 text-[24px] font-semibold tracking-tight sm:text-[30px]">신청 방법</h2>
               <ol className="mt-6 space-y-4 text-[16px] leading-relaxed text-[#1f1b16]">
                 <li className="grid grid-cols-[26px_1fr] gap-3"><span className="font-semibold tabular-nums text-[#b6382c]">1</span><span>아래 공식 신청서(Google Forms)에서 신청합니다.</span></li>
@@ -358,7 +359,7 @@ export default function Seminar1120Page() {
       {/* ══ 오시는 길 — 화이트(장소 정보 중심) ══ */}
       <section className="bg-white">
         <div className={`${styles.container} py-14 sm:py-16`}>
-          <p className="text-[12px] font-semibold uppercase tracking-[0.12em] text-[#b6382c]">Location</p>
+          <p className="text-[12px] font-semibold text-[#b6382c]">Location</p>
           <h2 className="mt-2 text-[24px] font-semibold tracking-tight sm:text-[30px]">오시는 길</h2>
           <div className="mt-7 grid gap-x-12 gap-y-8 lg:grid-cols-[1fr_minmax(0,320px)]">
             <div className="min-w-0">
@@ -387,7 +388,7 @@ export default function Seminar1120Page() {
       </section>
 
       {/* ══ 최종 신청 — 짙은 물류 밴드(풀폭) ══ */}
-      <section className="relative overflow-hidden bg-[#12151c] text-white">
+      <section className="relative isolate overflow-hidden bg-[#12151c] text-white">
         <div className={styles.closingLogistics} aria-hidden="true" />
         <div className={styles.closingMap} aria-hidden="true" />
         <div className={`${styles.container} relative py-16 sm:py-20`}>
@@ -406,7 +407,7 @@ export default function Seminar1120Page() {
       {/* ══ 푸터 — 화이트 ══ */}
       <footer className="border-t border-[#1f1b16]/10 bg-white">
         <div className={`${styles.container} py-12`}>
-          <p className="text-center text-[12px] font-semibold uppercase tracking-[0.12em] text-[#655b50]">공동 주관</p>
+          <p className="text-center text-[12px] font-semibold text-[#655b50]">공동 주관</p>
           <HostLogos className="mx-auto mt-6 max-w-[420px]" />
           <p className="mt-9 text-center text-[13px] text-[#5e554a]">
             문의 <a href={`mailto:${CONTACT}`} className="font-medium text-[#1f1b16] underline-offset-2 hover:underline">{CONTACT}</a>
