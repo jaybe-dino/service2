@@ -263,6 +263,26 @@ export default function Seminar1120Page() {
               </div>
             ))}
           </dl>
+          <aside aria-labelledby="ads-voucher-title" className="mt-8 grid grid-cols-1 gap-6 rounded-2xl border-l-4 border-[#b6382c] bg-[#f3e6df] p-6 sm:p-8 md:grid-cols-[0.9fr_1.1fr] md:items-center md:gap-10">
+            <div className="min-w-0">
+              <p className="text-[13px] font-medium text-[#b6382c]">세미나 참석 후 참여 브랜드 한정</p>
+              <h2 id="ads-voucher-title" className="mt-2 text-[22px] font-semibold tracking-tight sm:text-[24px]">TikTok 광고 바우처</h2>
+              <p className="mt-4 flex flex-wrap items-baseline gap-x-2 text-[#b6382c]">
+                <span className="text-[15px] font-medium">최대</span>
+                <strong className="text-[36px] font-semibold leading-none tracking-tight tabular-nums sm:text-[44px]">1,600</strong>
+                <span className="text-[18px] font-semibold">만원 상당</span>
+              </p>
+              <p className="mt-2 text-[13px] text-[#655b50]">USD 광고 크레딧 · 국가·계정별 조건부</p>
+            </div>
+            <div className="min-w-0">
+              <p className="text-[15px] leading-relaxed text-[#5e554a]">국가·광고계정별 프로모션 조건을 확인해 바우처 적용 여부와 이용 조건을 개별 안내합니다.</p>
+              <details className="mt-4 border-t border-[#1f1b16]/15 pt-4 text-[13px] leading-relaxed text-[#5e554a]">
+                <summary className="min-h-[44px] cursor-pointer py-2 font-medium text-[#1f1b16] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#1f1b16]">광고 바우처 적용 조건</summary>
+                <p className="mt-3">지원 여부·지급 한도·최소 광고 집행 금액·사용 기한은 국가·계정별 TikTok 프로모션 조건과 광고 관리자 안내에 따릅니다. 원화 표기는 USD 광고 크레딧의 상당액 기준입니다.</p>
+                <a href="https://ads.tiktok.com/resources/help/article/about-coupons" target="_blank" rel="noopener noreferrer" className="mt-3 inline-flex items-center gap-1 underline underline-offset-4 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#1f1b16]">TikTok 광고 크레딧 안내 <ArrowUpRight size={14} strokeWidth={1.5} aria-hidden /></a>
+              </details>
+            </div>
+          </aside>
         </div>
       </section>
 
