@@ -4,7 +4,6 @@
  * 신청은 외부 Google Forms(새 창)로 접수. 결제·자동 계약·내부 폼 저장 없음.
  */
 import type { Metadata } from "next";
-import { Fragment } from "react";
 import type { ComponentType, ReactNode } from "react";
 import { Calendar, MapPin, Users, Building2, Store, Megaphone, Truck, Mail, ArrowUpRight } from "lucide-react";
 import styles from "./seminar.module.css";
@@ -157,7 +156,6 @@ function PracticeRow({ i, reverse = false }: { i: number; reverse?: boolean }) {
         <p.icon size={16} strokeWidth={1.5} className="text-[#b6382c]" /> {p.step}
       </span>
       <h3 className="mt-2 text-[20px] font-semibold leading-snug tracking-tight sm:text-[23px]">{p.title}</h3>
-      <p className="mt-3 max-w-[460px] text-[15.5px] leading-relaxed text-[#5e554a]">{p.desc}</p>
       <div className="mt-4">
         <a href={img.href} target="_blank" rel="noopener noreferrer" className={styles.imageCredit}>
           {img.credit} <ArrowUpRight size={12} strokeWidth={1.5} aria-hidden />
@@ -173,7 +171,7 @@ function PracticeRow({ i, reverse = false }: { i: number; reverse?: boolean }) {
     : "lg:grid-cols-[1.12fr_0.88fr]";
 
   return (
-    <div className={`grid items-center gap-7 lg:gap-12 ${cols}`}>
+    <div className={`grid grid-cols-1 items-center gap-7 lg:gap-12 ${cols}`}>
       {reverse ? (
         <>
           {TextBlock}
@@ -196,13 +194,13 @@ export default function Seminar1120Page() {
       <div className="relative mx-auto max-w-[1120px] px-6 sm:px-8">
 
         {/* ── 상단 마스트헤드 ── */}
-        <div className="flex items-center justify-between border-b border-[#1f1b16]/10 py-4 text-[11.5px] font-medium uppercase tracking-[0.14em] text-[#655b50]">
+        <div className="flex items-center justify-between gap-4 border-b border-[#1f1b16]/10 py-4 text-[12px] font-medium text-[#655b50]">
           <span>실무 세미나 · Global Commerce</span>
           <span>2026 · Seoul</span>
         </div>
 
         {/* ── HERO (에디토리얼 포스터) ── */}
-        <header className="grid items-center gap-10 py-12 sm:py-16 lg:grid-cols-[1.02fr_0.98fr] lg:gap-14">
+        <header className="grid grid-cols-1 items-center gap-10 py-12 sm:py-16 lg:grid-cols-[1.02fr_0.98fr] lg:gap-14">
           <div>
             <p className="text-[13px] font-medium text-[#b6382c]">일본에서 시작해 미국·동남아로</p>
             <h1 className="mt-3 text-[38px] font-semibold leading-[1.08] tracking-tight sm:text-[46px] lg:text-[62px]">
@@ -211,7 +209,7 @@ export default function Seminar1120Page() {
 
             {/* 큰 날짜 시그니처 */}
             <div className="mt-7 flex items-end gap-4">
-              <span className="text-[56px] font-semibold leading-[0.9] tracking-tight text-[#1f1b16] sm:text-[72px] lg:text-[84px]">11.20</span>
+              <span className="text-[56px] font-semibold leading-[0.9] tracking-tight text-[#b6382c] sm:text-[72px] lg:text-[84px]">11.20</span>
               <div className="pb-1.5 text-[13px] font-medium leading-tight text-[#5e554a]">
                 <p className="text-[#1f1b16]">2026 · 금요일</p>
                 <p className="mt-1">14:00 – 18:00</p>
@@ -237,9 +235,9 @@ export default function Seminar1120Page() {
           <div className="lg:order-last">
             <div className={styles.stage}>
               <div className={styles.stageMap} aria-hidden="true" />
-              <div className="relative flex items-center justify-between gap-3">
+              <div className={styles.stageHead}>
                 <TikTokVisualLogo />
-                <span className="text-[12px] font-medium text-[#655b50]">콘텐츠에서 글로벌 판매로</span>
+                <span>콘텐츠에서 글로벌 판매로</span>
               </div>
 
               <div className="relative mt-4 flex items-stretch gap-4">
@@ -249,7 +247,7 @@ export default function Seminar1120Page() {
                   <img src="/seminar1120/creator.webp" alt="제품을 직접 보여주는 숏폼 콘텐츠 예시" width={576} height={1024} loading="eager" />
                 </div>
                 <div className="flex flex-1 flex-col justify-center gap-3">
-                  <p className="text-[12px] font-medium uppercase tracking-[0.12em] text-[#655b50]">진출 시장</p>
+                  <p className="text-[12px] font-medium text-[#655b50]">진출 시장</p>
                   <span className="inline-flex items-center gap-2 text-[19px] font-semibold tracking-tight"><span className="h-2.5 w-2.5 rounded-full bg-[#b6382c]" aria-hidden />일본</span>
                   <span className="inline-flex items-center gap-2 text-[19px] font-semibold tracking-tight"><span className="h-2.5 w-2.5 rounded-full bg-[#b6382c]/70" aria-hidden />미국</span>
                   <span className="inline-flex items-center gap-2 text-[19px] font-semibold tracking-tight"><span className="h-2.5 w-2.5 rounded-full bg-[#b6382c]/70" aria-hidden />동남아</span>
