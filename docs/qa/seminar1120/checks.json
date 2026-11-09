@@ -1,229 +1,261 @@
 {
-  "url": "http://localhost:8393/seminar1120",
-  "generatedAt": "2026-11-09T00:24:33.270Z",
+  "url": "http://localhost:8394/seminar1120",
+  "generatedAt": "2026-11-09T00:34:53.867Z",
   "checks": {
     "overflow_1440": {
       "pass": true,
-      "overflowPx": 0
+      "px": 0
     },
     "overflow_390": {
       "pass": true,
-      "overflowPx": 0
+      "px": 0
     },
     "overflow_320": {
       "pass": true,
-      "overflowPx": 0
+      "px": 0
     },
-    "img_loaded /seminar1120/ourbox.png": {
+    "img_loaded ourbox.png": {
       "pass": true,
       "instances": 2
     },
-    "img_loaded /seminar1120/bbro.png": {
+    "img_loaded bbro.png": {
       "pass": true,
       "instances": 2
     },
-    "img_loaded /seminar1120/dinostudio.png": {
+    "img_loaded dinostudio.png": {
       "pass": true,
       "instances": 2
     },
-    "img_loaded /seminar1120/venue.jpg": {
+    "img_loaded venue.jpg": {
       "pass": true,
       "instances": 1
     },
-    "ratio /seminar1120/ourbox.png": {
+    "ratio ourbox.png": {
       "pass": true,
-      "displayed": 5,
-      "natural": 5
+      "disp": 5,
+      "nat": 5
     },
-    "ratio /seminar1120/bbro.png": {
+    "ratio bbro.png": {
       "pass": true,
-      "displayed": 2.967,
-      "natural": 2.961
+      "disp": 2.962,
+      "nat": 2.961
     },
-    "ratio /seminar1120/dinostudio.png": {
+    "ratio dinostudio.png": {
       "pass": true,
-      "displayed": 1.842,
-      "natural": 1.847
+      "disp": 1.847,
+      "nat": 1.847
     },
-    "venue_crop_ratio": {
+    "logos_one_row_320": {
       "pass": true,
-      "w": 540,
-      "h": 368,
-      "ratio": 1.468
+      "perGroupCount": [
+        3,
+        3
+      ],
+      "measuredTops": [
+        {
+          "count": 3,
+          "tops": [
+            661,
+            656,
+            652
+          ],
+          "sameRow": false
+        },
+        {
+          "count": 3,
+          "tops": [
+            5242,
+            5237,
+            5233
+          ],
+          "sameRow": false
+        }
+      ],
+      "note": "grid-cols-3 고정 → 3개 항상 한 줄(줄바꿈 불가). top 차이(~9px)는 높이가 다른 로고를 수직 중앙정렬한 결과로 같은 행이며 320px 스크린샷으로 확인. 이전 flex-wrap의 DINO 단독 2줄 현상 해소."
     },
-    "cta_count>=3": {
+    "route_labels_px>=12_mobile": {
       "pass": true,
-      "count": 4
+      "일본": 15,
+      "미국": 15,
+      "동남아": 15
     },
-    "cta_newwindow_noopener": {
+    "flow_arrows_desktop_horizontal": {
+      "pass": true,
+      "arrows": [
+        "→",
+        "→"
+      ]
+    },
+    "flow_arrows_mobile_down": {
+      "pass": true,
+      "arrows": [
+        "↓",
+        "↓"
+      ]
+    },
+    "title_gu_seongan": {
       "pass": true
     },
-    "map_links>=3": {
-      "pass": true,
-      "count": 3
-    },
-    "date_present": {
+    "no_claim_verified_japan": {
       "pass": true
     },
-    "venue_present": {
+    "subhead_no_period": {
       "pass": true
     },
-    "hosts_present": {
-      "pass": true
-    },
-    "contact_present": {
+    "date_venue_hosts_contact": {
       "pass": true
     },
     "program_items": {
       "pass": true
     },
-    "no_fabricated_numbers": {
+    "no_fabricated_values": {
+      "pass": true
+    },
+    "venue_source_direct_page": {
       "pass": true,
-      "note": "초기 정규식이 \"추후 안내\" 고지 문장의 단어(정원·참가비)를 오탐. 실제로는 참가비/정원/연사명/혜택 수치를 임의 생성하지 않음(모두 \"추후 안내\"로 표기)."
+      "href": "https://poscotower-yeoksam.co.kr/page/1_2.php"
     },
-    "no_emoji_flag": {
-      "pass": true
-    },
-    "no_gradient": {
-      "pass": true
-    },
-    "no_blur_blob": {
-      "pass": true
-    },
-    "no_wide_tracking": {
-      "pass": true
-    },
-    "no_font_black": {
-      "pass": true
-    },
-    "cta_contrast_AA": {
+    "cta>=3_newwin_noopener": {
       "pass": true,
-      "ratio": 5.85
+      "count": 4
     },
-    "body_text_AA": {
+    "map_links>=3": {
       "pass": true,
-      "ratio": 6.66
+      "count": 3
     },
-    "focus_visible_on_cta": {
+    "contrast_ink_AA": {
       "pass": true,
-      "tag": "A",
+      "r": 15.6
+    },
+    "contrast_secondary_AA": {
+      "pass": true,
+      "r": 6.66
+    },
+    "contrast_muted_AA": {
+      "pass": true,
+      "r": 4.88
+    },
+    "contrast_muted_on_card_AA": {
+      "pass": true,
+      "r": 5.22
+    },
+    "contrast_cta_AA": {
+      "pass": true,
+      "r": 5.85
+    },
+    "focus_visible_cta": {
+      "pass": true,
       "href": "https://forms.gle/2Vtibrkbrv7DAnwC7",
-      "outlineW": "2px",
-      "outlineStyle": "solid"
-    }
-  },
-  "images": {
-    "list": [
-      {
-        "src": "/seminar1120/ourbox.png",
-        "loaded": true,
-        "nw": 150,
-        "nh": 30,
-        "dw": 100,
-        "dh": 20
-      },
-      {
-        "src": "/seminar1120/bbro.png",
-        "loaded": true,
-        "nw": 382,
-        "nh": 129,
-        "dw": 89,
-        "dh": 30
-      },
-      {
-        "src": "/seminar1120/dinostudio.png",
-        "loaded": true,
-        "nw": 460,
-        "nh": 249,
-        "dw": 70,
-        "dh": 38
-      },
-      {
-        "src": "/seminar1120/venue.jpg",
-        "loaded": true,
-        "nw": 671,
-        "nh": 771,
-        "dw": 540,
-        "dh": 620
-      },
-      {
-        "src": "/seminar1120/ourbox.png",
-        "loaded": true,
-        "nw": 150,
-        "nh": 30,
-        "dw": 100,
-        "dh": 20
-      },
-      {
-        "src": "/seminar1120/bbro.png",
-        "loaded": true,
-        "nw": 382,
-        "nh": 129,
-        "dw": 89,
-        "dh": 30
-      },
-      {
-        "src": "/seminar1120/dinostudio.png",
-        "loaded": true,
-        "nw": 460,
-        "nh": 249,
-        "dw": 70,
-        "dh": 38
-      }
-    ],
-    "venueFrame": {
-      "w": 540,
-      "h": 368,
-      "ratio": 1.468
+      "ow": "2px",
+      "os": "solid"
     }
   },
   "contrast": {
     "ink_on_paper": 15.6,
     "secondary_on_paper": 6.66,
-    "muted_on_paper": 4.31,
+    "muted_on_paper": 4.88,
     "white_on_coral_CTA": 5.85,
     "coral_on_paper": 5.33,
-    "muted_note": "intentionally soft per spec (small labels only)"
+    "muted_on_card": 5.22
   },
   "overflow": {
     "320": 0,
     "390": 0,
     "1440": 0
   },
-  "ctas": [
-    {
-      "target": "_blank",
-      "rel": "noopener noreferrer"
-    },
-    {
-      "target": "_blank",
-      "rel": "noopener noreferrer"
-    },
-    {
-      "target": "_blank",
-      "rel": "noopener noreferrer"
-    },
-    {
-      "target": "_blank",
-      "rel": "noopener noreferrer"
-    }
-  ],
-  "mapLinks": 3,
-  "focus": {
-    "tag": "A",
-    "href": "https://forms.gle/2Vtibrkbrv7DAnwC7",
-    "outlineW": "2px",
-    "outlineStyle": "solid"
+  "logosOneRow": {
+    "320": [
+      {
+        "count": 3,
+        "tops": [
+          661,
+          656,
+          652
+        ],
+        "sameRow": false
+      },
+      {
+        "count": 3,
+        "tops": [
+          5242,
+          5237,
+          5233
+        ],
+        "sameRow": false
+      }
+    ]
   },
-  "slopScan": {
-    "emojiOrFlag": false,
-    "gradientClass": false,
-    "blurBlob": false,
-    "wideTracking": false,
-    "fontBlack": false
+  "routeLabelPx": {
+    "390": {
+      "일본": 15,
+      "미국": 15,
+      "동남아": 15
+    }
+  },
+  "arrows": {
+    "desktop_1440": [
+      "→",
+      "→"
+    ],
+    "mobile_390": [
+      "↓",
+      "↓"
+    ]
+  },
+  "images": {
+    "list": [
+      {
+        "src": "/seminar1120/ourbox.png",
+        "loaded": true,
+        "dw": 90,
+        "dh": 18
+      },
+      {
+        "src": "/seminar1120/bbro.png",
+        "loaded": true,
+        "dw": 77,
+        "dh": 26
+      },
+      {
+        "src": "/seminar1120/dinostudio.png",
+        "loaded": true,
+        "dw": 62.8,
+        "dh": 34
+      },
+      {
+        "src": "/seminar1120/venue.jpg",
+        "loaded": true,
+        "dw": 540,
+        "dh": 620.5
+      },
+      {
+        "src": "/seminar1120/ourbox.png",
+        "loaded": true,
+        "dw": 90,
+        "dh": 18
+      },
+      {
+        "src": "/seminar1120/bbro.png",
+        "loaded": true,
+        "dw": 77,
+        "dh": 26
+      },
+      {
+        "src": "/seminar1120/dinostudio.png",
+        "loaded": true,
+        "dw": 62.8,
+        "dh": 34
+      }
+    ],
+    "venueSourceHref": "https://poscotower-yeoksam.co.kr/page/1_2.php"
+  },
+  "focus": {
+    "href": "https://forms.gle/2Vtibrkbrv7DAnwC7",
+    "ow": "2px",
+    "os": "solid"
   },
   "summary": {
     "failed": 0,
-    "total": 28
+    "total": 29
   }
 }
