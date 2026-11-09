@@ -1,102 +1,93 @@
 /*
- * /seminar1120 — scoped styles.
+ * /seminar1120 — scoped styles (밝은 브로슈어 · 에디토리얼 포스터).
  * Design method: "Unslop" by Damir Sokolovsky (@heydamir) — https://heydamir.design/unslop (CC-BY-4.0).
  */
 
 .page { position: relative; isolation: isolate; overflow: clip; }
+
+/* 전역 세계지도 백드롭(아주 옅게) */
 .worldBackdrop {
   position: absolute; z-index: -1; pointer-events: none;
-  top: 0; right: -160px; width: min(1200px, 120vw); height: 680px;
+  top: 0; right: -200px; width: min(1180px, 116vw); height: 720px;
   background: url('/seminar1120/world-map.svg') center top / contain no-repeat;
-  opacity: .08;
-  mask-image: linear-gradient(to right, transparent 0%, #000 40%, #000 100%);
+  opacity: .07;
+  -webkit-mask-image: linear-gradient(to right, transparent 0%, #000 42%, #000 100%);
+          mask-image: linear-gradient(to right, transparent 0%, #000 42%, #000 100%);
 }
-.platformVisual {
+
+/* ── 히어로 커머스 무대(따뜻한 면 + 선명한 사진) ── */
+.stage {
   position: relative; isolation: isolate; overflow: hidden;
-  margin-bottom: 16px; padding: 24px 32px;
-  border-radius: 14px; background: #171714; color: #fff;
+  border-radius: 20px; background: #efe9dd;
+  padding: clamp(18px, 2.4vw, 26px);
 }
-.platformMap, .closingMap {
-  position: absolute; z-index: -1; inset: 0; pointer-events: none;
-  background: url('/seminar1120/world-map.svg') right center / 94% auto no-repeat;
-  opacity: .28;
+.stageMap {
+  position: absolute; z-index: -1; inset: -12% -6%;
+  background: url('/seminar1120/world-map.svg') center / cover no-repeat;
+  opacity: .12;
 }
-.platformContent { position: relative; }
-.tiktokLogo { width: 208px; max-width: 70%; aspect-ratio: 1544 / 376; overflow: hidden; }
+.stageMap::after {
+  content: ''; position: absolute; inset: 0;
+  background: radial-gradient(120% 90% at 50% 0%, rgba(239,233,221,0) 40%, rgba(239,233,221,.55) 100%);
+}
+/* 정면 휴대폰 프레임 — 실제 숏폼 콘텐츠(creator.webp, 9:16)를 잘림 없이 담는다. */
+.phone {
+  position: relative; width: 232px; max-width: 64%; aspect-ratio: 9 / 16;
+  border-radius: 30px; background: #16130f; padding: 8px;
+  box-shadow: 0 26px 52px -28px rgba(31, 27, 22, .55);
+}
+.phone img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: center 30%; border-radius: 22px; }
+.phoneBar { position: absolute; top: 14px; left: 50%; transform: translateX(-50%); width: 52px; height: 5px; border-radius: 3px; background: rgba(255, 255, 255, .28); z-index: 2; }
+/* 배송·풀필먼트 스트립 */
+.stageStrip { position: relative; overflow: hidden; border-radius: 12px; aspect-ratio: 16 / 8; background: #ded7cb; }
+.stageStrip img { display: block; width: 100%; height: 100%; object-fit: cover; }
+
+/* TikTok 로고 — 2000x834 원본에서 워드마크 영역만 크롭(여백 제거). */
+.tiktokLogo { width: 168px; max-width: 56%; aspect-ratio: 1544 / 376; overflow: hidden; }
 .tiktokLogo img { display: block; width: 129.534%; max-width: none; height: auto; margin-left: -14.767%; margin-top: -12.889%; }
-.platformCountries { margin: 8px 0 0; font-size: 14px; line-height: 1.5; color: #eee7dc; }
-.platformCountries span { padding: 0 8px; color: #a99c8b; }
-.platformCaption { margin: 4px 0 0; font-size: 13px; line-height: 1.5; color: #d6ccbe; }
+.closingLogo { width: 150px; margin-bottom: 20px; }
+
+/* ── 에디토리얼 사진(실무 흐름) ── */
+.edImg { position: relative; overflow: hidden; border-radius: 16px; background: #e7e1d7; }
+.edImg img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.edCreator img { object-position: center 30%; }
+.photoLabel {
+  position: absolute; bottom: 12px; left: 12px; max-width: calc(100% - 24px);
+  padding: 6px 11px; border-radius: 8px; background: rgba(253, 252, 249, .94); color: #1f1b16;
+  font-size: 12px; line-height: 1.4; font-weight: 500;
+}
+.imageCredit { display: inline-flex; align-items: center; gap: 4px; color: #655b50; font-size: 12px; }
+.imageCredit:hover { text-decoration: underline; text-underline-offset: 3px; }
+.imageCredit:focus-visible { outline: 2px solid #1f1b16; outline-offset: 4px; border-radius: 4px; }
+
+/* ── 공식 행사장 사진(venue.jpg 671x771): 실제 사진 영역(y108..565, 높이 457)만 크롭. 비율 유지. ── */
+.venueCrop { aspect-ratio: 671 / 457; overflow: hidden; border-radius: 16px; background: #ece7dc; }
+.venueCrop img { display: block; width: 100%; height: auto; margin-top: -16.095%; }
+
+/* ── 최종 신청: 짙은 물류 사진 밴드(밝은 본문과 대비) ── */
 .closingVisual {
   position: relative; isolation: isolate; overflow: hidden;
-  padding: 40px; border-radius: 16px; background: #171714; color: #fff;
+  padding: clamp(28px, 4vw, 48px); border-radius: 18px; background: #171714; color: #fff;
 }
-.closingMap { left: 28%; background-size: 120% auto; opacity: .18; }
-.closingLogo { width: 160px; margin-bottom: 24px; }
-.closingVisual a:focus-visible { outline-color: #fff; }
 .closingLogistics {
   position: absolute; z-index: -1; inset: 0; pointer-events: none;
   background: url('/seminar1120/fulfillment.webp') right center / cover no-repeat;
-  opacity: .2;
-  mask-image: linear-gradient(to right, transparent 25%, #000 100%);
+  opacity: .22;
+  -webkit-mask-image: linear-gradient(to right, transparent 20%, #000 100%);
+          mask-image: linear-gradient(to right, transparent 20%, #000 100%);
 }
-.journeySection { position: relative; isolation: isolate; }
-.journeySection::before {
-  content: ''; position: absolute; z-index: -1; inset: 0 -32px; pointer-events: none;
-  background: url('/seminar1120/fulfillment.webp') right center / cover no-repeat;
-  opacity: .055;
-  mask-image: linear-gradient(to right, transparent, #000);
+.closingMap {
+  position: absolute; z-index: -1; inset: 0; left: 24%; pointer-events: none;
+  background: url('/seminar1120/world-map.svg') right center / 120% auto no-repeat;
+  opacity: .16;
 }
-.practiceCard {
-  display: flex; flex: 1; min-width: 0; flex-direction: column; overflow: hidden;
-  border: 1px solid rgb(31 27 22 / .12); border-radius: 16px; background: #fdfcf9;
-}
-.practicePhoto { position: relative; height: 208px; overflow: hidden; background: #e7e1d7; }
-.practicePhoto img { display: block; width: 100%; height: 100%; object-fit: cover; }
-.creatorPhoto { background: #d4c0aa; }
-.creatorPhoto img { object-position: center 39%; }
-.photoLabel {
-  position: absolute; bottom: 12px; left: 12px; max-width: calc(100% - 24px);
-  padding: 6px 10px; border-radius: 6px; background: #fdfcf9; color: #1f1b16;
-  font-size: 12px; line-height: 1.5; font-weight: 500;
-}
-.practiceCopy { display: flex; flex: 1; flex-direction: column; padding: 20px; }
-.imageCredit { display: inline-flex; align-items: center; gap: 4px; align-self: flex-start; margin-top: auto; padding-top: 16px; color: #74695d; font-size: 12px; }
-.imageCredit:hover { text-decoration: underline; text-underline-offset: 3px; }
-.imageCredit:focus-visible { outline: 2px solid #1f1b16; outline-offset: 4px; }
+.closingVisual a:focus-visible { outline-color: #fff; }
+
 @media (max-width: 639px) {
-  .worldBackdrop { top: 88px; right: -160px; width: 760px; height: 440px; opacity: .08; }
-  .platformVisual { padding: 20px 24px; }
-  .platformMap { background-position: 110% center; background-size: 140% auto; opacity: .25; }
-  .tiktokLogo { width: 176px; max-width: 80%; }
-  .closingLogo { width: 144px; }
-  .platformCountries { font-size: 13px; }
-  .platformCountries span { padding: 0 4px; }
-  .closingVisual { padding: 32px 24px; }
-  .closingMap { left: 0; background-size: 180% auto; opacity: .13; }
-  .practicePhoto { height: 220px; }
-  .closingLogistics { opacity: .14; }
-}
-
-/* 공식 행사장 사진(venue.jpg 671x771)에서 실제 사진 영역만 표시한다.
- * 원본 위/아래에 홈페이지 흰 여백·캡션이 있어, 사진 영역(세로 108px..565px, 높이 457px)만 크롭.
- * margin-top 백분율은 컨테이너 '너비' 기준 → -(108/671)= -16.095%. 비율 유지(원본 변형 없음). */
-.venueCrop {
-  aspect-ratio: 671 / 457;
-  overflow: hidden;
-  border-radius: 14px;
-  background: #ece7dc;
-}
-.venueCrop img {
-  display: block;
-  width: 100%;
-  height: auto;
-  margin-top: -16.095%;
-}
-
-/* 포커스 가시성 — 키보드 사용자. */
-.focusRing:focus-visible {
-  outline: 2px solid #1f1b16;
-  outline-offset: 2px;
-  border-radius: 10px;
+  .worldBackdrop { top: 72px; right: -160px; width: 720px; height: 420px; opacity: .07; }
+  .phone { width: 200px; max-width: 72%; }
+  .tiktokLogo { width: 148px; max-width: 64%; }
+  .closingLogo { width: 136px; }
+  .closingLogistics { opacity: .16; }
+  .closingMap { left: 0; background-size: 170% auto; opacity: .12; }
 }

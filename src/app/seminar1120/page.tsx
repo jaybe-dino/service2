@@ -1,5 +1,5 @@
 /*
- * /seminar1120 — TikTok Shop & 글로벌 진출 실무 세미나 (밝은 행사 브로슈어).
+ * /seminar1120 — TikTok Shop & 글로벌 진출 실무 세미나 (밝은 에디토리얼 포스터).
  * Design method: "Unslop" by Damir Sokolovsky (@heydamir) — https://heydamir.design/unslop (CC-BY-4.0).
  * 신청은 외부 Google Forms(새 창)로 접수. 결제·자동 계약·내부 폼 저장 없음.
  */
@@ -62,7 +62,7 @@ function HostLogos({ className = "" }: { className?: string }) {
 
 const FACTS: { icon: IconType; label: string; value: ReactNode }[] = [
   { icon: Calendar, label: "일시", value: <>2026.11.20(금)<br />14:00 – 18:00</> },
-  { icon: MapPin, label: "장소", value: <>{VENUE}<br /><span className="text-[#74695d]">{ADDRESS}</span></> },
+  { icon: MapPin, label: "장소", value: <>{VENUE}<br /><span className="text-[#655b50]">{ADDRESS}</span></> },
   { icon: Users, label: "공동 주관", value: <>아워박스 · 비브로 · 디노스튜디오</> },
   { icon: Building2, label: "대상", value: <>해외 진출을 준비하는 국내 브랜드 · 제조 · 유통기업</> },
 ];
@@ -77,10 +77,10 @@ const PILLARS: { icon: IconType; step: string; title: string; desc: string }[] =
 // listing: https://cdn.imweb.me/thumbnail/20250803/573cccddcf538.jpg
 // fulfillment: https://cdn.imweb.me/thumbnail/20230709/2a56a52cb4cfd.jpg
 // creator: 기존 /refer 공개 콘텐츠 예시(ugc-drive-2.jpg). 연사·행사 사진으로 표현하지 않는다.
-const PRACTICE_IMAGES = [
-  { src: "/seminar1120/listing.webp", alt: "태블릿으로 상품 운영 자료를 검토하는 모습", label: "입점·상품 리스팅", credit: "비브로 공식 이미지", href: "https://bbro.co.kr/brand-agency" },
-  { src: "/seminar1120/creator.webp", alt: "헤어 스타일링 제품을 직접 보여주는 숏폼 콘텐츠 예시", label: "제품 시연·숏폼 콘텐츠", credit: "콘텐츠 예시 보기", href: "/refer#ugc" },
-  { src: "/seminar1120/fulfillment.webp", alt: "상품과 배송 박스가 보관된 아워박스 물류센터 내부", label: "보관·출고·풀필먼트", credit: "아워박스 공식 이미지", href: "https://ourbox.co.kr/Center" },
+const PRACTICE_IMAGES: { src: string; alt: string; label: string; credit: string; href: string; w: number; h: number; aspect: string }[] = [
+  { src: "/seminar1120/listing.webp", alt: "태블릿으로 상품 운영 자료를 검토하는 모습", label: "입점·상품 리스팅", credit: "비브로 공식 이미지", href: "https://bbro.co.kr/brand-agency", w: 960, h: 639, aspect: "aspect-[960/639]" },
+  { src: "/seminar1120/creator.webp", alt: "헤어 스타일링 제품을 직접 보여주는 숏폼 콘텐츠 예시", label: "제품 시연·숏폼 콘텐츠", credit: "콘텐츠 예시 보기", href: "/refer#ugc", w: 576, h: 1024, aspect: "aspect-[9/16]" },
+  { src: "/seminar1120/fulfillment.webp", alt: "상품과 배송 박스가 보관된 아워박스 물류센터 내부", label: "보관·출고·풀필먼트", credit: "아워박스 공식 이미지", href: "https://ourbox.co.kr/Center", w: 1370, h: 500, aspect: "aspect-[137/50]" },
 ];
 
 function Apply({ big = false }: { big?: boolean }) {
@@ -89,7 +89,7 @@ function Apply({ big = false }: { big?: boolean }) {
       href={FORM_URL}
       target="_blank"
       rel="noopener noreferrer"
-      className={`inline-flex items-center gap-2 rounded-xl bg-[#b6382c] font-semibold text-white transition-colors hover:bg-[#9c2f24] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1f1b16] ${
+      className={`inline-flex min-h-[44px] items-center gap-2 rounded-xl bg-[#b6382c] font-semibold text-white transition-colors hover:bg-[#9c2f24] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1f1b16] ${
         big ? "px-7 py-3.5 text-[17px]" : "px-6 py-3 text-[15px]"
       }`}
     >
@@ -108,13 +108,13 @@ function TikTokVisualLogo({ closing = false }: { closing?: boolean }) {
   );
 }
 
-// 진출 경로 — 일본에서 시작해 미국·동남아로. 얇은 분기 경로선(독자 SVG) + 실제 HTML 라벨(모든 화면 가독).
+// 진출 경로 — 일본에서 시작해 미국·동남아로. 얇은 분기 경로선(독자 SVG) + 실제 HTML 라벨(모든 화면 가독, 큰 시장명).
 function RouteLine() {
   return (
-    <div className="flex flex-col items-start gap-4 sm:flex-row sm:items-center sm:gap-5" role="img" aria-label="진출 경로: 일본에서 시작해 미국·동남아로">
+    <div className="flex flex-col items-start gap-4 sm:flex-row sm:items-center sm:gap-6" role="img" aria-label="진출 경로: 일본에서 시작해 미국·동남아로">
       <div className="flex items-center gap-3">
-        <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-[#b6382c]" aria-hidden />
-        <span className="text-[15px] font-medium text-[#1f1b16]">일본</span>
+        <span className="h-3 w-3 shrink-0 rounded-full bg-[#b6382c]" aria-hidden />
+        <span className="text-[22px] font-semibold tracking-tight text-[#1f1b16] sm:text-[26px]">일본</span>
         <span className="rounded-md border border-[#b6382c]/35 px-2 py-0.5 text-[12px] font-medium text-[#b6382c]">시작 시장</span>
       </div>
       {/* 분기 커넥터 — 라인만(텍스트 없음). 데스크톱: 가로 분기, 모바일: 아래로. */}
@@ -125,11 +125,66 @@ function RouteLine() {
           <path d="M26 26 C46 26 52 42 70 42" />
         </g>
       </svg>
-      <span className="pl-1 text-[16px] text-[#b6382c] sm:hidden" aria-hidden>↓</span>
-      <div className="flex gap-x-6 gap-y-2 sm:flex-col sm:gap-y-3">
-        <span className="inline-flex items-center gap-2 text-[15px] font-medium text-[#1f1b16]"><span className="h-2 w-2 shrink-0 rounded-full bg-[#b6382c]" aria-hidden />미국</span>
-        <span className="inline-flex items-center gap-2 text-[15px] font-medium text-[#1f1b16]"><span className="h-2 w-2 shrink-0 rounded-full bg-[#b6382c]" aria-hidden />동남아</span>
+      <span className="pl-1 text-[18px] text-[#b6382c] sm:hidden" aria-hidden>↓</span>
+      <div className="flex gap-x-7 gap-y-2 sm:flex-col sm:gap-y-3">
+        <span className="inline-flex items-center gap-2 text-[20px] font-semibold tracking-tight text-[#1f1b16] sm:text-[24px]"><span className="h-2.5 w-2.5 shrink-0 rounded-full bg-[#b6382c]" aria-hidden />미국</span>
+        <span className="inline-flex items-center gap-2 text-[20px] font-semibold tracking-tight text-[#1f1b16] sm:text-[24px]"><span className="h-2.5 w-2.5 shrink-0 rounded-full bg-[#b6382c]" aria-hidden />동남아</span>
       </div>
+    </div>
+  );
+}
+
+// 실무 흐름 — 비대칭 에디토리얼 행. 큰 사진 + 큰 01/02/03. 가운데(크리에이터)는 세로 포트레이트로 강조.
+function PracticeRow({ i, reverse = false }: { i: number; reverse?: boolean }) {
+  const p = PILLARS[i];
+  const img = PRACTICE_IMAGES[i];
+  const feature = i === 1;
+
+  const ImageBlock = (
+    <div className={feature ? "mx-auto w-full max-w-[280px]" : ""}>
+      <div className={`${styles.edImg} ${feature ? styles.edCreator : ""} ${img.aspect}`}>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={img.src} alt={img.alt} width={img.w} height={img.h} loading="lazy" />
+        <span className={styles.photoLabel}>{img.label}</span>
+      </div>
+    </div>
+  );
+
+  const TextBlock = (
+    <div>
+      <span className="block text-[48px] font-semibold leading-none tracking-tight text-[#b6382c] sm:text-[60px]">{String(i + 1).padStart(2, "0")}</span>
+      <span className="mt-4 flex items-center gap-2 text-[12.5px] font-medium text-[#655b50]">
+        <p.icon size={16} strokeWidth={1.5} className="text-[#b6382c]" /> {p.step}
+      </span>
+      <h3 className="mt-2 text-[20px] font-semibold leading-snug tracking-tight sm:text-[23px]">{p.title}</h3>
+      <p className="mt-3 max-w-[460px] text-[15.5px] leading-relaxed text-[#5e554a]">{p.desc}</p>
+      <div className="mt-4">
+        <a href={img.href} target="_blank" rel="noopener noreferrer" className={styles.imageCredit}>
+          {img.credit} <ArrowUpRight size={12} strokeWidth={1.5} aria-hidden />
+        </a>
+      </div>
+    </div>
+  );
+
+  const cols = feature
+    ? "lg:grid-cols-[1fr_0.72fr]"
+    : reverse
+    ? "lg:grid-cols-[0.88fr_1.12fr]"
+    : "lg:grid-cols-[1.12fr_0.88fr]";
+
+  return (
+    <div className={`grid items-center gap-7 lg:gap-12 ${cols}`}>
+      {reverse ? (
+        <>
+          {TextBlock}
+          {ImageBlock}
+        </>
+      ) : (
+        <>
+          {ImageBlock}
+          {TextBlock}
+        </>
+      )}
     </div>
   );
 }
@@ -140,78 +195,98 @@ export default function Seminar1120Page() {
       <div className={styles.worldBackdrop} aria-hidden="true" />
       <div className="relative mx-auto max-w-[1120px] px-6 sm:px-8">
 
-        {/* ── HERO ── */}
-        <header className="grid items-center gap-10 py-14 sm:py-20 lg:grid-cols-[0.92fr_1.08fr] lg:gap-14">
+        {/* ── 상단 마스트헤드 ── */}
+        <div className="flex items-center justify-between border-b border-[#1f1b16]/10 py-4 text-[11.5px] font-medium uppercase tracking-[0.14em] text-[#655b50]">
+          <span>실무 세미나 · Global Commerce</span>
+          <span>2026 · Seoul</span>
+        </div>
+
+        {/* ── HERO (에디토리얼 포스터) ── */}
+        <header className="grid items-center gap-10 py-12 sm:py-16 lg:grid-cols-[1.02fr_0.98fr] lg:gap-14">
           <div>
-            <p className="text-[13px] font-medium text-[#74695d]">실무 세미나 · 2026</p>
-            <h1 className="mt-4 text-[34px] font-semibold leading-[1.12] tracking-tight sm:text-[42px] lg:text-[54px]">
-              TikTok Shop &amp; 글로벌 진출<br className="hidden sm:block" /> 실무 세미나
+            <p className="text-[13px] font-medium text-[#b6382c]">일본에서 시작해 미국·동남아로</p>
+            <h1 className="mt-3 text-[38px] font-semibold leading-[1.08] tracking-tight sm:text-[46px] lg:text-[62px]">
+              TikTok Shop &amp;<br />글로벌 진출<br />실무 세미나
             </h1>
-            <p className="mt-4 text-[19px] font-medium leading-snug text-[#5e554a] sm:text-[22px]">
-              일본에서 시작해 미국·동남아로
-            </p>
-            <p className="mt-4 max-w-[500px] text-[16px] leading-relaxed text-[#5e554a]">
-              입점·운영과 국가별 판매 전략부터 현지 마케팅·글로벌 크리에이터, 해외 물류·풀필먼트와 인증·정산까지 —
-              해외 진출을 준비하는 기업을 위한 하루 세미나.
-            </p>
-            <div className="mt-6 flex flex-col gap-3 text-[15px] text-[#1f1b16]">
-              <span className="inline-flex items-center gap-3"><Calendar size={18} strokeWidth={1.5} className="text-[#b6382c]" /> 2026.11.20(금) 14:00 – 18:00</span>
-              <span className="inline-flex items-center gap-3"><MapPin size={18} strokeWidth={1.5} className="text-[#b6382c]" /> {VENUE}</span>
+
+            {/* 큰 날짜 시그니처 */}
+            <div className="mt-7 flex items-end gap-4">
+              <span className="text-[56px] font-semibold leading-[0.9] tracking-tight text-[#1f1b16] sm:text-[72px] lg:text-[84px]">11.20</span>
+              <div className="pb-1.5 text-[13px] font-medium leading-tight text-[#5e554a]">
+                <p className="text-[#1f1b16]">2026 · 금요일</p>
+                <p className="mt-1">14:00 – 18:00</p>
+              </div>
             </div>
+
+            <div className="mt-6 flex flex-col gap-2.5 text-[15px] text-[#1f1b16]">
+              <span className="inline-flex items-center gap-3"><MapPin size={18} strokeWidth={1.5} className="shrink-0 text-[#b6382c]" /> {VENUE}</span>
+              <span className="inline-flex items-center gap-3"><Users size={18} strokeWidth={1.5} className="shrink-0 text-[#b6382c]" /> 공동 주관 · 아워박스 · 비브로 · 디노스튜디오</span>
+            </div>
+
             <div className="mt-8">
               <Apply />
             </div>
-            <div className="mt-10 border-t border-[#1f1b16]/10 pt-6">
-              <p className="text-[12px] font-medium text-[#74695d]">공동 주관</p>
+
+            <div className="mt-9 border-t border-[#1f1b16]/10 pt-6">
+              <p className="text-[12px] font-medium text-[#655b50]">공동 주관</p>
               <HostLogos className="mt-4 max-w-[340px]" />
             </div>
           </div>
 
-          {/* 큰 행사장 사진 (공식 홈페이지, 실제 사진 영역만 크롭) */}
-          <figure className="lg:order-last">
-            <div className={styles.platformVisual}>
-              <div className={styles.platformMap} aria-hidden="true" />
-              <div className={styles.platformContent}>
+          {/* 우측 — 하나의 커머스 무대: 콘텐츠(휴대폰) → 글로벌 판매(지도) → 배송(물류 스트립) */}
+          <div className="lg:order-last">
+            <div className={styles.stage}>
+              <div className={styles.stageMap} aria-hidden="true" />
+              <div className="relative flex items-center justify-between gap-3">
                 <TikTokVisualLogo />
-                <p className={styles.platformCountries}>일본 <span aria-hidden="true">·</span> 미국 <span aria-hidden="true">·</span> 동남아</p>
-                <p className={styles.platformCaption}>콘텐츠에서 글로벌 판매로</p>
+                <span className="text-[12px] font-medium text-[#655b50]">콘텐츠에서 글로벌 판매로</span>
               </div>
+
+              <div className="relative mt-4 flex items-stretch gap-4">
+                <div className={styles.phone}>
+                  <span className={styles.phoneBar} aria-hidden="true" />
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src="/seminar1120/creator.webp" alt="제품을 직접 보여주는 숏폼 콘텐츠 예시" width={576} height={1024} loading="eager" />
+                </div>
+                <div className="flex flex-1 flex-col justify-center gap-3">
+                  <p className="text-[12px] font-medium uppercase tracking-[0.12em] text-[#655b50]">진출 시장</p>
+                  <span className="inline-flex items-center gap-2 text-[19px] font-semibold tracking-tight"><span className="h-2.5 w-2.5 rounded-full bg-[#b6382c]" aria-hidden />일본</span>
+                  <span className="inline-flex items-center gap-2 text-[19px] font-semibold tracking-tight"><span className="h-2.5 w-2.5 rounded-full bg-[#b6382c]/70" aria-hidden />미국</span>
+                  <span className="inline-flex items-center gap-2 text-[19px] font-semibold tracking-tight"><span className="h-2.5 w-2.5 rounded-full bg-[#b6382c]/70" aria-hidden />동남아</span>
+                </div>
+              </div>
+
+              <div className={`${styles.stageStrip} relative mt-4`}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src="/seminar1120/fulfillment.webp" alt="상품과 배송 박스가 보관된 물류센터 내부" width={1370} height={500} loading="eager" />
+              </div>
+              <p className="relative mt-3 text-[12px] font-medium text-[#655b50]">콘텐츠 <span className="text-[#b6382c]" aria-hidden>→</span> 글로벌 판매 <span className="text-[#b6382c]" aria-hidden>→</span> 배송·풀필먼트</p>
             </div>
-            <div className={styles.venueCrop}>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/seminar1120/venue.jpg" alt="포스코타워 역삼 이벤트홀 내부" width={671} height={771} />
-            </div>
-            <figcaption className="mt-3 flex flex-wrap items-center justify-between gap-2 text-[12.5px] text-[#74695d]">
-              <span>{VENUE}</span>
-              <a href={VENUE_SOURCE} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 underline-offset-2 hover:underline">
-                사진 출처: 공식 홈페이지 <ArrowUpRight size={13} strokeWidth={1.5} aria-hidden />
-              </a>
-            </figcaption>
-            <p className="mt-1 text-[11.5px] text-[#74695d]">* 공간 참고용 이미지이며, 행사 당일 촬영 사진이 아닙니다.</p>
-          </figure>
+            <p className="mt-3 text-[11.5px] leading-relaxed text-[#655b50]">* 콘텐츠·물류 이미지는 흐름을 설명하기 위한 참고 예시이며, 행사 당일 사진이 아닙니다.</p>
+          </div>
         </header>
 
         {/* ── 진출 경로 (시그니처) ── */}
         <section className="border-t border-[#1f1b16]/10 py-12">
-          <div className="grid items-center gap-8 sm:grid-cols-[auto_1fr]">
+          <div className="grid items-center gap-8 lg:grid-cols-[auto_1fr]">
             <div className="max-w-[360px]">
               <h2 className="text-[20px] font-semibold tracking-tight">진출 경로</h2>
               <p className="mt-2 text-[15px] leading-relaxed text-[#5e554a]">
                 일본 시장에서 시작해, 미국과 동남아로 판매 채널을 넓혀가는 흐름을 함께 설계합니다.
               </p>
             </div>
-            <div className="flex justify-center sm:justify-end">
+            <div className="flex justify-center lg:justify-end">
               <RouteLine />
             </div>
           </div>
         </section>
 
-        {/* ── 핵심 정보 ── */}
+        {/* ── 핵심 정보 (하나의 정보 밴드) ── */}
         <section className="border-t border-[#1f1b16]/10 py-12">
-          <dl className="grid gap-x-8 gap-y-8 sm:grid-cols-2 lg:grid-cols-4">
+          <dl className="grid gap-x-10 gap-y-8 rounded-2xl bg-[#efe9dd] p-7 sm:grid-cols-2 sm:p-9 lg:grid-cols-4">
             {FACTS.map((f) => (
-              <div key={f.label}>
-                <dt className="flex items-center gap-2 text-[13px] font-medium text-[#74695d]">
+              <div key={f.label} className="lg:border-l lg:border-[#1f1b16]/10 lg:pl-7 lg:first:border-l-0 lg:first:pl-0">
+                <dt className="flex items-center gap-2 text-[13px] font-medium text-[#655b50]">
                   <f.icon size={18} strokeWidth={1.5} className="text-[#b6382c]" />
                   {f.label}
                 </dt>
@@ -221,55 +296,32 @@ export default function Seminar1120Page() {
           </dl>
         </section>
 
-        {/* ── 실무 흐름 (입점 → 콘텐츠 → 물류) ── */}
-        <section className={`${styles.journeySection} border-t border-[#1f1b16]/10 py-14`}>
+        {/* ── 실무 흐름 (입점 → 콘텐츠 → 물류, 비대칭 에디토리얼) ── */}
+        <section className="border-t border-[#1f1b16]/10 py-14">
           <h2 className="text-[24px] font-semibold tracking-tight sm:text-[28px]">진출 실무, 한 흐름으로</h2>
           <p className="mt-2 max-w-[560px] text-[16px] leading-relaxed text-[#5e554a]">
             입점·운영에서 콘텐츠·마케팅, 물류·인증·정산까지 — 실제 진출 순서대로 연결해 다룹니다.
           </p>
-          <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-stretch">
-            {PILLARS.map((p, i) => (
-              <Fragment key={p.step}>
-                <div className={styles.practiceCard}>
-                  <div className={`${styles.practicePhoto} ${i === 1 ? styles.creatorPhoto : ""}`}>
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={PRACTICE_IMAGES[i].src} alt={PRACTICE_IMAGES[i].alt} width={i === 1 ? 576 : i === 2 ? 1370 : 960} height={i === 1 ? 1024 : i === 2 ? 500 : 639} loading="lazy" />
-                    <span className={styles.photoLabel}>{PRACTICE_IMAGES[i].label}</span>
-                  </div>
-                  <div className={styles.practiceCopy}>
-                    <span className="flex items-center gap-2 text-[12px] font-medium text-[#74695d]">
-                      <p.icon size={16} strokeWidth={1.5} className="text-[#b6382c]" /> STEP {i + 1} · {p.step}
-                    </span>
-                    <h3 className="mt-3 text-[17px] font-semibold leading-snug">{p.title}</h3>
-                    <a href={PRACTICE_IMAGES[i].href} target="_blank" rel="noopener noreferrer" className={styles.imageCredit}>
-                      {PRACTICE_IMAGES[i].credit} <ArrowUpRight size={12} strokeWidth={1.5} aria-hidden />
-                    </a>
-                  </div>
-                </div>
-                {i < PILLARS.length - 1 && (
-                  <div className="flex items-center justify-center text-[16px] text-[#b6382c]" aria-hidden>
-                    <span className="hidden sm:inline">→</span>
-                    <span className="sm:hidden">↓</span>
-                  </div>
-                )}
-              </Fragment>
-            ))}
+          <div className="mt-12 flex flex-col gap-14 sm:gap-16">
+            <PracticeRow i={0} />
+            <PracticeRow i={1} reverse />
+            <PracticeRow i={2} />
           </div>
-          <p className="mt-4 text-[12px] leading-relaxed text-[#74695d]">업무 흐름을 보여주는 참고 이미지입니다.</p>
+          <p className="mt-8 text-[12px] leading-relaxed text-[#655b50]">업무 흐름을 보여주는 참고 이미지입니다.</p>
         </section>
 
         {/* ── 주요 내용 (구성안) ── */}
         <section className="border-t border-[#1f1b16]/10 py-14">
           <div className="flex flex-wrap items-end justify-between gap-2">
             <h2 className="text-[24px] font-semibold tracking-tight sm:text-[28px]">주요 내용(구성안)</h2>
-            <p className="text-[13px] text-[#74695d]">연사 · 세부 시간표는 추후 안내 예정</p>
+            <p className="text-[13px] text-[#655b50]">연사 · 세부 시간표는 추후 안내 예정</p>
           </div>
           <div className="mt-8 divide-y divide-[#1f1b16]/10">
             {PILLARS.map((p, i) => (
-              <div key={p.title} className="grid grid-cols-[auto_1fr] gap-x-5 gap-y-1 py-6 sm:grid-cols-[72px_1fr]">
-                <span className="text-[26px] font-medium leading-none text-[#74695d] sm:text-[30px]">{String(i + 1).padStart(2, "0")}</span>
+              <div key={p.title} className="grid grid-cols-[auto_1fr] gap-x-5 gap-y-1 py-6 sm:grid-cols-[88px_1fr]">
+                <span className="text-[30px] font-semibold leading-none tracking-tight text-[#b6382c] sm:text-[38px]">{String(i + 1).padStart(2, "0")}</span>
                 <div>
-                  <h3 className="text-[18px] font-semibold leading-snug sm:text-[20px]">{p.title}</h3>
+                  <h3 className="text-[18px] font-semibold leading-snug tracking-tight sm:text-[21px]">{p.title}</h3>
                   <p className="mt-2 max-w-[640px] text-[16px] leading-relaxed text-[#5e554a]">{p.desc}</p>
                 </div>
               </div>
@@ -290,15 +342,15 @@ export default function Seminar1120Page() {
             </div>
             <div className="lg:text-right">
               <Apply />
-              <p className="mt-3 text-[12.5px] text-[#74695d]">외부 온라인 신청서(새 창)로 접수됩니다.</p>
+              <p className="mt-3 text-[12.5px] text-[#655b50]">외부 온라인 신청서(새 창)로 접수됩니다.</p>
             </div>
           </div>
         </section>
 
-        {/* ── 오시는 길 ── */}
+        {/* ── 오시는 길 (공식 행사장 사진 크게) ── */}
         <section className="border-t border-[#1f1b16]/10 py-14">
           <h2 className="text-[24px] font-semibold tracking-tight sm:text-[28px]">오시는 길</h2>
-          <div className="mt-7 grid gap-x-12 gap-y-7 lg:grid-cols-[1.1fr_0.9fr]">
+          <div className="mt-7 grid gap-x-12 gap-y-9 lg:grid-cols-[0.92fr_1.08fr]">
             <div>
               <p className="text-[17px] font-semibold">{VENUE}</p>
               <p className="mt-1 text-[15px] text-[#5e554a]">{ADDRESS}</p>
@@ -308,22 +360,36 @@ export default function Seminar1120Page() {
               </div>
               <div className="mt-6 flex flex-wrap gap-3">
                 {MAPS.map((m) => (
-                  <a key={m.label} href={m.url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 rounded-lg border border-[#1f1b16]/15 px-4 py-2 text-[13.5px] font-medium transition-colors hover:border-[#b6382c] hover:text-[#b6382c] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1f1b16]">
+                  <a key={m.label} href={m.url} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-[44px] items-center gap-2 rounded-lg border border-[#1f1b16]/15 px-4 py-2 text-[13.5px] font-medium transition-colors hover:border-[#b6382c] hover:text-[#b6382c] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1f1b16]">
                     {m.label} <ArrowUpRight size={14} strokeWidth={1.5} aria-hidden />
                   </a>
                 ))}
               </div>
+              <div className="mt-8 rounded-2xl border border-[#1f1b16]/12 bg-[#fdfcf9] p-6">
+                <p className="flex items-center gap-2 text-[13px] font-medium text-[#655b50]"><Mail size={18} strokeWidth={1.5} className="text-[#b6382c]" /> 문의</p>
+                <a href={`mailto:${CONTACT}`} className="mt-2 block break-all text-[17px] font-semibold text-[#1f1b16] underline-offset-2 hover:underline">{CONTACT}</a>
+                <p className="mt-3 text-[14px] leading-relaxed text-[#5e554a]">등록 · 프로그램 · 현장 안내</p>
+              </div>
             </div>
-            <div className="rounded-2xl border border-[#1f1b16]/12 bg-[#fdfcf9] p-6">
-              <p className="flex items-center gap-2 text-[13px] font-medium text-[#74695d]"><Mail size={18} strokeWidth={1.5} className="text-[#b6382c]" /> 문의</p>
-              <a href={`mailto:${CONTACT}`} className="mt-2 block break-all text-[17px] font-semibold text-[#1f1b16] underline-offset-2 hover:underline">{CONTACT}</a>
-              <p className="mt-3 text-[14px] leading-relaxed text-[#5e554a]">등록 · 프로그램 · 현장 안내</p>
-              <div className="mt-5"><Apply /></div>
-            </div>
+
+            {/* 공식 행사장 사진 — 크게 (실제 사진 영역만 크롭, 비율 유지) */}
+            <figure>
+              <div className={styles.venueCrop}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src="/seminar1120/venue.jpg" alt="포스코타워 역삼 이벤트홀 내부" width={671} height={771} loading="lazy" />
+              </div>
+              <figcaption className="mt-3 flex flex-wrap items-center justify-between gap-2 text-[12.5px] text-[#655b50]">
+                <span>{VENUE}</span>
+                <a href={VENUE_SOURCE} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 underline-offset-2 hover:underline">
+                  사진 출처: 공식 홈페이지 <ArrowUpRight size={13} strokeWidth={1.5} aria-hidden />
+                </a>
+              </figcaption>
+              <p className="mt-1 text-[11.5px] text-[#655b50]">* 공간 참고용 이미지이며, 행사 당일 촬영 사진이 아닙니다.</p>
+            </figure>
           </div>
         </section>
 
-        {/* ── 최종 신청 ── */}
+        {/* ── 최종 신청 (짙은 물류 밴드) ── */}
         <section className="border-t border-[#1f1b16]/10 py-16">
           <div className={styles.closingVisual}>
             <div className={styles.closingLogistics} aria-hidden="true" />
@@ -344,12 +410,12 @@ export default function Seminar1120Page() {
       {/* ── 공동 주관 ── */}
       <footer className="border-t border-[#1f1b16]/10">
         <div className="mx-auto max-w-[1120px] px-6 py-12 sm:px-8">
-          <p className="text-center text-[12px] font-medium text-[#74695d]">공동 주관</p>
+          <p className="text-center text-[12px] font-medium text-[#655b50]">공동 주관</p>
           <HostLogos className="mx-auto mt-6 max-w-[380px]" />
           <p className="mt-9 text-center text-[13px] text-[#5e554a]">
             문의 <a href={`mailto:${CONTACT}`} className="font-medium text-[#1f1b16] underline-offset-2 hover:underline">{CONTACT}</a>
           </p>
-          <p className="mt-2 text-center text-[11.5px] text-[#74695d]">연사 · 세부 시간표 · 정원 · 참가비 등 세부사항은 추후 안내됩니다.</p>
+          <p className="mt-2 text-center text-[11.5px] text-[#655b50]">연사 · 세부 시간표 · 정원 · 참가비 등 세부사항은 추후 안내됩니다.</p>
         </div>
       </footer>
     </main>

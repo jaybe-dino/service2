@@ -1,0 +1,297 @@
+{
+  "url": "http://localhost:8399/seminar1120",
+  "generatedAt": "2026-11-09T02:24:13.280Z",
+  "checks": {
+    "overflow_1440": {
+      "pass": true,
+      "px": 0
+    },
+    "overflow_390": {
+      "pass": true,
+      "px": 0
+    },
+    "overflow_320": {
+      "pass": true,
+      "px": 0
+    },
+    "img_loaded creator.webp": {
+      "pass": true,
+      "instances": 2
+    },
+    "img_loaded fulfillment.webp": {
+      "pass": true,
+      "instances": 2
+    },
+    "img_loaded listing.webp": {
+      "pass": true,
+      "instances": 1
+    },
+    "img_loaded venue.jpg": {
+      "pass": true,
+      "instances": 1
+    },
+    "img_loaded tiktok-logo.webp": {
+      "pass": true,
+      "instances": 2
+    },
+    "img_loaded ourbox.png": {
+      "pass": true,
+      "instances": 2
+    },
+    "img_loaded bbro.png": {
+      "pass": true,
+      "instances": 2
+    },
+    "img_loaded dinostudio.png": {
+      "pass": true,
+      "instances": 2
+    },
+    "ratio ourbox.png": {
+      "pass": true,
+      "disp": 5,
+      "nat": 5
+    },
+    "ratio bbro.png": {
+      "pass": true,
+      "disp": 2.962,
+      "nat": 2.961
+    },
+    "ratio dinostudio.png": {
+      "pass": true,
+      "disp": 1.847,
+      "nat": 1.847
+    },
+    "phone_creator_portrait": {
+      "pass": true,
+      "dw": 216,
+      "dh": 396.4
+    },
+    "h1_three_lines": {
+      "pass": true
+    },
+    "big_date_1120": {
+      "pass": true
+    },
+    "title_gu_seongan": {
+      "pass": true
+    },
+    "subhead_japan_route": {
+      "pass": true
+    },
+    "date_venue_hosts_contact": {
+      "pass": true
+    },
+    "program_items": {
+      "pass": true
+    },
+    "venue_note_present": {
+      "pass": true
+    },
+    "no_fabricated_values": {
+      "pass": true
+    },
+    "venue_source_direct_page": {
+      "pass": true,
+      "href": "https://poscotower-yeoksam.co.kr/page/1_2.php"
+    },
+    "cta>=3_newwin_noopener": {
+      "pass": true,
+      "count": 3
+    },
+    "cta_min44px": {
+      "pass": true,
+      "heights": [
+        46.5,
+        46.5,
+        53.5
+      ]
+    },
+    "map_links>=3": {
+      "pass": true,
+      "count": 3
+    },
+    "contrast_ink_AA": {
+      "pass": true,
+      "r": 15.6
+    },
+    "contrast_secondary_AA": {
+      "pass": true,
+      "r": 6.66
+    },
+    "contrast_muted_AA": {
+      "pass": true,
+      "r": 6.04
+    },
+    "contrast_muted_on_band_AA": {
+      "pass": true,
+      "r": 5.49
+    },
+    "contrast_cta_AA": {
+      "pass": true,
+      "r": 5.85
+    },
+    "focus_visible_cta": {
+      "pass": true,
+      "href": "https://forms.gle/2Vtibrkbrv7DAnwC7",
+      "ow": "2px",
+      "os": "solid"
+    }
+  },
+  "contrast": {
+    "ink_on_paper": 15.6,
+    "secondary_on_paper": 6.66,
+    "muted_on_paper": 6.04,
+    "muted_on_band": 5.49,
+    "coral_on_paper": 5.33,
+    "white_on_coral": 5.85
+  },
+  "overflow": {
+    "320": 0,
+    "390": 0,
+    "1440": 0
+  },
+  "images": {
+    "list": [
+      {
+        "src": "/seminar1120/ourbox.png",
+        "loaded": true,
+        "nw": 150,
+        "nh": 30,
+        "dw": 90,
+        "dh": 18
+      },
+      {
+        "src": "/seminar1120/bbro.png",
+        "loaded": true,
+        "nw": 382,
+        "nh": 129,
+        "dw": 77,
+        "dh": 26
+      },
+      {
+        "src": "/seminar1120/dinostudio.png",
+        "loaded": true,
+        "nw": 460,
+        "nh": 249,
+        "dw": 62.8,
+        "dh": 34
+      },
+      {
+        "src": "/seminar1120/tiktok-logo.webp",
+        "loaded": true,
+        "nw": 2000,
+        "nh": 834,
+        "dw": 217.6,
+        "dh": 90.7
+      },
+      {
+        "src": "/seminar1120/creator.webp",
+        "loaded": true,
+        "nw": 576,
+        "nh": 1024,
+        "dw": 216,
+        "dh": 396.4
+      },
+      {
+        "src": "/seminar1120/fulfillment.webp",
+        "loaded": true,
+        "nw": 1370,
+        "nh": 500,
+        "dw": 438,
+        "dh": 219
+      },
+      {
+        "src": "/seminar1120/listing.webp",
+        "loaded": true,
+        "nw": 960,
+        "nh": 639,
+        "dw": 564.5,
+        "dh": 375.7
+      },
+      {
+        "src": "/seminar1120/creator.webp",
+        "loaded": true,
+        "nw": 576,
+        "nh": 1024,
+        "dw": 280,
+        "dh": 497.8
+      },
+      {
+        "src": "/seminar1120/fulfillment.webp",
+        "loaded": true,
+        "nw": 1370,
+        "nh": 500,
+        "dw": 564.5,
+        "dh": 206
+      },
+      {
+        "src": "/seminar1120/venue.jpg",
+        "loaded": true,
+        "nw": 671,
+        "nh": 771,
+        "dw": 544.3,
+        "dh": 625.4
+      },
+      {
+        "src": "/seminar1120/tiktok-logo.webp",
+        "loaded": true,
+        "nw": 2000,
+        "nh": 834,
+        "dw": 194.3,
+        "dh": 81
+      },
+      {
+        "src": "/seminar1120/ourbox.png",
+        "loaded": true,
+        "nw": 150,
+        "nh": 30,
+        "dw": 90,
+        "dh": 18
+      },
+      {
+        "src": "/seminar1120/bbro.png",
+        "loaded": true,
+        "nw": 382,
+        "nh": 129,
+        "dw": 77,
+        "dh": 26
+      },
+      {
+        "src": "/seminar1120/dinostudio.png",
+        "loaded": true,
+        "nw": 460,
+        "nh": 249,
+        "dw": 62.8,
+        "dh": 34
+      }
+    ]
+  },
+  "cta": {
+    "list": [
+      {
+        "t": "_blank",
+        "r": "noopener noreferrer",
+        "h": 46.5
+      },
+      {
+        "t": "_blank",
+        "r": "noopener noreferrer",
+        "h": 46.5
+      },
+      {
+        "t": "_blank",
+        "r": "noopener noreferrer",
+        "h": 53.5
+      }
+    ]
+  },
+  "focus": {
+    "href": "https://forms.gle/2Vtibrkbrv7DAnwC7",
+    "ow": "2px",
+    "os": "solid"
+  },
+  "summary": {
+    "failed": 0,
+    "total": 33
+  }
+}
