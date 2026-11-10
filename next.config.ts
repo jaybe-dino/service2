@@ -15,6 +15,8 @@ const BATCH2_HOST = [{ type: "host" as const, value: "batch2.glovek.space" }];
 const SEA_HOST = [{ type: "host" as const, value: "sea.glovek.space" }];
 // growth.glovek.space 호스트(글로벌 성장 프로그램 1기 · 운영대행 수수료 + 바우처 지원) — 독립 정적 랜딩.
 const GROWTH_HOST = [{ type: "host" as const, value: "growth.glovek.space" }];
+// program.glovek.space 호스트(진출 프로그램 · start 동일 구성, 권역당 300만원 정가) — 독립 정적 랜딩.
+const PROGRAM_HOST = [{ type: "host" as const, value: "program.glovek.space" }];
 
 const nextConfig: NextConfig = {
   images: { unoptimized: true },
@@ -51,6 +53,11 @@ const nextConfig: NextConfig = {
         { source: "/styles.css", has: GROWTH_HOST, destination: "/growth/styles.css" },
         { source: "/app.js", has: GROWTH_HOST, destination: "/growth/app.js" },
         { source: "/assets/:path*", has: GROWTH_HOST, destination: "/growth/assets/:path*" },
+        // program.glovek.space → public/program/ (진출 프로그램 · 300만원 정가)
+        { source: "/", has: PROGRAM_HOST, destination: "/program/index.html" },
+        { source: "/styles.css", has: PROGRAM_HOST, destination: "/program/styles.css" },
+        { source: "/app.js", has: PROGRAM_HOST, destination: "/program/app.js" },
+        { source: "/assets/:path*", has: PROGRAM_HOST, destination: "/program/assets/:path*" },
       ],
       afterFiles: [],
       fallback: [],

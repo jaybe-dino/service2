@@ -20,7 +20,7 @@ export const dynamic = "force-dynamic";
 // 외부 전달 없음. 전용 테이블에만 적재. no-store.
 
 // 동일 출처(또는 승인 호스트)만 허용 — CSRF/크로스사이트 POST 차단.
-const ALLOW_HOSTS = new Set(["start.glovek.space", "batch.glovek.space", "batch2.glovek.space", "glovek.space", "www.glovek.space"]);
+const ALLOW_HOSTS = new Set(["start.glovek.space", "batch.glovek.space", "batch2.glovek.space", "program.glovek.space", "glovek.space", "www.glovek.space"]);
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -79,8 +79,12 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: "개인정보 수집·이용 동의가 필요합니다." }, { status: 400, headers: { "cache-control": "no-store" } });
   }
 
-  // 6) 검증 + 서버 비용 산정
-  const v = validateApplication(body);
+  // 유입 사이트는 canonical 요청 Host로만 판정(body/Referer/x-forwarded-host 미신뢰).
+  // 비용 산정이 사이트별로 달라지므로(program=정가 300만) 검증 이전에 확정한다.
+  const site = siteFromHost(req.headers.get("host"));
+
+  // 6) 검증 + 서버 비용 산정(사이트별 단가 반영)
+  const v = validateApplication(body, site);
   if (!v.ok) {
     return NextResponse.json({ ok: false, error: v.error }, { status: 400, headers: { "cache-control": "no-store" } });
   }
@@ -91,8 +95,6 @@ export async function POST(req: Request) {
   const hash = payloadHash(d);
   const ipHash = hashIp(clientIp(req));
   const ua = String(req.headers.get("user-agent") || "").slice(0, 300);
-  // 유입 사이트는 canonical 요청 Host로만 판정(body/Referer/x-forwarded-host 미신뢰).
-  const site = siteFromHost(req.headers.get("host"));
 
   try {
     await ensureLaunchBatchTable();

@@ -1,0 +1,88 @@
+{
+  "url": "http://localhost:8399/program/index.html",
+  "generatedAt": "2026-11-10T06:10:08.088Z",
+  "checks": {
+    "overflow_1440": {
+      "pass": true,
+      "px": 0
+    },
+    "overflow_390": {
+      "pass": true,
+      "px": 0
+    },
+    "overflow_320": {
+      "pass": true,
+      "px": 0
+    },
+    "calc_1region_300": {
+      "pass": true,
+      "supply": "3,000,000원",
+      "incl": "3,300,000원"
+    },
+    "calc_2region_600": {
+      "pass": true,
+      "supply": "6,000,000원",
+      "incl": "6,600,000원"
+    },
+    "no_calcReg_element": {
+      "pass": true
+    },
+    "price_300_330": {
+      "pass": true
+    },
+    "no_discount_left": {
+      "pass": true
+    },
+    "table_600_900": {
+      "pass": true
+    },
+    "contact_form_present": {
+      "pass": true,
+      "hasConsent": true,
+      "hasBrand": true,
+      "hasRegion": true,
+      "submitH": 48
+    },
+    "submit_min44": {
+      "pass": true,
+      "h": 48
+    },
+    "appjs_targets_apply": {
+      "pass": true
+    },
+    "visible_images_loaded": {
+      "pass": true,
+      "visible": 34,
+      "broken": []
+    },
+    "no_page_errors": {
+      "pass": true,
+      "errs": []
+    }
+  },
+  "overflow": {
+    "320": 0,
+    "390": 0,
+    "1440": 0
+  },
+  "calc": {
+    "oneRegion": {
+      "supply": "3,000,000원",
+      "incl": "3,300,000원"
+    },
+    "twoRegion": {
+      "supply": "6,000,000원",
+      "incl": "6,600,000원"
+    }
+  },
+  "form": {
+    "hasConsent": true,
+    "hasBrand": true,
+    "hasRegion": true,
+    "submitH": 48
+  },
+  "summary": {
+    "failed": 0,
+    "total": 14
+  }
+}
