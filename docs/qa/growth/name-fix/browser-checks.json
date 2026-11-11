@@ -1,0 +1,16 @@
+{
+  "checks": [
+    "whitespace name rejected without POST",
+    "Korean name accepted",
+    "canonical name JSON field",
+    "duplicate submit prevented",
+    "server error preserves entered values",
+    "retry reuses request ID",
+    "mock success renders receipt and resets form",
+    "no JavaScript errors"
+  ],
+  "result": "passed",
+  "realApplicationSubmitted": false,
+  "network": "all external requests blocked; API response mocked",
+  "viewport": "390x844"
+}

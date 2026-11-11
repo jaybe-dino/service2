@@ -266,7 +266,9 @@ export function validateInquiry(raw: Record<string, unknown>):
   | { ok: true; data: CleanInquiry }
   | { ok: false; error: string } {
   const s = (v: unknown, max: number) => String(v ?? "").trim().slice(0, max);
-  const name = s(raw.name, 80);
+  // Older growth pages sent `manager`; accept that string alias until cached pages expire.
+  // An explicit canonical `name` wins, so a blank name still fails validation.
+  const name = s(raw.name ?? (typeof raw.manager === "string" ? raw.manager : undefined), 80);
   const email = s(raw.email, 160).toLowerCase();
   const brand = s(raw.brand, 120) || null;
   const message = s(raw.message, 2000);

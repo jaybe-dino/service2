@@ -185,7 +185,7 @@
 
       var payload = {
         requestId: reqId,
-        brand: brand, manager: name, email: email, phone: phone, message: message,
+        brand: brand, name: name, email: email, phone: phone, message: message,
         consent: true,
         company_website: form.company_website ? form.company_website.value : "" // 허니팟
       };
