@@ -41,11 +41,12 @@ export const metadata: Metadata = {
 };
 
 // 참여기업 — SF익스프레스는 후원사이므로 로고 나열 시 가장 앞에 배치(허정발 대표 확인). 정코스는 공식 로고 미보유 → 기업명 텍스트.
-const COMPANIES: { name: string; role: string; logo: string | null; maxH: string }[] = [
-  { name: "SF익스프레스", role: "후원 · 글로벌 특송", logo: "/seminar1203/logo-sf.png", maxH: "max-h-[34px]" },
-  { name: "디노스튜디오", role: "틱톡샵 입점·운영", logo: "/seminar1203/logo-dino.png", maxH: "max-h-[34px]" },
-  { name: "정코스", role: "K-뷰티 OEM·ODM", logo: null, maxH: "" },
-  { name: "핑퐁페이먼트", role: "글로벌 결제", logo: "/seminar1203/logo-pingpong.svg", maxH: "max-h-[24px]" },
+// w·h는 원본 고유 크기(비율). dispH로 표시 높이를 고정하고 폭은 비율로 자동 — SVG(width/height 미지정)가 flex에서 0폭으로 접히는 문제 방지.
+const COMPANIES: { name: string; role: string; logo: string | null; w: number; h: number; dispH: number }[] = [
+  { name: "SF익스프레스", role: "후원 · 글로벌 특송", logo: "/seminar1203/logo-sf.png", w: 500, h: 220, dispH: 34 },
+  { name: "디노스튜디오", role: "틱톡샵 입점·운영", logo: "/seminar1203/logo-dino.png", w: 460, h: 249, dispH: 34 },
+  { name: "정코스", role: "K-뷰티 OEM·ODM", logo: null, w: 0, h: 0, dispH: 0 },
+  { name: "핑퐁페이먼트", role: "글로벌 결제", logo: "/seminar1203/logo-pingpong.svg", w: 560, h: 170, dispH: 22 },
 ];
 
 // 핵심 학습 내용 — 실제 프로그램(발표) 기반 4개 주제.
@@ -103,8 +104,9 @@ function CompanyMark({ c }: { c: (typeof COMPANIES)[number] }) {
     <div className="flex min-w-0 flex-col items-center gap-2 text-center">
       <div className="flex h-[40px] items-center justify-center">
         {c.logo ? (
+          // 명시적 width/height(고유 비율) + 표시 높이 고정 + 폭 auto → SVG도 0폭으로 접히지 않음.
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={c.logo} alt={c.name} className={`${c.maxH} h-auto w-auto max-w-full object-contain`} loading="lazy" />
+          <img src={c.logo} alt={c.name} width={c.w} height={c.h} style={{ height: `${c.dispH}px`, width: "auto" }} className="max-w-full object-contain" loading="lazy" />
         ) : (
           <span className="text-[19px] font-semibold tracking-tight text-[#1f1b16]">{c.name}</span>
         )}
