@@ -1,0 +1,139 @@
+{
+  "url": "http://localhost:8399/seminar1203",
+  "generatedAt": "2026-11-25T01:33:47.336Z",
+  "checks": {
+    "no_bbox_clip_320": {
+      "pass": true,
+      "count": 0,
+      "sample": []
+    },
+    "no_hscroll_320": {
+      "pass": true,
+      "px": 0
+    },
+    "no_bbox_clip_390": {
+      "pass": true,
+      "count": 0,
+      "sample": []
+    },
+    "no_hscroll_390": {
+      "pass": true,
+      "px": 0
+    },
+    "no_bbox_clip_768": {
+      "pass": true,
+      "count": 0,
+      "sample": []
+    },
+    "no_hscroll_768": {
+      "pass": true,
+      "px": 0
+    },
+    "no_bbox_clip_1280": {
+      "pass": true,
+      "count": 0,
+      "sample": []
+    },
+    "no_hscroll_1280": {
+      "pass": true,
+      "px": 0
+    },
+    "visible_images_loaded": {
+      "pass": true,
+      "visible": 7,
+      "broken": []
+    },
+    "title_event": {
+      "pass": false
+    },
+    "date": {
+      "pass": true
+    },
+    "venue": {
+      "pass": true
+    },
+    "companies": {
+      "pass": true
+    },
+    "program_sessions": {
+      "pass": true
+    },
+    "timetable_times": {
+      "pass": true
+    },
+    "promo_exact": {
+      "pass": true
+    },
+    "contact": {
+      "pass": true
+    },
+    "no_forbidden": {
+      "pass": true
+    },
+    "sf_first": {
+      "pass": true
+    },
+    "new_form_present": {
+      "pass": true,
+      "count": 2
+    },
+    "existing_form_present": {
+      "pass": true,
+      "count": 2
+    },
+    "primary_cta_44px": {
+      "pass": true,
+      "heights": [
+        46.5,
+        53.5
+      ]
+    },
+    "no_wrong_form": {
+      "pass": true
+    },
+    "no_page_errors": {
+      "pass": true,
+      "errs": []
+    }
+  },
+  "clipped": {
+    "320": [],
+    "390": [],
+    "768": [],
+    "1280": []
+  },
+  "formLinks": [
+    {
+      "href": "https://docs.google.com/forms/d/e/1FAIpQLSd8xDJnMlU6OBqO0PdLl-cILIDKPsuoH2bf0psP87na92l24w/viewform",
+      "rel": "noopener noreferrer",
+      "target": "_blank",
+      "h": 46.5,
+      "txt": "신규 브랜드 참가 신청"
+    },
+    {
+      "href": "https://forms.gle/iZyswAmdkedbfA1u5",
+      "rel": "noopener noreferrer",
+      "target": "_blank",
+      "h": 44,
+      "txt": "기존 참여 브랜드이신가요? 기존 브랜"
+    },
+    {
+      "href": "https://docs.google.com/forms/d/e/1FAIpQLSd8xDJnMlU6OBqO0PdLl-cILIDKPsuoH2bf0psP87na92l24w/viewform",
+      "rel": "noopener noreferrer",
+      "target": "_blank",
+      "h": 53.5,
+      "txt": "신규 브랜드 참가 신청"
+    },
+    {
+      "href": "https://forms.gle/iZyswAmdkedbfA1u5",
+      "rel": "noopener noreferrer",
+      "target": "_blank",
+      "h": 44,
+      "txt": "기존 참여 브랜드이신가요? 기존 브랜"
+    }
+  ],
+  "summary": {
+    "failed": 1,
+    "total": 24
+  }
+}

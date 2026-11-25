@@ -1,0 +1,38 @@
+/*
+ * /seminar1203 — scoped styles (풀폭 섹션 · 잉크 표지 + 밝은 본문, 섹션별 배경 전환).
+ * /seminar1120의 GloveK 브랜드 디자인 언어를 이어가되, 교보타워 드림홀 세미나 전용 자산만 사용.
+ */
+
+/* 가로 스크롤만 차단(세로 clip 아님). 풀폭 섹션 배경이 viewport 전체로 이어지되, 장식이 가로 넘침을 만들지 않도록. */
+.page { position: relative; isolation: isolate; overflow-x: clip; }
+
+/* 공통 컨테이너 — 섹션 배경은 풀폭, 내용은 가운데 정렬. */
+.container { width: 100%; max-width: 1180px; margin-inline: auto; padding-inline: 24px; }
+@media (min-width: 640px) { .container { padding-inline: 32px; } }
+
+/* 히어로(짙은 잉크 표지) 위 옅은 세계지도 — 글로벌 진출 톤. */
+.heroMap {
+  position: absolute; z-index: 0; inset: 0; pointer-events: none;
+  background: #cdd6e6; opacity: .06;
+  -webkit-mask: url('/seminar1203/world-map.svg') right center / 150% auto no-repeat;
+          mask: url('/seminar1203/world-map.svg') right center / 150% auto no-repeat;
+}
+
+/* 최종 신청 짙은 밴드 위 세계지도 텍스처. */
+.closingMap {
+  position: absolute; z-index: 0; inset: 0; left: 20%; pointer-events: none;
+  background: #cdd6e6; opacity: .05;
+  -webkit-mask: url('/seminar1203/world-map.svg') right center / 120% auto no-repeat;
+          mask: url('/seminar1203/world-map.svg') right center / 120% auto no-repeat;
+}
+
+/* TikTok 로고 — 2000x834 원본에서 워드마크 영역만 크롭(여백 제거). */
+.tiktokLogo { width: 150px; max-width: 56%; aspect-ratio: 1544 / 376; overflow: hidden; }
+.tiktokLogo img { display: block; width: 129.534%; max-width: none; height: auto; margin-left: -14.767%; margin-top: -12.889%; }
+.closingLogo { width: 148px; margin-bottom: 20px; }
+
+@media (max-width: 639px) {
+  .heroMap { opacity: .05; }
+  .closingLogo { width: 136px; }
+  .closingMap { left: 0; opacity: .045; }
+}

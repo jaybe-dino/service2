@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 560 170" role="img" aria-label="pingpong">
+<path d="M 40,56 L 40,150" fill="none" stroke="#00A2F3" stroke-width="17" stroke-linecap="round" stroke-linejoin="round"/>
+<circle cx="62.5" cy="87" r="22.5" fill="none" stroke="#00A2F3" stroke-width="17"/>
+<path d="M 112.0,56 L 112.0,118" fill="none" stroke="#00A2F3" stroke-width="17" stroke-linecap="round" stroke-linejoin="round"/>
+<circle cx="112.0" cy="40" r="9" fill="#00A2F3"/>
+<path d="M 142.0,118 L 142.0,72 C 142.0,56 186.0,56 186.0,72 L 186.0,118" fill="none" stroke="#00A2F3" stroke-width="17" stroke-linecap="round" stroke-linejoin="round"/>
+<circle cx="230.5" cy="87" r="22.5" fill="none" stroke="#00A2F3" stroke-width="17"/>
+<path d="M 253.0,66 L 253.0,136 Q 253.0,150 229.0,150" fill="none" stroke="#00A2F3" stroke-width="17" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M 275.0,56 L 275.0,150" fill="none" stroke="#00A2F3" stroke-width="17" stroke-linecap="round" stroke-linejoin="round"/>
+<circle cx="297.5" cy="87" r="22.5" fill="none" stroke="#00A2F3" stroke-width="17"/>
+<circle cx="364.5" cy="87" r="22.5" fill="none" stroke="#00A2F3" stroke-width="17"/>
+<path d="M 409.0,118 L 409.0,72 C 409.0,56 453.0,56 453.0,72 L 453.0,118" fill="none" stroke="#00A2F3" stroke-width="17" stroke-linecap="round" stroke-linejoin="round"/>
+<circle cx="497.5" cy="87" r="22.5" fill="none" stroke="#00A2F3" stroke-width="17"/>
+<path d="M 520.0,66 L 520.0,136 Q 520.0,150 496.0,150" fill="none" stroke="#00A2F3" stroke-width="17" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
