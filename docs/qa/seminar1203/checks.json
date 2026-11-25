@@ -1,6 +1,6 @@
 {
   "url": "http://localhost:8399/seminar1203",
-  "generatedAt": "2026-11-25T01:33:47.336Z",
+  "generatedAt": "2026-11-25T01:35:26.488Z",
   "checks": {
     "no_bbox_clip_320": {
       "pass": true,
@@ -44,7 +44,7 @@
       "broken": []
     },
     "title_event": {
-      "pass": false
+      "pass": true
     },
     "date": {
       "pass": true
@@ -133,7 +133,7 @@
     }
   ],
   "summary": {
-    "failed": 1,
+    "failed": 0,
     "total": 24
   }
 }
